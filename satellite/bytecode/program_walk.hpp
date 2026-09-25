@@ -202,19 +202,44 @@ signed long long int run_capsule_for(const BytecodeRegistry &registry,
                                      MachineState &state,
                                      Value *answer);
 
+// WHAT THE PROMPT REMEMBERS BETWEEN LINES (the author, 2026-09-24: "the prompt has to
+// remember what you type in ... it has to be built to have persistence"). One table of
+// variables for the whole session, the same table a capsule's body has, so a name a
+// line declares is there for every line after it -- its value, its declared type and
+// shape, and a file it holds -- still open, and saved after every line, so closing
+// the window loses nothing a finished line wrote. VALUES ARE KEPT, NEVER TEXT: nothing typed
+// is run again to rebuild them, which was 003's ERROR #26 (an input() asked again).
+struct TypedLineMemory {
+    VariableTable variables;
+    // THE FILES WHOSE SAVE FAILED AND WAS SAID, so it is said once and not after every
+    // line that follows; a file that saves again leaves this, and is said again if it
+    // fails again. Only files a kept name still holds are ever in it.
+    std::unordered_map<const satellite_file *, bool> unsaved;
+};
+
 // ONE TYPED LINE, tokenised as row 0 of its own registry: the prompt's way in
 // (PLAN M0.6). The same six shapes a capsule's body has, checked and then run --
-// no wrapper around the line, no second reader, and nothing kept between lines
-// but the number index, the working directory and the history.
+// no wrapper around the line and no second reader.
 //
-// A typed line has no capsules to call and no variables that outlive it: both
-// tables are made here and destroyed with the line. Blocks are refused at the
-// prompt until M6 gives them somewhere to live.
+// THE CHECK STARTS FROM WHAT `kept` HOLDS, each name with the type it was declared,
+// and judges the line against a copy: a refused line changes nothing. Declaring a
+// kept name again REPLACES it at the prompt, where a program refuses a second
+// declaration -- satellite.system.delete is not built, so a refusal would keep a
+// mistyped name for the whole session. The run writes into `kept` itself, so what
+// the next line sees is exactly what this one made, and a line that failed half way
+// leaves only what it finished. A typed line still has no capsules to call, and
+// blocks are refused at the prompt.
 signed long long int check_typed_line(const BytecodeRegistry &registry,
                                       const FunctionTable &functions,
+                                      const TypedLineMemory &kept,
                                       MachineState &state);
 signed long long int run_typed_line(const BytecodeRegistry &registry,
                                     const FunctionTable &functions,
+                                    TypedLineMemory &kept,
                                     MachineState &state);
+
+// THE SESSION IS OVER: every file a kept name holds is saved and closed, and a save
+// that fails is said, as at the end of a capsule's body. success or that failure.
+signed long long int forget_typed_lines(TypedLineMemory &kept);
 
 } // namespace satellite004

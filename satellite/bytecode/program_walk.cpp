@@ -1992,14 +1992,81 @@ signed long long int run_site(const BytecodeRegistry &registry,
 
 } // namespace
 
+namespace {
+
+// EVERY FILE THE KEPT NAMES HOLD: a name's own, and one inside a list or an index at any
+// depth -- `fl = {satellite.file.new(...)}` then `fl[1].append(...)` is a kept file too.
+// A stack and not recursion, because a list can be nested far deeper than the stack
+// goes; `seen` walks a container two names share, or one inside itself, once.
+std::vector<satellite_file *> files_kept(const VariableTable &variables)
+{
+    std::vector<satellite_file *> files;
+    std::unordered_map<const void *, bool> seen;
+    std::vector<const Value *> waiting;
+    for (const std::pair<const std::string, Variable> &entry : variables)
+        waiting.push_back(&entry.second.value);
+    while (!waiting.empty()) {
+        const Value *value = waiting.back();
+        waiting.pop_back();
+        if (const FileHandle *handle = std::get_if<FileHandle>(&value->held)) {
+            if (*handle != nullptr && seen.emplace(handle->get(), true).second)
+                files.push_back(handle->get());
+        } else if (const ListHandle *list = value->as_list()) {
+            if (*list != nullptr && seen.emplace(list->get(), true).second)
+                for (const Value &item : (*list)->items) waiting.push_back(&item);
+        } else if (const IndexHandle *index = value->as_index()) {
+            if (*index != nullptr && seen.emplace(index->get(), true).second)
+                for (const std::pair<Value, Value> &entry : (*index)->entries) {
+                    waiting.push_back(&entry.first);
+                    waiting.push_back(&entry.second);
+                }
+        }
+    }
+    return files;
+}
+
+} // namespace
+
 signed long long int run_typed_line(const BytecodeRegistry &registry,
                                    const FunctionTable &functions,
+                                   TypedLineMemory &kept,
                                    MachineState &state)
 {
     static const CapsuleTable none;   // a typed line stands alone: there are no capsules around it
-    VariableTable variables;          // and no name outlives the line that wrote it, until M6
     Frame frame;                      // nothing to return from: the checker refuses a return here
-    return close_files(variables, run_statements(registry, none, functions, 0, 0, variables, state, frame));
+    // THE SESSION'S OWN TABLE, not one of the line's: its files stay open for the
+    // next line, and are closed when the session ends (forget_typed_lines).
+    const signed long long int ran = run_statements(registry, none, functions, 0, 0, kept.variables, state, frame);
+
+    // AND EVERY FILE IT HOLDS IS SAVED AFTER EVERY LINE, left open. Closing the console
+    // window or a second Ctrl-C ends satl from a signal handler, where nothing can be
+    // saved -- so what a finished line wrote must already be on the disk, as it was
+    // when each line closed its own files. save() writes nothing when nothing changed,
+    // and only the new bytes after an append. A FAILED SAVE IS SAID ONCE, on the line it
+    // first failed after; it is tried again after every line, quietly, and the end of
+    // the session says it once more if it never lands.
+    signed long long int answer = ran;
+    std::unordered_map<const satellite_file *, bool> still_unsaved;
+    for (satellite_file *file : files_kept(kept.variables)) {
+        if (!file->ok() || file->save()) continue;
+        still_unsaved.emplace(file, true);
+        if (kept.unsaved.count(file) != 0) continue;
+        const signed long long int code =
+            report_error("satl(prompt): the changes to " + file->path() + " could not be saved after the line -- " +
+                             file->error(),
+                         file_unwritable);
+        if (!stops_the_program(answer)) answer = code;
+    }
+    kept.unsaved = std::move(still_unsaved);
+    return answer;
+}
+
+signed long long int forget_typed_lines(TypedLineMemory &kept)
+{
+    const signed long long int saved = close_files(kept.variables, success);
+    kept.variables.clear();
+    kept.unsaved.clear();
+    return saved;
 }
 
 signed long long int run_capsule_for(const BytecodeRegistry &registry,

@@ -85,7 +85,27 @@ struct Where {
     DeclaredObjects lists;
     std::size_t statement = kNowhere;    // where the statement being judged starts
     const Arguments *arguments = nullptr;  // the rows satl holds, which `argz.row = x` may not write
+    bool typed_line = false;             // at the prompt: declaring a kept name again replaces it
+    // AND THE KEPT NAMES THIS LINE DECLARES AGAIN, with their new types, taken only once
+    // the line has been judged (check_typed_line): its value is worked out from the OLD
+    // one, as the walker works it out, so `satellite.variable.string words =
+    // words.join(",")` over a kept list is judged as the list's join.
+    std::vector<std::pair<std::string, Code>> replacing;
 };
+
+// A DECLARATION TAKES ITS NAME, OR ANSWERS FALSE WHEN THE NAME IS TAKEN -- the second
+// declaration a program is refused for. AT THE PROMPT the name may be one an earlier
+// line kept, and declaring it again replaces it, type and all (program_walk.hpp's
+// TypedLineMemory says why) -- after the line, so the old type judges its value.
+bool declares(Where &where, DeclaredNames &declared, const std::string &name, Code code)
+{
+    if (declared.emplace(name, code).second)
+        return true;
+    if (!where.typed_line)
+        return false;
+    where.replacing.emplace_back(name, code);
+    return true;
+}
 
 // A NAME THAT HOLDS OBJECTS, OR A LIST OF THEM, FROM ITS DECLARED SHAPE -- kept or
 // forgotten, so a name declared again as something else is not judged as the old one.
@@ -1647,7 +1667,7 @@ signed long long int check_statement(const std::vector<std::bitset<16>> &row,
             const signed long long int named = a_name_it_may_take(capsules, scope, name, why);
             if (named != success) { at = stop; return named; }
         }
-        if (!declared.emplace(name, code).second) {
+        if (!declares(where, declared, name, code)) {
             why = declared_twice(where, name);
             at = stop;
             return name_declared_twice;
@@ -1697,7 +1717,7 @@ signed long long int check_statement(const std::vector<std::bitset<16>> &row,
             const signed long long int named = a_name_it_may_take(capsules, scope, name, why);
             if (named != success) { at = stop; return named; }
         }
-        if (!declared.emplace(name, code).second) {
+        if (!declares(where, declared, name, code)) {
             why = declared_twice(where, name);
             at = stop;
             return name_declared_twice;
@@ -1924,12 +1944,20 @@ signed long long int check_statement(const std::vector<std::bitset<16>> &row,
 
 signed long long int check_typed_line(const BytecodeRegistry &registry,
                                       const FunctionTable &functions,
+                                      const TypedLineMemory &kept,
                                       MachineState &state)
 {
     static const CapsuleTable none;
     DeclaredNames declared;
     EndingNames ending;
     Where where{registry, none, kNoScope, functions};
+    where.typed_line = true;
+    // WHAT EARLIER LINES KEPT, read from the table the run wrote -- one source, so the
+    // check can never believe in a name the run did not make.
+    for (const std::pair<const std::string, Variable> &name : kept.variables) {
+        declared[name.first] = name.second.declared;
+        remember_shape(where, name.first, name.second.shape);
+    }
     const std::vector<std::bitset<16>> &row = registry.front();
     for (std::size_t at = 0; at < row.size() && code_at(row, at) != token::end_of_file_token; ) {
         const std::size_t was = at;
@@ -1937,6 +1965,9 @@ signed long long int check_typed_line(const BytecodeRegistry &registry,
         const signed long long int stopped = check_statement(row, at, where, declared, ending, why);
         if (stops_the_program(stopped))
             return report_error("satl(prompt): " + why, stopped);
+        for (const std::pair<std::string, Code> &replaced : where.replacing)
+            declared[replaced.first] = replaced.second;
+        where.replacing.clear();
         if (at <= was)                  // a statement must always move forward
             ++at;
     }

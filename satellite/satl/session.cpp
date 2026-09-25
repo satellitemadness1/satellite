@@ -160,14 +160,18 @@ std::string without_spaces_around(const std::string &line)
 // REFUSED BY NAME AND NEVER SKIPPED (ERROR #1's shape, PLAN M0.6). Each of these
 // is a whole program's spelling, or a block, and a typed line is neither. They
 // are found by CODE, so a brace inside a string literal is text and not a brace.
+//
+// A BRACE IS A BLOCK ONLY WHERE A VALUE CANNOT START (2026-09-24). Refusing every `{`
+// refused every list literal too, so `l = {"a", "b"}` could not be typed at the prompt
+// that now remembers l. A `{` at the start of the line, or after `)`, a name or a word,
+// opens a block, as `satellite.statement.if(x) {` does; after `=`, `(`, `,`, `[`, `:`,
+// an operator or another `{` it opens a list or an index, and the checker judges it. A
+// `}` is a block's unless a list's `{` is still open.
 signed long long int refuse_by_name(const std::vector<std::bitset<16>> &row, MachineState &state)
 {
+    static const char *const a_block = "a block has nowhere to live at the prompt: one statement a line";
     struct Refused { Code code; const char *why; signed long long int answer; };
     const Refused list[] = {
-        {token::left_brace_token, "a block has nowhere to live at the prompt: one statement a line until M6",
-         satl_line_not_understood},
-        {token::right_brace_token, "a block has nowhere to live at the prompt: one statement a line until M6",
-         satl_line_not_understood},
         {word::code_of(1, 1), "a session has already taken satellite in", satl_line_not_understood},
         {word::code_of(1, 1, 1), "a session has already taken satellite in", satl_line_not_understood},
         {word::code_of(1, 2), "a capsule belongs to a program, not to a line", satl_line_not_understood},
@@ -183,10 +187,23 @@ signed long long int refuse_by_name(const std::vector<std::bitset<16>> &row, Mac
          satl_line_not_understood},
     };
 
+    Code before = 0;
+    std::size_t lists_open = 0;
     for (std::size_t at = 0; at < row.size(); ) {
         const Code code = code_at(row, at);
         if (code == token::end_of_file_token)
             break;
+        if (code == token::left_brace_token) {
+            if (before == 0 || before == token::right_parenthesis_token || before == token::name_token ||
+                word::is_word_code(before))
+                return report_error(std::string("satl(prompt): ") + a_block, satl_line_not_understood);
+            ++lists_open;
+        } else if (code == token::right_brace_token) {
+            if (lists_open == 0)
+                return report_error(std::string("satl(prompt): ") + a_block, satl_line_not_understood);
+            --lists_open;
+        }
+        before = code;
         for (const Refused &refused : list)
             if (code == refused.code && refused.code != 0)
                 return report_error(std::string("satl(prompt): ") + refused.why, refused.answer);
@@ -247,7 +264,8 @@ signed long long int draw_the_listing(const std::string &path, bool given, Code 
 
 // ONE TYPED LINE, from its text to its answer.
 signed long long int run_one_line(const std::string &line, const FunctionTable &functions,
-                                  StartupThreads &threads, unsigned long long int batches, MachineState &state)
+                                  StartupThreads &threads, unsigned long long int batches, TypedLineMemory &kept,
+                                  MachineState &state)
 {
     BytecodeRegistry registry;
     BytecodeFilenames filenames;
@@ -262,7 +280,7 @@ signed long long int run_one_line(const std::string &line, const FunctionTable &
         return refused;
 
     // NOTHING RUNS BEFORE THE LINE IS JUDGED, which is what a file gets too.
-    const signed long long int checked = check_typed_line(registry, functions, state);
+    const signed long long int checked = check_typed_line(registry, functions, kept, state);
     if (stops_the_program(checked))
         return checked;
 
@@ -272,7 +290,7 @@ signed long long int run_one_line(const std::string &line, const FunctionTable &
     if (is_one_listing(registry.front(), path, given, word_code))
         return draw_the_listing(path, given, word_code, functions);
 
-    return run_typed_line(registry, functions, state);
+    return run_typed_line(registry, functions, kept, state);
 }
 
 } // namespace
@@ -290,7 +308,11 @@ signed long long int run_session(const Arguments &arguments, const FunctionTable
                                                ? arguments.number("arguments.threads_startup").limb(0)
                                                : 1;
     if (reader.interactive())
-        std::cout << "One statement a line. interpret <file> runs a program. exit, quit or Ctrl-D leaves.\n";
+        std::cout << "One statement a line, and what you declare is kept until you leave. interpret <file> runs a "
+                     "program. exit, quit or Ctrl-D leaves.\n";
+
+    // EVERY NAME A LINE DECLARES LIVES HERE UNTIL THE SESSION ENDS (program_walk.hpp).
+    TypedLineMemory kept;
 
     signed long long int first_failure = success;
     std::string line;
@@ -334,10 +356,16 @@ signed long long int run_session(const Arguments &arguments, const FunctionTable
 
         asked_to_stop = 0;
         presses = 0;
-        const signed long long int answer = run_one_line(line, functions, threads, batches, state);
+        const signed long long int answer = run_one_line(line, functions, threads, batches, kept, state);
         if (stops_the_program(answer) && first_failure == success)
             first_failure = answer;
     }
+
+    // THE FILES THE SESSION KEPT ARE SAVED ON THE WAY OUT, and a save that fails is said
+    // and counts as a failing line -- the one place a person could otherwise lose one.
+    const signed long long int saved = forget_typed_lines(kept);
+    if (stops_the_program(saved) && first_failure == success)
+        first_failure = saved;
 
     std::cout.flush();
     stop_flag() = nullptr;

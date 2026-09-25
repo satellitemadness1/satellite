@@ -10,9 +10,11 @@
 // yet, run it, say what happened, and go again.
 //
 // WHAT IT KEEPS BETWEEN LINES is the number index, the function table, the
-// working directory and the history -- nothing else. A line's variables die with
-// it (M6 gives them somewhere to live), and NOTHING TYPED IS KEPT AS TEXT AND RUN
-// AGAIN, which is 003's ERROR #26.
+// working directory, the history -- and, since 2026-09-24, EVERY NAME A LINE
+// DECLARES, with its value, until the session ends (the author: "the prompt has to
+// remember what you type in"). program_walk.hpp's TypedLineMemory holds them, and a
+// file one holds is saved on the way out. NOTHING TYPED IS KEPT AS TEXT AND RUN
+// AGAIN, which is 003's ERROR #26: the values are kept, not the lines that made them.
 //
 // CTRL-C IS TWO KEYS AND WHICH ONE IS DECIDED BY WHAT IS RUNNING. While a line is
 // being typed the terminal is raw with ISIG off, so it arrives as the byte 0x03

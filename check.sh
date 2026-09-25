@@ -4852,5 +4852,74 @@ rm -rf "$size_room"
 expect "satl's console is 133 columns: the listing's 120 and its size column's 13" 1 \
        "$(grep -c '^constexpr long kColumns = 133;$' satellite/satellite_variable_window/console_launch.cpp)"
 
+# THE PROMPT REMEMBERS (the author, 2026-09-24: "the prompt has to remember what you type
+# in ... it has to be built to have persistence"). A name a line declares is kept, with
+# its value and type, for every line after it; a refused line changes nothing; declaring
+# a kept name again replaces it at the prompt (a program still refuses the second).
+memory_room=$(mktemp -d "${TMPDIR:-/tmp}/satl_memory.XXXXXX")
+printf '%s\n' 'satellite.variable.number n = 41' 'n = n + 1' 'satellite.console.display(n)' \
+    'n = "text"' 'satellite.console.display(n)' \
+    'satellite.variable.string n = "declared again, now a string"' 'satellite.console.display(n)' \
+    'satellite.console.display(never_declared)' \
+    'satellite.container.list<satellite.variable.string> kept_list = {"a"}' 'kept_list.append("b")' \
+    'satellite.console.display(kept_list)' \
+    "satellite.variable.file f = satellite.file.new(\"$memory_room/kept.txt\", \"text\")" \
+    'f.append("line one")' 'f.append("line two")' 'satellite.console.display(f.size)' |
+    "$interpreter" --repl > build/prompt_memory.out 2> build/prompt_memory.err
+expect "prompt: a number, a redeclared string, a list and a file are kept from line to line" \
+       '42|42|declared again, now a string|{"a", "b"}|2' "$(tr '\n' '|' < build/prompt_memory.out | sed 's/|$//')"
+expect "... n = \"text\" on the kept number and an undeclared name are refused, and the session goes on" "1|1" \
+       "$(grep -c 'n was declared satellite.variable.number' build/prompt_memory.err)|$(grep -c 'never_declared has no satellite.variable line declaring it' build/prompt_memory.err)"
+expect "... and the file is saved when the session ends" "line one|line two" \
+       "$(tr '\n' '|' < "$memory_room/kept.txt" | sed 's/|$//')"
+# SAVED AFTER EVERY LINE, NOT ONLY AT THE END: closing the console window or a second
+# Ctrl-C leaves from a signal handler, where nothing can be saved. So the lines must be
+# on the disk while the session is still open -- a file a name holds, and one inside a
+# kept list -- and then satl is killed, and they stay. A fifo holds the session open, so
+# nothing is left running after it.
+mkfifo "$memory_room/lines"
+"$interpreter" --repl < "$memory_room/lines" > /dev/null 2>&1 &
+live_pid=$!
+exec 3> "$memory_room/lines"
+printf '%s\n' "satellite.variable.file g = satellite.file.new(\"$memory_room/live.txt\", \"text\")" 'g.append("written")' \
+    "satellite.container.list fl = {satellite.file.new(\"$memory_room/in_a_list.txt\", \"text\")}" \
+    'fl[1].append("in a list")' >&3
+for _ in $(seq 50); do
+    [ "$(cat "$memory_room/live.txt" 2>/dev/null)|$(cat "$memory_room/in_a_list.txt" 2>/dev/null)" = "written|in a list" ] && break
+    sleep 0.1
+done
+expect "prompt: a kept file's line, and one in a kept list's file, are on the disk while the session is still open" \
+       "written|in a list|alive" \
+       "$(cat "$memory_room/live.txt" 2>/dev/null)|$(cat "$memory_room/in_a_list.txt" 2>/dev/null)|$(kill -0 "$live_pid" 2>/dev/null && echo alive || echo gone)"
+kill -9 "$live_pid" 2>/dev/null; wait "$live_pid" 2>/dev/null
+exec 3>&-
+expect "... and still there after satl is killed with no chance to save" "written|in a list" \
+       "$(cat "$memory_room/live.txt")|$(cat "$memory_room/in_a_list.txt")"
+# A KEPT NAME DECLARED AGAIN IS WORKED OUT FROM WHAT IT WAS: the value is judged with the
+# old type, as the walker runs it (the fresh reader's find, 2026-09-24).
+printf '%s\n' 'satellite.container.list<satellite.variable.string> words = {"a", "b"}' \
+    'satellite.variable.string words = words.join(",")' 'satellite.console.display(words)' |
+    "$interpreter" --repl > build/prompt_redeclared.out 2>&1
+expect "prompt: satellite.variable.string words = words.join(\",\") over a kept list" 1 \
+       "$(grep -cx 'a,b' build/prompt_redeclared.out)"
+# A SAVE THAT FAILS IS SAID ONCE, not after every line that follows -- and once more when
+# the session ends and it has still not landed.
+if [ "$(id -u)" != 0 ]; then
+    printf 'kept\n' > "$memory_room/locked.txt"; chmod 444 "$memory_room/locked.txt"
+    printf '%s\n' "satellite.variable.file f = satellite.file.open(\"$memory_room/locked.txt\")" 'f.append("x")' \
+        'satellite.console.display(1)' 'satellite.console.display(2)' |
+        "$interpreter" --repl > /dev/null 2> build/prompt_unsaved.err
+    expect "prompt: a save that fails is said once after its line, and once at the end" "1|1" \
+           "$(grep -c 'could not be saved after the line' build/prompt_unsaved.err)|$(grep -c 'could not be saved when f went out of use' build/prompt_unsaved.err)"
+    chmod 644 "$memory_room/locked.txt"
+fi
+rm -rf "$memory_room"
+# AND A LIST'S { IS NOT A BLOCK: a { after = ( , [ : or an operator opens a value, and
+# one at the start of a line or after ) a name or a word still opens a refused block.
+printf '%s\n' 'satellite.statement.if(1 == 1) {' 'satellite.console.display({1, {2, 3}}.size)' |
+    "$interpreter" --repl > build/prompt_braces.out 2>&1
+expect "prompt: if(...) { is still a block, and a list inside a list is a value" "1|2" \
+       "$(grep -c 'a block has nowhere to live at the prompt' build/prompt_braces.out)|$(grep -x '[0-9][0-9]*' build/prompt_braces.out)"
+
 echo "$passed passed, $failed failed"
 [ "$failed" = 0 ]
