@@ -156,8 +156,14 @@ signed long long int make_an_object(const BytecodeRegistry &registry, const Caps
     // its supertypes' first, where THEY are declared, which may be another file's row.
     if (!layout.fields.empty()) {
         VariableTable making;
+        // A FIELD'S WARNING NAMES THE FIELD'S LINE (the review, 2026-09-25): these lines do
+        // not pass through run_statements, so without this an S020 in a field's value named
+        // the line that declared the object -- and two objects, two entries for one line.
+        const StatementPlaceKept declaring_line(state);
         for (std::size_t slot = 0; slot < layout.fields.size(); ++slot) {
             std::size_t at = layout.fields[slot].at;
+            state.statement_row = &registry[layout.fields[slot].row];
+            state.statement_at = at;
             bool was_one = false;
             const signed long long int code = run_declaration(registry, capsules, functions, layout.fields[slot].row,
                                                               at, making, state, true, was_one);

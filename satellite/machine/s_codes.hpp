@@ -37,7 +37,9 @@
 #include "machine_state.hpp"
 #include "source_position.hpp"
 
+#include <cstdint>
 #include <string>
+#include <unordered_map>
 
 namespace satellite004 {
 
@@ -347,6 +349,88 @@ inline signed long long int raise(const CriticalReport &report, signed long long
 {
     print_critical(report);
     return machine_code;
+}
+
+// A WARNING FOR satellite.log, PLACED WHERE THE WALKER IS (M5). S0xx is the author's band
+// for "the run carries on" (SATELLITE_ERROR Part 4), so a warning has no machine code and
+// no exit status: `code`, `name` and `means` are the whole of it. The line is the statement
+// being walked (MachineState::statement_row), and there is no caret -- the walker knows
+// which statement, not which part of it.
+inline void place_here(CriticalReport &report, const MachineState &state)
+{
+    if (state.program == nullptr || state.program_files == nullptr || state.statement_row == nullptr)
+        return;
+    report_at(report, *state.program, *state.program_files, row_index_of(state.program, *state.statement_row),
+              state.statement_at);
+    report.caret_at = std::string::npos;
+    // THE LINE GOES IN BESIDE ITS PLACE: a notice is one line, and "(prog.satl:12)" alone
+    // makes a person open the file to learn which of three appends it was.
+    std::string line = report.syntax;
+    for (char &c : line)
+        if (c == '\t')
+            c = ' ';                    // one column, as render() shows a tab
+    if (!line.empty())
+        report.directory += " " + line;
+}
+
+// A PLACE ALREADY WARNED FROM IS COUNTED BY ITS ADDRESS, BEFORE ANYTHING IS READ (the
+// review, 2026-09-25): place_here quotes the line by re-reading the program's file, and a
+// conversion in a loop asked it every turn -- 100,000 turns at line 5010 went from 0.16 s
+// to 4.9 s. Now the file is read once a place. The key is the statement's row and position
+// and the code; the value is where the tally keeps its count.
+inline std::unordered_map<std::string, std::size_t> &warned_places()
+{
+    static std::unordered_map<std::string, std::size_t> one;
+    return one;
+}
+
+inline void log_warning_here(const MachineState &state, const char *code, const char *name, const std::string &means)
+{
+    // THE TALLIES' LOCK (critical_report.hpp), held across the look-up, the first placing
+    // and the count, so two threads at one place count once. Recursive, and nothing at all
+    // until a program starts a thread.
+    const ConsoleHold one_warning;
+    const bool placed = state.program != nullptr && state.program_files != nullptr && state.statement_row != nullptr;
+    std::string place;
+    if (placed) {
+        place = std::string(code) + "@" + std::to_string(reinterpret_cast<std::uintptr_t>(state.statement_row)) +
+                ":" + std::to_string(state.statement_at);
+        const std::unordered_map<std::string, std::size_t>::const_iterator seen = warned_places().find(place);
+        if (seen != warned_places().end()) {
+            ++logged_tally().counts[seen->second];
+            return;
+        }
+    }
+    CriticalReport report;
+    report.code = code;
+    report.name = name;
+    report.description = means;
+    place_here(report, state);
+    // AT THE PROMPT THERE IS NO FILE, SO NO PLACE, and every warning is its own entry: a
+    // typed line cannot loop -- a block has nowhere to live there -- so this is bounded by
+    // what a person types, and keeping the first alone lost the rest (the review).
+    if (!placed) {
+        log_only_warning(report, false);
+        return;
+    }
+    const std::size_t before = logged_tally().keys.size();
+    log_only_warning(report);
+    if (logged_tally().keys.size() > before)
+        warned_places()[place] = before;
+}
+
+// S020 -- A NUMBER WHERE TEXT IS EXPECTED WAS TAKEN AS ITS DIGITS (the author, 2026-09-16:
+// "just convert the number to the string and run that piece, obviously the programmer
+// meant convert to string, but record the warning in satellite.log"). The digits are
+// said up to 40; a number of a million digits is a line of a million characters, which
+// helps nobody reading a log.
+inline void warn_number_taken_as_text(const MachineState &state, const std::string &what, const std::string &digits)
+{
+    const std::string said = digits.size() <= 40 ? digits : "of " + std::to_string(digits.size()) + " digits";
+    log_warning_here(state, "S020", "NUMBER_TAKEN_AS_TEXT",
+                     what + " takes text and was given the number " + said +
+                         ", so it used its digits as the text -- satellite.variable.number.to_string says so "
+                         "out loud, and then there is nothing to warn about");
 }
 
 // E5/E6 TOGETHER -- A REFUSAL, A PLACE, AND NOTHING ELSE FROM THE CALLER.

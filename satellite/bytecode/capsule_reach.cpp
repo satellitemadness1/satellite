@@ -186,10 +186,23 @@ std::string CapsuleTable::already_names(std::size_t scope, const std::string &na
 {
     if (scope == kNoScope)
         return std::string();
+    // A CAPSULE AND A SPACESUIT ARE NAMES TOO (M5, DESIGN §7: "a new name is checked
+    // against all of them"). A variable called `helper` beside a capsule `helper()`, or
+    // `thing` beside a spacesuit `thing`, is one name for two things -- the collision the
+    // author ruled an error for spacesuits (POLYMORPH D9.3) -- and 003 let a variable hide
+    // the capsule outright: its `helper()` then found nothing to call.
     for (std::size_t at = scope; at != kNoScope; at = scopes[at].parent) {
         const std::unordered_map<std::string, std::size_t>::const_iterator space = scopes[at].spaces.find(name);
         if (space != scopes[at].spaces.end())
             return "the satellite.namespace " + scopes[space->second].within;
+        const std::string in = scopes[at].parent == kNoScope ? std::string(" of this file")
+                               : scopes[at].is_a_suit()      ? " of the spacesuit " + scopes[at].within
+                                                             : " of the satellite.namespace " + scopes[at].within;
+        if (scopes[at].capsules.count(name) != 0)
+            return "a capsule" + in;
+        const std::unordered_map<std::string, std::size_t>::const_iterator suit = scopes[at].suits.find(name);
+        if (suit != scopes[at].suits.end())
+            return "the spacesuit " + scopes[suit->second].within;
     }
     if (included[scopes[scope].row].count(name) != 0)
         return "the file " + name + ".satl this file includes";

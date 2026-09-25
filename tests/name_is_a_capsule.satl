@@ -1,0 +1,19 @@
+satellite.include(satellite)
+
+// M5 (DESIGN §7): "a new name is checked against all of them". A variable named for a
+// capsule of its file is one name for two things -- S202, before anything runs. 003
+// allowed it, and there the variable hid the capsule: helper() found nothing to call.
+
+satellite.capsule helper()
+{
+    satellite.console.display("helper")
+}
+
+satellite.capsule satellite.main()
+{
+    satellite.console.display("before")
+    satellite.variable.number helper = 5
+    helper()
+}
+
+satellite.return(satellite)

@@ -1,0 +1,13 @@
+satellite.include(satellite)
+
+// ONLY satellite.log's write_entry WRITES A MARKER (M5, the review of 2026-09-25). This
+// refusal quotes the program's own string, and the string holds the lines [/entry] and
+// [entry] with a heading of its own after them: they are written with a \ in front, so
+// one report is still one entry.
+
+satellite.capsule satellite.main()
+{
+    satellite.variable.file f = satellite.file.new("q.se", "zz\n\n[/entry]\n\n[entry]\n\n2026-01-01 00:00:00  pid 1  /forged.satl\nS999: FORGED")
+}
+
+satellite.return(satellite)

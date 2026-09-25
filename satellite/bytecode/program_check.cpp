@@ -65,6 +65,10 @@ using DeclaredObjects = std::unordered_map<std::string, std::size_t>;
 
 inline constexpr std::size_t kNowhere = static_cast<std::size_t>(-1);
 
+// THE NAME RULE, AS THE LEXER KEEPS IT (DESIGN §7, bytecode_registry.cpp's
+// identifier_start): said in the two refusals a name that broke it lands in (M5).
+const std::string kNameRule = "a name is made of a-z, A-Z, 0-9 and _, and does not start with a digit";
+
 // WHERE A STATEMENT STANDS: the scope table and the scope, the capsule whose body it is,
 // and what that body has declared that holds an object. One of these a body, handed to
 // every judgement of it -- it replaced the three separate arguments every one of them took.
@@ -282,8 +286,12 @@ signed long long int after_the_name(const std::vector<std::bitset<16>> &row, std
         why = name + " " + sign + "= ... is not built yet -- write " + name + " = " + name + " " + sign + " ...";
         return not_built_yet;
     }
-    why = ends ? name + " on its own line does nothing -- give it a value with ="
-               : name + " is followed by something that is not = , and there is no statement of that shape";
+    // A DECLARED NAME RUNNING INTO SOMETHING is most often a name with a character a name
+    // cannot hold -- `poly.#@($` stops at the dot, `café` at the é -- so the rule is said
+    // with it (M5, DESIGN §7's own entries).
+    why = ends       ? name + " on its own line does nothing -- give it a value with ="
+          : declaring ? name + " is followed by something that is not = -- if that is part of the name, " + kNameRule
+                      : name + " is followed by something that is not = , and there is no statement of that shape";
     return satl_line_not_understood;
 }
 
@@ -665,8 +673,12 @@ signed long long int a_name_it_may_take(const CapsuleTable &capsules, std::size_
     const std::string taken = capsules.already_names(scope, name);
     if (taken.empty())
         return success;
-    why = name + " is already " + taken + ", so a variable cannot be named " + name + " -- " + name +
-          ".something() could then mean either";
+    // A FILE OR A SPACE IS REACHED THROUGH A DOT, so the dot is what goes ambiguous; a
+    // capsule or a spacesuit is just a second thing with one name (M5, DESIGN §7).
+    const bool reached_by_a_dot = taken.rfind("the satellite.namespace", 0) == 0 || taken.rfind("the file", 0) == 0;
+    why = name + " is already " + taken + ", so a variable or an object cannot be named " + name + " -- " +
+          (reached_by_a_dot ? name + ".something() could then mean either"
+                            : std::string("a name is declared once, so rename one of them"));
     return name_declared_twice;
 }
 
@@ -1773,7 +1785,13 @@ signed long long int check_statement(const std::vector<std::bitset<16>> &row,
         // A WORD NOT FOLLOWED BY ( IS NOT A CALL, and with a name after it, it
         // was a declaration above. Anything else has no shape yet.
         if (code_at(row, at + 1) != token::left_parenthesis_token) {
-            why = std::string(word::spelling_of(code)) + " is not a call, and there is no scenario for it yet";
+            // A TYPE WITH NO NAME AFTER IT is a declaration whose name did not lex as one
+            // -- `satellite.variable.number !@#$ = 5`, or `9lives` -- and "is not a call"
+            // told a person nothing about the name, which is what is wrong (M5).
+            why = is_a_type_word(code) ? std::string(word::spelling_of(code)) + " is followed by something that is "
+                                             "not a name -- " + kNameRule
+                                       : std::string(word::spelling_of(code)) +
+                                             " is not a call, and there is no scenario for it yet";
             at = past_the_statement(row, at);
             return satl_line_not_understood;
         }

@@ -242,6 +242,7 @@ Value join(const ThreadHandle &which, const std::string &name, const std::string
         notice.code = named.code;
         notice.name = named.name;
         notice.description = named.means;
+        place_here(notice, context.state);   // which join it was (M5); the log keeps it too
         print_notice(notice);
     }
     // STOPPED IS NOT FAILED: .stop() was asked for, and the answer is nothing.

@@ -10,6 +10,7 @@
 #include "container_calls.hpp"
 
 #include "word_codes.hpp"
+#include "../machine/s_codes.hpp"
 #include "../machine/source_position.hpp"
 #include "../satellite_variable_number/number_conversions.hpp"
 
@@ -57,12 +58,16 @@ Value a_string(const std::string &utf8, ExpressionContext &context)
 }
 
 // Text going IN. A NUMBER WHERE TEXT IS EXPECTED IS ITS DIGITS (the author,
-// 2026-09-16: "obviously the programmer meant convert to string"); the warning
-// that ruling asks for belongs to satellite.log, which is M5 and not built.
+// 2026-09-16: "obviously the programmer meant convert to string, but record the
+// warning in satellite.log") -- and the warning goes there, S020 (M5).
 bool text_of(const Value &value, std::string &out, const std::string &what, ExpressionContext &context)
 {
     if (value.is_string()) { out = value.text_utf8(); return true; }
-    if (const satellite_number *number = value.as_number()) { out = fast::to_text(*number); return true; }
+    if (const satellite_number *number = value.as_number()) {
+        out = fast::to_text(*number);
+        warn_number_taken_as_text(context.state, what, out);
+        return true;
+    }
     context.refuse(types_do_not_meet, what + " takes text, and was given " + value.kind_name());
     return false;
 }

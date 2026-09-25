@@ -1,0 +1,18 @@
+satellite.include(satellite)
+
+// satellite.log's "happened N times" IS WRITTEN HOWEVER THE RUN ENDS (M5, the review of
+// 2026-09-25): this one stops on a division by zero, and the count of line 12's five
+// conversions was lost with it.
+
+satellite.capsule satellite.main()
+{
+    satellite.variable.file f = satellite.file.new("stops.se")
+    satellite.statement.for(satellite.variable.number i = 0; i < 5; i++)
+    {
+        f.append(i)
+    }
+    satellite.variable.number z = 0
+    satellite.variable.number x = 1 / z
+}
+
+satellite.return(satellite)

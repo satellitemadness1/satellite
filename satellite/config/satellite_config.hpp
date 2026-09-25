@@ -80,10 +80,15 @@ inline std::vector<satellite_argument_row> return_arguments_vector()
     // person has no folder of their own yet; a prompt started from a shell stays
     // in the shell's folder, and a program runs where it was started.
     arguments_vector.push_back({"arguments.directory.default", 0, false, false, "~", true});
+    // WHERE satellite.log IS WRITTEN (M5; DESIGN §7: "the path comes from config"). Every
+    // report satl makes is kept there as an [entry], the author's write_entry. One file a
+    // person, beside the installed satl -- 003's ~/.satl/satellite.log, which 003 still
+    // writes to as well. One machine may set `log_path = ...` in ~/.satl/config.ini.
+    arguments_vector.push_back({"arguments.log_path", 0, false, false, "~/.satl/satellite.log", true});
     arguments_vector.push_back({"arguments.startup_display", 0, true, true});
     arguments_vector.push_back({"arguments.version", 4, false, false});
     arguments_vector.push_back({"arguments.revision", 8, false, false});
-    arguments_vector.push_back({"arguments.build", 49, false, false});
+    arguments_vector.push_back({"arguments.build", 55, false, false});
     arguments_vector.push_back({"arguments.object_bytes_max", 34359738368, false, false});
     arguments_vector.push_back({"arguments.threads_max", 1000000, false, false});
     arguments_vector.push_back({"arguments.threads_startup", 1024, false, false});

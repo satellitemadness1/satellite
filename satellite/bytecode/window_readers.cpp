@@ -7,6 +7,7 @@
 
 #include "window_readers.hpp"
 
+#include "../machine/s_codes.hpp"
 #include "../satellite_variable_number/number_conversions.hpp"
 
 #include <string>
@@ -18,11 +19,16 @@ namespace fast = number_fast_path;
 
 // Text going in. A NUMBER WHERE TEXT IS EXPECTED IS ITS DIGITS, which is
 // file_calls.cpp's rule and the author's: `satellite.window.new(5, 80, 24)` is
-// a window titled "5" rather than a refusal about kinds.
+// a window titled "5" rather than a refusal about kinds -- and satellite.log
+// gets the warning his ruling asks for (S020, M5).
 bool text_of(const Value &value, std::string &out, const std::string &what, ExpressionContext &context)
 {
     if (value.is_string()) { out = value.text_utf8(); return true; }
-    if (const satellite_number *number = value.as_number()) { out = fast::to_text(*number); return true; }
+    if (const satellite_number *number = value.as_number()) {
+        out = fast::to_text(*number);
+        warn_number_taken_as_text(context.state, what, out);
+        return true;
+    }
     context.refuse(types_do_not_meet, what + " takes text, and was given " + value.kind_name());
     return false;
 }

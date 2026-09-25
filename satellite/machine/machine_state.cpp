@@ -2,6 +2,7 @@
 
 #include "machine_codes.hpp"
 #include "console_lock.hpp"
+#include "satellite_log.hpp"
 #include "shown.hpp"
 
 #include <iostream>
@@ -19,11 +20,14 @@ signed long long int display_machine_state(const std::string &current_machine_st
     return success;
 }
 
+// AND INTO satellite.log, as every report is (M5, satellite_log.hpp).
 signed long long int report_error(const std::string &what, signed long long int machine_code)
 {
     const ConsoleHold one_line;   // a thread can report too (console_lock.hpp)
-    std::cerr << "[satellite] " << shown(what) << " (machine_code: " << machine_code << " "
-              << machine_code_name(machine_code) << ")\n";
+    const std::string line = "[satellite] " + shown(what) + " (machine_code: " + std::to_string(machine_code) + " " +
+                             machine_code_name(machine_code) + ")";
+    std::cerr << line << "\n";
+    write_entry({line});
     return machine_code;
 }
 

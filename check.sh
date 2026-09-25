@@ -1441,6 +1441,10 @@ done
 # U+1006 is 0x1006, satellite.capsule's code: capsules_in made the while body after
 # "ဆ"satellite.main a second main, the only one checked and the one that ran ("never",
 # 0); "ဆ" greet replaced the capsule the user wrote. Both lines are refused as they run.
+# REBASED AT M5 (2026-09-25): a variable may no longer share a capsule's name in its file,
+# so the capsule is other.greet in a satellite.namespace, out of main's reach. A misread
+# `"ဆ" greet` would still make a capsule greet of the FILE, which the variable then
+# collides with (S202) -- and "hello" is never said.
 python3 -c "
 for tag, ch in (('1005', 'စ'), ('1006', 'ဆ'), ('1007', 'ဇ'), ('11006', '\U00011006')):
     open('build/capsule_word_%s.satl' % tag, 'w', encoding='utf-8').write('''satellite.include(satellite)
@@ -1458,15 +1462,18 @@ satellite.capsule satellite.main()
 ''' % ch)
     open('build/capsule_name_%s.satl' % tag, 'w', encoding='utf-8').write('''satellite.include(satellite)
 
-satellite.capsule greet()
+satellite.namespace other
 {
-    satellite.console.display(\"hello\")
+    satellite.capsule greet()
+    {
+        satellite.console.display(\"hello\")
+    }
 }
 
 satellite.capsule satellite.main()
 {
     satellite.variable.string greet = \"x\"
-    greet()
+    other.greet()
     satellite.console.display(\"%s\" greet)
     satellite.statement.while(1 == 2)
     {
@@ -4010,7 +4017,7 @@ scope_refused class 13 "no capsule named hail" \
         }
     }
 }' '    hail()'
-scope_refused variable_named_like_a_file 26 "other is already the file other.satl this file includes, so a variable cannot be named other" \
+scope_refused variable_named_like_a_file 26 "other is already the file other.satl this file includes, so a variable or an object cannot be named other" \
     "a variable may not take the name of a file its file includes" '' '    satellite.variable.string other = "x"'
 scope_refused no_such_member 13 "the file .*other.satl declares no capsule named nosuch" \
     "a name a file does not declare says which file" '' '    other.nosuch()'
@@ -4741,7 +4748,9 @@ expect "threads: a second start() is S722, after the first run's line" "57|once|
 "$interpreter" tests/threads_join_before_start.satl > /dev/null 2> build/threads_early.err; code=$?
 expect "threads: join() before start() is S723" "58|1" "$code|$(grep -c 'S723: JOIN_BEFORE_START' build/threads_early.err)"
 "$interpreter" tests/threads_joined_twice.satl > build/threads_joined.out 2> build/threads_joined.err; code=$?
-expect "threads: a second join() answers the same again, S724 said as a notice, exit 0" "0|8|8|8||1" \
+# TWO NOTICES SINCE M5: the join at line 14 and the wait at line 15 each repeat a join, and a
+# notice now carries its line, so the tally counts them as the two places they are.
+expect "threads: a second join() answers the same again, S724 said as a notice for each, exit 0" "0|8|8|8||2" \
        "$code|$(tr '\n' '|' < build/threads_joined.out)|$(grep -c '^\[satellite\] S724 THREAD_ALREADY_JOINED' build/threads_joined.err)"
 "$interpreter" tests/threads_share_object.satl > build/threads_share.out 2>/dev/null; code=$?
 expect "threads: an object handed to a thread is shared -- what the thread writes, main reads after the join" "0|0|5|" \
@@ -4927,6 +4936,119 @@ printf '%s\n' 'satellite.statement.if(1 == 1) {' 'satellite.console.display({1, 
     "$interpreter" --repl > build/prompt_braces.out 2>&1
 expect "prompt: if(...) { is still a block, and a list inside a list is a value" "1|2" \
        "$(grep -c 'a block has nowhere to live at the prompt' build/prompt_braces.out)|$(grep -x '[0-9][0-9]*' build/prompt_braces.out)"
+
+# M5 -- satellite.log AND NAMES (satellite/machine/satellite_log.hpp). Every report satl
+# makes is kept as the author's [entry], once each; a warning meant for the log alone
+# (S020) is not on the screen; a name is declared once, capsules and spacesuits included;
+# and no report hands the terminal -- or the log -- a control byte.
+log_file=$CHECK_HOME/.satl/satellite.log
+entries() { if [ -f "$1" ]; then grep -c '^\[entry\]$' "$1"; else echo 0; fi; }
+last_entry() { awk '/^\[entry\]$/ { held = "" } { held = held $0 "\n" } END { printf "%s", held }' "$1"; }
+before=$(entries "$log_file")
+"$interpreter" examples/hello_world.satl > /dev/null 2>&1
+expect "satellite.log: a run that reports nothing writes no [entry]" "$before" "$(entries "$log_file")"
+"$interpreter" tests/name_is_a_capsule.satl > build/name_capsule.out 2> build/name_capsule.err; code=$?
+expect "a variable named for a capsule of its file: S202 before anything runs" "26||1" \
+       "$code|$(cat build/name_capsule.out)|$(grep -c 'helper is already a capsule of this file' build/name_capsule.err)"
+expect "satellite.log: that refusal is one [entry] with its S-code and the program's whole path" "$((before + 1))|1|1" \
+       "$(entries "$log_file")|$(last_entry "$log_file" | grep -c '^S202: NAME_DECLARED_TWICE$')|$(last_entry "$log_file" | grep -cF "  $PWD/tests/name_is_a_capsule.satl  (run in $PWD)")"
+"$interpreter" tests/name_is_a_spacesuit.satl > build/name_suit.out 2> build/name_suit.err; code=$?
+expect "an object named for its own spacesuit: S202 before anything runs" "26||1" \
+       "$code|$(cat build/name_suit.out)|$(grep -c 'thing is already the spacesuit thing' build/name_suit.err)"
+"$interpreter" tests/name_not_a_name.satl > build/name_not.out 2> build/name_not.err; code=$?
+expect "!@#\$%^&*() as a name: refused, and the refusal says what a name is" "13||1" \
+       "$code|$(cat build/name_not.out)|$(tr '\n' ' ' < build/name_not.err | grep -c 'followed by something that is not a name -- a name is made of a-z, A-Z, 0-9 and _, and does not start with a digit')"
+# A NAME HOLDING ESC [ 2 J CLEARED THE SCREEN OF THE PERSON BEING TOLD ABOUT IT: the
+# syntax row was written raw. Now it is \x1b, on the screen and in the log.
+printf 'satellite.include(satellite)\n\nsatellite.capsule satellite.main()\n{\n    satellite.variable.number a\001\033[2Jb = 5\n}\n\nsatellite.return(satellite)\n' \
+    > build/name_escape.satl
+"$interpreter" build/name_escape.satl > /dev/null 2> build/name_escape.err; code=$?
+expect "a name holding control bytes: refused, and they reach neither screen nor log raw" "13|0|1|0|1" \
+       "$code|$(grep -c $'\x1b' build/name_escape.err)|$(grep -cF 'a\x01\x1b[2Jb' build/name_escape.err)|$(grep -c $'\x1b' "$log_file")|$(last_entry "$log_file" | grep -cF 'a\x01\x1b[2Jb')"
+log_room=$(mktemp -d "${TMPDIR:-/tmp}/satl_log.XXXXXX")
+cp tests/number_taken_as_text.satl "$log_room/"
+before=$(entries "$log_file")
+"$interpreter" "$log_room/number_taken_as_text.satl" > build/number_text.out 2> build/number_text.err; code=$?
+expect "S020: a number where text is expected is its digits, and the run carries on" "0|5|first|0|1|2|12345" \
+       "$code|$(cat build/number_text.out)|$(tr '\n' '|' < "$log_room/numbers.se" | sed 's/|$//')"
+expect "S020 is for satellite.log alone: not on the screen" 0 "$(grep -c S020 build/number_text.err)"
+expect "S020: one [entry] a line of the program, and the count of the loop's three with its place" "3|1|1|1" \
+       "$(($(entries "$log_file") - before))|$(grep -c 'S020 NUMBER_TAKEN_AS_TEXT: f.append takes text and was given the number 0,.*(.*number_taken_as_text.satl:14 f.append(i))' "$log_file")|$(grep -c 'S020 NUMBER_TAKEN_AS_TEXT: .*number 12345,.*number_taken_as_text.satl:16 f.append(12345))' "$log_file")|$(grep -c 'S020 at .*number_taken_as_text.satl:14 f.append(i) happened 3 times in all; it was logged once' "$log_file")"
+# WHAT THE FRESH READER BROKE, 2026-09-25, one row each.
+# A program's string cannot forge an entry: a marker line in it is written with a \.
+cp tests/log_forged_marker.satl tests/log_count_on_stop.satl tests/log_field_line.satl "$log_room/"
+before=$(entries "$log_file")
+"$interpreter" "$log_room/log_forged_marker.satl" > /dev/null 2>&1; code=$?
+expect "satellite.log: a string holding [/entry] and [entry] lines is one entry, its markers defused" "27|1|1|1" \
+       "$code|$(($(entries "$log_file") - before))|$(last_entry "$log_file" | grep -cx '\\\[/entry\]')|$(last_entry "$log_file" | grep -cx '\\\[entry\]')"
+# The count is written however the run ends -- this one stops on a division by zero.
+"$interpreter" "$log_room/log_count_on_stop.satl" > /dev/null 2>&1; code=$?
+expect "satellite.log: a run that stops still writes its count" "22|1" \
+       "$code|$(grep -c 'S020 at .*log_count_on_stop.satl:12 f.append(i) happened 5 times in all; it was logged once' "$log_file")"
+# A field's warning names the field's line; two objects are one entry counted twice.
+"$interpreter" "$log_room/log_field_line.satl" > build/log_field.out 2>&1; code=$?
+expect "satellite.log: a spacesuit field's S020 names the field's line, once for two objects" "0|1|1" \
+       "$code|$(grep -c 'S020 NUMBER_TAKEN_AS_TEXT: .*(.*log_field_line.satl:10 satellite.variable.bool here = satellite.file.exists(5))' "$log_file")|$(grep -c 'S020 at .*log_field_line.satl:10 .* happened 2 times' "$log_file")"
+# At the prompt there is no file to place a warning in, so each is its own entry.
+before=$(grep -c 'S020 NUMBER_TAKEN_AS_TEXT' "$log_file")
+printf '%s\n' "satellite.variable.file f = satellite.file.new(\"$log_room/prompt.se\")" 'f.append(5)' \
+    'satellite.variable.bool b = f.contains(77)' 'f.remove(123456)' | "$interpreter" --repl > /dev/null 2>&1
+expect "satellite.log: three conversions typed at the prompt are three entries" 3 \
+       "$(($(grep -c 'S020 NUMBER_TAKEN_AS_TEXT' "$log_file") - before))"
+# A tab in the syntax row is a space, and the caret stays under its character.
+printf 'satellite.include(satellite)\n\nsatellite.capsule satellite.main()\n{\n    satellite.variable.number z = 0\n    satellite.variable.number x = 1 / z\t\t// divide\n}\n\nsatellite.return(satellite)\n' \
+    > build/syntax_tabs.satl
+"$interpreter" build/syntax_tabs.satl > /dev/null 2> build/syntax_tabs.err
+expect "a tab in the syntax row shows as a space, not \\x09" "1|0" \
+       "$(grep -cF 'syntax: satellite.variable.number x = 1 / z  // divide' build/syntax_tabs.err)|$(grep -cF '\x09' build/syntax_tabs.err)"
+# A repeated conversion reads nothing: its place is counted by address, so a loop 5,000
+# lines down a file costs what the same loop near the top does. Before the fix it re-read
+# the file every turn -- 31 times slower there.
+python3 - "$log_room" <<'EOF'
+import sys
+room = sys.argv[1]
+body = '''    satellite.variable.file f = satellite.file.new("speed_%s.se")
+    f.append("x")
+    satellite.variable.bool b = satellite.bool.false
+    satellite.variable.number i = 0
+    satellite.statement.while(i < 50000)
+    {
+        b = f.contains(i)
+        i = i + 1
+    }
+'''
+for tag, pad in (('near', 0), ('far', 5000)):
+    with open('%s/speed_%s.satl' % (room, tag), 'w') as out:
+        out.write('satellite.include(satellite)\n\n' + '// padding\n' * pad +
+                  'satellite.capsule satellite.main()\n{\n' + body % tag + '}\n\nsatellite.return(satellite)\n')
+EOF
+near=$( { TIMEFORMAT=%R; time "$interpreter" "$log_room/speed_near.satl" > /dev/null 2>&1; } 2>&1 )
+far=$( { TIMEFORMAT=%R; time "$interpreter" "$log_room/speed_far.satl" > /dev/null 2>&1; } 2>&1 )
+expect "S020 in a loop 5,000 lines down costs what it does at the top (${far}s against ${near}s)" 1 \
+       "$(awk -v n="$near" -v f="$far" 'BEGIN { print (f < 2 * n + 0.3) ? 1 : 0 }')"
+# THE PATH COMES FROM CONFIG (DESIGN §7): log_path in config.ini moves it for one machine.
+cp "$CHECK_HOME/.satl/config.ini" build/config-before-log.ini
+printf 'log_path = %s\n' "$log_room/moved.log" >> "$CHECK_HOME/.satl/config.ini"
+before=$(entries "$log_file")
+"$interpreter" tests/name_is_a_capsule.satl > /dev/null 2>&1
+expect "log_path in config.ini: the entry is written there and not in ~/.satl" "1|$before" \
+       "$(entries "$log_room/moved.log")|$(entries "$log_file")"
+# A LOG THAT CANNOT BE WRITTEN NEVER STOPS A PROGRAM, and a warning meant only for it is
+# said on the screen instead: nothing disappears.
+cp build/config-before-log.ini "$CHECK_HOME/.satl/config.ini"
+printf 'log_path = %s\n' "$log_room/no_such_folder/satellite.log" >> "$CHECK_HOME/.satl/config.ini"
+"$interpreter" tests/name_is_a_capsule.satl > /dev/null 2>&1; code=$?
+expect "an unwritable satellite.log: a refused program still says so and exits the same" 26 $code
+rm -f "$log_room/numbers.se"   # satellite.file.new refuses a file that is already there
+"$interpreter" "$log_room/number_taken_as_text.satl" > /dev/null 2> build/number_text_unlogged.err; code=$?
+expect "an unwritable satellite.log: S020 is said on the screen instead, and the run carries on" "0|2" \
+       "$code|$(grep -c 'S020 NUMBER_TAKEN_AS_TEXT.*satellite.log could not be written, so it is said here' build/number_text_unlogged.err)"
+cp build/config-before-log.ini "$CHECK_HOME/.satl/config.ini"
+rm -rf "$log_room"
+# A SECOND join() SAYS WHICH ONE (M5): the notice carries its line, as a warning now can --
+# so the join at line 14 and the wait at line 15 are two notices, as two lines always were.
+expect "S724 names the line of each repeated join" 2 \
+       "$(grep -c '^\[satellite\] S724 THREAD_ALREADY_JOINED: .*(tests/threads_joined_twice.satl:[0-9]* ' build/threads_joined.err)"
 
 echo "$passed passed, $failed failed"
 [ "$failed" = 0 ]

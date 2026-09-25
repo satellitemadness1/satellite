@@ -1,0 +1,20 @@
+satellite.include(satellite)
+
+// S020 (M5): a number where text is expected is its digits -- the author, 2026-09-16,
+// "obviously the programmer meant convert to string, but record the warning in
+// satellite.log". The run carries on, the screen says nothing, and the log has one
+// entry a LINE: the loop's three appends are one line of this program.
+
+satellite.capsule satellite.main()
+{
+    satellite.variable.file f = satellite.file.new("numbers.se")
+    f.append("first")
+    satellite.statement.for(satellite.variable.number i = 0; i < 3; i++)
+    {
+        f.append(i)
+    }
+    f.append(12345)
+    satellite.console.display(f.size)
+}
+
+satellite.return(satellite)

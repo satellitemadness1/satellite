@@ -1,0 +1,12 @@
+satellite.include(satellite)
+
+// M5, PLAN's own entry: `!@#$%^&*()` as a name. It was always refused; the refusal now
+// says what is wrong -- the name -- instead of "satellite.variable.number is not a call".
+
+satellite.capsule satellite.main()
+{
+    satellite.console.display("before")
+    satellite.variable.number !@#$%^&*() = 5
+}
+
+satellite.return(satellite)

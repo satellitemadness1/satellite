@@ -1610,6 +1610,11 @@ signed long long int run_statements(const BytecodeRegistry &registry,
 {
     const std::vector<std::bitset<16>> &row = registry[which_row];
 
+    // THE CALLER'S STATEMENT COMES BACK WHEN THIS BODY ENDS (MachineState::statement_row):
+    // a warning raised after a capsule call returns names the calling line, not the
+    // capsule's last one. Every return below passes through this.
+    const StatementPlaceKept callers_statement(state);
+
     for (std::size_t at = from; at < row.size(); ) {
         const Code code = code_at(row, at);
 
@@ -1625,6 +1630,9 @@ signed long long int run_statements(const BytecodeRegistry &registry,
         if (code == token::right_brace_token)
             return success;
         if (code == token::line_end_token) { ++at; continue; }
+
+        state.statement_row = &row;       // for a warning's place (M5)
+        state.statement_at = at;
 
         // THE `statements` BIT. Recorded here and nowhere else: this is the top
         // of the one loop every statement passes through, so one site records

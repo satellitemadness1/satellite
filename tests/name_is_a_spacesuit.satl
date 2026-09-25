@@ -1,0 +1,20 @@
+satellite.include(satellite)
+
+// M5, PLAN's own entry: "one name declared as both an object and a class". An object
+// named for its own spacesuit is refused as a variable named for one is -- S202.
+
+satellite.spacesuit thing()
+{
+    satellite.public
+    {
+        satellite.variable.number x = 1
+    }
+}
+
+satellite.capsule satellite.main()
+{
+    satellite.console.display("before")
+    thing thing
+}
+
+satellite.return(satellite)

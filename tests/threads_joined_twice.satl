@@ -1,4 +1,4 @@
-// A second join is done too (003's Q2, the author): the same answer again, S724 said once as a notice, exit 0.
+// A second join is done too (003's Q2, the author): the same answer again, S724 said as a notice for each line that repeats a join (M5), exit 0.
 satellite.include(satellite)
 
 satellite.capsule twice(satellite.variable.number n)

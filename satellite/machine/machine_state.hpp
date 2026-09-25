@@ -103,6 +103,15 @@ struct MachineState {
     // falls back to the author's own default.
     const Arguments *arguments = nullptr;
 
+    // THE STATEMENT BEING WALKED, so a WARNING can say where it happened (M5). A refusal
+    // carries its own position (ExpressionContext::refused_at) because it stops the line
+    // and the walker is right there to place it; a warning does not stop anything, and is
+    // raised deep inside a word -- `f.append(5)` -- that was never handed a row. Written at
+    // the top of run_statements, two stores a statement, and put back when a body ends, so
+    // a capsule's lines never stand in for the line that called it. Null at the start.
+    const std::vector<std::bitset<16>> *statement_row = nullptr;
+    std::size_t statement_at = 0;
+
     // Record a new state and, in debug mode, display it. Answers the code, so
     // a caller can write `return state.set("...", code);`.
     signed long long int set(const std::string &state, signed long long int machine_code)
@@ -113,6 +122,21 @@ struct MachineState {
             display_machine_state(current, code);
         return code;
     }
+};
+
+// THE STATEMENT BEING WALKED COMES BACK WHEN THIS GOES (MachineState::statement_row):
+// held by run_statements for a body, and by make_an_object while a field's own line runs,
+// so a warning raised after either names the line that was running before it.
+struct StatementPlaceKept {
+    explicit StatementPlaceKept(MachineState &its_state)
+        : state(its_state), row(its_state.statement_row), at(its_state.statement_at) {}
+    ~StatementPlaceKept() { state.statement_row = row; state.statement_at = at; }
+    StatementPlaceKept(const StatementPlaceKept &) = delete;
+    StatementPlaceKept &operator=(const StatementPlaceKept &) = delete;
+
+    MachineState &state;
+    const std::vector<std::bitset<16>> *row;
+    std::size_t at;
 };
 
 // A failure is shown whether or not debug mode is on: an error nobody sees is

@@ -150,11 +150,16 @@ signed long long int run_satl(int argc, char **argv)
     signed long long int code = arguments.gather_config();
     if (stops_the_program(code))
         return code;
+    // satellite.log's PLACE, the moment the config says it (M5). A report before this
+    // line goes to the default, which is the same file unless config.ini moved it.
+    if (arguments.find("arguments.log_path") != nullptr)
+        set_log_path(arguments.text("arguments.log_path"));
 
     CommandLine command_line;
     code = read_command_line(argc, argv, command_line);
     if (stops_the_program(code))
         return code;
+    set_log_program(command_line.command == Command::run ? command_line.file : std::string());
 
     // THE CONSOLE satl LAUNCHES FOR ITSELF (GTK-17, `satl --console`): a window
     // with a terminal in it, and satl's own stdin, stdout and stderr moved onto
@@ -589,6 +594,7 @@ signed long long int run_satl(int argc, char **argv)
 
     // WHAT WAS HELD BACK, SAID ONCE. Anything reported more than once printed
     // the first time and was counted after that; this is the count.
+    // (satellite.log gets its own copy from main(), which every way out passes through.)
     std::cerr << report_tally().repeats();
 
     // A REFUSED WRITE IS ONLY REFUSED AT THE FLUSH. std::cout buffers, so
@@ -693,6 +699,8 @@ int main(int argc, char **argv)
         // report is already printed, and a person told their program stopped
         // must not then be left at a prompt that never comes back.
         satellite004::windows_hold_the_run_open(in_a_console || !satellite004::stops_the_program(code));
+        // satellite.log's "happened N times", after the last thing that could add to them.
+        satellite004::log_the_counts();
         return satellite004::exit_status_of(code);
     } catch (const std::bad_alloc &) {
         satellite004::put_the_terminal_back();

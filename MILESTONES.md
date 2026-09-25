@@ -218,10 +218,103 @@ code stream.
 Already known: comments do not round-trip. `//` is discarded in the lexer
 (003 DESIGN §5.6), so a comment is a marker with no text.
 
-## M5 — names and `satellite.log`
+## M5 — names and `satellite.log` — **BUILT 2026-09-25**
 
-Not started. The testing method in PROGRESS §2 depends on it: *"done when a run
-writes no `[entry]` to satellite.log"*.
+The author, 2026-09-25: *"can we do M5 and then this?"* (this = M16's string methods).
+
+**`satellite.log` (`satellite/machine/satellite_log.hpp`).** DESIGN §7's `write_entry`,
+the author's own function: same name, same argument, same `[entry]` / `[/entry]`, same
+0 or 1. §7 said two things were left to settle, and both are settled here:
+- **the path comes from config:** `arguments.log_path` = `~/.satl/satellite.log`,
+  and one machine can set `log_path = ...` in config.ini;
+- **one mutex around the whole entry,** and the entry goes out in ONE `write(2)` on an
+  `O_APPEND` file, so two threads or two satls never interleave inside an entry.
+
+Every entry starts with a heading line: the time, the pid, the program's whole path and
+the folder it ran in. A log that cannot be written never stops a program.
+
+**What goes in it: every report satl makes, once each.** Refusals, notices and
+`report_error` lines, the first time each is said (the same tally the screen uses), plus
+the "happened N times" count at the end with the place added. A run that says nothing
+writes nothing, so PLAN's *"a milestone is done when that run writes no [entry]"* can now
+be read off the file. It is hung on the three printers (`print_critical`,
+`print_notice`, `report_error`), so there is no second list to keep in step.
+
+**S020 NUMBER_TAKEN_AS_TEXT, the author's 2026-09-16 ruling built whole:** *"just convert
+the number to the string ... but record the warning in satellite.log"*. It goes in the
+log only, not on the screen, once per line of the program, with that line. It is written
+by `text_of` in the file and window words, the only places satellite converts a number
+to text on its own. M16's string methods will call the same function. A warning can say
+where it happened because `MachineState` now carries the statement being walked: two
+stores per statement, put back when a body ends. That also gave the second-`join()`
+notice (S724) its line.
+
+**Names (DESIGN §7's rule and PLAN M5's three entries):**
+- **one name declared as both an object and a class** is refused, S202, before anything
+  runs. It was allowed; 003 allowed it too, and there a variable named `helper` hid
+  the capsule `helper()`. `CapsuleTable::already_names` now checks capsules and
+  spacesuits along the scope chain, as it already did namespaces and includes, so
+  variables, objects, parameters and a `for`'s number are all covered. **None of the
+  author's 400 programs does this** (scanned; 10 hits, all in different spacesuits,
+  outside the rule's reach).
+- **`!@#$%^&*()` and `poly.#@($*&$&$` as names** were already refused; the refusal now
+  says the name is the problem and what a name is, instead of *"satellite.variable.number
+  is not a call"*.
+- **machine-code bytes as a name** were a real defect: the report's `syntax:` row
+  wrote them raw, so a name holding `ESC [ 2 J` cleared the screen of the person being
+  told about it. Every field of a report now goes through `shown()`, and the caret moves
+  with the escapes.
+
+**Chosen here, the author's to overrule** (each is one place):
+- **every report goes in the log, not only warnings.** 003 logged warnings only;
+  DESIGN §7 (clashes) and M29 (*"checking reports into satellite.log"*) read as more.
+  A person with no config.ini gets an S010 entry every run.
+- **the file is 003's, shared.** 003 (~/.satl-003) still writes its one-line warnings to
+  ~/.satl/satellite.log, so the file holds both shapes.
+- **two repeated joins on two lines are two S724 notices now,** where there was one:
+  the notice has a line, and the tally's rule is that a different line is a different
+  mistake.
+- **a spacesuit's field and a capsule of ANOTHER spacesuit may share a name:** the rule
+  follows the scope chain, not the whole file.
+
+**What the two stores a statement cost** (BUILD 0049 against 0055, both PGO + LTO +
+BOLT, alternating runs on a machine that was not quiet, so only the first three rounds
+count): a 2,000,000-turn `while` of two assignments went from 2.674–2.680 s to
+2.699–2.742 s, about 1–2.5%. `haswell_test/race_program.satl` went from 23.19–23.65 s
+to 22.96–22.99 s, no slower. The outputs are identical. To race it yourself, keep a copy
+of the old satl with its `satellite-numbers/` beside it, and time `satl <file>` for each
+build in turn.
+
+**A fresh reader found six defects, all reproduced and all fixed:**
+1. **A warning re-read the program file on every conversion.** It quotes the line by
+   re-reading, and a repeat was only dropped afterwards. 100,000 conversions at line
+   5010 went from 0.16 s to 4.9 s. A repeat is now counted by the statement's address
+   before anything is read.
+2. **A program's own string could forge an entry.** Refusals quote user strings, and
+   one holding `[/entry]` … `[entry]` lines made one report two entries. `write_entry`
+   now writes a marker line from the text with a `\` in front.
+3. **At the prompt every S020 shared one key,** so only the first was kept. There is
+   no file to place a warning there, and a typed line cannot loop, so each is its own
+   entry.
+4. **The log's count was lost when a run stopped.** It was written at run_satl's one
+   good ending; it is now written by `main()` after the run and its windows.
+5. **A spacesuit field's warning named the line that made the object.** Fields do not
+   pass through run_statements; `make_an_object` now points at each field's own line.
+6. **A tab showed as `\x09` in the `syntax:` row.** It is now one space, which also
+   keeps the caret under its character.
+
+The reader also listed what the name rule now refuses that ran before: a loop number
+`i` beside a capsule `i()`, a local `total` inside `total()`, a parameter or the
+arguments variable named for a capsule, and a name used before the spacesuit that takes
+it is declared further down. All are "a name is declared once", and none is in the
+author's programs. It found no stale `statement_row`, no lock taken out of order, and
+no exit status or output changed in 140 existing programs other than the two new
+refusals. 19 rows in check.sh.
+
+**Not done under this heading:** DESIGN §7's literal `object_name_vector,
+class_name_vector, command_name_vector`. The capsule table's per-scope maps and each
+body's `VariableTable` already are those vectors, so no second copy was made. The
+names a SESSION has used belong to the other M34 (`satellite.access`).
 
 ## ~~M6 / M7 — the parser and the runtime~~ — **BUILT, and there is no parser**
 
@@ -445,7 +538,8 @@ Each is one registry row, one `str_*.cpp`, one dispatch line.
 `string_object.replace(number1, number2)` and `string_object.find(number)`, a
 number where a string is expected is *"just convert the number to the string and
 run that piece, obviously the programmer meant convert to string, but record the
-warning in satellite.log"*. The warning needs M5.
+warning in satellite.log"*. **M5 built the warning (2026-09-25):** S020, and
+`warn_number_taken_as_text` is the one call each new string method makes.
 
 **Answered and built: a string minus a string** (the author, 2026-09-17): *"minus
 takes away the smallest string"*, `"dfksjghjfff" - "fff"` is `dfksjghj`; asked which
@@ -840,8 +934,8 @@ watermark and checks; the rest convert; main runs. Checking a statement is
 cheaper than running one, so the checker stays ahead in practice, and when it
 finds something it writes the warning and kills the program.
 
-**It needs `satellite.log`, which is M5 and not built.** M5 therefore comes
-before this, or a minimal log lands with it.
+**It needs `satellite.log`, which M5 built on 2026-09-25** -- every report satl makes
+is already an entry there, so the checker thread has somewhere to write.
 
 ## M30 — the lookahead: running paths in parallel
 
@@ -1102,7 +1196,7 @@ we are going to rebuild the interpreter as we rebuilt the features to be a switc
 | **D12.1** | the parallel-group syntax in the numbered file | M12 |
 | — | ~~adopt TBB for the runners?~~ **ANSWERED 2026-09-16: NO.** The 1024 threads convert one line each and then stay warm, doing nothing yet; *"we are doing something different later"*. See M12 | — |
 | — | ~~the leading-slash rule: filesystem root, or program root?~~ **ANSWERED 2026-09-16:** *"program root first, then filesystem root when it's not found, and if it's not found in either, we report file not found, and we keep a cwd for files that are included... so the files directory becomes the cwd for each file"*. (The author wrote it as D12.1; D12.1 is the parallel-group syntax and is still open.) | — |
-| — | ~~a number argument where a string is expected~~ **ANSWERED 2026-09-16:** *"just convert the number to the string and run that piece, obviously the programmer meant convert to string, but record the warning in satellite.log"*. The warning needs `satellite.log`, which is M5 | M16, M5 |
+| — | ~~a number argument where a string is expected~~ **ANSWERED 2026-09-16:** *"just convert the number to the string and run that piece, obviously the programmer meant convert to string, but record the warning in satellite.log"*. The warning is S020 in `satellite.log`, built with M5 on 2026-09-25 | M16 |
 
 **Decided and NOT owed, so nobody reopens it:** the walker's ~27,000 recursion
 depth. The author accepted it on 2026-09-16 — it is an order of magnitude past

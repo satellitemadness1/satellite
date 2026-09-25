@@ -192,6 +192,7 @@ nothing at all.
 | **S0730** | `CONFIG_FILE_UNREADABLE` | 33 `config_file_unreadable` | `machine/s_codes.hpp` |
 | **S0801** | `DIVISION_BY_ZERO` | 22 `division_by_zero` | `machine/s_codes.hpp` |
 | **S0802** | `ANSWER_IS_NOT_WHOLE` | 24 `answer_is_not_whole` | `machine/s_codes.hpp` |
+| **S020** | `NUMBER_TAKEN_AS_TEXT` | *(warning, satellite.log only -- the run carries on; M5, 2026-09-25, in the Part 4 numbering the rows above predate)* | `machine/s_codes.hpp` |
 
 **S0201–S0203 CARRY NO CARET, AND THAT IS NOT A GAP.** They are about a whole
 file, and a line that is MISSING has no position to point at — so they take

@@ -41,6 +41,8 @@
 // for adding one.
 
 #include "console_lock.hpp"
+#include "satellite_log.hpp"
+#include "shown.hpp"
 #include <cstddef>
 #include <cstdint>
 #include <iostream>
@@ -100,6 +102,25 @@ inline void wrapped_into(std::string &out, const std::string &text,
         out += pad + line + "\n";
 }
 
+// shown() A LINE AT A TIME (M5, DESIGN §9). A report quotes the user's bytes -- a
+// name, a path, the line itself -- and before this the `syntax:` row wrote them raw:
+// a name holding ESC [ 2 J cleared the screen of the person being told about it, and
+// would have done it again to whoever read satellite.log. The newlines are satl's own
+// (S101's "Add this as the first line:"), so they are kept and each line is escaped.
+inline std::string shown_lines(const std::string &text)
+{
+    std::string out;
+    std::string::size_type at = 0;
+    for (;;) {
+        const std::string::size_type end = text.find('\n', at);
+        out += shown(std::string_view(text).substr(at, end == std::string::npos ? std::string::npos : end - at));
+        if (end == std::string::npos)
+            return out;
+        out += '\n';
+        at = end + 1;
+    }
+}
+
 inline std::string render(const CriticalReport &report)
 {
     const std::string rule = report_rule();
@@ -114,25 +135,35 @@ inline std::string render(const CriticalReport &report)
     out += "\n";
 
     if (!report.description.empty())
-        wrapped_into(out, report.description, 0, kReportWidth);
+        wrapped_into(out, shown_lines(report.description), 0, kReportWidth);
 
     if (!report.directory.empty() || !report.syntax.empty())
         out += "\n";
     if (!report.directory.empty())
-        out += "directory: " + report.directory + "\n";
+        out += "directory: " + shown(report.directory) + "\n";
 
     if (!report.syntax.empty()) {
         const std::string prefix = "syntax: ";
-        out += prefix + report.syntax + "\n";
-        if (report.caret_at != std::string::npos && report.caret_at <= report.syntax.size()) {
-            const std::size_t column = prefix.size() + report.caret_at;
+        // A TAB IS ONE SPACE HERE, not \x09 (the review, 2026-09-25): tab-aligned comments
+        // are common, and one column a tab is also what keeps the caret under its character
+        // -- a raw tab never did, since the terminal chose how far it went.
+        std::string syntax = report.syntax;
+        for (char &c : syntax)
+            if (c == '\t')
+                c = ' ';
+        out += prefix + shown(syntax) + "\n";
+        if (report.caret_at != std::string::npos && report.caret_at <= syntax.size()) {
+            // THE CARET COUNTS WHAT IS SHOWN, NOT WHAT WAS WRITTEN: every byte before it
+            // that became \x1b is four columns now, and the /\ has to move with them.
+            const std::size_t shown_before = shown(std::string_view(syntax).substr(0, report.caret_at)).size();
+            const std::size_t column = prefix.size() + shown_before;
             out += std::string(column, ' ') + "/\\\n";
             if (!report.caret_note.empty()) {
                 // TWO LEFT OF THE CARET, WHICH IS WHAT THE AUTHOR DREW. The note
                 // sits under the `/\` rather than beside it, so a long note runs
                 // down the page instead of pushing the caret off the right.
                 const std::size_t note_indent = column >= 2 ? column - 2 : 0;
-                wrapped_into(out, report.caret_note, note_indent, kReportWidth);
+                wrapped_into(out, shown_lines(report.caret_note), note_indent, kReportWidth);
             }
         }
     }
@@ -140,7 +171,7 @@ inline std::string render(const CriticalReport &report)
     if (!report.notes.empty()) {
         out += "\n";
         for (const std::string &note : report.notes)
-            wrapped_into(out, note, 0, kReportWidth);
+            wrapped_into(out, shown_lines(note), 0, kReportWidth);
     }
 
     out += "\n";
@@ -185,15 +216,26 @@ struct ReportTally {
     }
 
     // What was held back, said once at the end. Empty when nothing repeated.
-    std::string repeats() const
+    //
+    // `logged` IS satellite.log's COUNT (M5): the place goes in with the code, because a
+    // log holds the runs of weeks and "S020 happened 3 times" there names no line of any
+    // of them. The screen's count stays as it was -- the report it counts is just above.
+    std::string repeats(bool logged = false) const
     {
         std::string out;
         for (std::size_t i = 0; i < keys.size(); ++i) {
             if (counts[i] < 2)
                 continue;
             const std::string::size_type first_break = keys[i].find('\n');
-            out += "[satellite] " + keys[i].substr(0, first_break) + " happened " +
-                   std::to_string(counts[i]) + " times in all; it was reported once\n";
+            std::string what = keys[i].substr(0, first_break);
+            if (logged) {
+                const std::string::size_type second_break = keys[i].find('\n', first_break + 1);
+                const std::string place = keys[i].substr(first_break + 1, second_break - first_break - 1);
+                if (!place.empty())
+                    what += " at " + shown(place);
+            }
+            out += "[satellite] " + what + " happened " + std::to_string(counts[i]) + " times in all; it was " +
+                   (logged ? "logged" : "reported") + " once\n";
         }
         return out;
     }
@@ -209,13 +251,23 @@ inline ReportTally &report_tally()
 // piped into another program must not have this land in the pipe: the reader on
 // the far side is expecting what `display` wrote, and a report in that stream is
 // a report that corrupts the thing it was trying to explain.
+// AND INTO satellite.log (M5, satellite_log.hpp): the report without its three rules and
+// its title, which are the frame and not the news. Once, as the screen gets it.
 inline void print_critical(const CriticalReport &report)
 {
     const ConsoleHold one_report;
     if (!report_tally().first_time(report))
         return;                     // said once; the tally counts the rest
-    std::cerr << render(report);
+    const std::string rendered = render(report);
+    std::cerr << rendered;
     std::cerr.flush();
+    std::vector<std::string> kept;
+    for (const std::string &line : lines_of(rendered))
+        if (line != report_rule() && line != "SATELLITE CRITICAL ERROR REPORT" && !(kept.empty() && line.empty()))
+            kept.push_back(line);
+    while (!kept.empty() && kept.back().empty())
+        kept.pop_back();
+    write_entry(kept);
 }
 
 // ONE LINE, FOR THE THINGS THAT ARE NOT CATASTROPHES.
@@ -234,20 +286,74 @@ inline void print_critical(const CriticalReport &report)
 // program whose meaning is unclear must stop -- *"we don't want it to operate
 // incorrectly ... in case someone uses it inside of a data center"*. Stop
 // readily, alarm rarely: a refusal can end the run and still be one line.
+inline std::string notice_line(const CriticalReport &report)
+{
+    std::string line = "[satellite] " + report.code;
+    if (!report.name.empty())
+        line += " " + report.name;
+    if (!report.description.empty())
+        line += ": " + shown_lines(report.description);
+    if (!report.directory.empty())
+        line += " (" + shown(report.directory) + ")";
+    return line;
+}
+
 inline void print_notice(const CriticalReport &report)
 {
     const ConsoleHold one_notice;
     if (!report_tally().first_time(report))
         return;                     // said once; the tally counts the rest
-    std::cerr << "[satellite] " << report.code;
-    if (!report.name.empty())
-        std::cerr << " " << report.name;
-    if (!report.description.empty())
-        std::cerr << ": " << report.description;
-    if (!report.directory.empty())
-        std::cerr << " (" << report.directory << ")";
-    std::cerr << "\n";
+    const std::string line = notice_line(report);
+    std::cerr << line << "\n";
     std::cerr.flush();
+    write_entry(lines_of(line));
+}
+
+// A WARNING FOR satellite.log ALONE -- the author's own case, 2026-09-16: a number where
+// text is expected is converted, "obviously the programmer meant convert to string, but
+// record the warning in satellite.log". Not on the screen: the program did what was meant.
+//
+// ONCE A PLACE, ON ITS OWN TALLY: a conversion inside a loop is one line of the program,
+// and a hundred thousand entries for it would bury everything else in the file. Its own
+// tally and not the screen's, so the end of the run never says "happened 5 times; it was
+// reported once" about something the screen was never shown.
+//
+// AND WHEN THE LOG CANNOT BE WRITTEN IT IS PRINTED, as a notice: a warning never
+// disappears (003's rule for the same file).
+inline ReportTally &logged_tally()
+{
+    static ReportTally one;
+    return one;
+}
+
+// THE COUNTS GO WITH THE ENTRIES THEY COUNT (M5): the log kept the first of each, and a
+// person reading it should know when the first was one of forty thousand. Called once, by
+// main() after the run and its windows are over -- NOT at the end of run_satl, which
+// returns from two dozen places: a run that stopped on a refusal lost its counts there
+// (the review, 2026-09-25).
+inline void log_the_counts()
+{
+    const ConsoleHold one_count;
+    const std::string said = report_tally().repeats(true);
+    if (!said.empty())
+        write_entry(lines_of(said));
+    const std::string logged = logged_tally().repeats(true);
+    if (!logged.empty())
+        write_entry(lines_of(logged));
+}
+
+// `once` false writes it however many times it comes -- the prompt's, where a warning has
+// no file to be placed in, so the tally's key could not tell two typed lines apart.
+inline void log_only_warning(const CriticalReport &report, bool once = true)
+{
+    const ConsoleHold one_warning;
+    if (once && !logged_tally().first_time(report))
+        return;
+    const std::string line = notice_line(report);
+    if (write_entry(lines_of(line)) != 0) {
+        std::cerr << line << " -- and satellite.log could not be written, so it is said here\n";
+        std::cerr.flush();
+    }
 }
 
 } // namespace satellite004

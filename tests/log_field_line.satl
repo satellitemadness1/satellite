@@ -1,0 +1,21 @@
+satellite.include(satellite)
+
+// A FIELD'S WARNING NAMES THE FIELD'S LINE (M5, the review of 2026-09-25): line 10, not
+// the lines that made the objects -- so two objects are one entry, counted twice.
+
+satellite.spacesuit box()
+{
+    satellite.public
+    {
+        satellite.variable.bool here = satellite.file.exists(5)
+    }
+}
+
+satellite.capsule satellite.main()
+{
+    box first
+    box second
+    satellite.console.display("made")
+}
+
+satellite.return(satellite)

@@ -62,7 +62,7 @@ HEADERS = $(ARGUMENTS)/arguments.hpp $(ARGUMENTS)/command_line.hpp $(ARGUMENTS)/
           $(SATELLITE)/config/feature_switch.hpp $(SATELLITE)/config/rebuild.hpp \
           $(SATELLITE)/config/machine_probe.hpp $(SATELLITE)/config/run_config.hpp \
           $(SATELLITE)/config/run_feedback.hpp $(NUMBERS)/feedback_book.hpp \
-          $(MACHINE)/critical_report.hpp $(MACHINE)/source_position.hpp $(MACHINE)/s_codes.hpp \
+          $(MACHINE)/critical_report.hpp $(MACHINE)/satellite_log.hpp $(MACHINE)/source_position.hpp $(MACHINE)/s_codes.hpp \
           $(MACHINE)/machine_codes.hpp $(MACHINE)/machine_state.hpp $(MACHINE)/exit_status.hpp $(MACHINE)/shown.hpp \
           $(MACHINE)/stop_flag.hpp $(MACHINE)/input_source.hpp $(MACHINE)/stack_share.hpp $(MACHINE)/run_state.hpp $(SATELLITE)/satl/session.hpp $(SATELLITE)/satl/listing.hpp \
           $(SATELLITE)/satl/prompt_run.hpp $(SATELLITE)/satl/prompt_help.hpp \
