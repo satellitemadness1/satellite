@@ -12,7 +12,10 @@
 #include "../satl/listing.hpp"
 #include "../satl/listing_counts.hpp"
 
+#include <cerrno>
+#include <cstring>
 #include <sys/stat.h>
+#include <sys/statvfs.h>
 #include <sys/vfs.h>
 
 namespace satellite004 {
@@ -135,7 +138,7 @@ bool one_entry(const std::string &path, const std::string &name, std::vector<uns
 
 bool is_info_word(Code code)
 {
-    return code == word::code_of(1, 30, 1) || code == word::code_of(1, 30, 2);
+    return code == word::code_of(1, 30, 1) || code == word::code_of(1, 30, 2) || code == word::code_of(1, 18, 7);
 }
 
 Value call_info_word(Code code, const std::vector<Value> &arguments, ExpressionContext &context)
@@ -153,6 +156,22 @@ Value call_info_word(Code code, const std::vector<Value> &arguments, ExpressionC
     if (path.find('\0') != std::string::npos) {
         context.refuse(path_holds_a_nul, spelling + ": the path holds a NUL, which no name can");
         return Value();
+    }
+
+    // satellite.directory.free(d): the free space where d is, as the listing's line says it.
+    if (code == word::code_of(1, 18, 7)) {
+        struct statvfs about;
+        if (::statvfs(path.c_str(), &about) != 0) {
+            const int why = errno;
+            context.refuse(why == ENOENT ? directory_not_found : directory_unreadable,
+                           spelling + " " + shown(path) + ": " + std::strerror(why));
+            return Value();
+        }
+        const unsigned long long int block = about.f_frsize != 0 ? about.f_frsize : about.f_bsize;
+        const unsigned long long int bytes = static_cast<unsigned long long int>(about.f_bavail) * block;
+        constexpr unsigned long long int megabyte = 1024ull * 1024ull;
+        const unsigned long long int thousandths = (bytes % megabyte * 1000 + megabyte / 2) / megabyte;
+        return Value::of_float(float_from_scaled(satellite_number(bytes / megabyte * 1000 + thousandths), 3));
     }
 
     std::vector<unsigned char> piece;   // count_lines' read buffer, one for the whole call

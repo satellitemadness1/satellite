@@ -5062,6 +5062,21 @@ expect "info: nothing at the path is file_not_found; a file given to directory i
        "39|29|27|13" \
        "$(refused_by "satellite.variable.info x = satellite.info.file(\"$info_room/nothing_here\")")|$(refused_by "satellite.variable.info x = satellite.info.directory(\"$info_room/a_three\")")|$(refused_by 'satellite.variable.info x = satellite.info.file(5)')|$(refused_by "satellite.variable.info x = satellite.info.file(\"$info_room\", \"$info_room\")")"
 rm -rf "$info_room"
+# satellite.directory.free(d) (the author, 2026-09-25: "will give you a float of the free
+# space available"): mb to the thousandth, the listing's FREE SPACE number -- df's Avail.
+# /dev again, whose Avail holds still while this runs.
+printf 'satellite.include(satellite)\nsatellite.capsule satellite.main()\n{\n    satellite.console.display(satellite.directory.free("/dev"))\n    satellite.console.display(satellite.directory.free("/dev").string)\n}\nsatellite.return(satellite)\n' > build/free_dev.satl
+expect "free: /dev's free space as a float in mb, df's Avail over 1024 twice, to the thousandth" \
+       "$(df -B1 --output=avail /dev | tail -1 | python3 -c '
+import sys
+b = int(sys.stdin.read()); m = 1024 * 1024
+whole, th = b // m, ((b % m) * 1000 + m // 2) // m
+if th == 1000: whole, th = whole + 1, 0
+shown = "%d.%s" % (whole, ("%03d" % th).rstrip("0") or "0")
+print(shown + "|" + shown)')" \
+       "$("$interpreter" build/free_dev.satl 2>&1 | grep -E '^[0-9]' | tr '\n' '|' | sed 's/|$//')"
+expect "free: nothing at the path is directory_not_found" 28 \
+       "$(refused_by 'satellite.console.display(satellite.directory.free("/no/such/place/at/all"))')"
 
 # THE PROMPT REMEMBERS (the author, 2026-09-24: "the prompt has to remember what you type
 # in ... it has to be built to have persistence"). A name a line declares is kept, with

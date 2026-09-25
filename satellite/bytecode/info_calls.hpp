@@ -56,9 +56,14 @@
 
 namespace satellite004 {
 
+// satellite.info.file(path) 1 30 1, satellite.info.directory(path) 1 30 2 -- and
+// satellite.directory.free(d) 1 18 7 (the author, 2026-09-25: "satellite.directory.free
+// ("/home/madness") will give you a float of the free space available"): a float, in mb
+// to the thousandth, the number the listing's FREE SPACE IN DIRECTORY line writes --
+// df's Avail, what a person who is not root may still write there.
 bool is_info_word(token::Code code);
 
-// One of the two words, its one argument already evaluated.
+// One of those three words, its one argument already evaluated.
 Value call_info_word(token::Code code, const std::vector<Value> &arguments, ExpressionContext &context);
 
 } // namespace satellite004

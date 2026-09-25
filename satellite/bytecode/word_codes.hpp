@@ -31,7 +31,7 @@ namespace word {
 inline constexpr token::Code kBase = 4096;       // reserved: no word has it
 inline constexpr token::Code kFirst = 4097;      // satellite
 inline constexpr token::Code kLast = 8191;       // the end of the range
-inline constexpr unsigned int kWordsInTable = 441;
+inline constexpr unsigned int kWordsInTable = 442;
 inline constexpr unsigned int kMaxDepth = 7;
 
 inline constexpr bool is_word_code(token::Code code) { return code >= kBase && code <= kLast; }
@@ -185,6 +185,7 @@ inline constexpr KeyedWord kKeyedWords[] = {
     {0x0301120400000000ULL, 4402},  // 1 18 4 -- satellite.directory.list()
     {0x0301120500000000ULL, 4403},  // 1 18 5 -- satellite.directory.list(d)
     {0x0301120600000000ULL, 4533},  // 1 18 6 -- satellite.directory.system()
+    {0x0301120700000000ULL, 4538},  // 1 18 7 -- satellite.directory.free(d)
     {0x0301130000000000ULL, 4405},  // 1 19 0 -- satellite.help()
     {0x0301130100000000ULL, 4406},  // 1 19 1 -- satellite.help(x)
     {0x0301140000000000ULL, 4408},  // 1 20 0 -- satellite.network()
@@ -942,6 +943,7 @@ inline constexpr WordFacts kWordFacts[] = {
     {"satellite.info", {1, 30, 0, 0, 0, 0, 0}, 2},
     {"satellite.info.file(path)", {1, 30, 1, 0, 0, 0, 0}, 3},
     {"satellite.info.directory(path)", {1, 30, 2, 0, 0, 0, 0}, 3},
+    {"satellite.directory.free(d)", {1, 18, 7, 0, 0, 0, 0}, 3},
 };
 
 inline constexpr std::size_t kWordFactsCount = sizeof kWordFacts / sizeof kWordFacts[0];
@@ -1044,6 +1046,7 @@ inline constexpr SpelledWord kSpelledWords[] = {
     {"satellite.directory.change(d)", 4399},
     {"satellite.directory.current()", 4400},
     {"satellite.directory.exists(d)", 4401},
+    {"satellite.directory.free(d)", 4538},
     {"satellite.directory.list()", 4402},
     {"satellite.directory.list(d)", 4403},
     {"satellite.directory.system()", 4533},
