@@ -12,13 +12,13 @@ older note.
 
 What I **did** fix is at the bottom, so you know what changed under you.
 
-> **FIRST, ONE THING I BROKE IN YOUR SETTINGS, AND DID NOT PUT BACK.** A reviewer agent I
-> ran on these changes ran check.sh's fixtures with your real HOME. One of them
-> (`build/arguments_access.satl`) writes the access switch, so your `~/.satl/config.ini`
-> now says `access = false` and `features = b00000000000000`. It said `access = true` and
-> `features = b00000000000001` at 17:33 today. My attempt to restore the file was blocked
-> by the permission check, so it's yours to put back: change those two lines back. The
-> website's `access_switch.satl` example fails until you do. Nothing else about it is wrong.
+> **ONE THING I BROKE IN YOUR SETTINGS -- PUT BACK, AT YOUR WORD.** A reviewer agent I ran
+> on these changes ran check.sh's fixtures with your real HOME, and one of them
+> (`build/arguments_access.satl`) turned the access switch off in `~/.satl/config.ini`.
+> You told me to put it back, and it is: `access = true` and `features = b00000000000001`,
+> the file byte for byte as it was at 17:33. `features` is satl's register of its 14
+> switches, one digit each; the rightmost digit is access, so turning access off had
+> cleared it too. The website's `access_switch.satl` example passes again.
 
 ---
 
