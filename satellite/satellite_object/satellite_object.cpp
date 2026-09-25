@@ -189,6 +189,29 @@ bool compared_by_its_own_file(const satelliteObject &left, const satelliteObject
     return true;
 }
 
+// A STRING INSIDE A LIST OR AN INDEX IS WRITTEN AS ITS LITERAL, escapes and all
+// (2026-09-24). The list's promise below is that it reads back as what was typed, and
+// a literal can hold \" \\ \n \t and \r -- so the quotes round one must say them the
+// same way, or {"a\"b"} would read back as {"a"b"}, which is not satellite. The
+// inverse of string_at (bytecode_registry.cpp); an apostrophe needs no escape.
+std::string as_a_literal(const std::string &text)
+{
+    std::string out = "\"";
+    out.reserve(text.size() + 2);
+    for (const char c : text) {
+        switch (c) {
+        case '"': out += "\\\""; break;
+        case '\\': out += "\\\\"; break;
+        case '\n': out += "\\n"; break;
+        case '\t': out += "\\t"; break;
+        case '\r': out += "\\r"; break;
+        default: out += c;
+        }
+    }
+    out += '"';
+    return out;
+}
+
 } // namespace
 
 // A LITERAL ARRIVES AS UTF-8 BYTES and becomes a satellite_string here -- the
@@ -659,7 +682,7 @@ signed long long int satelliteObject::to_string(satellite_string &out, std::stri
                 const signed long long int made = item.to_string(one, why);
                 if (made != success)
                     return made;          // why already says which item and how
-                if (item.is_string()) written += "\"" + one.to_utf8() + "\"";
+                if (item.is_string()) written += as_a_literal(one.to_utf8());
                 else written += one.to_utf8();
             }
         }
@@ -680,10 +703,10 @@ signed long long int satelliteObject::to_string(satellite_string &out, std::stri
                 const satelliteObject &value = held->entries[at].second;
                 satellite_string one;
                 if (key.to_string(one, why) != success) return types_do_not_meet;
-                written += key.is_string() ? "\"" + one.to_utf8() + "\"" : one.to_utf8();
+                written += key.is_string() ? as_a_literal(one.to_utf8()) : one.to_utf8();
                 written += ": ";
                 if (value.to_string(one, why) != success) return types_do_not_meet;
-                written += value.is_string() ? "\"" + one.to_utf8() + "\"" : one.to_utf8();
+                written += value.is_string() ? as_a_literal(one.to_utf8()) : one.to_utf8();
             }
         }
         written += "}";

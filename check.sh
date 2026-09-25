@@ -4914,6 +4914,13 @@ if [ "$(id -u)" != 0 ]; then
     chmod 644 "$memory_room/locked.txt"
 fi
 rm -rf "$memory_room"
+# A LIST OR AN INDEX READS BACK AS WHAT WAS TYPED, escapes included (the fresh reader's
+# find, 2026-09-24): a string with \" in it is shown with \" in it.
+printf '%s\n' 'satellite.console.display({"a\"b", "c\\d", "e\nf", "plain"})' \
+    'satellite.container.index<satellite.variable.string, satellite.variable.string> ix' 'ix["k\""] = "v\tw"' \
+    'satellite.console.display(ix)' | "$interpreter" --repl > build/list_literals.out 2>/dev/null
+expect "a list and an index write a string with \\\" \\\\ \\n \\t in it as its literal" \
+       '{"a\"b", "c\\d", "e\nf", "plain"}|{"k\"": "v\tw"}' "$(tr '\n' '|' < build/list_literals.out | sed 's/|$//')"
 # AND A LIST'S { IS NOT A BLOCK: a { after = ( , [ : or an operator opens a value, and
 # one at the start of a line or after ) a name or a word still opens a refused block.
 printf '%s\n' 'satellite.statement.if(1 == 1) {' 'satellite.console.display({1, {2, 3}}.size)' |
