@@ -54,12 +54,24 @@
 
 namespace satellite004 {
 
+// 10,024 -- a comma between every three digits.
+std::string with_commas(unsigned long long int number);
+
+// 10,024.080 mb -- always mb, to three places, with commas: the author's way of
+// writing space (2026-09-25), shared with satellite.directory.system()'s table.
+std::string megabytes_with_commas(unsigned long long int bytes);
+
+// Rows of cells lined up in columns two spaces apart, counted in CELLS through the
+// renderer's place(); a column marked in `from_the_right` is written from the right.
+std::string lined_up(const std::vector<std::vector<std::string>> &rows, const std::vector<bool> &from_the_right);
+
 // "FREE SPACE IN DIRECTORY: 10,024.080 mb" for `directory`, with no colour and no newline.
 std::string free_space_line(const std::string &directory);
 
 // The table for `names`, each a leaf inside `directory`, in the order given, into
 // `table`. False, with `table` empty, when `stop` was raised while it was counted.
+// `at_a_terminal`: whether a long count may show its progress line.
 bool listing_table(const std::string &directory, const std::vector<std::string> &names,
-                   const volatile sig_atomic_t *stop, std::string &table);
+                   const volatile sig_atomic_t *stop, bool at_a_terminal, std::string &table);
 
 } // namespace satellite004

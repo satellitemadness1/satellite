@@ -2,6 +2,7 @@
 
 #include "session.hpp"
 
+#include "drives.hpp"
 #include "listing.hpp"
 #include "prompt_help.hpp"
 #include "prompt_run.hpp"
@@ -218,12 +219,13 @@ signed long long int refuse_by_name(const std::vector<std::bitset<16>> &row, Mac
 
 // A WHOLE LINE THAT IS ONE LISTING, decided on the compiled line and never on its
 // text (PLAN M0.6): the statement is exactly `1 18 4` or `1 18 5` with nothing
-// after it. That is the one line whose answer would otherwise be thrown away, so
-// it is the one line that draws the table.
+// after it -- or `1 18 6`, satellite.directory.system(), whose table is the drives'.
+// That is the one line whose answer would otherwise be thrown away, so it is the
+// one line that draws the table.
 bool is_one_listing(const std::vector<std::bitset<16>> &row, std::string &path, bool &given, Code &word_code)
 {
     const Code code = code_at(row, 0);
-    if (code != word::code_of(1, 18, 4) && code != word::code_of(1, 18, 5))
+    if (code != word::code_of(1, 18, 4) && code != word::code_of(1, 18, 5) && code != word::code_of(1, 18, 6))
         return false;
     std::size_t at = 1;
     if (code_at(row, at) != token::left_parenthesis_token)
@@ -260,18 +262,30 @@ signed long long int draw_the_listing(const std::string &path, bool given, Code 
                                 (reply.reason.empty() ? std::string() : ": " + reply.reason),
                             reply.code);
 
-    // THE FREE SPACE FIRST, before the walk (listing.hpp): white at a terminal, as the
+    // THE HEAD LINES FIRST, before any walk (listing.hpp): white at a terminal, as the
     // prompt's letters are; plain in a pipe, where the prompt is not drawn either.
-    const std::string where = given ? path : std::string(".");
     const bool at_a_terminal = the_sessions_reader != nullptr && the_sessions_reader->interactive();
-    if (at_a_terminal)
-        std::cout << lettering << free_space_line(where) << "\033[0m\n" << std::flush;
-    else
-        std::cout << free_space_line(where) << '\n' << std::flush;
+    const auto head = [at_a_terminal](const std::string &line) {
+        if (at_a_terminal)
+            std::cout << lettering << line << "\033[0m\n" << std::flush;
+        else
+            std::cout << line << '\n' << std::flush;
+    };
+
+    // satellite.directory.system(): the drives the library named, and their space.
+    if (word_code == word::code_of(1, 18, 6)) {
+        for (const std::string &line : drives_lines(reply.names))
+            head(line);
+        std::cout << drives_table(reply.names);
+        return success;
+    }
+
+    const std::string where = given ? path : std::string(".");
+    head(free_space_line(where));
 
     // THE SAME KEY STOPS THE TABLE'S COUNTING, and answers the same line.
     std::string table;
-    if (!listing_table(where, reply.names, &asked_to_stop, table))
+    if (!listing_table(where, reply.names, &asked_to_stop, at_a_terminal, table))
         return report_error(std::string("satl(prompt): ") + word::spelling_of(word_code) + " " + shown(where),
                             interrupted);
     std::cout << table;

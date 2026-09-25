@@ -2,7 +2,9 @@
 
 #include "listing.hpp"
 #include "listing_counts.hpp"
+#include "listing_progress.hpp"
 
+#include "../machine/filesystems.hpp"
 #include "../machine/shown.hpp"
 #include "../prompt/render.hpp"
 
@@ -12,6 +14,7 @@
 #include <pwd.h>
 #include <sys/stat.h>
 #include <sys/statvfs.h>
+#include <sys/vfs.h>
 #include <unistd.h>
 
 namespace satellite004 {
@@ -132,8 +135,18 @@ void pad_to(std::string &out, std::size_t cells, std::size_t width)
     out.append(width > cells ? width - cells : 0, ' ');
 }
 
-// ALWAYS mb, and a comma between every three digits of the whole part: 10,024.080 mb.
-// Rounded to the nearest thousandth as size_of rounds, in whole numbers.
+} // namespace
+
+std::string with_commas(unsigned long long int number)
+{
+    std::string digits = std::to_string(number);
+    for (std::size_t at = digits.size(); at > 3; at -= 3)
+        digits.insert(at - 3, 1, ',');
+    return digits;
+}
+
+// ALWAYS mb: the bytes over 1024 twice, rounded to the nearest thousandth as size_of
+// rounds, in whole numbers.
 std::string megabytes_with_commas(unsigned long long int bytes)
 {
     constexpr unsigned long long int megabyte = 1024ull * 1024ull;
@@ -143,15 +156,39 @@ std::string megabytes_with_commas(unsigned long long int bytes)
         ++whole;
         thousandths = 0;
     }
-    std::string digits = std::to_string(whole);
-    for (std::size_t at = digits.size(); at > 3; at -= 3)
-        digits.insert(at - 3, 1, ',');
     std::string places = std::to_string(thousandths);
     places.insert(0, 3 - places.size(), '0');
-    return digits + "." + places + " mb";
+    return with_commas(whole) + "." + places + " mb";
 }
 
-} // namespace
+std::string lined_up(const std::vector<std::vector<std::string>> &rows, const std::vector<bool> &from_the_right)
+{
+    const std::size_t count = from_the_right.size();
+    std::vector<std::size_t> widths(count, 0);
+    std::vector<std::vector<std::size_t>> cells(rows.size(), std::vector<std::size_t>(count, 0));
+    for (std::size_t row = 0; row < rows.size(); ++row)
+        for (std::size_t column = 0; column < count && column < rows[row].size(); ++column) {
+            cells[row][column] = cells_of(rows[row][column]);
+            if (cells[row][column] > widths[column])
+                widths[column] = cells[row][column];
+        }
+
+    std::string out;
+    for (std::size_t row = 0; row < rows.size(); ++row) {
+        for (std::size_t column = 0; column < count && column < rows[row].size(); ++column) {
+            if (from_the_right[column])
+                pad_to(out, cells[row][column], widths[column]);
+            out += rows[row][column];
+            if (column + 1 < count) {
+                if (!from_the_right[column])
+                    pad_to(out, cells[row][column], widths[column]);
+                out += "  ";
+            }
+        }
+        out += '\n';
+    }
+    return out;
+}
 
 std::string free_space_line(const std::string &directory)
 {
@@ -165,13 +202,32 @@ std::string free_space_line(const std::string &directory)
 }
 
 bool listing_table(const std::string &directory, const std::vector<std::string> &names,
-                   const volatile sig_atomic_t *stop, std::string &table)
+                   const volatile sig_atomic_t *stop, bool at_a_terminal, std::string &table)
 {
     table.clear();
     std::vector<std::vector<std::string>> rows;
     rows.reserve(names.size() + 1);
     rows.emplace_back(headings, headings + columns);
     std::vector<unsigned char> piece;   // count_lines' read buffer, one for the whole table
+
+    // WHERE THE LISTED DIRECTORY IS. On a filesystem that stores nothing a file has no
+    // size to show, except /proc/kcore at /proc's top (inode 1), which is the memory.
+    // At the top of a filesystem that counts its names, that count is the walk's
+    // total, less the rows themselves -- what the progress line measures against.
+    struct statfs system {};
+    struct stat here {};
+    const bool known = ::statfs(directory.c_str(), &system) == 0;
+    const bool nothing_stored = known && filesystems::stores_nothing(static_cast<unsigned long long int>(system.f_type));
+    const bool at_the_top_of_proc = known &&
+                                    static_cast<unsigned long long int>(system.f_type) == filesystems::proc_type &&
+                                    ::stat(directory.c_str(), &here) == 0 && here.st_ino == 1;
+    unsigned long long int total = 0;
+    if (known && !nothing_stored && system.f_files > 0 && system.f_files >= system.f_ffree &&
+        filesystems::is_a_mount_top(AT_FDCWD, directory.c_str())) {
+        const unsigned long long int in_use = static_cast<unsigned long long int>(system.f_files - system.f_ffree);
+        total = in_use > names.size() + 1 ? in_use - names.size() - 1 : 0;
+    }
+    ListingProgress progress(at_a_terminal, total);
 
     for (const std::string &name : names) {
         const std::string path = directory + "/" + name;
@@ -184,7 +240,10 @@ bool listing_table(const std::string &directory, const std::vector<std::string> 
         }
         std::string size = "-", files = "-", sub = "-";
         if (S_ISREG(about.st_mode)) {
-            size = size_of(static_cast<unsigned long long int>(about.st_size));
+            if (!nothing_stored)
+                size = size_of(static_cast<unsigned long long int>(about.st_size));
+            else if (at_the_top_of_proc && name == "kcore")
+                size = size_of(filesystems::memory_bytes());
             bool text = false;
             unsigned long long int lines = 0;
             if (!count_lines(path, stop, piece, text, lines))
@@ -192,14 +251,19 @@ bool listing_table(const std::string &directory, const std::vector<std::string> 
             if (text)
                 sub = "(" + std::to_string(lines) + ")";
         } else if (S_ISDIR(about.st_mode)) {
+            // A row that is a mount's top is another filesystem, so its names are
+            // counted apart from the listed directory's total.
+            const bool its_own = filesystems::is_a_mount_top(AT_FDCWD, path.c_str());
             Contents in;
-            if (!count_contents(path, stop, in))
+            if (!count_contents(path, stop, its_own ? &progress.elsewhere : &progress.on_the_filesystem, in))
                 return false;
             if (in.opened) {
                 const char *const at_least = in.whole ? "" : "+";
-                size = size_of(in.bytes) + at_least;
+                size = size_of(in.bytes) + (in.by_the_filesystem ? "" : at_least);
                 files = std::to_string(in.files) + (in.files_whole ? "" : "+");
-                if (in.below > 0 || !in.whole)
+                if (in.about)
+                    sub = "~" + std::to_string(in.below);
+                else if (in.below > 0 || !in.whole)
                     sub = std::to_string(in.below) + at_least;
             }
         }
@@ -207,28 +271,7 @@ bool listing_table(const std::string &directory, const std::vector<std::string> 
                         shown(owner_of(about.st_uid)), created_at(path), moment(about.st_mtime)});
     }
 
-    std::vector<std::size_t> widths(columns, 0);
-    std::vector<std::vector<std::size_t>> cells(rows.size(), std::vector<std::size_t>(columns, 0));
-    for (std::size_t row = 0; row < rows.size(); ++row)
-        for (std::size_t column = 0; column < columns; ++column) {
-            cells[row][column] = cells_of(rows[row][column]);
-            if (cells[row][column] > widths[column])
-                widths[column] = cells[row][column];
-        }
-
-    for (std::size_t row = 0; row < rows.size(); ++row) {
-        for (std::size_t column = 0; column < columns; ++column) {
-            if (from_the_right[column])
-                pad_to(table, cells[row][column], widths[column]);
-            table += rows[row][column];
-            if (column + 1 < columns) {
-                if (!from_the_right[column])
-                    pad_to(table, cells[row][column], widths[column]);
-                table += "  ";
-            }
-        }
-        table += '\n';
-    }
+    table = lined_up(rows, std::vector<bool>(from_the_right, from_the_right + columns));
     return true;
 }
 

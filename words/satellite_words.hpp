@@ -451,6 +451,7 @@ inline constexpr WordRow kWords[] = {
     {"satellite.terminal.background(color)", {1, 29, 2, 1, 0, 0}, 4},
     {"satellite.variable.thread.stop()", {1, 6, 13, 3, 0, 0}, 4},
     {"satellite.variable.thread.wait()", {1, 6, 13, 4, 0, 0}, 4},
+    {"satellite.directory.system()", {1, 18, 6, 0, 0, 0}, 3},
 };
 
 // Removed words, with the numbers they had in 003 06.
@@ -650,7 +651,7 @@ inline constexpr NextFree kNextFree[] = {
     {"satellite.bool", {1, 17, 3, 0, 0, 0, 0}, 3},
     {"satellite.bool.false", {1, 17, 1, 1, 0, 0, 0}, 4},
     {"satellite.bool.true", {1, 17, 2, 1, 0, 0, 0}, 4},
-    {"satellite.directory", {1, 18, 6, 0, 0, 0, 0}, 3},
+    {"satellite.directory", {1, 18, 7, 0, 0, 0, 0}, 3},
     {"satellite.help", {1, 19, 2, 0, 0, 0, 0}, 3},
     {"satellite.network", {1, 20, 8, 0, 0, 0, 0}, 3},
     {"satellite.network.new", {1, 20, 3, 1, 0, 0, 0}, 4},

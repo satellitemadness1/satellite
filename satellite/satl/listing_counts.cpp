@@ -2,6 +2,9 @@
 
 #include "listing_counts.hpp"
 
+#include "../machine/filesystems.hpp"
+
+#include <algorithm>
 #include <bit>
 #include <cerrno>
 #include <cstdint>
@@ -10,6 +13,7 @@
 #include <fcntl.h>
 #include <memory>
 #include <sys/stat.h>
+#include <sys/vfs.h>
 #include <unistd.h>
 #include <vector>
 
@@ -101,7 +105,8 @@ std::size_t scan_text(const unsigned char *bytes, std::size_t size, bool at_the_
 
 } // namespace
 
-bool count_contents(const std::string &path, const volatile sig_atomic_t *stop, Contents &out)
+bool count_contents(const std::string &path, const volatile sig_atomic_t *stop,
+                    std::atomic<unsigned long long int> *counted, Contents &out)
 {
     // EVERY OPEN DIRECTORY IS HELD BY WHAT CLOSES IT, so a stop, or an allocation
     // that fails part way down, closes all of them.
@@ -115,6 +120,27 @@ bool count_contents(const std::string &path, const volatile sig_atomic_t *stop, 
     }
     levels.push_back(std::move(first));
     out.opened = true;
+
+    struct statfs system {};
+    const bool known = ::fstatfs(top, &system) == 0;
+    const bool nothing_stored = known && filesystems::stores_nothing(static_cast<unsigned long long int>(system.f_type));
+    const bool proc = known && static_cast<unsigned long long int>(system.f_type) == filesystems::proc_type;
+
+    // A DRIVE'S TOP ANSWERS FOR ITSELF: its used space is df's Used, and when it keeps
+    // a count of its names (ext4 and xfs do; vfat and exfat do not), that count is sub,
+    // less this directory and the files directly in it -- so only the top is read.
+    bool top_only = false;
+    unsigned long long int names_in_use = 0;
+    if (known && !nothing_stored && system.f_blocks > 0 && filesystems::is_a_mount_top(top, "")) {
+        const unsigned long long int block = system.f_frsize != 0 ? system.f_frsize : system.f_bsize;
+        out.by_the_filesystem = true;
+        out.bytes = (static_cast<unsigned long long int>(system.f_blocks) - system.f_bfree) * block;
+        if (system.f_files > 0 && system.f_files >= system.f_ffree) {
+            top_only = true;
+            names_in_use = static_cast<unsigned long long int>(system.f_files - system.f_ffree);
+        }
+    }
+    const bool sized = !out.by_the_filesystem && !nothing_stored;
 
     while (!levels.empty()) {
         if (asked_to_stop(stop))
@@ -138,10 +164,12 @@ bool count_contents(const std::string &path, const volatile sig_atomic_t *stop, 
         bool directory = entry->d_type == DT_DIR;
         bool regular = entry->d_type == DT_REG;
         struct stat about {};
-        if (regular || entry->d_type == DT_UNKNOWN) {
+        bool stated = false;
+        if (entry->d_type == DT_UNKNOWN || (regular && sized)) {
             if (::fstatat(::dirfd(folder), leaf, &about, AT_SYMLINK_NOFOLLOW) == 0) {
                 directory = S_ISDIR(about.st_mode);
                 regular = S_ISREG(about.st_mode);
+                stated = true;
             } else if (errno == ENOENT) {
                 continue;
             } else {
@@ -150,14 +178,26 @@ bool count_contents(const std::string &path, const volatile sig_atomic_t *stop, 
                 regular = false;
             }
         }
+        if (counted != nullptr)
+            counted->fetch_add(1, std::memory_order_relaxed);
 
         if (!directory) {
             ++(directly ? out.files : out.below);
-            if (regular)
+            if (regular && sized && stated)
                 out.bytes += static_cast<unsigned long long int>(about.st_size);
+            // /proc/kcore, at /proc's own top (inode 1), is the machine's memory.
+            else if (regular && proc && std::strcmp(leaf, "kcore") == 0) {
+                struct stat here {};
+                if (::fstat(::dirfd(folder), &here) == 0 && here.st_ino == 1)
+                    out.bytes += filesystems::memory_bytes();
+            }
             continue;
         }
         ++out.below;
+        // A MOUNT BELOW IS ANOTHER FILESYSTEM'S: its top is a name here, and what is in
+        // it is not -- so / never walks into the drives mounted under /run/media.
+        if (top_only || filesystems::is_a_mount_top(::dirfd(folder), leaf))
+            continue;
         const int inner = ::openat(::dirfd(folder), leaf, O_RDONLY | O_DIRECTORY | O_NOFOLLOW | O_CLOEXEC);
         Folder down(inner >= 0 ? ::fdopendir(inner) : nullptr);
         if (down != nullptr) {
@@ -169,6 +209,12 @@ bool count_contents(const std::string &path, const volatile sig_atomic_t *stop, 
             ::close(inner);
         if (why != ENOENT)
             out.whole = false;
+    }
+
+    if (top_only) {
+        out.about = true;
+        if (names_in_use > out.files + 1)
+            out.below = std::max(out.below, names_in_use - out.files - 1);
     }
     return true;
 }
@@ -198,8 +244,13 @@ bool count_lines(const std::string &path, const volatile sig_atomic_t *stop, std
         bool ended = false;
         while (got < piece.size()) {
             const ssize_t count = ::read(fd, piece.data() + got, piece.size() - got);
-            if (count < 0 && errno == EINTR)
+            if (count < 0 && errno == EINTR) {
+                if (asked_to_stop(stop)) {   // a read Ctrl-C broke into: stop, rather than wait again
+                    ::close(fd);
+                    return false;
+                }
                 continue;
+            }
             if (count < 0) {
                 ::close(fd);
                 return true;

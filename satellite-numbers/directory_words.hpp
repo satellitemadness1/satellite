@@ -1,10 +1,11 @@
 #pragma once
 // satellite-004/satellite-numbers/directory_words.hpp -- what satellite.directory's
-// three words DO, shared by their three libraries (PLAN M0.6): `change(d)` 1 18 1,
-// `list()` 1 18 4 and `list(d)` 1 18 5. Behaviour ported from 003 06's
-// src/satellite_directory/handlers.cpp.
+// words DO, shared by their libraries (PLAN M0.6): `change(d)` 1 18 1, `list()`
+// 1 18 4 and `list(d)` 1 18 5, their behaviour ported from 003 06's
+// src/satellite_directory/handlers.cpp -- and `system()` 1 18 6, the author's of
+// 2026-09-25, which 003 did not have.
 //
-// ONE HEADER AND THREE LIBRARIES, because build_libraries.py compiles one .cpp a
+// ONE HEADER AND A LIBRARY A WORD, because build_libraries.py compiles one .cpp a
 // word and a word with arguments cannot share an object file with its sibling.
 // The .cpp files are the describe functions; the work is here.
 //
@@ -39,6 +40,7 @@
 
 #include "number_row.hpp"
 
+#include "../satellite/machine/filesystems.hpp"
 #include "../satellite/machine/machine_codes.hpp"
 
 #include <algorithm>
@@ -137,6 +139,17 @@ inline DirectoryReply list(const std::string &path, bool given, const volatile s
     }
 
     std::sort(reply.names.begin(), reply.names.end());
+    return reply;
+}
+
+// `system()` 1 18 6: where the machine's drives are mounted, one place a drive, in
+// the order the kernel mounted them (filesystems.hpp says what a drive is). Typed
+// alone at the prompt it draws their table instead (satellite/satl/drives.hpp).
+inline DirectoryReply drives(const std::string &, bool, const volatile sig_atomic_t *)
+{
+    DirectoryReply reply;
+    for (const filesystems::MountedDrive &drive : filesystems::mounted_drives())
+        reply.names.push_back(drive.point);
     return reply;
 }
 

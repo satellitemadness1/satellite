@@ -84,7 +84,7 @@ $(BUILD)/prompt_reader: $(PROMPT)/prompt_reader.cpp $(PROMPT_SOURCES) $(PROMPT_H
 # three libraries are built from (PLAN M0.6). It takes the room to work in, so the
 # checks never write beside the tree.
 $(BUILD)/directory_cases: $(SATELLITE)/satl/directory_cases.cpp $(NUMBERS)/directory_words.hpp $(NUMBERS)/number_row.hpp \
-                          $(MACHINE)/machine_codes.hpp
+                          $(MACHINE)/machine_codes.hpp $(MACHINE)/filesystems.hpp
 	@mkdir -p $(BUILD)
 	$(LINK_ENV) $(CXX) $(CXXFLAGS) $(LDFLAGS) $(SATELLITE)/satl/directory_cases.cpp -o $@
 

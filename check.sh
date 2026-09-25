@@ -4944,6 +4944,62 @@ expect "listing: satellite/'s files and sub are what find counts" "$tree_files/$
        "$(awk -F '  +' '$1 == "satellite" { print $4 "/" $5 }' build/listing_sub_tree.out)"
 chmod 700 "$sub_room/t_locked" "$sub_room/u_partly/closed"; rm -rf "$sub_room"
 
+# WHAT STORES NOTHING, AND WHERE A WALK STOPS (the author, 2026-09-25: "/proc should
+# not report 128 tb ... fix the problems with /run and /proc and /sys"). A file in /proc
+# or /sys has no size of its own; /proc/kcore is the machine's memory; a directory that
+# is a mount's top is one name and is not entered, as find -xdev counts; and a mount's
+# top with blocks of its own is answered by its filesystem, its count marked ~.
+size_text() { python3 -c '
+import sys
+b = int(sys.argv[1])
+if b < 1024: print("%d %s" % (b, "byte" if b == 1 else "bytes")); sys.exit()
+units = ["kb", "mb", "gb", "tb", "pb", "eb"]; w = 0; u = 1024
+while w + 1 < len(units) and b // u >= 1024: u *= 1024; w += 1
+whole = b // u; th = ((b % u) * 1000 + u // 2) // u
+if th == 1000: whole, th = whole + 1, 0
+if whole == 1024 and w + 1 < len(units): whole, w = 1, w + 1
+print("%d.%03d %s" % (whole, th, units[w]))' "$1"; }
+mb_text() { python3 -c '
+import sys
+b = int(sys.argv[1]); m = 1024 * 1024
+whole, th = b // m, ((b % m) * 1000 + m // 2) // m
+if th == 1000: whole, th = whole + 1, 0
+print("{:,}.{:03d} mb".format(whole, th))' "$1"; }
+printf 'satellite.directory.list("/proc")\n' | "$interpreter" --repl > build/listing_proc.out 2>/dev/null
+expect "listing: /proc/kcore is the machine's memory, MemTotal, and not the 128 TiB its st_size says" \
+       "$(size_text $(( $(awk '/^MemTotal:/ { print $2 }' /proc/meminfo) * 1024 )))" \
+       "$(awk -F '  +' '$1 == "kcore" { print $3 }' build/listing_proc.out)"
+expect "listing: a file in /proc has no size of its own, and /proc/version is one line of text" "-/(1)" \
+       "$(awk -F '  +' '$1 == "version" { print $3 "/" $5 }' build/listing_proc.out)"
+printf 'satellite.directory.list("/sys")\n' | "$interpreter" --repl > build/listing_sys.out 2>/dev/null
+expect "listing: /sys stores nothing, so its devices add up to 0 bytes (their resource files were device memory)" "0 bytes" \
+       "$(awk -F '  +' '$1 == "devices" { print $3 }' build/listing_sys.out)"
+printf 'satellite.directory.list("/dev")\n' | "$interpreter" --repl > build/listing_dev.out 2>/dev/null
+expect "listing: /dev/shm is a tmpfs mounted there, so its filesystem answers: its used space, and its own count with ~" "~" \
+       "$(awk -F '  +' '$1 == "shm" { print substr($5, 1, 1) }' build/listing_dev.out)"
+if [ -d /run/user ]; then
+    printf 'satellite.directory.list("/run")\n' | "$interpreter" --repl > build/listing_run.out 2>/dev/null
+    expect "listing: /run's user row counts /run/user's names and not the filesystems mounted in it, as find -xdev counts" \
+           "$(find /run/user -xdev -mindepth 1 2>/dev/null | wc -l)" \
+           "$(awk -F '  +' '$1 == "user" { gsub(/[+~]/, "", $4); gsub(/[+~]/, "", $5); print $4 + ($5 == "-" ? 0 : $5) }' build/listing_run.out)"
+fi
+
+# satellite.directory.system() (the author, 2026-09-25: "report the file space on all
+# attached drives"): two lines, then a row a mounted drive -- df's Size, Used and Avail
+# in mb with commas, the device and the disk it is on.
+printf 'satellite.directory.system()\n' | "$interpreter" --repl > build/drives.out 2>/dev/null
+expect "system: first the space on every drive, then how much is free, in mb with commas" "1|1" \
+       "$(head -1 build/drives.out | grep -cE '^SPACE ON ALL DRIVES: [0-9]{1,3}(,[0-9]{3})*\.[0-9]{3} mb$')|$(sed -n 2p build/drives.out | grep -cE '^FREE SPACE ON ALL DRIVES: [0-9]{1,3}(,[0-9]{3})*\.[0-9]{3} mb$')"
+expect "system: its heading" "mounted on type size used free device drive" "$(sed -n 3p build/drives.out | tr -s ' ')"
+expect "system: / is a row, and its size is df's" "$(mb_text $(df -B1 --output=size / | tail -1))" \
+       "$(awk -F '  +' '$1 == "/" { print $3 }' build/drives.out)"
+expect "system: a row for every device findmnt names under /dev, once however many places it is mounted" \
+       "$(findmnt -rn -o MAJ:MIN,SOURCE | awk '$2 ~ "^/dev/" && !seen[$1]++' | wc -l)" \
+       "$(( $(wc -l < build/drives.out) - 3 ))"
+printf 'satellite.include(satellite)\nsatellite.capsule satellite.main()\n{\n    satellite.directory.system()\n}\nsatellite.return(satellite)\n' > build/drives_in_a_program.satl
+expect "system: in a program it reads the drives and says there is no list type to hand them back in yet, as list() does" 1 \
+       "$("$interpreter" build/drives_in_a_program.satl 2>&1 | tr '\n' ' ' | grep -c 'satellite.directory.system() read [0-9]* names')"
+
 # THE PROMPT REMEMBERS (the author, 2026-09-24: "the prompt has to remember what you type
 # in ... it has to be built to have persistence"). A name a line declares is kept, with
 # its value and type, for every line after it; a refused line changes nothing; declaring
