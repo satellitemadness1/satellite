@@ -14,6 +14,7 @@
 #include "capsule_scopes.hpp"
 
 #include "file_calls.hpp"
+#include "info_calls.hpp"
 #include "color_values.hpp"
 #include "container_calls.hpp"
 #include "console_calls.hpp"
@@ -1541,6 +1542,10 @@ Value call_word(const std::vector<std::bitset<16>> &row, std::size_t &at, Expres
     // satellite.file's words answer a HANDLE, which no library can (file_calls.hpp).
     if (is_file_word(code))
         return call_file_word(code, arguments, row, context);
+    // ...and satellite.info's words answer a list of indexes, which no library can
+    // make either (info_calls.hpp).
+    if (is_info_word(code))
+        return call_info_word(code, arguments, context);
     // ...and so does satellite.infinity() (infinity_calls.hpp).
     if (is_infinity_word(code))
         return call_infinity_word(code, arguments, context);

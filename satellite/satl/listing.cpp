@@ -73,30 +73,12 @@ const char *type_of(mode_t mode)
 // holds, so a link shows a dash, as a name that cannot be stat'ed does.
 std::string size_of(unsigned long long int bytes)
 {
-    if (bytes < 1024)
+    const SizeParts parts = size_parts(bytes);
+    if (parts.unit == 0)
         return std::to_string(bytes) + (bytes == 1 ? " byte" : " bytes");
-    static const char *const units[] = {"kb", "mb", "gb", "tb", "pb", "eb"};
-    constexpr std::size_t unit_count = sizeof units / sizeof units[0];
-    std::size_t which = 0;
-    unsigned long long int unit = 1024;
-    while (which + 1 < unit_count && bytes / unit >= 1024) {
-        unit *= 1024;
-        ++which;
-    }
-    unsigned long long int whole = bytes / unit;
-    unsigned long long int thousandths = static_cast<unsigned long long int>(
-        (static_cast<unsigned __int128>(bytes % unit) * 1000 + unit / 2) / unit);
-    if (thousandths == 1000) {
-        ++whole;
-        thousandths = 0;
-    }
-    if (whole == 1024 && which + 1 < unit_count) {
-        whole = 1;
-        ++which;
-    }
-    std::string places = std::to_string(thousandths);
+    std::string places = std::to_string(parts.thousandths);
     places.insert(0, 3 - places.size(), '0');
-    return std::to_string(whole) + "." + places + " " + units[which];
+    return std::to_string(parts.whole) + "." + places + " " + size_unit_names[parts.unit];
 }
 
 // The name behind the number when the system knows one, and the number itself
@@ -136,6 +118,40 @@ void pad_to(std::string &out, std::size_t cells, std::size_t width)
 }
 
 } // namespace
+
+NameFacts facts_of(const std::string &path, const struct stat &about)
+{
+    return NameFacts{type_of(about.st_mode), permissions_of(about.st_mode), owner_of(about.st_uid), created_at(path),
+                     moment(about.st_mtime)};
+}
+
+SizeParts size_parts(unsigned long long int bytes)
+{
+    SizeParts parts;
+    if (bytes < 1024) {
+        parts.whole = bytes;
+        return parts;
+    }
+    constexpr std::size_t last_unit = sizeof size_unit_names / sizeof size_unit_names[0] - 1;
+    parts.unit = 1;
+    unsigned long long int unit = 1024;
+    while (parts.unit < last_unit && bytes / unit >= 1024) {
+        unit *= 1024;
+        ++parts.unit;
+    }
+    parts.whole = bytes / unit;
+    parts.thousandths = static_cast<unsigned long long int>(
+        (static_cast<unsigned __int128>(bytes % unit) * 1000 + unit / 2) / unit);
+    if (parts.thousandths == 1000) {
+        ++parts.whole;
+        parts.thousandths = 0;
+    }
+    if (parts.whole == 1024 && parts.unit < last_unit) {
+        parts.whole = 1;
+        ++parts.unit;
+    }
+    return parts;
+}
 
 std::string with_commas(unsigned long long int number)
 {
@@ -267,8 +283,9 @@ bool listing_table(const std::string &directory, const std::vector<std::string> 
                     sub = std::to_string(in.below) + at_least;
             }
         }
-        rows.push_back({shown(name), type_of(about.st_mode), size, files, sub, permissions_of(about.st_mode),
-                        shown(owner_of(about.st_uid)), created_at(path), moment(about.st_mtime)});
+        const NameFacts facts = facts_of(path, about);
+        rows.push_back({shown(name), facts.type, size, files, sub, facts.permissions, shown(facts.owner), facts.created,
+                        facts.modified});
     }
 
     table = lined_up(rows, std::vector<bool>(from_the_right, from_the_right + columns));

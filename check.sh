@@ -5000,6 +5000,69 @@ printf 'satellite.include(satellite)\nsatellite.capsule satellite.main()\n{\n   
 expect "system: in a program it reads the drives and says there is no list type to hand them back in yet, as list() does" 1 \
        "$("$interpreter" build/drives_in_a_program.satl 2>&1 | tr '\n' ' ' | grep -c 'satellite.directory.system() read [0-9]* names')"
 
+# satellite.variable.info (the author, 2026-09-25, satellite.variable.info/README.md): a
+# list, one index a name -- name, size (a float) and size_type (b kb mb gb tb), a text
+# file's line_count, permissions -- and then type, bytes, a directory's files, sub,
+# complete and approximate, owner, created, modified. satellite.info.file(path) is a
+# list of one; satellite.info.directory(path), or .dir, one for every name in it.
+info_room=$(mktemp -d "${TMPDIR:-/tmp}/satl_info.XXXXXX")
+printf 'one\ntwo\nthree\n' > "$info_room/a_three"; head -c 1536000 /dev/zero | tr '\0' '\377' > "$info_room/b_binary"
+mkdir -p "$info_room/c_tree/sub1"; head -c 5 /dev/zero > "$info_room/c_tree/x"; head -c 100 /dev/zero > "$info_room/c_tree/sub1/z"
+ln -s a_three "$info_room/d_link"
+cat > build/info_each.satl <<INFO_EOF
+satellite.include(satellite)
+satellite.capsule satellite.main()
+{
+    satellite.variable.info room = satellite.info.directory("$info_room")
+    satellite.console.display(room.size)
+    satellite.statement.for(satellite.variable.number i = 1; i < room.size + 1; i++)
+    {
+        satellite.variable.string line = room[i]["name"] + " " + room[i]["type"] + " " + room[i]["permissions"]
+        satellite.statement.if(room[i].contains("size"))
+        {
+            line = line + " size=" + room[i]["size"].string + " " + room[i]["size_type"] + " bytes=" + room[i]["bytes"].string
+        }
+        satellite.statement.if(room[i].contains("line_count"))
+        {
+            line = line + " lines=" + room[i]["line_count"].string
+        }
+        satellite.statement.if(room[i].contains("files"))
+        {
+            line = line + " files=" + room[i]["files"].string + " sub=" + room[i]["sub"].string + " complete=" + room[i]["complete"].string + " approximate=" + room[i]["approximate"].string
+        }
+        satellite.console.display(line)
+    }
+    satellite.variable.info one = satellite.info.file("$info_room/a_three")
+    satellite.console.display(one.size)
+    satellite.console.display(one[1]["name"] + " " + one[1]["line_count"].string)
+    satellite.variable.info short = satellite.info.dir("$info_room")
+    satellite.console.display(short.size)
+}
+satellite.return(satellite)
+INFO_EOF
+"$interpreter" build/info_each.satl > build/info_each.out 2>&1; code=$?
+expect "info: a program reads every name's index -- the author's keys, and a directory's files, sub, complete and approximate" \
+       "0|4|a_three file rw-r--r-- size=14.0 b bytes=14 lines=3|b_binary file rw-r--r-- size=1.465 mb bytes=1536000|c_tree dir rwxr-xr-x size=105.0 b bytes=105 files=1 sub=2 complete=true approximate=false|d_link link rwxrwxrwx|1|a_three 3|4" \
+       "$code|$(grep -v '^THE SATELLITE\|^VERSION\|^CLANG\|^G++\|^---\|^$' build/info_each.out | tr '\n' '|' | sed 's/|$//')"
+printf 'satellite.include(satellite)\nsatellite.capsule satellite.main()\n{\n    satellite.variable.info core = satellite.info.file("/proc/kcore")\n    satellite.console.display(core[1]["size"].string + " " + core[1]["size_type"] + " " + core[1]["bytes"].string)\n}\nsatellite.return(satellite)\n' > build/info_kcore.satl
+kcore_bytes=$(( $(awk '/^MemTotal:/ { print $2 }' /proc/meminfo) * 1024 ))
+# a float displays with no zero at its end but always one place: 61.930 is 61.93, 52.000 is 52.0
+expect "info: /proc/kcore's size is the machine's memory, as the table's" \
+       "$(size_text $kcore_bytes | python3 -c '
+import sys
+number, unit = sys.stdin.read().split()
+whole, places = number.split(".")
+print("%s.%s %s" % (whole, places.rstrip("0") or "0", unit))') $kcore_bytes" \
+       "$("$interpreter" build/info_kcore.satl 2>&1 | grep -E '^[0-9]')"
+refused_by() {   # refused_by <body line> -> the machine code satl exits with
+    printf 'satellite.include(satellite)\nsatellite.capsule satellite.main()\n{\n    %s\n}\nsatellite.return(satellite)\n' "$1" > build/info_refused.satl
+    "$interpreter" build/info_refused.satl > build/info_refused.out 2>&1; echo $?
+}
+expect "info: nothing at the path is file_not_found; a file given to directory is not_a_directory; a number is types_do_not_meet; two paths are refused before it runs" \
+       "39|29|27|13" \
+       "$(refused_by "satellite.variable.info x = satellite.info.file(\"$info_room/nothing_here\")")|$(refused_by "satellite.variable.info x = satellite.info.directory(\"$info_room/a_three\")")|$(refused_by 'satellite.variable.info x = satellite.info.file(5)')|$(refused_by "satellite.variable.info x = satellite.info.file(\"$info_room\", \"$info_room\")")"
+rm -rf "$info_room"
+
 # THE PROMPT REMEMBERS (the author, 2026-09-24: "the prompt has to remember what you type
 # in ... it has to be built to have persistence"). A name a line declares is kept, with
 # its value and type, for every line after it; a refused line changes nothing; declaring

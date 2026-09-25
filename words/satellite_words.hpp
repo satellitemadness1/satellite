@@ -452,6 +452,10 @@ inline constexpr WordRow kWords[] = {
     {"satellite.variable.thread.stop()", {1, 6, 13, 3, 0, 0}, 4},
     {"satellite.variable.thread.wait()", {1, 6, 13, 4, 0, 0}, 4},
     {"satellite.directory.system()", {1, 18, 6, 0, 0, 0}, 3},
+    {"satellite.variable.info", {1, 6, 22, 0, 0, 0}, 3},
+    {"satellite.info", {1, 30, 0, 0, 0, 0}, 2},
+    {"satellite.info.file(path)", {1, 30, 1, 0, 0, 0}, 3},
+    {"satellite.info.directory(path)", {1, 30, 2, 0, 0, 0}, 3},
 };
 
 // Removed words, with the numbers they had in 003 06.
@@ -473,7 +477,7 @@ struct NextFree {
 };
 
 inline constexpr NextFree kNextFree[] = {
-    {"satellite", {1, 30, 0, 0, 0, 0, 0}, 2},
+    {"satellite", {1, 31, 0, 0, 0, 0, 0}, 2},
     {"satellite.include", {1, 1, 3, 0, 0, 0, 0}, 3},
     {"satellite.capsule", {1, 2, 2, 0, 0, 0, 0}, 3},
     {"satellite.capsule.launch", {1, 2, 1, 1, 0, 0, 0}, 4},
@@ -509,7 +513,7 @@ inline constexpr NextFree kNextFree[] = {
     {"satellite.console.display", {1, 5, 1, 1, 0, 0, 0}, 4},
     {"satellite.console.width", {1, 5, 6, 1, 0, 0, 0}, 4},
     {"satellite.console.height", {1, 5, 7, 1, 0, 0, 0}, 4},
-    {"satellite.variable", {1, 6, 22, 0, 0, 0, 0}, 3},
+    {"satellite.variable", {1, 6, 23, 0, 0, 0, 0}, 3},
     {"satellite.variable.string", {1, 6, 1, 23, 0, 0, 0}, 4},
     {"satellite.variable.string.size", {1, 6, 1, 1, 1, 0, 0}, 5},
     {"satellite.variable.string.empty", {1, 6, 1, 2, 1, 0, 0}, 5},
@@ -706,6 +710,8 @@ inline constexpr NextFree kNextFree[] = {
     {"satellite.terminal", {1, 29, 3, 0, 0, 0, 0}, 3},
     {"satellite.terminal.foreground", {1, 29, 1, 2, 0, 0, 0}, 4},
     {"satellite.terminal.background", {1, 29, 2, 2, 0, 0, 0}, 4},
+    {"satellite.variable.info", {1, 6, 22, 1, 0, 0, 0}, 4},
+    {"satellite.info", {1, 30, 3, 0, 0, 0, 0}, 3},
 };
 
 } // namespace satellite004

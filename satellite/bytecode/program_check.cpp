@@ -31,6 +31,7 @@
 
 #include "suit_run.hpp"
 #include "file_calls.hpp"
+#include "info_calls.hpp"
 #include "color_values.hpp"
 #include "console_calls.hpp"
 #include "container_calls.hpp"
@@ -398,7 +399,8 @@ signed long long int method_on_a_name(const std::vector<std::bitset<16>> &row, s
     const bool of_a_container = container_arity(method) >= 0;
     const bool a_container = declared_as == word::code_of(1, 4, 2) || declared_as == word::code_of(1, 4, 5) ||
                              declared_as == word::code_of(1, 4, 6) ||
-                             declared_as == word::code_of(1, 6, 21);   // the arguments: an index
+                             declared_as == word::code_of(1, 6, 21) ||   // the arguments: an index
+                             declared_as == word::code_of(1, 6, 22);     // an info: a list of indexes
 
     if (method == token::reverse_token)
         return success;                  // every type with an order has one
@@ -1170,7 +1172,7 @@ signed long long int names_in_statement(const std::vector<std::bitset<16>> &row,
         // make.
         if (word::is_word_code(code) && code_at(row, at + 1) == token::left_parenthesis_token &&
             functions[code] == nullptr && !is_file_word(code) && !is_infinity_word(code) &&
-            !is_window_word(code) && !is_container_word(code) && !is_console_word(code)) {
+            !is_window_word(code) && !is_container_word(code) && !is_console_word(code) && !is_info_word(code)) {
             why = std::string(word::spelling_of(code)) + " has no library built for it yet";
             return not_built_yet;
         }

@@ -29,3 +29,7 @@ satellite.variable.bin	satellite.variable.binary
 satellite.variable.hexadecimal	satellite.variable.hex
 satellite.variable.percent	satellite.variable.percentage
 satellite.variable.colour	satellite.variable.color
+#
+# THE AUTHOR, 2026-09-25 (satellite.variable.info/README.md): "satellite.info.file OR
+# satellite.info.directory or dir for short".
+satellite.info.dir(path)	satellite.info.directory(path)

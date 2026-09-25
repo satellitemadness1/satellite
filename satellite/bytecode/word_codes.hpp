@@ -31,7 +31,7 @@ namespace word {
 inline constexpr token::Code kBase = 4096;       // reserved: no word has it
 inline constexpr token::Code kFirst = 4097;      // satellite
 inline constexpr token::Code kLast = 8191;       // the end of the range
-inline constexpr unsigned int kWordsInTable = 437;
+inline constexpr unsigned int kWordsInTable = 441;
 inline constexpr unsigned int kMaxDepth = 7;
 
 inline constexpr bool is_word_code(token::Code code) { return code >= kBase && code <= kLast; }
@@ -82,6 +82,7 @@ inline constexpr KeyedWord kKeyedWords[] = {
     {0x02011B0000000000ULL, 4482},  // 1 27 -- satellite.window
     {0x02011C0000000000ULL, 4514},  // 1 28 -- satellite.namespace
     {0x02011D0000000000ULL, 4524},  // 1 29 -- satellite.terminal
+    {0x02011E0000000000ULL, 4535},  // 1 30 -- satellite.info
     {0x0301010000000000ULL, 4099},  // 1 1 0 -- satellite.include()
     {0x0301010100000000ULL, 4100},  // 1 1 1 -- satellite.include(satellite)
     {0x0301010200000000ULL, 4101},  // 1 1 2 -- satellite.include(spaceship)
@@ -130,6 +131,7 @@ inline constexpr KeyedWord kKeyedWords[] = {
     {0x0301061300000000ULL, 4515},  // 1 6 19 -- satellite.variable.color
     {0x0301061400000000ULL, 4516},  // 1 6 20 -- satellite.variable.fraction
     {0x0301061500000000ULL, 4517},  // 1 6 21 -- satellite.variable.arguments
+    {0x0301061600000000ULL, 4534},  // 1 6 22 -- satellite.variable.info
     {0x0301070000000000ULL, 4285},  // 1 7 0 -- satellite.random()
     {0x0301070100000000ULL, 4286},  // 1 7 1 -- satellite.random.fast()
     {0x0301070200000000ULL, 4287},  // 1 7 2 -- satellite.random.normal()
@@ -233,6 +235,8 @@ inline constexpr KeyedWord kKeyedWords[] = {
     {0x03011B1600000000ULL, 4512},  // 1 27 22 -- satellite.window.one_of(items)
     {0x03011D0100000000ULL, 4525},  // 1 29 1 -- satellite.terminal.foreground
     {0x03011D0200000000ULL, 4528},  // 1 29 2 -- satellite.terminal.background
+    {0x03011E0100000000ULL, 4536},  // 1 30 1 -- satellite.info.file(path)
+    {0x03011E0200000000ULL, 4537},  // 1 30 2 -- satellite.info.directory(path)
     {0x0401040100000000ULL, 4110},  // 1 4 1 0 -- satellite.container.map()
     {0x0401040101000000ULL, 4111},  // 1 4 1 1 -- satellite.container.map.set(k, v)
     {0x0401040102000000ULL, 4112},  // 1 4 1 2 -- satellite.container.map.get(k)
@@ -934,6 +938,10 @@ inline constexpr WordFacts kWordFacts[] = {
     {"satellite.variable.thread.stop()", {1, 6, 13, 3, 0, 0, 0}, 4},
     {"satellite.variable.thread.wait()", {1, 6, 13, 4, 0, 0, 0}, 4},
     {"satellite.directory.system()", {1, 18, 6, 0, 0, 0, 0}, 3},
+    {"satellite.variable.info", {1, 6, 22, 0, 0, 0, 0}, 3},
+    {"satellite.info", {1, 30, 0, 0, 0, 0, 0}, 2},
+    {"satellite.info.file(path)", {1, 30, 1, 0, 0, 0, 0}, 3},
+    {"satellite.info.directory(path)", {1, 30, 2, 0, 0, 0, 0}, 3},
 };
 
 inline constexpr std::size_t kWordFactsCount = sizeof kWordFacts / sizeof kWordFacts[0];
@@ -1059,6 +1067,10 @@ inline constexpr SpelledWord kSpelledWords[] = {
     {"satellite.include(spaceship)", 4101},
     {"satellite.infinity", 4479},
     {"satellite.infinity()", 4480},
+    {"satellite.info", 4535},
+    {"satellite.info.dir(path)", 4537},
+    {"satellite.info.directory(path)", 4537},
+    {"satellite.info.file(path)", 4536},
     {"satellite.library", 4327},
     {"satellite.library()", 4328},
     {"satellite.library.main", 4329},
@@ -1294,6 +1306,7 @@ inline constexpr SpelledWord kSpelledWords[] = {
     {"satellite.variable.hex.width", 4263},
     {"satellite.variable.hexadecimal", 4260},
     {"satellite.variable.infinity", 4478},
+    {"satellite.variable.info", 4534},
     {"satellite.variable.network", 4272},
     {"satellite.variable.number", 4213},
     {"satellite.variable.number()", 4214},

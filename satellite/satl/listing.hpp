@@ -49,10 +49,31 @@
 // the whole table.
 
 #include <csignal>
+#include <sys/stat.h>
 #include <string>
 #include <vector>
 
 namespace satellite004 {
+
+// WHAT THE SYSTEM SAYS ABOUT ONE NAME, as the table writes it: dir file link fifo sock
+// dev; rwxr-xr-x; the owner's name (or number); created (statx's birth time) and
+// modified, as 2026-09-25 14:29, each "-" when there is none. `about` is its lstat.
+struct NameFacts {
+    std::string type, permissions, owner, created, modified;
+};
+NameFacts facts_of(const std::string &path, const struct stat &about);
+
+// A SIZE IN ITS PARTS, by the size column's rule (size_of in listing.cpp): unit 0 is
+// bytes, `whole` of them; then kb, mb, gb, tb, pb and eb, the bytes over 1024 per unit
+// rounded to the nearest thousandth, and a size that rounds to 1024 of one unit is 1
+// of the next. satellite.info's size and size_type are these (info_calls.hpp).
+struct SizeParts {
+    unsigned long long int whole = 0;
+    unsigned long long int thousandths = 0;
+    std::size_t unit = 0;
+};
+inline constexpr const char *size_unit_names[] = {"b", "kb", "mb", "gb", "tb", "pb", "eb"};
+SizeParts size_parts(unsigned long long int bytes);
 
 // 10,024 -- a comma between every three digits.
 std::string with_commas(unsigned long long int number);
