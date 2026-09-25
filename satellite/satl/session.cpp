@@ -135,10 +135,12 @@ std::string where_the_session_is()
     return here;
 }
 
+// The prompt's letters, and the listing's free-space line: bold, bright white.
+const std::string lettering = "\033[0;1;97m";
+
 prompt::Prompt the_prompt_now()
 {
     static const std::string bracket = "\033[0;30m";     // black, not bold
-    static const std::string lettering = "\033[0;1;97m"; // bold, bright white
     prompt::Prompt made;
     for (const std::string &field : {std::string("satellite"), linux_username(), where_the_session_is()}) {
         made.text += "[" + field + "]";
@@ -258,7 +260,21 @@ signed long long int draw_the_listing(const std::string &path, bool given, Code 
                                 (reply.reason.empty() ? std::string() : ": " + reply.reason),
                             reply.code);
 
-    std::cout << listing_table(given ? path : std::string("."), reply.names);
+    // THE FREE SPACE FIRST, before the walk (listing.hpp): white at a terminal, as the
+    // prompt's letters are; plain in a pipe, where the prompt is not drawn either.
+    const std::string where = given ? path : std::string(".");
+    const bool at_a_terminal = the_sessions_reader != nullptr && the_sessions_reader->interactive();
+    if (at_a_terminal)
+        std::cout << lettering << free_space_line(where) << "\033[0m\n" << std::flush;
+    else
+        std::cout << free_space_line(where) << '\n' << std::flush;
+
+    // THE SAME KEY STOPS THE TABLE'S COUNTING, and answers the same line.
+    std::string table;
+    if (!listing_table(where, reply.names, &asked_to_stop, table))
+        return report_error(std::string("satl(prompt): ") + word::spelling_of(word_code) + " " + shown(where),
+                            interrupted);
+    std::cout << table;
     return success;
 }
 

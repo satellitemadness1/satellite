@@ -68,6 +68,12 @@ t.type(('satellite.directory.change("%s")\r' % room).encode())
 t.at_prompt()
 t.type(b'satellite.directory.list()\r')
 check(t.wait_for(lambda t: t.screen.shows('name') and t.screen.shows('permissions')), 'list() draws the table')
+# ABOVE IT, THE FREE SPACE (the author, 2026-09-25: "write it in white color"), the
+# prompt's own bold bright white.
+free_row = next((i for i, text in enumerate(t.screen.text()) if text.startswith('FREE SPACE IN DIRECTORY: ')), None)
+check(free_row is not None and t.screen.text()[free_row].endswith(' mb') and
+      all(t.screen.look(free_row, i) == WHITE for i, ch in enumerate(t.screen.text()[free_row]) if ch != ' '),
+      '... under a line of the free space in mb, every letter of it bold white')
 check(t.wait_for(lambda t: t.screen.shows('alpha') and t.screen.shows('.hidden') and t.screen.shows('nested')),
       '... of the directory change() moved to, dotfiles kept')
 check(t.at_prompt() and t.screen.text()[t.screen.row] == prompt_in(os.path.realpath(room)).rstrip(),
@@ -79,6 +85,21 @@ t.type(b'satellite.directory.change("/")\r')
 t.at_prompt()
 t.type(b'satellite.directory.list("%s")\r' % room.encode())
 check(t.wait_for(lambda t: t.raw.count(b'alpha') >= 2), 'list(d) lists somewhere else, after change moved away')
+
+# CTRL-C WHILE THE TABLE IS COUNTED (the author, 2026-09-25: a directory's row walks
+# everything under it, for its size, files and sub). /usr is hundreds of thousands of
+# names on any Linux -- 2.3 s here -- so the key lands mid-walk. It is pressed once
+# the line has been handed off (bracketed paste goes off, ESC[?2004l), when the
+# terminal is cooked and Ctrl-C is SIGINT; the answer is the library's own for its
+# read: 130 interrupted, and no table.
+t.at_prompt()
+tables, handed_off = t.raw.count(b'permissions'), t.raw.count(b'\x1b[?2004l')
+t.type(b'satellite.directory.list("/usr")\r')
+t.wait_for(lambda t: t.raw.count(b'\x1b[?2004l') > handed_off)
+t.type(b'\x03')
+check(t.wait_for(lambda t: b'/usr (machine_code: 130 interrupted)' in t.raw) and t.at_prompt() and
+      t.raw.count(b'permissions') == tables,
+      'Ctrl-C while the table is counted stops it: 130 interrupted, no table, the prompt back')
 
 t.at_prompt()
 t.type(b'satellite.console.display("half a line')

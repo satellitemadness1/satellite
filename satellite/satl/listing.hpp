@@ -17,25 +17,49 @@
 // the same place().
 //
 // THE TYPE COLUMN IS WHAT THE SYSTEM KNOWS, and this is D0.6.7 answered: dir,
-// file, link, fifo, sock, dev. 003 read up to 64 KB of every file to say whether
-// it was text, which makes listing a directory of a thousand files a thousand
-// reads -- a listing should cost one stat an entry. If the author wants 003's
-// column back it is one function here and no change anywhere else.
+// file, link, fifo, sock, dev -- never a file read to guess.
 //
 // THE SIZE COLUMN FOLLOWS TYPE (the author, 2026-09-24): bytes under 1024, then kb
-// and mb to three places, a file's only -- size_of() in listing.cpp has the rule.
-// It made the table 13 cells wider, and satl's console with it (console_launch.cpp).
+// and mb to three places -- size_of() in listing.cpp has the rule.
+//
+// THEN files AND sub, AND A DIRECTORY HAS A SIZE (the author, 2026-09-25). For a
+// directory: size is every file under it, at every depth, added up; files is how
+// many names directly in it are not directories; sub is its subdirectories and
+// everything in them, a dash when it has none -- so files + sub is every name under
+// it. For a text file, sub is its line count in parentheses, "(12)", the only
+// number in the table written that way. A count that met something it could not
+// read ends in "+": at least that many.
+//
+// SO A LISTING READS NOW (listing_counts.hpp), where it cost one stat an entry
+// until this: a directory row walks the tree under it (a stat for every regular
+// file, for its size) and a file row reads the file (text or not is the whole
+// file's answer). Ctrl-C stops it between names and between 256 KiB pieces, and
+// stops with no table, as the library's own read stops with no names.
+//
+// ABOVE THE TABLE, ONE LINE (the author, 2026-09-25): "FREE SPACE IN DIRECTORY:
+// 10,024.080 mb", for the directory list() was given and not for each row. Always
+// mb -- "gb is just too big" -- to three places, with a comma every three digits.
+// The free space is what df(1) calls Avail: f_bavail, what a person who is not root
+// may still write. A dash when the system will not say. The session writes it white
+// at a terminal, as the prompt's letters are, and before the walk begins, so a table
+// that takes seconds to count has something on the screen at once.
 //
 // A NAME THAT CANNOT BE STAT'ED still lists, with `-` in every column but its
 // own: a file deleted between the read and the stat is not a reason to refuse
 // the whole table.
 
+#include <csignal>
 #include <string>
 #include <vector>
 
 namespace satellite004 {
 
-// The table for `names`, each a leaf inside `directory`, in the order given.
-std::string listing_table(const std::string &directory, const std::vector<std::string> &names);
+// "FREE SPACE IN DIRECTORY: 10,024.080 mb" for `directory`, with no colour and no newline.
+std::string free_space_line(const std::string &directory);
+
+// The table for `names`, each a leaf inside `directory`, in the order given, into
+// `table`. False, with `table` empty, when `stop` was raised while it was counted.
+bool listing_table(const std::string &directory, const std::vector<std::string> &names,
+                   const volatile sig_atomic_t *stop, std::string &table);
 
 } // namespace satellite004

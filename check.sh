@@ -4842,7 +4842,8 @@ expect "strings: a line typed at the prompt reads its escapes the same way" 1 \
 # THE LISTING'S SIZE COLUMN (the author, 2026-09-24): after type; under 1024 a whole
 # number of bytes written out in full, then kb and mb -- and on, as gb tb pb eb -- to
 # three places, the bytes divided by 1024 per unit and rounded to the nearest
-# thousandth; a file's only. The two big files are sparse, so they cost no disk.
+# thousandth. The two big files are sparse, so they cost no disk -- and they are zeros,
+# so the sub column's text test stops at their first 256 KiB.
 size_room=$(mktemp -d "${TMPDIR:-/tmp}/satl_sizes.XXXXXX")
 : > "$size_room/a_empty"; head -c 1 /dev/zero > "$size_room/b_one"; head -c 538 /dev/zero > "$size_room/c_538"
 head -c 1023 /dev/zero > "$size_room/d_1023"; head -c 1024 /dev/zero > "$size_room/e_1024"
@@ -4850,16 +4851,98 @@ head -c 53248 /dev/zero > "$size_room/f_52kb"; head -c 1048575 /dev/zero > "$siz
 head -c 1536000 /dev/zero > "$size_room/h_1500kb"; truncate -s 1073741823 "$size_room/i_rounds_to_gb"
 truncate -s 5368709120 "$size_room/j_5gb"; mkdir "$size_room/k_dir"; ln -s c_538 "$size_room/l_link"
 printf 'satellite.directory.list("%s")\n' "$size_room" | "$interpreter" --repl > build/listing_sizes.out 2>/dev/null
-expect "listing: size comes after type" "name type size permissions owner created modified" \
-       "$(head -1 build/listing_sizes.out | tr -s ' ')"
-expect "listing: bytes whole and written out, kb and mb to three places, 1024.000 mb is 1.000 gb, a dir and a link a dash" \
-       "a_empty=0 bytes|b_one=1 byte|c_538=538 bytes|d_1023=1023 bytes|e_1024=1.000 kb|f_52kb=52.000 kb|g_just_under_mb=1023.999 kb|h_1500kb=1.465 mb|i_rounds_to_gb=1.000 gb|j_5gb=5.000 gb|k_dir=-|l_link=-" \
-       "$(awk 'NR > 1 { print $1 "=" ($3 == "-" ? "-" : $3 " " $4) }' build/listing_sizes.out | tr '\n' '|' | sed 's/|$//')"
+expect "listing: size comes after type, then files and sub" "name type size files sub permissions owner created modified" \
+       "$(sed -n 2p build/listing_sizes.out | tr -s ' ')"
+expect "listing: bytes whole and written out, kb and mb to three places, 1024.000 mb is 1.000 gb, an empty dir 0 bytes, a link a dash" \
+       "a_empty=0 bytes|b_one=1 byte|c_538=538 bytes|d_1023=1023 bytes|e_1024=1.000 kb|f_52kb=52.000 kb|g_just_under_mb=1023.999 kb|h_1500kb=1.465 mb|i_rounds_to_gb=1.000 gb|j_5gb=5.000 gb|k_dir=0 bytes|l_link=-" \
+       "$(awk 'NR > 2 { print $1 "=" ($3 == "-" ? "-" : $3 " " $4) }' build/listing_sizes.out | tr '\n' '|' | sed 's/|$//')"
+# THE LINE ABOVE THE TABLE (the author, 2026-09-25): the listed directory's free space,
+# always in mb to three places, a comma every three digits -- what df(1) calls Avail.
+# White at a terminal (check_session.py looks); in a pipe, plain text.
+expect "listing: the first line is the free space, in mb with commas, and no colour in a pipe" 1 \
+       "$(head -1 build/listing_sizes.out | grep -cE '^FREE SPACE IN DIRECTORY: [0-9]{1,3}(,[0-9]{3})*\.[0-9]{3} mb$')"
+# /dev is devtmpfs, which nothing writes to while this runs, so its Avail holds still.
+printf 'satellite.directory.list("/dev")\n' | "$interpreter" --repl > build/listing_free.out 2>/dev/null
+expect "listing: /dev's free space is df's Avail, divided by 1024 twice and rounded to the thousandth" \
+       "$(df -B1 --output=avail /dev | tail -1 | python3 -c '
+import sys
+b = int(sys.stdin.read()); m = 1024 * 1024
+whole, th = b // m, ((b % m) * 1000 + m // 2) // m
+if th == 1000: whole, th = whole + 1, 0
+print("FREE SPACE IN DIRECTORY: {:,}.{:03d} mb".format(whole, th))')" \
+       "$(head -1 build/listing_free.out)"
 expect "listing: sizes are written from the right, so every kb, mb and gb point lines up" 1 \
        "$(grep -E ' (kb|mb|gb)  ' build/listing_sizes.out | awk '{ print index($0, ".") }' | sort -u | wc -l)"
 rm -rf "$size_room"
-expect "satl's console is 133 columns: the listing's 120 and its size column's 13" 1 \
-       "$(grep -c '^constexpr long kColumns = 133;$' satellite/satellite_variable_window/console_launch.cpp)"
+expect "satl's console is 150 columns: the listing's 120, its size column's 13, and files' 7 and sub's 10" 1 \
+       "$(grep -c '^constexpr long kColumns = 150;$' satellite/satellite_variable_window/console_launch.cpp)"
+
+# THE LISTING'S files AND sub COLUMNS, AND A DIRECTORY'S SIZE (the author, 2026-09-25).
+# A directory: size = every file under it at every depth, added up; files = the names
+# directly in it that are not directories; sub = its subdirectories and everything in
+# them, a dash when it has none. A text file: sub = its lines, in parentheses -- the
+# number satellite.file.open(path).size() answers, and a NUL, a lone \r or bytes that
+# are not strict UTF-8 make it not text. A count that met what it could not read ends
+# in "+". Cells are split on two spaces, which is the table's gap and in no cell here.
+sub_room=$(mktemp -d "${TMPDIR:-/tmp}/satl_sub.XXXXXX")
+printf 'one\ntwo\nthree\n' > "$sub_room/a_three"; printf 'one\ntwo' > "$sub_room/b_no_end"; : > "$sub_room/c_empty"
+printf 'a\r\nb\r\n' > "$sub_room/d_crlf"; printf 'a\rb\n' > "$sub_room/e_lone_cr"; printf 'a\0b\n' > "$sub_room/f_nul"
+printf '\377\n' > "$sub_room/g_not_utf8"; printf 'h\303\251llo\n\346\227\245\346\234\254\n' > "$sub_room/h_utf8"
+printf '\357\273\277a\n' > "$sub_room/i_mark"; printf '\300\257\n' > "$sub_room/j_overlong"
+printf '\355\240\200\n' > "$sub_room/k_surrogate"; printf 'a\r' > "$sub_room/l_return_at_end"
+# a character, and then a \r\n, cut in half by the end of the first 256 KiB read
+{ head -c 262143 /dev/zero | tr '\0' a; printf '\303\251\n'; } > "$sub_room/m_char_across"
+{ head -c 262143 /dev/zero | tr '\0' a; printf '\r\nz\n'; } > "$sub_room/n_return_across"
+seq 1 100000 > "$sub_room/o_100000"
+mkdir -p "$sub_room/p_tree/sub1/sub2"; head -c 5 /dev/zero > "$sub_room/p_tree/x"; head -c 7 /dev/zero > "$sub_room/p_tree/y"
+head -c 100 /dev/zero > "$sub_room/p_tree/sub1/z"; ln -s x "$sub_room/p_tree/link"
+mkdir "$sub_room/q_flat"; printf 'hi\n' > "$sub_room/q_flat/one"; printf 'there\n' > "$sub_room/q_flat/two"
+mkdir "$sub_room/r_empty"; ln -s a_three "$sub_room/s_link"
+mkdir "$sub_room/t_locked"; touch "$sub_room/t_locked/in"; chmod 000 "$sub_room/t_locked"
+mkdir -p "$sub_room/u_partly/closed"; touch "$sub_room/u_partly/closed/in"; head -c 50 /dev/zero > "$sub_room/u_partly/open"
+chmod 000 "$sub_room/u_partly/closed"
+printf 'satellite.directory.list("%s")\n' "$sub_room" | "$interpreter" --repl > build/listing_sub.out 2>/dev/null
+expect "listing: a text file's sub is its lines in parentheses -- a last line with no \\n counts, \\r\\n and a byte-order mark read, a NUL, a lone \\r, an overlong form and a surrogate are not text" \
+       "a_three=(3)|b_no_end=(2)|c_empty=(0)|d_crlf=(2)|e_lone_cr=-|f_nul=-|g_not_utf8=-|h_utf8=(2)|i_mark=(1)|j_overlong=-|k_surrogate=-|l_return_at_end=-|m_char_across=(1)|n_return_across=(2)|o_100000=(100000)" \
+       "$(awk -F '  +' 'NR > 2 && $2 == "file" { print $1 "=" $5 }' build/listing_sub.out | tr '\n' '|' | sed 's/|$//')"
+expect "listing: a directory's size is its files added up at every depth, files what is directly in it, sub its subdirectories and what they hold; a link dashes" \
+       "p_tree=112 bytes/3/3|q_flat=9 bytes/2/-|r_empty=0 bytes/0/-|s_link=-/-/-" \
+       "$(awk -F '  +' 'NR > 2 && $1 ~ /^[p-s]_/ { print $1 "=" $3 "/" $4 "/" $5 }' build/listing_sub.out | tr '\n' '|' | sed 's/|$//')"
+# chmod 000 stops nobody who is root, so these two are a person's.
+if [ "$(id -u)" != 0 ]; then
+    expect "listing: a directory it cannot read is dashes; one holding such a directory says its size and sub are at least that, with +" \
+           "t_locked=-/-/-|u_partly=50 bytes+/1/1+" \
+           "$(awk -F '  +' 'NR > 2 && $1 ~ /^[tu]_/ { print $1 "=" $3 "/" $4 "/" $5 }' build/listing_sub.out | tr '\n' '|' | sed 's/|$//')"
+fi
+# THE SAME NUMBER A PROGRAM GETS: every file the table calls text, opened by satellite.file.
+{ echo 'satellite.include(satellite)'; echo 'satellite.capsule satellite.main()'; echo '{'
+  for text_file in a_three b_no_end c_empty d_crlf h_utf8 i_mark m_char_across n_return_across o_100000; do
+      echo "    satellite.console.display(satellite.file.open(\"$sub_room/$text_file\").size())"
+  done; echo '}'; echo 'satellite.return(satellite)'; } > build/listing_sub_lines.satl
+# Both sides against the same written numbers, so neither can pass by being empty.
+expect "listing: each (lines) is what satellite.file.open(path).size() answers for that file" \
+       "3 2 0 2 2 1 1 2 100000|3 2 0 2 2 1 1 2 100000" \
+       "$(awk -F '  +' 'NR > 2 && $5 ~ /^[(]/ { gsub(/[()]/, "", $5); print $5 }' build/listing_sub.out | tr '\n' ' ' | sed 's/ $//')|$("$interpreter" build/listing_sub_lines.satl 2>/dev/null | grep -E '^[0-9]+$' | tr '\n' ' ' | sed 's/ $//')"
+# AND EVERY FILE IT CALLS NOT TEXT BUT THE NUL ONE, satellite.file refuses to open (a NUL
+# is a character there, so a sparse file of zeros would be one line of text).
+refused=0
+for not_text in e_lone_cr g_not_utf8 j_overlong k_surrogate l_return_at_end; do
+    { echo 'satellite.include(satellite)'; echo 'satellite.capsule satellite.main()'; echo '{'
+      echo "    satellite.console.display(satellite.file.open(\"$sub_room/$not_text\").size())"
+      echo '}'; echo 'satellite.return(satellite)'; } > build/listing_sub_refused.satl
+    "$interpreter" build/listing_sub_refused.satl > build/listing_sub_refused.out 2>&1
+    # the REASON, not only the code: a missing file is file_not_open too. The report
+    # wraps at 80 columns, so its lines are joined before they are read.
+    tr '\n' ' ' < build/listing_sub_refused.out | grep -qE 'is not (UTF-8 text|text 004 reads)' && refused=$((refused + 1))
+done
+expect "listing: the five it calls not text but for a NUL, satellite.file will not open either" 5 "$refused"
+# AND ON A REAL TREE, files + sub is every name find(1) counts under it.
+printf 'satellite.directory.list("%s")\n' "$PWD" | "$interpreter" --repl > build/listing_sub_tree.out 2>/dev/null
+tree_files=$(find satellite -mindepth 1 -maxdepth 1 ! -type d | wc -l)
+tree_sub=$(( $(find satellite -mindepth 1 | wc -l) - tree_files ))
+expect "listing: satellite/'s files and sub are what find counts" "$tree_files/$tree_sub" \
+       "$(awk -F '  +' '$1 == "satellite" { print $4 "/" $5 }' build/listing_sub_tree.out)"
+chmod 700 "$sub_room/t_locked" "$sub_room/u_partly/closed"; rm -rf "$sub_room"
 
 # THE PROMPT REMEMBERS (the author, 2026-09-24: "the prompt has to remember what you type
 # in ... it has to be built to have persistence"). A name a line declares is kept, with

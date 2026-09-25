@@ -1,6 +1,7 @@
 // The prompt's directory table. See listing.hpp.
 
 #include "listing.hpp"
+#include "listing_counts.hpp"
 
 #include "../machine/shown.hpp"
 #include "../prompt/render.hpp"
@@ -10,16 +11,19 @@
 #include <limits>
 #include <pwd.h>
 #include <sys/stat.h>
+#include <sys/statvfs.h>
 #include <unistd.h>
 
 namespace satellite004 {
 
 namespace {
 
-constexpr std::size_t columns = 7;
-const char *const headings[columns] = {"name", "type", "size", "permissions", "owner", "created", "modified"};
-// SIZE IS WRITTEN FROM THE RIGHT, so the decimal points of every kb and mb line up.
-constexpr bool from_the_right[columns] = {false, false, true, false, false, false, false};
+constexpr std::size_t columns = 9;
+const char *const headings[columns] = {"name",        "type",  "size",    "files",   "sub",
+                                       "permissions", "owner", "created", "modified"};
+// THE NUMBERS ARE WRITTEN FROM THE RIGHT, so the decimal points of every kb and mb
+// line up, and so do the counts.
+constexpr bool from_the_right[columns] = {false, false, true, true, true, false, false, false, false};
 
 std::size_t cells_of(const std::string &shown_text)
 {
@@ -60,10 +64,10 @@ const char *type_of(mode_t mode)
 // that ROUNDS to 1024 of one unit is written as 1.000 of the next, so the column
 // never shows 1024.000 mb.
 //
-// ONLY A FILE HAS A SIZE HERE. A directory's own st_size is the block holding its
-// names, not what is in it, and adding up what is in it is a walk where a listing
-// costs one stat an entry (D0.6.7); a link's is the length of the path it holds.
-// Both show a dash, as a name that cannot be stat'ed does.
+// A DIRECTORY'S SIZE IS WHAT IS IN IT (the author, 2026-09-25): every file's size
+// under it at every depth, added up -- see count_contents. Its own st_size, the block
+// holding its names, is not shown anywhere. A link's is the length of the path it
+// holds, so a link shows a dash, as a name that cannot be stat'ed does.
 std::string size_of(unsigned long long int bytes)
 {
     if (bytes < 1024)
@@ -128,13 +132,46 @@ void pad_to(std::string &out, std::size_t cells, std::size_t width)
     out.append(width > cells ? width - cells : 0, ' ');
 }
 
+// ALWAYS mb, and a comma between every three digits of the whole part: 10,024.080 mb.
+// Rounded to the nearest thousandth as size_of rounds, in whole numbers.
+std::string megabytes_with_commas(unsigned long long int bytes)
+{
+    constexpr unsigned long long int megabyte = 1024ull * 1024ull;
+    unsigned long long int whole = bytes / megabyte;
+    unsigned long long int thousandths = ((bytes % megabyte) * 1000 + megabyte / 2) / megabyte;
+    if (thousandths == 1000) {
+        ++whole;
+        thousandths = 0;
+    }
+    std::string digits = std::to_string(whole);
+    for (std::size_t at = digits.size(); at > 3; at -= 3)
+        digits.insert(at - 3, 1, ',');
+    std::string places = std::to_string(thousandths);
+    places.insert(0, 3 - places.size(), '0');
+    return digits + "." + places + " mb";
+}
+
 } // namespace
 
-std::string listing_table(const std::string &directory, const std::vector<std::string> &names)
+std::string free_space_line(const std::string &directory)
 {
+    struct statvfs about;
+    if (::statvfs(directory.c_str(), &about) != 0)
+        return "FREE SPACE IN DIRECTORY: -";
+    const unsigned long long int block = about.f_frsize != 0 ? about.f_frsize : about.f_bsize;
+    const unsigned __int128 bytes = static_cast<unsigned __int128>(about.f_bavail) * block;
+    constexpr unsigned long long int most = std::numeric_limits<unsigned long long int>::max();
+    return "FREE SPACE IN DIRECTORY: " + megabytes_with_commas(bytes > most ? most : static_cast<unsigned long long int>(bytes));
+}
+
+bool listing_table(const std::string &directory, const std::vector<std::string> &names,
+                   const volatile sig_atomic_t *stop, std::string &table)
+{
+    table.clear();
     std::vector<std::vector<std::string>> rows;
     rows.reserve(names.size() + 1);
-    rows.push_back({headings[0], headings[1], headings[2], headings[3], headings[4], headings[5], headings[6]});
+    rows.emplace_back(headings, headings + columns);
+    std::vector<unsigned char> piece;   // count_lines' read buffer, one for the whole table
 
     for (const std::string &name : names) {
         const std::string path = directory + "/" + name;
@@ -142,12 +179,31 @@ std::string listing_table(const std::string &directory, const std::vector<std::s
         // lstat, so a link lists as a link rather than as what it points at --
         // and a dangling link lists at all, which stat would refuse.
         if (::lstat(path.c_str(), &about) != 0) {
-            rows.push_back({shown(name), "-", "-", "-", "-", "-", "-"});
+            rows.push_back({shown(name), "-", "-", "-", "-", "-", "-", "-", "-"});
             continue;
         }
-        const std::string size =
-            S_ISREG(about.st_mode) ? size_of(static_cast<unsigned long long int>(about.st_size)) : std::string("-");
-        rows.push_back({shown(name), type_of(about.st_mode), size, permissions_of(about.st_mode),
+        std::string size = "-", files = "-", sub = "-";
+        if (S_ISREG(about.st_mode)) {
+            size = size_of(static_cast<unsigned long long int>(about.st_size));
+            bool text = false;
+            unsigned long long int lines = 0;
+            if (!count_lines(path, stop, piece, text, lines))
+                return false;
+            if (text)
+                sub = "(" + std::to_string(lines) + ")";
+        } else if (S_ISDIR(about.st_mode)) {
+            Contents in;
+            if (!count_contents(path, stop, in))
+                return false;
+            if (in.opened) {
+                const char *const at_least = in.whole ? "" : "+";
+                size = size_of(in.bytes) + at_least;
+                files = std::to_string(in.files) + (in.files_whole ? "" : "+");
+                if (in.below > 0 || !in.whole)
+                    sub = std::to_string(in.below) + at_least;
+            }
+        }
+        rows.push_back({shown(name), type_of(about.st_mode), size, files, sub, permissions_of(about.st_mode),
                         shown(owner_of(about.st_uid)), created_at(path), moment(about.st_mtime)});
     }
 
@@ -160,21 +216,20 @@ std::string listing_table(const std::string &directory, const std::vector<std::s
                 widths[column] = cells[row][column];
         }
 
-    std::string out;
     for (std::size_t row = 0; row < rows.size(); ++row) {
         for (std::size_t column = 0; column < columns; ++column) {
             if (from_the_right[column])
-                pad_to(out, cells[row][column], widths[column]);
-            out += rows[row][column];
+                pad_to(table, cells[row][column], widths[column]);
+            table += rows[row][column];
             if (column + 1 < columns) {
                 if (!from_the_right[column])
-                    pad_to(out, cells[row][column], widths[column]);
-                out += "  ";
+                    pad_to(table, cells[row][column], widths[column]);
+                table += "  ";
             }
         }
-        out += '\n';
+        table += '\n';
     }
-    return out;
+    return true;
 }
 
 } // namespace satellite004
