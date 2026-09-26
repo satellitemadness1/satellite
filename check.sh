@@ -1573,6 +1573,16 @@ expect "satellite.help() lists the topics, and include and satellite.include bot
 printf 'satellite.help(double)\nsatellite.help(bin)\nsatellite.help(window)\n' | "$interpreter" --repl > build/repl_help2.out 2>&1
 expect "satellite.help(double) is the float, (bin) the binary, and (window) names both window topics" "1|1|1" \
        "$(grep -c '^SATELLITE 004: satellite.variable.float$' build/repl_help2.out)|$(grep -c '^SATELLITE 004: satellite.variable.binary$' build/repl_help2.out)|$(grep -c 'window is more than one topic -- write satellite.help(satellite.variable.window) or satellite.help(satellite.window)' build/repl_help2.out)"
+# EVERY EXAMPLE IN satellite.help RUNS (ERRORS2 #12, 2026-09-26): before the error sweep the
+# string topic's own example was refused under the return rule and nothing noticed. The eight
+# refused on purpose are the ones utility/check_help_examples.py's header names -- the arguments
+# example wants two words after it, satellite.history's is refused as its comment says, include
+# and library name files that are not there, and the console and window examples have no
+# display -- and it is exactly those eight, by page, or an example that broke is named here.
+help_examples=$(timeout 300 python3 utility/check_help_examples.py "$interpreter" 2>&1)
+expect "every satellite.help example runs, but the eight its checker's header names" \
+       "satellite.help/arguments/help_text.txt satellite.help/satellite.console/help_text.txt satellite.help/satellite.history/help_text.txt satellite.help/satellite.include/help_text.txt satellite.help/satellite.library/help_text.txt satellite.help/satellite.library/help_text.txt satellite.help/satellite.variable.window/help_text.txt satellite.help/satellite.window/help_text.txt |8 failing" \
+       "$(printf '%s\n' "$help_examples" | sed -n 's/^\(FAIL\|TIMEOUT\) \([^:]*\):.*/\2/p' | tr '\n' ' ')|$(printf '%s\n' "$help_examples" | tail -n 1)"
 # A brace inside a string is text and not a block: the refusals are read from the CODES.
 printf 'satellite.console.display("{ not a block }")\n' | "$interpreter" --repl 2>/dev/null | grep -q '{ not a block }'
 expect "a brace inside a string literal is not a block" 0 $?

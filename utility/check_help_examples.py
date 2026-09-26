@@ -6,7 +6,8 @@ the author's desktop whatever DISPLAY says); each program runs with no display, 
 an empty XDG_RUNTIME_DIR and 20 seconds. Expected failures on 2026-09-25: the arguments example
 (it wants two words after it), satellite.history (refused on purpose, its comment says so),
 satellite.include and satellite.library (they name files that are not there), and the window
-examples (NO_DISPLAY, which is the point of running them with none).
+examples (NO_DISPLAY, which is the point of running them with none). check.sh runs this and
+expects exactly those eight, by page: a page that starts failing, or stops, is named there.
 
 A program starts at a line `satellite.include(satellite)` and runs to the last line of code
 before prose begins again (a line that is not blank, not indented, and not satellite code or
