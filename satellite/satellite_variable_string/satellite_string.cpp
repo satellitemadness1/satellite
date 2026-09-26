@@ -74,6 +74,7 @@ signed long long int satellite_string::from_utf8(const std::string &utf8, satell
     std::size_t at = 0;
     std::size_t wide = 0;
     stopped stop = stopped::at_the_end;
+    out.bookmark_.store(0, std::memory_order_relaxed);   // `out` is written over from its first unit
     overwrite_string(out.narrow16_, size, [&](char16_t *const first, std::size_t) {
         char16_t *write = first;
         for (;;) {
@@ -154,11 +155,23 @@ std::string satellite_string::to_utf8() const
     return out;
 }
 
+// FROM THE BOOKMARK WHEN IT IS NOT PAST THE CHARACTER, and from the front when it is
+// (satellite_string.hpp says why a walk can never go backwards). Either way the walk
+// ends by moving the bookmark to where it stopped, so the next character along is one
+// step -- a loop over s[i] is a walk of the string once, not once for every i.
 std::size_t satellite_string::unit_of(std::size_t character) const
 {
-    std::size_t unit = 0;
-    for (std::size_t c = 0; c < character; ++c)
+    constexpr std::uint64_t kLow = 0xFFFFFFFFu;
+    const std::uint64_t mark = bookmark_.load(std::memory_order_relaxed);
+    std::size_t c = 0, unit = 0;
+    if (static_cast<std::size_t>(mark >> 32) <= character) {
+        c = static_cast<std::size_t>(mark >> 32);
+        unit = static_cast<std::size_t>(mark & kLow);
+    }
+    for (; c < character; ++c)
         unit += narrow16_[unit] == kWide ? 3 : 1;
+    if (unit <= kLow)   // a character is never past its unit, so it fits too
+        bookmark_.store((static_cast<std::uint64_t>(character) << 32) | unit, std::memory_order_relaxed);
     return unit;
 }
 
@@ -201,6 +214,7 @@ void satellite_string::clear()
 {
     narrow16_.clear();
     wide_count_ = 0;
+    bookmark_.store(0, std::memory_order_relaxed);
 }
 
 signed long long int satellite_string::substring(std::size_t start, std::size_t end, satellite_string &out) const
@@ -228,6 +242,7 @@ signed long long int satellite_string::substring(std::size_t start, std::size_t 
         out.narrow16_.assign(narrow16_, first, last - first);
     }
     out.wide_count_ = wide;
+    out.bookmark_.store(0, std::memory_order_relaxed);   // its characters are not where they were
     return success;
 }
 

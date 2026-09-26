@@ -138,4 +138,16 @@ signed long long int write_through_index(Value &root, const std::vector<Value> &
                                          const std::string &name, std::size_t where, const TypeShape &shape,
                                          ExpressionContext &context);
 
+// ONE LINK OF A METHOD CHAIN AS IT WAS WRITTEN, from its `.`: `.trim`, `.size()` or
+// `.split(...)`, so a refusal can name the piece it refused -- `s.trim.append`, not
+// `s.append` (the M16 review). What was inside the brackets is not spelled out, as
+// `s[...]` never spells its index.
+std::string link_spelled(const std::vector<std::bitset<16>> &row, std::size_t dot);
+
+// `s.split(",")[2]` and `"abc"[1]` -- [ ] AFTER A METHOD'S ANSWER OR A LITERAL, which is
+// not built: the sentence the walker refuses it with, and the checker too when it can
+// see it before the run (the M16 review, 2026-09-26). `spelled` is what stands before
+// the `[`, as `s.split(...)`.
+std::string index_after_an_answer(const std::string &spelled);
+
 } // namespace satellite004

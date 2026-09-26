@@ -52,6 +52,22 @@
 // a character. Everything in this class walks character by character, and
 // units()/code_at_unit() are how code outside it does the same.
 //
+// THE WALK STARTS FROM WHERE THE LAST ONE STOPPED (the M16 review, 2026-09-26). A walk
+// from the front on every s[i] made a loop over the characters quadratic as soon as the
+// string held ONE wide character: 32,769 characters with one emoji took 2.40 s, and
+// 65,537 took 13.04 s, where the same string with no emoji took 0.27 s at 131,072. So
+// the string keeps a bookmark -- the last character a walk reached, and the unit it
+// starts at -- and a walk to that character or past it starts there. Reading forward,
+// one character after another, is one step each. A walk backwards starts from the
+// front again: a wide character's halves can be any sixteen bits, so no unit can be
+// read backwards as the start of a character.
+//
+// THE BOOKMARK IS ONE 64-BIT ATOMIC, the character in the high half and its unit in the
+// low, so two threads reading one string can never see half of each other's (T2: a
+// string may be read unlocked). A string past four thousand million units walks from
+// the front, and is simply never bookmarked. Appending keeps the bookmark, because
+// everything before the end stays where it was; every other change puts it back at 0.
+//
 // Tokens (// || << >> :: ...) are never stored in a string: a string holds
 // characters. Tokens belong to the numbered program.
 //
@@ -60,7 +76,9 @@
 // (no overlong forms, no surrogates, nothing above U+10FFFF -- the rules the
 // 32-bit strings/satellite_string.cpp was checked against, 30,055 cases).
 
+#include <atomic>
 #include <cstddef>
+#include <cstdint>
 #include <string>
 #include <utility>
 
@@ -76,22 +94,38 @@ public:
     // A MOVED-FROM STRING IS AN EMPTY ONE, its wide count with it. A defaulted move
     // copies wide_count_ and leaves it behind on a string whose units have gone, so
     // size() -- units minus two a wide character -- would wrap below zero and
-    // code_at would walk past the end. Copies are the defaults.
-    satellite_string(const satellite_string &) = default;
-    satellite_string &operator=(const satellite_string &) = default;
+    // code_at would walk past the end. A copy holds the same characters, so the
+    // bookmark goes with it; a moved-from string's goes back to the front.
+    satellite_string(const satellite_string &from)
+        : narrow16_(from.narrow16_), wide_count_(from.wide_count_), bookmark_(from.bookmark_.load(std::memory_order_relaxed))
+    {
+    }
+    satellite_string &operator=(const satellite_string &from)
+    {
+        if (&from != this) {
+            narrow16_ = from.narrow16_;
+            wide_count_ = from.wide_count_;
+            bookmark_.store(from.bookmark_.load(std::memory_order_relaxed), std::memory_order_relaxed);
+        }
+        return *this;
+    }
     satellite_string(satellite_string &&from) noexcept
-        : narrow16_(std::move(from.narrow16_)), wide_count_(from.wide_count_)
+        : narrow16_(std::move(from.narrow16_)), wide_count_(from.wide_count_),
+          bookmark_(from.bookmark_.load(std::memory_order_relaxed))
     {
         from.narrow16_.clear();
         from.wide_count_ = 0;
+        from.bookmark_.store(0, std::memory_order_relaxed);
     }
     satellite_string &operator=(satellite_string &&from) noexcept
     {
         if (&from != this) {   // s = std::move(s) keeps s
             narrow16_ = std::move(from.narrow16_);
             wide_count_ = from.wide_count_;
+            bookmark_.store(from.bookmark_.load(std::memory_order_relaxed), std::memory_order_relaxed);
             from.narrow16_.clear();
             from.wide_count_ = 0;
+            from.bookmark_.store(0, std::memory_order_relaxed);
         }
         return *this;
     }
@@ -156,12 +190,16 @@ public:
     friend bool operator<(const satellite_string &l, const satellite_string &r) { return compare(l, r) < 0; }
 
 private:
-    // The unit a character starts at, walking from the front: the slower path.
+    // The unit a character starts at, walking from the bookmark when the character is at
+    // it or past it, and from the front when it is before it: the slower path.
     std::size_t unit_of(std::size_t character) const;
     char32_t code_at_walking(std::size_t index) const;
 
     std::u16string narrow16_;       // every character, two bytes -- or six for a wide one
     std::size_t wide_count_ = 0;    // how many of them are wide: size() is never a scan
+    // The last character a walk reached (high 32 bits) and the unit it starts at (low 32).
+    // 0 is character 0 at unit 0, which is true of every string.
+    mutable std::atomic<std::uint64_t> bookmark_{0};
 };
 
 } // namespace satellite004

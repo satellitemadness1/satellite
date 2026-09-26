@@ -19,6 +19,7 @@
 #include "access_calls.hpp"
 #include "color_values.hpp"
 #include "container_calls.hpp"
+#include "string_calls.hpp"
 #include "console_calls.hpp"
 #include "thread_calls.hpp"
 #include "../satellite_object/object_lock.hpp"
@@ -301,6 +302,14 @@ const char *spelling_of_method(Code method)
     return method_spelling(method);                         // the registry's one table (INF-1)
 }
 
+// WHETHER THE STATEMENT ENDS HERE, so nothing after this point uses what was answered.
+// capsule_calls.cpp's ends_the_line asks the same of a capsule's answer.
+bool the_line_ends_at(const std::vector<std::bitset<16>> &row, std::size_t at)
+{
+    const Code code = code_at(row, at);
+    return code == token::line_end_token || code == token::comment_token || code == token::end_of_file_token;
+}
+
 // A CONVERSION, OR nullptr FOR AN OPERATION. The whole difference between the two
 // halves of a chain segment: a conversion changes what the receiver IS, an
 // operation does something WITH it.
@@ -332,7 +341,7 @@ ObjectConversion conversion_of(Code method)
 // one hop: the variable's value knows its own kind, so the method resolves
 // against that and nothing else.
 Value call_method(const std::vector<std::bitset<16>> &row, std::size_t &at, const Value &start,
-                  const std::string &name, ExpressionContext &context, Value *home = nullptr,
+                  const std::string &root, ExpressionContext &context, Value *home = nullptr,
                   const TypeShape *shape = nullptr)
 {
     // NOTHING IS COPIED WHILE THE CHAIN IS STILL ON THE VARIABLE, and that one
@@ -363,8 +372,26 @@ Value call_method(const std::vector<std::bitset<16>> &row, std::size_t &at, cons
     // becomes the next turn's (*live), and `s.bin.find("1010111")` is two turns
     // with nothing in this file knowing that pairing exists. A chain of any
     // length costs one local.
+    //
+    // A REFUSAL NAMES THE PIECE IT REFUSED (the M16 review, 2026-09-26). `name` was the
+    // chain's root on every turn, so `s.trim.append("d")` said "s.append changes a string,
+    // and this one has no name to change" -- of s, which has one. Once a turn has taken the
+    // chain off the name, the next turn is called what was written up to it,
+    // `s.trim.append`, as `s[...][2]` already was. A chain one turn long, the common case,
+    // spells nothing.
+    std::string chain;
+    const std::string *shown = &root;
+    std::size_t link_at = 0;
+    bool after_a_link = false;
     while (code_at(row, at) == token::method_token &&
            (token::is_method_code(code_at(row, at + 1)) || a_member_next(row, at, *live))) {
+        if (after_a_link && !on_the_name) {
+            chain = *shown + link_spelled(row, link_at);
+            shown = &chain;
+        }
+        link_at = at;
+        after_a_link = true;
+        const std::string &name = *shown;
         // AN OBJECT'S MEMBER (2026-09-22, capsule_calls.hpp): its spacesuit says what the
         // name is, whether or not the lexer made it a method code -- an object's capsule
         // may be called `size` as well as `call_name`. What it answers goes on down the chain.
@@ -515,6 +542,23 @@ Value call_method(const std::vector<std::bitset<16>> &row, std::size_t &at, cons
             held = std::move(answer);
             live = &held;
             on_the_name = false;
+            continue;
+        }
+
+        // A STRING'S OWN METHODS (M16, string_calls.cpp): .size .empty .contains .starts_with
+        // .ends_with .find .at .substring .split .replace .trim .resolved answer something
+        // new, and .append and .clear change the string on the name -- so, as a list's
+        // .append does, those two leave the chain where it is.
+        if ((*live).is_string() && string_method_arity(method) >= 0) {
+            Value answer = call_string_method(method, *live, on_the_name ? live : nullptr, arguments,
+                                              had_parentheses, name, context);
+            if (context.code != success)
+                return Value();
+            if (!changes_a_string(method)) {
+                held = std::move(answer);
+                live = &held;
+                on_the_name = false;
+            }
             continue;
         }
 
@@ -693,6 +737,23 @@ Value call_method(const std::vector<std::bitset<16>> &row, std::size_t &at, cons
         live = &held;
         on_the_name = false;
     }
+    // `s.split(",")[2]` -- [ ] STRAIGHT AFTER A METHOD'S ANSWER is not built (the M16
+    // review): it stopped the expression at the `[` with a hint about spaces around math
+    // signs, which does not apply. Said as what it is, with the way round it.
+    if (code_at(row, at) == token::left_square_bracket_token) {
+        context.refuse(satl_line_not_understood,
+                       index_after_an_answer(*shown + (after_a_link ? link_spelled(row, link_at) : std::string())), at);
+        return Value();
+    }
+    // A CHANGE THAT ENDS A STATEMENT ANSWERS NOTHING (the M16 review, 2026-09-26). The
+    // chain still on the name means every turn changed the variable in place -- .append,
+    // .clear -- and `return *live` then copied the variable to answer a line that lets
+    // the answer go. A list is a handle, so that copy was a count; a string is held by
+    // value, so it was every character, and `t.append("ab")` in a loop was quadratic:
+    // 200,000 appends took 6.10 s where 50,000 took 0.35 s. Used in an expression --
+    // `display(t.append("!"))` -- the answer is still the string.
+    if (on_the_name && context.statement && the_line_ends_at(row, at))
+        return Value();
     return *live;
 }
 
@@ -783,6 +844,11 @@ Value index_into(const Value &current, const Value &index, const std::string &wh
         return *found;
     }
 
+    // A STRING'S CHARACTER, `s[n]` (M16) -- counting from 1, as an item and a line do, and
+    // answered as a string of one character: satellite has no character type.
+    if (current.is_string())
+        return character_of(current, index, what, where, context);
+
     if (satellite_file *file = current.as_file()) {
         // A LOCKED FILE'S LINE IS READ UNDER ITS LOCK, as its methods are (the second review:
         // f[n] beside another thread's f.append(...) read a half-moved line, S514).
@@ -795,7 +861,8 @@ Value index_into(const Value &current, const Value &index, const std::string &wh
     }
 
     context.refuse(types_do_not_meet, what + " is " + current.kind_name() +
-                                          ", and [ ] reads a line of a file, an item of a list, or a key of an index",
+                                          ", and [ ] reads a line of a file, an item of a list, a key of an index, "
+                                          "or a character of a string",
                    where);
     return Value();
 }
@@ -819,6 +886,12 @@ Value maybe_a_method(const std::vector<std::bitset<16>> &row, std::size_t &at, V
     if ((code_at(row, at) == token::method_token && token::is_method_code(code_at(row, at + 1))) ||
         a_member_next(row, at, value))
         return call_method(row, at, value, what, context);
+    // `"abc"[1]`: [ ] reads a name's item, and a literal has none yet (call_method says
+    // the same of a method's answer). It stopped the expression with a hint about spaces.
+    if (code_at(row, at) == token::left_square_bracket_token) {
+        context.refuse(satl_line_not_understood, index_after_an_answer(what), at);
+        return Value();
+    }
     return value;
 }
 
@@ -1423,7 +1496,13 @@ Value one_operand(const std::vector<std::bitset<16>> &row, std::size_t &at, Expr
         // while instead of an if, because each step just indexes whatever the
         // last one answered -- a list of lists is not a second kind of thing.
         if (code_at(row, at) == token::left_square_bracket_token) {
-            Value current = *found.value;
+            // THE FIRST BRACKET READS THE VARIABLE WHERE IT IS, AND COPIES NOTHING (M16). A
+            // string is held by value, so `Value current = *found.value` -- this line until
+            // today -- copied all of it for every s[i]: a loop reading each character of a
+            // string of 163,840 took 4.6 s, and four times the characters seventeen times as
+            // long. A list or an index is a handle, so for them it only saves a count.
+            Value current;
+            const Value *reading = found.value;
             std::string what = name;
             // KEPT SO A MUTATOR AT THE END OF THE CHAIN CAN BE WALKED AGAIN,
             // this time reaching the real slot rather than a copy of it. Reading
@@ -1443,13 +1522,14 @@ Value one_operand(const std::vector<std::bitset<16>> &row, std::size_t &at, Expr
                     return Value();
                 }
                 ++at;
-                if (current.is_nothing()) {
+                if (reading->is_nothing()) {
                     context.refuse(satl_line_not_understood, name + " has no value yet -- give it one with = before "
                                                                  "reading an item of it", opened_at);
                     return Value();
                 }
                 used.push_back(index);
-                current = index_into(current, index, what, opened_at, context);
+                current = index_into(*reading, index, what, opened_at, context);
+                reading = &current;
                 if (context.code != success)
                     return Value();
                 what += "[...]";
@@ -1486,10 +1566,11 @@ Value one_operand(const std::vector<std::bitset<16>> &row, std::size_t &at, Expr
                         if (context.code != success)
                             return Value();
                         if (slot != nullptr)
-                            return call_method(row, at, *slot, name, context, slot, inner);
+                            return call_method(row, at, *slot, what, context, slot, inner);
                     }
                 }
-                return call_method(row, at, current, name, context);
+                // Called what it was written as, `w[...].at(9)`: the item, not the list.
+                return call_method(row, at, current, what, context);
             }
             return current;
         }
@@ -2042,6 +2123,27 @@ signed long long int write_through_index(Value &root, const std::vector<Value> &
 Value evaluate_expression(const std::vector<std::bitset<16>> &row, std::size_t &at, ExpressionContext &context)
 {
     return evaluate_at(row, at, 1, context);
+}
+
+std::string link_spelled(const std::vector<std::bitset<16>> &row, std::size_t dot)
+{
+    std::size_t k = dot + 1;
+    std::string out = ".";
+    if (code_at(row, k) == token::name_token) {
+        out += text_at(row, k);
+    } else {
+        out += method_spelling(code_at(row, k));
+        ++k;
+    }
+    if (code_at(row, k) == token::left_parenthesis_token)
+        out += code_at(row, k + 1) == token::right_parenthesis_token ? "()" : "(...)";
+    return out;
+}
+
+std::string index_after_an_answer(const std::string &spelled)
+{
+    return spelled + "[...]: [ ] is not built yet straight after a call's answer, a literal or a bracket -- give "
+                     "the value a name first, and read [ ] of that name";
 }
 
 } // namespace satellite004

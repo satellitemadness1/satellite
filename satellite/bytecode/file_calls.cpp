@@ -8,6 +8,7 @@
 
 #include "file_calls.hpp"
 #include "container_calls.hpp"
+#include "string_calls.hpp"
 
 #include "word_codes.hpp"
 #include "../machine/s_codes.hpp"
@@ -248,6 +249,17 @@ const char *so_far_whose(token::Code method)
         return "so far a string and a window piece have it";
     const bool a_file = file_method_arity(method) >= 0;
     const bool a_container = container_arity(method) >= 0;
+    // A STRING'S OWN (M16, string_calls.hpp) -- named first, as the one a person is most
+    // likely to have meant: `n.contains("4")` on a number wants n.string.contains("4").
+    const bool a_string = string_method_arity(method) >= 0;
+    if (a_string && a_file && a_container)
+        return "so far a string, a file and a container have it";
+    if (a_string && a_file)
+        return "so far a string and a file have it";
+    if (a_string && a_container)
+        return "so far a string and a container have it";
+    if (a_string)
+        return "so far it is a string's";
     if (a_file && a_container)
         return "so far a file and a container have it";
     if (a_container)

@@ -414,7 +414,14 @@ bits              name                         what it is
 0000101101011101  upper_token                  upper/uppercase/up  [METHOD] string.upper() -- the text in capital letters, every language's that has them (the author, 2026-09-25: "str.upper() and str.uppercase() and str.up()")
 0000101101011110  lower_token                  lower/lowercase  [METHOD] string.lower() -- the text in small letters (the author, 2026-09-25: "str.lower() and str.lowercase()")
 0000101101011111  center_token                 center/centre  [METHOD] satellite.console.display(text).center() -- the line in the middle of the console, for the width it has as it is shown (the author, 2026-09-25)
-0000101101100000  free                         to 0000101111111111, free for this family
+0000101101100000  starts_with_token            starts_with  [METHOD] string.starts_with(x) -- whether the string begins with x; x of "" always does (M16, word 1 6 1 6)
+0000101101100001  ends_with_token              ends_with  [METHOD] string.ends_with(x) -- whether the string finishes with x (M16, word 1 6 1 7)
+0000101101100010  substring_token              substring  [METHOD] string.substring(start, end) -- the characters from start to end, both counted from 1 and both kept (M16, word 1 6 1 5)
+0000101101100011  split_token                  split  [METHOD] string.split(separator) -- the pieces between separators as a list of strings; "" splits into characters (M16, word 1 6 1 10)
+0000101101100100  trim_token                   trim  [METHOD] string.trim -- the text without space, tab, carriage return or newline at either end (M16, word 1 6 1 11)
+0000101101100101  at_token                     at  [METHOD] string.at(n) -- character n, counting from 1, as a string of one character; the same as string[n] (M16, word 1 6 1 16)
+0000101101100110  resolved_token               resolved  [METHOD] string.resolved -- the string with its live escapes resolved; 004 has none yet, so it answers itself (M16, word 1 6 1 17)
+0000101101100111  free                         to 0000101111111111, free for this family
 
 0001000000000000  word_base                    reserved: no word has this code
 0001000000000001  the first word               satellite -- and every satellite.something.something after it

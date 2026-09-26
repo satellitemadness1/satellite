@@ -520,7 +520,7 @@ order. The one that matters most is **FO-6, the race**: two runs of a
 self-editing program can both read 7 and both write 8, because there is no file
 lock yet — the only open item likely to bite a real program rather than a test.
 
-## M16 — the rest of the string methods
+## M16 — the rest of the string methods — **BUILT 2026-09-26**, `c2b3500`
 
 `find` and the four conversions run. **The list is already frozen** — 23 methods
 at `1 6 1 n` — so none of this is a design question:
@@ -536,8 +536,60 @@ Each is one registry row, one `str_*.cpp`, one dispatch line.
 
 **`upper` and `lower` BUILT 2026-09-25 (`c7ec8a1`)**, on the author's word, with his second
 spellings `.uppercase()`, `.up()` and `.lowercase()` -- every language's letters through glibc's
-C.UTF-8 case table (`satellite_object/string_case.hpp`), where 003 changed a-z alone. The other
-fifteen are still owed, and still refused before anything runs (S210).
+C.UTF-8 case table (`satellite_object/string_case.hpp`), where 003 changed a-z alone.
+
+**The other thirteen BUILT 2026-09-26 (`c2b3500`)**, on "do M16 and M21", and `s[n]` with them:
+`size` `empty` `contains` `starts_with` `ends_with` `at` `substring` `split` `replace` `trim`
+`resolved` `append` `clear`, on the language's own 16-bit string -- `bytecode/string_calls.cpp`
+for the arguments and refusals, `satellite_object/string_pieces.hpp` for the loops (a header,
+so M21's libraries can include it). Not one `str_*.cpp` each: the table's shape of a pair
+fast path does not fit a method with no argument or two. Seven method rows are new (0x0B60
+to 0x0B66); the other six were already a file's or a container's words. M21 was not needed.
+Behaviour is 003's -- `strings/check_string_methods.py` runs its 44 cases through `build/satl`
+as well as the libraries, against 003's satl, and all match. **Choices he may overrule:**
+- **Positions count from 1**, as a list's items do: `s[1]` and `s.at(1)` are the first
+  character, and `substring(start, end)` keeps both ends -- 003's `substring(start - 1, end)`.
+  An empty piece is `substring(n + 1, n)`; 0 or past the end is S411, a negative S410,
+  backwards S412. **`.find` still counts from 0**, as it has since 2026-09-16 and as check.sh
+  pins it, so `s.substring(s.find(","), ...)` is one character off -- his to rule.
+- **`s[n]` reads; `s[n] = x` is refused** (S301), as is `"abc"[1]` straight after a literal
+  (a list literal has no `[ ]` either).
+- **A number where text goes is its digits, with S020** -- `.find` too, now. A bool, a list or
+  any other kind is refused (S301).
+- **`append` and `clear` change the name**, as a list's `append` does, and are refused on a
+  literal inside an expression -- `display("abc".append("d"))` is S110. **Alone on its own
+  line, `"abc".append("d")` runs nothing and says nothing**: a line that starts with a literal
+  is passed over whole, by the checker and the walker alike (`5 + 3` and `"abc".size` alone
+  on a line too), before M16 as after it -- his to rule whether such a line is refused.
+  `"".split("")` is an empty list and `"".split(",")` one empty piece, as in 003.
+- **`resolved` answers the string as it is**: 004 has no live escapes.
+- **A float or a bool where text goes is refused (S301)** while a whole number is its digits:
+  `s.contains(42)` is true of "n42n", `s.contains(4.5)` stops the program. Whether his
+  "just convert the number to the string" covers 4.5 is his; until then it is refused only
+  when the line runs, not before.
+- **`[ ]` straight after a method's answer or a literal is not built** -- `s.split(",")[2]`,
+  `"abc"[1]`, `l.reverse()[1]` -- and is refused by name (S110) with the way round it: give
+  the value a name first. On a string, before anything runs. Building it is his to decide.
+
+**The review of 2026-09-26, fixed on this branch:**
+- `t.append("ab")` in a loop was quadratic -- 200,000 appends 6.10 s, 50,000 0.35 s -- because
+  a statement's last append copied the whole string to answer a line that lets the answer go
+  (`call_method`'s `return *live`; a list is a handle, so its copy was a count). A change that
+  ends a statement answers nothing now: 200,000 appends take 0.23 s.
+- `s[i]` walked from the string's front whenever it held one wide character, so a loop over the
+  characters was quadratic: 32,769 characters with one emoji 1.87 s, 65,537 13 s. The string
+  keeps a bookmark of the last character a walk reached (`satellite_string.hpp`), and 32,769
+  take 0.10 s. **Reading forwards is linear; reading backwards is not** -- a wide character's
+  halves can be any sixteen bits, so no walk can step back, and a loop from `s.size` down to 1
+  on a string with a wide character still walks from the front each time.
+- A refusal names the piece it refused: `s.trim.append changes a string, and this one has no
+  name to change` (it said `s.append`, of s, which has a name), `w[...].at(9)`, and
+  `that string.split(...).size`.
+- Before anything runs, on a string name or a string literal: a float, binary, hex,
+  percentage, fraction, bool or text where a position goes, a first position of 0 (`s.at(0)`,
+  `s[0]`, `s.substring(0, n)`), `""` as the text `replace` looks for, and `s[1] = "j"`.
+- `strings/check_string_methods.py`: a crash is not a refusal, -1 stays -1 through build/satl,
+  and 003's satl runs once a case, with a HOME of its own and no display.
 
 **Answered, and one ruling covers both** (the author, 2026-09-16): for
 `string_object.replace(number1, number2)` and `string_object.find(number)`, a
