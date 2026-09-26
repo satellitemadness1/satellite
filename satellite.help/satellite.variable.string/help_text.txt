@@ -8,9 +8,12 @@ keeps it as characters, not bytes, in its own 16/32-bit form, so an accent or
 an arrow is one character and .reverse() turns a string round by character. A
 string name refuses a value that is not a string (machine code 27).
 
-+ joins two strings, and .add(x) is the same join. satellite converts nothing
-on its own, so "n = " + 4 is refused (S301): write the conversion out loud, as
-"n = " + n.to_string(). - takes away the FIRST place the right string occurs,
++ joins two strings, and .add(x) is the same join. A number added to a string
+joins as the text its own .string gives: "n = " + 4 is n = 4, and so are
+"f " + 1.5, "p " + 50%, "b " + b1010 and "h " + x1F. With the number first,
+text that spells a number is added -- 4 + "2" is the number 6 -- and any other
+text is joined after it: 4 + "abc" is 4abc. A bool or a colour added to a string
+is refused (S301): write its .string. - takes away the FIRST place the right string occurs,
 and answers the left string unchanged when it is not there. == and != compare
 two strings, and < and > order them by satellite's own character table: a to
 z, then A to Z, then digits, then signs, then the space, so "a" < "B" is true.
@@ -35,18 +38,26 @@ colours under NO_COLOR. A colour put round a string that already holds one comes
 back after it, so ("a" + "b".foreground(x0000FF) + "c").foreground(xFF0000)
 draws c red.
 
+.upper() (also .uppercase() and .up()) answers the text in capital letters and
+.lower() (also .lowercase()) in small ones -- every language's letters, not only
+a-z, so "héllo".upper() is HÉLLO -- and the string itself is unchanged.
+
 Numbered under word 1 6 1 and not built yet in satellite 004: .size .empty
 .contains(x) .replace(a, b) .append(x) .clear .at(n) .substring(start, end)
-.starts_with(x) .ends_with(x) .lower .upper .split(separator) .trim .resolved
-and satellite.variable.string(x) as a call. Each is refused today, and so is
-reading one character with s[n].
+.starts_with(x) .ends_with(x) .split(separator) .trim .resolved and
+satellite.variable.string(x) as a call. Each is refused before anything runs
+(S210), and so is reading one character with s[n].
 
 A backslash inside the quotes starts an escape: \" is a double quote, \\ one
 backslash, \n a new line, \t a tab, \r a carriage return, and \' an apostrophe
 (which needs no escape, and is taken anyway). So "say \"hi\"" is say "hi", and a
 program can write a line of satellite that holds a string of its own. A
-backslash before any other character stays in the text as written, so "a\qb"
-is a\qb.
+backslash before any other character is refused before anything runs, naming
+the six -- "a\qb" is not a string satl will run.
+
+A string may run over as many lines as it needs: a line break inside the quotes
+is part of the text, and the string is whatever stands between its two quotes.
+One that never closes is refused where it begins.
 
 example:
 
@@ -57,7 +68,9 @@ satellite.capsule satellite.main()
     satellite.variable.string s = "hello world"
     satellite.variable.number n = 4
     satellite.console.display(s + "!") // hello world!
-    satellite.console.display("n = " + n.to_string()) // n = 4
+    satellite.console.display("n = " + n) // n = 4
+    satellite.console.display(n + "2") // 6
+    satellite.console.display(s.upper()) // HELLO WORLD
     satellite.console.display(s - "o") // hell world
     satellite.console.display(s.find("world")) // 6
     satellite.console.display(s.reverse()) // dlrow olleh
@@ -70,7 +83,6 @@ satellite.capsule satellite.main()
     satellite.console.display("apple" < "banana") // true
     satellite.console.display("say \"hi\"") // say "hi"
     satellite.console.display("one\ntwo") // one, and two on the next line
-    satellite.console.display("a\qb") // a\qb
     satellite.return(satellite)
 }
 
@@ -80,7 +92,6 @@ satellite.include(satellite)
 
 satellite.capsule satellite.main()
 {
-    satellite.variable.number n = 4
-    satellite.console.display("n = " + n) // refused: S301, converts nothing
+    satellite.console.display("on: " + satellite.bool.true) // refused: S301, write .string
     satellite.return(satellite)
 }

@@ -405,7 +405,8 @@ public:
     // -1, 0 or 1 through `order`. Refuses a pair with no ordering.
     signed long long int compare(const satelliteObject &other, int &order, std::string &why) const;
 
-    // THE CONVERSIONS, explicit and never automatic (DESIGN 1.1).
+    // THE CONVERSIONS, explicit -- except where `+` meets a number and a string, which the
+    // author ruled on 2026-09-25 (satelliteObject::add says how).
     signed long long int to_string(satellite_string &out, std::string &why) const;
     signed long long int to_number(satellite_number &out, std::string &why) const;
     signed long long int to_binary(satellite_string &out, std::string &why) const;

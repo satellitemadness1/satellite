@@ -534,6 +534,11 @@ at `1 6 1 n` — so none of this is a design question:
 
 Each is one registry row, one `str_*.cpp`, one dispatch line.
 
+**`upper` and `lower` BUILT 2026-09-25 (`c7ec8a1`)**, on the author's word, with his second
+spellings `.uppercase()`, `.up()` and `.lowercase()` -- every language's letters through glibc's
+C.UTF-8 case table (`satellite_object/string_case.hpp`), where 003 changed a-z alone. The other
+fifteen are still owed, and still refused before anything runs (S210).
+
 **Answered, and one ruling covers both** (the author, 2026-09-16): for
 `string_object.replace(number1, number2)` and `string_object.find(number)`, a
 number where a string is expected is *"just convert the number to the string and
@@ -1198,7 +1203,10 @@ we are going to rebuild the interpreter as we rebuilt the features to be a switc
 | — | ~~the leading-slash rule: filesystem root, or program root?~~ **ANSWERED 2026-09-16:** *"program root first, then filesystem root when it's not found, and if it's not found in either, we report file not found, and we keep a cwd for files that are included... so the files directory becomes the cwd for each file"*. (The author wrote it as D12.1; D12.1 is the parallel-group syntax and is still open.) | — |
 | — | ~~a number argument where a string is expected~~ **ANSWERED 2026-09-16:** *"just convert the number to the string and run that piece, obviously the programmer meant convert to string, but record the warning in satellite.log"*. The warning is S020 in `satellite.log`, built with M5 on 2026-09-25 | M16 |
 
-**Decided and NOT owed, so nobody reopens it:** the walker's ~27,000 recursion
+**REOPENED AND BUILT 2026-09-25 (`8c8dc35`), on the author's word:** a capsule calling itself
+mid-body moves onto a fresh stack segment when less than 1 MiB is left
+(`machine/stack_segments.hpp`) -- 1,000,000 deep ran in 5.3 s. Nesting inside ONE statement is
+still what the paragraph below says. **What it said:** the walker's ~27,000 recursion
 depth. The author accepted it on 2026-09-16 — it is an order of magnitude past
 any recursion a person writes, and the fix is a real rewrite of the walker. What
 would reopen it is a real program that runs out, and generated code is the likely

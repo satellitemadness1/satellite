@@ -18,6 +18,28 @@ owed on them). Then PLAN M0.5: the build port, the installer and satl-term.
 
 ## 1. What is built and checked
 
+**2026-09-25, EVENING -- THE ERROR SWEEP AND THE AUTHOR'S ANSWERS, every one built and pushed**
+(SCRATCH.md/NEW_ERROR_LIST.md holds the questions and his words; check.sh 934 passed at the end):
+
+| piece | commit | files |
+|---|---|---|
+| A file saved on Windows runs (`\r\n`; a lone `\r` in a file with no `\n`); a byte-order mark at the start is dropped | b603f03, 3fdd50a | `satl/satl_file.cpp` |
+| Unquoted `./x` and `../x` includes; an include naming no file is refused | b603f03 | `bytecode/include_shape.cpp`, `capsule_scopes.cpp` |
+| A line outside every capsule, a `}` that closes nothing, `satellite.main()` without `capsule` -- refused before anything runs; a shebang first line is allowed | b603f03 | `bytecode/capsule_scopes.cpp` |
+| A misspelled word asks "did you mean"; `print(...)`, `'quotes'`, a closing `;` are told what satellite writes | b603f03 | `bytecode/program_check.cpp`, `capsule_reach.cpp` |
+| `arguments.cores` = physical cores (12); `arguments.threads`/`.thread` = what satl may create; `arguments.machine.threads`/`.thread` = hardware threads (24) | b603f03, 3fdd50a | `satellite-numbers/machine_facts.hpp`, `words/aliases.tsv` |
+| The installer puts `satellite.help/` beside satl; `build_libraries.py` rebuilds on every header a library reads | b603f03 | `satellite_enterprise/install_support/060-install-tree.sh`, `satellite-numbers/build_libraries.py` |
+| A capsule parameter takes a value by a declaration's rules (a whole number to a float) | b603f03 | `bytecode/program_walk.cpp` |
+| string + any number joins it as its `.string`; a number + text that spells a number adds (`4 + "2"` is 6), other text joins (`4 + "abc"` is `4abc`) | 3fdd50a, 1a913c0 | `satellite_object/satellite_object.cpp`, `string_and_number_add.hpp` |
+| Only a checkout holding `.satellite_counts_builds` counts builds; a clone never writes `satellite_config.hpp`, so `git pull` works | 3fdd50a | `config/build_number.py`, `.gitignore` |
+| A character with no meaning outside a string or comment is refused by name; an unknown escape is refused | 3fdd50a | `bytecode/capsule_scopes.cpp` (`first_thing_with_no_meaning`) |
+| S016 CONFIG_ROW_NOT_UNDERSTOOD: an unknown `config.ini` row is named, the run carries on | c4edcd2 | `structured-library.cpp`, `config/config_file.hpp` |
+| `satellite.main` ends with `satellite.return(satellite)` (S103); written anywhere else it quits the whole program, exit 0 (machine code 64 `program_returned`) | c7ec8a1 | `bytecode/program_walk.cpp`, `program_check.cpp`, `machine/thread_stop.hpp` |
+| `.upper()`/`.uppercase()`/`.up()` and `.lower()`/`.lowercase()`, every language's letters | c7ec8a1 | `satellite_object/string_case.hpp`, `REGISTRY.satellite` |
+| `display(...).center()` / `.centre()` | 6563258 | `bytecode/console_calls.cpp` |
+| A statement over any number of lines, and a string over as many as it spans; what the file ends inside is refused where it opened | 353c585 | `bytecode/bytecode_registry.cpp` (`join_statements_across_lines`) |
+| A capsule calling itself mid-body a million deep: fresh stack segments under 1 MiB left | 8c8dc35 | `machine/stack_segments.hpp` |
+
 | piece | files | checked by |
 |---|---|---|
 | **The prototype runner** — loads a .satl, checks include/main/return, runs `satellite.console.display` of a string, number or bool | `satellite/structured-library.cpp`, `satellite/satl/`, `satellite/arguments/`, `satellite/machine/`, `satellite/version/` | `./check.sh` — **41 passed, 0 failed** (§6.6 says how the four were retired) |
@@ -77,6 +99,27 @@ python3 words/make_words.py            # regenerate the word table (needs old_ve
 ```
 
 ## 2. Decided (by the author unless marked)
+
+**2026-09-25, his answers to SCRATCH.md/NEW_ERROR_LIST.md, in his words** (all built; section 1):
+- A1: *"we need to auto convert here for the user into string, so when we have a string and we add
+  a number to it, it has to auto convert"* -- and then *"we need 4 + "2" to return the number 6"*.
+- A2: *"I want arguments.threads or arguments.thread = how many the interpreter can create, and
+  arguments.machine.thread = how many phyiscal threads exist on the machine"*.
+- A3: *"keep the build number in an untracked file, and make on this machine will update it, but
+  not on other machines"*.
+- A4: *"it should accept anything that is valid satellite regardless of how many spaces or lines are
+  in it, we should accept strings that span 90 lines"*.
+- A5: *"Let's not accept characters that have no meaning"*.
+- A6: *"refuse an escape that is unknown"*, and `\\` writes a backslash.
+- A7: *"let's refuse a main that doesnt have satellite.return(satellite) as the last line, but still
+  allow the user to satellite.return(satellite) to quit the interpreter from anywhere"*.
+- A8: a capsule calling itself mid-body must not crash -- *"we could build code that ONLY applies to
+  this special circumstance so the interpreter doesnt' crash"* (it reverses 2026-09-22's "leave it
+  broken").
+- A9: an unknown config row gets its own code -- he offered SC01 or any free one; it is S016.
+- *"we need str.upper() and str.uppercase() and str.up() a str.lower() and str.lowercase()"* and
+  *"a .center() that you can attach to satellite.console.display("something").center()"*, centred
+  *"just for that console at that time"*.
 
 - **Version 004 revision 04, build numbers from 0050** (2026-09-15), raised by every
   build. 003 07 is archived in `old_versions/second_satellite/`.

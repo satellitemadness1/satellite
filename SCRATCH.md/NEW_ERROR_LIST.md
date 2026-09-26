@@ -1,5 +1,8 @@
 # NEW ERROR LIST — 2026-09-25
 
+> **ANSWERED AND BUILT, every item (see the status table below). What is still open is in
+> `SCRATCH.md/ERRORS2.md`, written for the session after /clear.**
+
 What is still wrong after the error sweep of 2026-09-25, and what each one needs.
 Every behaviour below was run today on BUILD 0072 or 0073 (`~/.satl/satl`), not taken from an
 older note.
@@ -167,14 +170,14 @@ In `takes("text")` for a number parameter, or `satellite.variable.number n = "ab
 lines above print first, then the refusal comes. The checker could refuse a literal of
 the wrong type before anything runs. That's new checker work.
 
-### B3. A missing `)` is still refused only when its line runs
+### B3. A missing `)` is still refused only when its line runs -- FIXED with A4 (353c585): a ( the file ends inside is refused before anything runs
 
 `satellite.console.display("hello"` now says `satellite.console.display's ( is never
 closed -- the line ends before its )`. That's the right sentence, but the lines above it
 print first. Refusing it before anything runs means deciding that a call must close on its
 line, which is A4.
 
-### B4. String methods (M16, the next milestone)
+### B4. String methods (M16, the next milestone) -- upper/lower BUILT (c7ec8a1); the rest now say S210 NOT_BUILT_YET
 
 `s.upper()` says `upper is not one of its methods -- only an object of a
 satellite.spacesuit has capsules to call`. That's wrong: upper *is* a string method, just

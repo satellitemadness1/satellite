@@ -82,7 +82,9 @@ Revision 08 runs real programs. What runs:
 - every refusal as a report with its S-code, its line and a caret under it, and
   every report kept in `~/.satl/satellite.log`.
 
-String methods (`.size()`, `.upper()` and the rest) are next -- MILESTONES M16.
+A statement may run over as many lines as it needs, and a string over as many as it spans.
+`.upper()` and `.lower()` are built; the rest of the string methods (`.size()`, `.contains()`
+and the others) are next -- MILESTONES M16.
 See [MILESTONES.md](MILESTONES.md) and [PROGRESS.md](PROGRESS.md) for exactly what
 is built and checked, [DESIGN.md](DESIGN.md) for the standards and every
 measurement behind them, and [ERROR.md](ERROR.md) for every known error.

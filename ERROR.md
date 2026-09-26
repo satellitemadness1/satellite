@@ -353,7 +353,11 @@ readings, neither decided: a no-break space (and the other Unicode spaces) is
 whitespace; or any character with no code is refused by name before anything runs,
 e.g. `U+00A0 has no meaning in a program` (13). Found by the payload sweep, 2026-09-17.
 
-## Only seven names lex as methods, and the rest say "no capsule named x" — OPEN
+## Only seven names lex as methods, and the rest say "no capsule named x" — FIXED
+
+**Checked 2026-09-25:** every string method is a method code now, and an unbuilt one is told so
+before anything runs -- `s.size()` is "s.size is not built for satellite.variable.string yet"
+(S210) -- and `.upper()`/`.lower()` are built. What the entry said while open:
 
 `s.size()` on a string does not run `satellite.variable.string.size` (`1 6 1 1`).
 It fails **in the checker** with `no capsule named size` (13), which names

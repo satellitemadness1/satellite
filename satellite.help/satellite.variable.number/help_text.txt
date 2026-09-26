@@ -21,8 +21,9 @@ refused (S401). 2 ^ -1 is 0.5: an answer a whole number cannot hold becomes a
 satellite.variable.float, while 4 / 3 stays 1 -- write 4.0 / 3 for the float
 (satellite.help(float)).
 
-A number converts nothing on its own: 5 + "a" is refused (S301), so you say
-the conversion out loud with a method. .string (also .to_string and .str) is
+A number meets text by what the text says: 5 + "2" is the number 7, because
+"2" spells a number, and 5 + "a" is the text 5a. Every other conversion you say
+out loud with a method. .string (also .to_string and .str) is
 its base 10 text, .binary (also .bin) its base 2 text, .hex its base 16 text,
 .reverse() turns its digits round and keeps the sign, and .add(x) is +.
 

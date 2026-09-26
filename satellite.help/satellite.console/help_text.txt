@@ -16,6 +16,11 @@ any of five named options, each written name=value, once, after the value:
   background=x000000         the colour behind it
   bold=satellite.bool.true   italic=satellite.bool.true
 
+.center() written after the call -- satellite.console.display("title").center(),
+or .centre() -- puts the line in the middle of the console, for the width the
+console has as the line is shown; a later resize moves nothing, and into a pipe
+or a file the line goes as written.
+
 The style lasts for that one line. satl writes it as the terminal's own codes,
 so it shows in any terminal and in satl's own console; into a pipe or a file the
 text goes plain, and NO_COLOR set drops the colours and keeps bold and italic. A

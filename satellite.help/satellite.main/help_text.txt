@@ -7,8 +7,8 @@ satellite.main is the entry point for the app, satellite's int main(). It is a
 capsule, declared satellite.capsule satellite.main(), and your program begins
 inside it and ends inside it. There are no globals in satellite: a line written
 outside every capsule has nowhere to put its result and no moment to run in, so
-everything your program does starts from a line in main, or from a capsule that
-main calls.
+satl refuses one before anything runs (S110), and everything your program does
+starts from a line in main, or from a capsule that main calls.
 
 The file you run needs three things, and satl looks for all three before
 anything runs:
@@ -21,7 +21,8 @@ A file without satellite.include(satellite) is a spaceship, a file for another
 file to include, and satl will not start it. satellite.main is written once, at
 the top of its file: a second one is refused as declared twice (S202), and one
 inside a satellite.namespace is refused (S110). Leave off satellite.capsule and
-it is not a capsule at all -- satl stops with "no satellite.main to begin in".
+satl says so before anything runs: "satellite.main is a capsule, so it is
+declared like one" (S102).
 
 Only the file you run has its main run. A file you include may have a main of
 its own, so that it can be run by itself too; including it gives you its
@@ -36,8 +37,11 @@ satellite.container.list<satellite.variable.string> arguments is the same
 variable, and you may give it any name. See satellite.help(arguments).
 
 You run a program with satl hello.satl, or by typing interpret hello.satl or
-run hello.satl at the satl prompt. When main reaches satellite.return(satellite)
-the program ends, and satl exits 0.
+run hello.satl at the satl prompt. satellite.return(satellite) is main's LAST
+line, just before its closing } -- a main that does not end with it is refused
+before anything runs (S103) -- and when main reaches it the program ends and satl
+exits 0. Written anywhere else, in any capsule at any depth, it ends the whole
+program there: that is how a program quits early.
 
 example:
 
