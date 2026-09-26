@@ -12,8 +12,9 @@ string name refuses a value that is not a string (machine code 27).
 joins as the text its own .string gives: "n = " + 4 is n = 4, and so are
 "f " + 1.5, "p " + 50%, "b " + b1010 and "h " + x1F. With the number first,
 text that spells a number is added -- 4 + "2" is the number 6 -- and any other
-text is joined after it: 4 + "abc" is 4abc. A bool or a colour added to a string
-is refused (S301): write its .string. - takes away the FIRST place the right string occurs,
+text is joined after it: 4 + "abc" is 4abc. A bool joins as true or false with
+one space between: "flag:" + satellite.bool.true is flag: true. A colour added to
+a string is refused (S301): write its .string. - takes away the FIRST place the right string occurs,
 and answers the left string unchanged when it is not there. == and != compare
 two strings, and < and > order them by satellite's own character table: a to
 z, then A to Z, then digits, then signs, then the space, so "a" < "B" is true.
@@ -92,6 +93,7 @@ satellite.include(satellite)
 
 satellite.capsule satellite.main()
 {
-    satellite.console.display("on: " + satellite.bool.true) // refused: S301, write .string
+    satellite.variable.color c = x00FF00
+    satellite.console.display("c: " + c) // refused: S301, write c.string
     satellite.return(satellite)
 }

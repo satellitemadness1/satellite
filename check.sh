@@ -5441,6 +5441,12 @@ printf 'satellite.include(satellite)\n\nsatellite.capsule satellite.main()\n{\n 
 output=$("$interpreter" "$sweep/number_first.satl" 2>/dev/null); code_run=$?
 expect "4 + \"2\" is the number 6 (6 * 2 is 12), 1.5 + \"2\" is 3.5, 4 + \"2.5\" is 6.5, 4 + \"-10\" is -6; 4 + \"abc\" joins" \
        "6|12|3.5|6.5|-6|4abc|4 2|0" "$(printf '%s' "$output" | tr '\n' '|')|$code_run"
+# A BOOL JOINS A STRING AS ITS WORD, WITH A SPACE BETWEEN (the author, 2026-09-25) -- not a second
+# space where the text already has one, and none beside empty text.
+printf 'satellite.include(satellite)\n\nsatellite.capsule satellite.main()\n{\n    satellite.console.display("flag:" + satellite.bool.true)\n    satellite.console.display("flag: " + satellite.bool.false)\n    satellite.console.display(satellite.bool.true + "is the answer")\n    satellite.console.display(satellite.bool.false + " twice")\n    satellite.console.display("" + satellite.bool.true)\n    satellite.variable.bool on = 1 == 1\n    satellite.console.display("on is" + on)\n    satellite.return(satellite)\n}\n' > "$sweep/bool_join.satl"
+output=$("$interpreter" "$sweep/bool_join.satl" 2>/dev/null); code_run=$?
+expect "a bool joins a string as true or false with one space between, either way round" \
+       "flag: true|flag: false|true is the answer|false twice|true|on is true|0" "$(printf '%s' "$output" | tr '\n' '|')|$code_run"
 # A2: "arguments.threads or arguments.thread = how many the interpreter can create, and
 # arguments.machine.thread = how many physical threads exist on the machine".
 printf 'satellite.include(satellite)\n\nsatellite.capsule satellite.main(satellite.variable.arguments arguments)\n{\n    satellite.console.display(arguments.threads)\n    satellite.console.display(arguments.thread)\n    satellite.console.display(arguments.machine.threads)\n    satellite.console.display(arguments.machine.thread)\n    satellite.return(satellite)\n}\n' > "$sweep/threads.satl"

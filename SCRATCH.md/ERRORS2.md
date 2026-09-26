@@ -84,17 +84,12 @@ before a language can be written in it; that answer is `SCRATCH.md/LANGUAGE_IN_S
 Never upload a few pages with `upload.py` alone: it re-dates those posts to the top of the blog
 and turns their links to other pages into bare links to the site.
 
-### 2. A bool, a colour or an infinity added to a string
+### 2. A bool added to a string -- RULED AND BUILT
 
-```
-satellite.console.display("flag: " + satellite.bool.true)
-S301: + was given a string and a bool, and there is no scenario for that pair
-```
-
-His ruling covered numbers ("when we have a string and we add a number to it"). Should a bool
-join as `true` or `false`, and a colour as `x00FF00`? Each is one line in
-`satelliteObject::add` (`satellite/satellite_object/satellite_object.cpp`). If they stay
-refused, the message should say "write .string".
+His ruling: a bool joins as true or false with a space between. `"flag:" + satellite.bool.true`
+is `flag: true`, and no second space is added where the text already has one. A colour or an
+infinity added to a string is still refused, with "write .string"; he hasn't been asked about
+those.
 
 ### 3. A number + text that does NOT spell a number joins. Confirm.
 

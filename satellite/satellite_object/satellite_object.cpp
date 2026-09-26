@@ -421,6 +421,32 @@ signed long long int satelliteObject::add(const satelliteObject &other, satellit
         out = satelliteObject::of_string(std::move(answer));
         return success;
     }
+    // A BOOL MEETS A STRING AS ITS WORD, WITH A SPACE BETWEEN (the author, 2026-09-25: "a bool
+    // should join a string as the string "true" or the string "false" with a space added
+    // after/before depending on where the string is"). "flag:" + satellite.bool.true is
+    // "flag: true", and satellite.bool.false + "is the answer" is "false is the answer". The
+    // space is not added where the text already has one at that edge, or is empty, so
+    // "flag: " + satellite.bool.true is "flag: true" and not two spaces.
+    if ((is_string() && other.is_bool()) || (is_bool() && other.is_string())) {
+        const bool text_first = is_string();
+        const std::string text = (text_first ? *as_string() : *other.as_string()).to_utf8();
+        const std::string word = (text_first ? *other.as_bool() : *as_bool()) ? "true" : "false";
+        const auto blank = [](char c) { return c == ' ' || c == '\t' || c == '\n'; };
+        std::string joined;
+        if (text_first)
+            joined = text + (text.empty() || blank(text.back()) ? "" : " ") + word;
+        else
+            joined = word + (text.empty() || blank(text.front()) ? "" : " ") + text;
+        satellite_string answer;
+        std::size_t bad_offset = 0;
+        const signed long long int code = satellite_string::from_utf8(joined, answer, bad_offset);
+        if (code != success) {
+            why = "the string and the bool could not be joined";
+            return code;
+        }
+        out = satelliteObject::of_string(std::move(answer));
+        return success;
+    }
     // A NUMBER FIRST, THEN TEXT (the author, 2026-09-25: "we need 4 + "2" to return the number
     // 6"). Text that reads as a number IS that number, and + adds -- 4 + "2" is 6, 1.5 + "2" is
     // 3.5, by the arithmetic every kind already has. Any other text is joined after the
