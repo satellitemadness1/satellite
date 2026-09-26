@@ -134,6 +134,33 @@ inline bool read_value(const std::string &key, std::string &value)
     return found;
 }
 
+// EVERY LINE THAT IS NOT BLANK OR A COMMENT, with its line number, read the way read_value
+// reads one -- the key and value of a `key = value`, and an empty key for a line that is not
+// one. For start-up's S016, which names a row satl does not know (the author, 2026-09-25).
+struct Row {
+    std::size_t line = 0;
+    std::string key;
+    std::string written;
+};
+
+inline std::vector<Row> rows()
+{
+    std::vector<Row> found;
+    const std::string where = path();
+    if (where.empty())
+        return found;
+    std::ifstream in(where);
+    std::string line;
+    for (std::size_t number = 1; std::getline(in, line); ++number) {
+        const std::string clean = trimmed(line);
+        if (clean.empty() || clean[0] == '#')
+            continue;
+        const std::string::size_type equals = clean.find('=');
+        found.push_back(Row{number, equals == std::string::npos ? std::string() : trimmed(clean.substr(0, equals)), clean});
+    }
+    return found;
+}
+
 inline bool read_flag(const std::string &key, bool &value)
 {
     std::string said;

@@ -302,6 +302,40 @@ signed long long int run_satl(int argc, char **argv)
         print_notice(stale);
     }
 
+    // A ROW satl DOES NOT KNOW CHANGES NOTHING, AND IS SAID (S016, the author 2026-09-25: an
+    // unknown row "in the config file" gets its own code). `threads_startup = banana` or a
+    // misspelled `acess = false` was read by nothing and the run carried on as though the
+    // person had not written it. THE ROWS satl READS: the register, the feature switches, the
+    // text rows of satellite_config.hpp under their names without `arguments.`, the float's
+    // two precisions (arguments.cpp) and the console's font size (console_settings.cpp). A
+    // notice, not a refusal: every setting keeps its default, as with S010.
+    {
+        std::vector<std::string> known{kRegisterKey, "float.whole", "float.decimal", "console.font_size"};
+        for (const FeatureFact &fact : feature_facts()) known.push_back(fact.name);
+        for (const satellite_argument_row &row : return_arguments_vector())
+            if (row.is_text && row.name.size() > 10) known.push_back(row.name.substr(10));
+        std::string unknown;
+        for (const config_file::Row &row : config_file::rows()) {
+            bool is_known = false;
+            for (const std::string &key : known) is_known = is_known || key == row.key;
+            if (is_known)
+                continue;
+            unknown += (unknown.empty() ? "" : ", ") + std::string("line ") + std::to_string(row.line) + " " +
+                       (row.key.empty() ? "\"" + row.written + "\" (not key = value)" : row.key);
+        }
+        if (!unknown.empty()) {
+            CriticalReport stray;
+            stray.code = "S016";
+            stray.name = "CONFIG_ROW_NOT_UNDERSTOOD";
+            stray.description = "config.ini has rows satl does not read, so they change nothing: " + unknown +
+                                ". The rows it reads are features, the feature switches (access, word_counts, "
+                                "statements and the rest satl --rebuild lists), directory.default, log_path, "
+                                "float.whole, float.decimal and console.font_size";
+            stray.directory = config_file::path();
+            print_notice(stray);
+        }
+    }
+
     MachineState state;
     code = arguments.gather(command_line);
     if (stops_the_program(code))

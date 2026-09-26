@@ -5470,6 +5470,14 @@ expect "... and one that has it raises the build by one" "$(( $(config_row build
 import sys; sys.path.insert(0, '$bn_room/satellite/config'); import build_number
 print([r for r in build_number.live_rows(build_number.read_config()) if r['name'] == 'arguments.build'][0]['number'])")"
 rm -rf "$bn_room"
+# A9: an unknown config.ini row gets its own code -- S016, a notice; the run carries on.
+mkdir -p "$sweep/config_home/.satl" && cp "$CHECK_HOME/.satl/config.ini" "$sweep/config_home/.satl/config.ini"
+printf 'no_such_row = 5\nbanana\n' >> "$sweep/config_home/.satl/config.ini"
+output=$(HOME="$sweep/config_home" "$interpreter" examples/hello_world.satl 2> "$sweep/config_home/err"); code_run=$?
+expect "an unknown config.ini row and a line that is not key = value: S016 names both, and the program runs" "0|1|1|1" \
+       "$code_run|$(grep -c '^\[satellite\] S016 CONFIG_ROW_NOT_UNDERSTOOD' "$sweep/config_home/err")|$(grep -c 'no_such_row' "$sweep/config_home/err")|$(grep -c '"banana" (not key = value)' "$sweep/config_home/err")"
+expect "... and a config.ini satl --rebuild wrote says nothing of the kind" "0" \
+       "$("$interpreter" examples/hello_world.satl 2>&1 | grep -c S016)"
 # arguments.cores IS arguments.machine.cores (machine_facts.hpp): how many cores exist, the
 # author's "for this it's 12" -- the alias's library counted threads and said 24.
 printf 'satellite.include(satellite)\n\nsatellite.capsule satellite.main(satellite.variable.arguments arguments)\n{\n    satellite.console.display(arguments.cores)\n    satellite.console.display(arguments.machine.cores)\n    satellite.return(satellite)\n}\n' > "$sweep/cores.satl"
