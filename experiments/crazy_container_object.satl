@@ -1,0 +1,11 @@
+
+satellite.include(satellite)
+
+satellite.capsule satellite.main()
+{
+    satellite.container.list<satellite.container.list<satellite.container.map<satellite.variable.string, satellite.container.list<satellite.container.list<satellite.variable.string>>>>> crazy_container
+
+    crazy_container.append({{"hello"}})
+
+    satellite.return(satellite)
+}

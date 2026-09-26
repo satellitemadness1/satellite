@@ -1,0 +1,15 @@
+
+satellite.include(satellite)
+
+satellite.capsule some_name(satellite.variable.number some_argument)
+{
+    satellite.console.display(some_argument)
+    some_name(some_argument + 1)
+}
+
+satellite.capsule satellite.main()
+{
+    some_name(1)
+
+    satellite.return(satellite)
+}

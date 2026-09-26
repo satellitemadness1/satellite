@@ -1,0 +1,1242 @@
+[
+ {
+  "area": "number-string-conversion",
+  "index": 5,
+  "title": "Building a string with numbers in a loop (s = s + i + \",\") takes quadratic time: 40,000 passes take 9.7 s and 80,000 take 41 s",
+  "reported_exit": 0,
+  "rerun_exit": 0,
+  "same_exit": true,
+  "observed_lines_found": "0/5",
+  "rerun_output": "228884\nTHE SATELLITE PROGRAMMING LANGUAGE\nVERSION 004 REVISION 08 BUILD 0099\nCLANG++ 24 ALMALINUX 10.2\n---------------------------------------------------------------\n\n[exit 0]\n"
+ },
+ {
+  "area": "lists",
+  "index": 3,
+  "title": "Passing a list through a capsule (a = add(a, i)) takes quadratic time: 20,000 items take 7.3 s and 40,000 do not finish in 20 s",
+  "reported_exit": 0,
+  "rerun_exit": 0,
+  "same_exit": true,
+  "observed_lines_found": "0/2",
+  "rerun_output": "20000\nTHE SATELLITE PROGRAMMING LANGUAGE\nVERSION 004 REVISION 08 BUILD 0099\nCLANG++ 24 ALMALINUX 10.2\n---------------------------------------------------------------\n\n[exit 0]\n\nreal\t0m7.587s\nuser\t0m7.240s\nsys\t0m0.383s\n"
+ },
+ {
+  "area": "lists",
+  "index": 11,
+  "title": "a.sort().by_value() or a.reverse() written as a statement silently does nothing, and a.sort().reverse() answers the list reversed but unsorted",
+  "reported_exit": 0,
+  "rerun_exit": 0,
+  "same_exit": true,
+  "observed_lines_found": "0/1",
+  "rerun_output": "{3, 1, 2}\n{2, 1, 3}\nTHE SATELLITE PROGRAMMING LANGUAGE\nVERSION 004 REVISION 08 BUILD 0099\nCLANG++ 24 ALMALINUX 10.2\n---------------------------------------------------------------\n\n[exit 0]\n"
+ },
+ {
+  "area": "lists",
+  "index": 12,
+  "title": "The typed constructor satellite.container.list<satellite.variable.number>() is refused only at run time, as \"there is no value here to work with\"",
+  "reported_exit": 13,
+  "rerun_exit": 13,
+  "same_exit": true,
+  "observed_lines_found": "3/4",
+  "rerun_output": "before\nTHE SATELLITE PROGRAMMING LANGUAGE\nVERSION 004 REVISION 08 BUILD 0099\nCLANG++ 24 ALMALINUX 10.2\n---------------------------------------------------------------\n\n--------------------------------------------------------------------------------\nSATELLITE CRITICAL ERROR REPORT\n--------------------------------------------------------------------------------\nS110: LINE_NOT_UNDERSTOOD\nsatl(run): in a = ..., there is no value here to work with\n\ndirectory: /tmp/claude-1000/-home-madness-code-satl/b70f905b-dca1-4f92-bbad-f66d8ce80b78/scratchpad/work/lists/min/f13_typed_constructor.satl:6\nsyntax: satellite.container.list<satellite.variable.number> a = satellite.container.list<satellite.variable.number>()\n                                                                                        /\\\n\nsatellite has no scenario for this line -- it is spelled in a shape the language\ndoes not have a meaning for.\nmachine code 13 satl_line_not_understood -- satl exits with this.\n\n--------------------------------------------------------------------------------\n[exit 13]\n"
+ },
+ {
+  "area": "lists",
+  "index": 13,
+  "title": "A typed-list refusal names the type as a bare \"satellite.container.list\", dropping its <type>",
+  "reported_exit": 27,
+  "rerun_exit": 27,
+  "same_exit": true,
+  "observed_lines_found": "1/2",
+  "rerun_output": "THE SATELLITE PROGRAMMING LANGUAGE\nVERSION 004 REVISION 08 BUILD 0099\nCLANG++ 24 ALMALINUX 10.2\n---------------------------------------------------------------\n\n[satellite] satl(run): total's x was declared satellite.container.list, and item 2 of it does not fit: it holds a string (machine_code: 27 types_do_not_meet)\n[exit 27]\n"
+ },
+ {
+  "area": "lists",
+  "index": 15,
+  "title": ".sum refuses {1, \"2\"}, although the help defines .sum as every item added with + and 1 + \"2\" is 3",
+  "reported_exit": 27,
+  "rerun_exit": 27,
+  "same_exit": true,
+  "observed_lines_found": "4/4",
+  "rerun_output": "3\nTHE SATELLITE PROGRAMMING LANGUAGE\nVERSION 004 REVISION 08 BUILD 0099\nCLANG++ 24 ALMALINUX 10.2\n---------------------------------------------------------------\n\n--------------------------------------------------------------------------------\nSATELLITE CRITICAL ERROR REPORT\n--------------------------------------------------------------------------------\nS301: TYPES_DO_NOT_MEET\nsatl(run): a.sum adds numbers, and item 2 is a string -- .join(separator) makes\none string of them\n\ndirectory: /tmp/claude-1000/-home-madness-code-satl/b70f905b-dca1-4f92-bbad-f66d8ce80b78/scratchpad/work/lists/min/f17_sum_vs_plus.satl:7\nsyntax: satellite.console.display(a.sum)\n        /\\\n\nthis operator has no scenario for the two kinds it was given. Nothing was\nguessed at, because a guess here is an answer that is wrong and does not say so.\nmachine code 27 types_do_not_meet -- satl exits with this.\n\n--------------------------------------------------------------------------------\n[exit 27]\n"
+ },
+ {
+  "area": "lists",
+  "index": 16,
+  "title": "a.truncate(-1) says \"items count from 1\", but truncate takes a count and truncate(0) is valid; reserve(-1) says it correctly",
+  "reported_exit": 19,
+  "rerun_exit": 19,
+  "same_exit": true,
+  "observed_lines_found": "4/5",
+  "rerun_output": "THE SATELLITE PROGRAMMING LANGUAGE\nVERSION 004 REVISION 08 BUILD 0099\nCLANG++ 24 ALMALINUX 10.2\n---------------------------------------------------------------\n\n--------------------------------------------------------------------------------\nSATELLITE CRITICAL ERROR REPORT\n--------------------------------------------------------------------------------\nS410: NOT_A_POSITION\nsatl(run): in a, a.truncate was given -1, and items count from 1\n\ndirectory: /tmp/claude-1000/-home-madness-code-satl/b70f905b-dca1-4f92-bbad-f66d8ce80b78/scratchpad/work/lists/min/f15_truncate_negative.satl:6\nsyntax: a.truncate(-1)\n        /\\\n\na position or a line number below zero. Lines count from 1, and nothing counts\nbelow zero.\nmachine code 19 not_a_position -- satl exits with this.\n\n--------------------------------------------------------------------------------\n[exit 19]\n"
+ },
+ {
+  "area": "files-and-io",
+  "index": 0,
+  "title": "Lines appended through one handle are invisible to a second handle, to satellite.info, and after a loop, until a save",
+  "reported_exit": 0,
+  "rerun_exit": 0,
+  "same_exit": true,
+  "observed_lines_found": "0/1",
+  "rerun_output": "(re-run in a fresh folder: printed 2 then 0, exit 0 -- as reported)"
+ },
+ {
+  "area": "files-and-io",
+  "index": 1,
+  "title": "satellite.info.file/.directory (and satellite.directory.list) resolve a relative path against the working directory, while satellite.file.* resolve it against the program's folder",
+  "reported_exit": 39,
+  "rerun_exit": 39,
+  "same_exit": true,
+  "observed_lines_found": "5/6",
+  "rerun_output": "2\nTHE SATELLITE PROGRAMMING LANGUAGE\nVERSION 004 REVISION 08 BUILD 0099\nCLANG++ 24 ALMALINUX 10.2\n---------------------------------------------------------------\n\n--------------------------------------------------------------------------------\nSATELLITE CRITICAL ERROR REPORT\n--------------------------------------------------------------------------------\nS510: FILE_NOT_THERE\nsatl(run): in i = ..., satellite.info.file: nothing is at notes.txt\n\ndirectory: /tmp/claude-1000/-home-madness-code-satl/b70f905b-dca1-4f92-bbad-f66d8ce80b78/scratchpad/work/files-and-io/f_info_path/info_relative.satl:7\nsyntax: satellite.variable.info i = satellite.info.file(\"notes.txt\")\n                                                                    /\\\n\nno file is at that path.\nmachine code 39 file_not_found -- satl exits with this.\n\n--------------------------------------------------------------------------------\n[exit 39]\n"
+ },
+ {
+  "area": "files-and-io",
+  "index": 2,
+  "title": "Indexing a call's answer, satellite.file.open(\"x\")[2], passes the check, then fails at run time with a sentence about math signs or '& | << >> !!'",
+  "reported_exit": 13,
+  "rerun_exit": 13,
+  "same_exit": true,
+  "observed_lines_found": "4/6",
+  "rerun_output": "first line\nTHE SATELLITE PROGRAMMING LANGUAGE\nVERSION 004 REVISION 08 BUILD 0099\nCLANG++ 24 ALMALINUX 10.2\n---------------------------------------------------------------\n\n--------------------------------------------------------------------------------\nSATELLITE CRITICAL ERROR REPORT\n--------------------------------------------------------------------------------\nS110: LINE_NOT_UNDERSTOOD\nsatl(run): satellite.console.display was given something it could not read to\nthe end of -- check that every math sign has a space on both sides\n\ndirectory: /tmp/claude-1000/-home-madness-code-satl/b70f905b-dca1-4f92-bbad-f66d8ce80b78/scratchpad/work/files-and-io/f_word_index/word_call_index.satl:6\nsyntax: satellite.console.display(satellite.file.open(\"notes.txt\")[2])\n        /\\\n\nsatellite has no scenario for this line -- it is spelled in a shape the language\ndoes not have a meaning for.\nmachine code 13 satl_line_not_understood -- satl exits with this.\n\n--------------------------------------------------------------------------------\n[exit 13]\n"
+ },
+ {
+  "area": "files-and-io",
+  "index": 3,
+  "title": "console.input keeps the \\r of a CRLF line, which the file handle drops, so the same file read as input is not a number",
+  "reported_exit": 3,
+  "rerun_exit": 3,
+  "same_exit": true,
+  "observed_lines_found": "3/5",
+  "rerun_output": "[12]\n42\n[12\n]\nTHE SATELLITE PROGRAMMING LANGUAGE\nVERSION 004 REVISION 08 BUILD 0099\nCLANG++ 24 ALMALINUX 10.2\n---------------------------------------------------------------\n\n--------------------------------------------------------------------------------\nSATELLITE CRITICAL ERROR REPORT\n--------------------------------------------------------------------------------\nS120: NUMBER_NOT_READ\nsatl(run): a.number: that text is not a whole number this can read\n\ndirectory: /tmp/claude-1000/-home-madness-code-satl/b70f905b-dca1-4f92-bbad-f66d8ce80b78/scratchpad/work/files-and-io/f_input_crlf/input_crlf.satl:11\nsyntax: satellite.console.display(a.number + b.number)\n        /\\\n\nthis is not a number satellite can read. A number is an optional '-' then\ndigits, with no spaces or separators, and a float has one point in it: 12.34.\nmachine code 3 int_error -- satl exits with this.\n\n--------------------------------------------------------------------------------\n[exit 3]\n"
+ },
+ {
+  "area": "files-and-io",
+  "index": 4,
+  "title": "console.input keeps a leading UTF-8 byte-order mark that the file handle drops",
+  "reported_exit": 3,
+  "rerun_exit": 3,
+  "same_exit": true,
+  "observed_lines_found": "3/4",
+  "rerun_output": "42\nfalse\nTHE SATELLITE PROGRAMMING LANGUAGE\nVERSION 004 REVISION 08 BUILD 0099\nCLANG++ 24 ALMALINUX 10.2\n---------------------------------------------------------------\n\n--------------------------------------------------------------------------------\nSATELLITE CRITICAL ERROR REPORT\n--------------------------------------------------------------------------------\nS120: NUMBER_NOT_READ\nsatl(run): a.number: that text is not a whole number this can read\n\ndirectory: /tmp/claude-1000/-home-madness-code-satl/b70f905b-dca1-4f92-bbad-f66d8ce80b78/scratchpad/work/files-and-io/f_input_bom/input_bom.satl:10\nsyntax: satellite.console.display(a.number + b.number)\n        /\\\n\nthis is not a number satellite can read. A number is an optional '-' then\ndigits, with no spaces or separators, and a float has one point in it: 12.34.\nmachine code 3 int_error -- satl exits with this.\n\n--------------------------------------------------------------------------------\n[exit 3]\n"
+ },
+ {
+  "area": "files-and-io",
+  "index": 5,
+  "title": "satellite.console.display() with no value passes the check and stops at run time as S210 NOT_BUILT_YET, while two values are refused before anything runs",
+  "reported_exit": 14,
+  "rerun_exit": 14,
+  "same_exit": true,
+  "observed_lines_found": "4/6",
+  "rerun_output": "before\nTHE SATELLITE PROGRAMMING LANGUAGE\nVERSION 004 REVISION 08 BUILD 0099\nCLANG++ 24 ALMALINUX 10.2\n---------------------------------------------------------------\n\n--------------------------------------------------------------------------------\nSATELLITE CRITICAL ERROR REPORT\n--------------------------------------------------------------------------------\nS210: NOT_BUILT_YET\nsatl(run): satellite.console.display has no scenario for nothing\n\ndirectory: /tmp/claude-1000/-home-madness-code-satl/b70f905b-dca1-4f92-bbad-f66d8ce80b78/scratchpad/work/files-and-io/f_display_empty/display_nothing.satl:6\nsyntax: satellite.console.display()\n        /\\\n\nthis word is numbered in the language and the library behind it does not exist\nyet. The word is right; there is nothing yet to run.\nmachine code 14 not_built_yet -- satl exits with this.\n\n--------------------------------------------------------------------------------\n[exit 14]\n"
+ },
+ {
+  "area": "files-and-io",
+  "index": 6,
+  "title": "satellite.directory.list() in a program says \"satellite has no list type built yet to hold them\", at run time",
+  "reported_exit": 14,
+  "rerun_exit": 14,
+  "same_exit": true,
+  "observed_lines_found": "3/6",
+  "rerun_output": "before\nTHE SATELLITE PROGRAMMING LANGUAGE\nVERSION 004 REVISION 08 BUILD 0099\nCLANG++ 24 ALMALINUX 10.2\n---------------------------------------------------------------\n\n--------------------------------------------------------------------------------\nSATELLITE CRITICAL ERROR REPORT\n--------------------------------------------------------------------------------\nS210: NOT_BUILT_YET\nsatl(run): in names = ..., satellite.directory.list() read 7 names, and\nsatellite has no list type built yet to hold them (MILESTONES M14) -- at the\nprompt the same line draws the table\n\ndirectory: /tmp/claude-1000/-home-madness-code-satl/b70f905b-dca1-4f92-bbad-f66d8ce80b78/scratchpad/work/files-and-io/f_dirlist/dir_list.satl:6\nsyntax: satellite.container.list<satellite.variable.string> names = satellite.directory.list()\n                                                                                              /\\\n\nthis word is numbered in the language and the library behind it does not exist\nyet. The word is right; there is nothing yet to run.\nmachine code 14 not_built_yet -- satl exits with this.\n\n--------------------------------------------------------------------------------\n[exit 14]\n"
+ },
+ {
+  "area": "files-and-io",
+  "index": 7,
+  "title": "display of a file (or a spacesuit object) is S210 NOT_BUILT_YET at run time; a list holding a file gets a specific S301 instead",
+  "reported_exit": 14,
+  "rerun_exit": 14,
+  "same_exit": true,
+  "observed_lines_found": "4/6",
+  "rerun_output": "before\nTHE SATELLITE PROGRAMMING LANGUAGE\nVERSION 004 REVISION 08 BUILD 0099\nCLANG++ 24 ALMALINUX 10.2\n---------------------------------------------------------------\n\n--------------------------------------------------------------------------------\nSATELLITE CRITICAL ERROR REPORT\n--------------------------------------------------------------------------------\nS210: NOT_BUILT_YET\nsatl(run): satellite.console.display has no scenario for a file\n\ndirectory: /tmp/claude-1000/-home-madness-code-satl/b70f905b-dca1-4f92-bbad-f66d8ce80b78/scratchpad/work/files-and-io/f_display_file/display_file.satl:7\nsyntax: satellite.console.display(f)\n        /\\\n\nthis word is numbered in the language and the library behind it does not exist\nyet. The word is right; there is nothing yet to run.\nmachine code 14 not_built_yet -- satl exits with this.\n\n--------------------------------------------------------------------------------\n[exit 14]\n"
+ },
+ {
+  "area": "files-and-io",
+  "index": 8,
+  "title": "f.append(2.5) is refused as \"takes text\" while f.append(42) is converted, and \"\" + 2.5 joins",
+  "reported_exit": 27,
+  "rerun_exit": 27,
+  "same_exit": true,
+  "observed_lines_found": "4/6",
+  "rerun_output": "2.5\nTHE SATELLITE PROGRAMMING LANGUAGE\nVERSION 004 REVISION 08 BUILD 0099\nCLANG++ 24 ALMALINUX 10.2\n---------------------------------------------------------------\n\n--------------------------------------------------------------------------------\nSATELLITE CRITICAL ERROR REPORT\n--------------------------------------------------------------------------------\nS301: TYPES_DO_NOT_MEET\nsatl(run): in f, f.append takes text, and was given a float\n\ndirectory: /tmp/claude-1000/-home-madness-code-satl/b70f905b-dca1-4f92-bbad-f66d8ce80b78/scratchpad/work/files-and-io/f_append_float/append_float.satl:10\nsyntax: f.append(price)\n        /\\\n\nthis operator has no scenario for the two kinds it was given. Nothing was\nguessed at, because a guess here is an answer that is wrong and does not say so.\nmachine code 27 types_do_not_meet -- satl exits with this.\n\n--------------------------------------------------------------------------------\n[exit 27]\n"
+ },
+ {
+  "area": "files-and-io",
+  "index": 9,
+  "title": "A list index past the end (or a missing key) is explained as a file with no such line",
+  "reported_exit": 47,
+  "rerun_exit": 47,
+  "same_exit": true,
+  "observed_lines_found": "5/6",
+  "rerun_output": "THE SATELLITE PROGRAMMING LANGUAGE\nVERSION 004 REVISION 08 BUILD 0099\nCLANG++ 24 ALMALINUX 10.2\n---------------------------------------------------------------\n\n--------------------------------------------------------------------------------\nSATELLITE CRITICAL ERROR REPORT\n--------------------------------------------------------------------------------\nS501: LINE_PAST_THE_END\nsatl(run): scores[3]: there is no such item -- the list holds 2 items, counting\nfrom 1\n\ndirectory: /tmp/claude-1000/-home-madness-code-satl/b70f905b-dca1-4f92-bbad-f66d8ce80b78/scratchpad/work/files-and-io/f_s501_text/list_past_end.satl:6\nsyntax: satellite.console.display(scores[3])\n                                        /\\\n\na line was read by its number and the file has no line with that number. Lines\ncount from 1, and the last one is the file's size.\nmachine code 47 line_past_the_end -- satl exits with this.\n\n--------------------------------------------------------------------------------\n[exit 47]\n"
+ },
+ {
+  "area": "files-and-io",
+  "index": 10,
+  "title": "f.path answers the absolute resolved path, not the path as written",
+  "reported_exit": 0,
+  "rerun_exit": 0,
+  "same_exit": true,
+  "observed_lines_found": "1/1",
+  "rerun_output": "/tmp/claude-1000/-home-madness-code-satl/b70f905b-dca1-4f92-bbad-f66d8ce80b78/scratchpad/work/files-and-io/f_path/notes.txt\nTHE SATELLITE PROGRAMMING LANGUAGE\nVERSION 004 REVISION 08 BUILD 0099\nCLANG++ 24 ALMALINUX 10.2\n---------------------------------------------------------------\n\n[exit 0]\n"
+ },
+ {
+  "area": "files-and-io",
+  "index": 11,
+  "title": "A .number refusal on an argument row names \"that argument.number\" instead of what was written",
+  "reported_exit": 3,
+  "rerun_exit": 3,
+  "same_exit": true,
+  "observed_lines_found": "5/6",
+  "rerun_output": "THE SATELLITE PROGRAMMING LANGUAGE\nVERSION 004 REVISION 08 BUILD 0099\nCLANG++ 24 ALMALINUX 10.2\n---------------------------------------------------------------\n\n--------------------------------------------------------------------------------\nSATELLITE CRITICAL ERROR REPORT\n--------------------------------------------------------------------------------\nS120: NUMBER_NOT_READ\nsatl(run): in count = ..., that argument.number: that text is not a whole number\nthis can read\n\ndirectory: /tmp/claude-1000/-home-madness-code-satl/b70f905b-dca1-4f92-bbad-f66d8ce80b78/scratchpad/work/files-and-io/f_that_argument/argument_number.satl:5\nsyntax: satellite.variable.number count = args.argument_1.number\n                                                                /\\\n\nthis is not a number satellite can read. A number is an optional '-' then\ndigits, with no spaces or separators, and a float has one point in it: 12.34.\nmachine code 3 int_error -- satl exits with this.\n\n--------------------------------------------------------------------------------\n[exit 3]\n"
+ },
+ {
+  "area": "integers",
+  "index": 0,
+  "title": "A line that starts with an operator is dropped without a word, so an expression continued with a leading operator gives a wrong answer",
+  "reported_exit": 0,
+  "rerun_exit": 0,
+  "same_exit": true,
+  "observed_lines_found": "0/2",
+  "rerun_output": "100\nTHE SATELLITE PROGRAMMING LANGUAGE\nVERSION 004 REVISION 08 BUILD 0099\nCLANG++ 24 ALMALINUX 10.2\n---------------------------------------------------------------\n\n[exit 0]\n"
+ },
+ {
+  "area": "integers",
+  "index": 1,
+  "title": "A stray leading minus (or number) before an assignment is skipped, so `-n = 9` runs as `n = 9`",
+  "reported_exit": 0,
+  "rerun_exit": 0,
+  "same_exit": true,
+  "observed_lines_found": "0/1",
+  "rerun_output": "9\nTHE SATELLITE PROGRAMMING LANGUAGE\nVERSION 004 REVISION 08 BUILD 0099\nCLANG++ 24 ALMALINUX 10.2\n---------------------------------------------------------------\n\n[exit 0]\n"
+ },
+ {
+  "area": "integers",
+  "index": 2,
+  "title": "A touching operator (4+3, n+1, n*2, n**3) is refused only when its line runs, so in an untaken branch or an uncalled capsule it is accepted silently",
+  "reported_exit": 0,
+  "rerun_exit": 0,
+  "same_exit": true,
+  "observed_lines_found": "0/5",
+  "rerun_output": "5\nTHE SATELLITE PROGRAMMING LANGUAGE\nVERSION 004 REVISION 08 BUILD 0099\nCLANG++ 24 ALMALINUX 10.2\n---------------------------------------------------------------\n\n[exit 0]\n"
+ },
+ {
+  "area": "integers",
+  "index": 3,
+  "title": "An expression that stops early is blamed on \"& | << >> !!\" when none is there (n = n -1, if(n = 5), n = 5 6)",
+  "reported_exit": 13,
+  "rerun_exit": 13,
+  "same_exit": true,
+  "observed_lines_found": "1/6",
+  "rerun_output": "THE SATELLITE PROGRAMMING LANGUAGE\nVERSION 004 REVISION 08 BUILD 0099\nCLANG++ 24 ALMALINUX 10.2\n---------------------------------------------------------------\n\n[satellite] satl(run): n = ... could not be read to the end -- it stops at something with no meaning there yet (& | << >> !! are undecided), so the part before it is not the whole value (machine_code: 13 satl_line_not_understood)\n[exit 13]\n"
+ },
+ {
+  "area": "integers",
+  "index": 4,
+  "title": "Names shaped like hex/binary literals (x1, x2, b1, xa, xff) are refused with sentences that are false about them",
+  "reported_exit": 13,
+  "rerun_exit": 13,
+  "same_exit": true,
+  "observed_lines_found": "5/6",
+  "rerun_output": "THE SATELLITE PROGRAMMING LANGUAGE\nVERSION 004 REVISION 08 BUILD 0099\nCLANG++ 24 ALMALINUX 10.2\n---------------------------------------------------------------\n\n--------------------------------------------------------------------------------\nSATELLITE CRITICAL ERROR REPORT\n--------------------------------------------------------------------------------\nS110: LINE_NOT_UNDERSTOOD\nsatl(check): in satellite.main, satellite.variable.number is followed by\nsomething that is not a name -- a name is made of a-z, A-Z, 0-9 and _, and does\nnot start with a digit\n\ndirectory: /tmp/claude-1000/-home-madness-code-satl/b70f905b-dca1-4f92-bbad-f66d8ce80b78/scratchpad/work/integers/name_x1.satl:5\nsyntax: satellite.variable.number x1 = 5\n        /\\\n\nsatellite has no scenario for this line -- it is spelled in a shape the language\ndoes not have a meaning for.\nmachine code 13 satl_line_not_understood -- satl exits with this.\n\n--------------------------------------------------------------------------------\n[exit 13]\n"
+ },
+ {
+  "area": "integers",
+  "index": 5,
+  "title": "Reading a number declared with no value gives five different refusals, and display's is a false S210 NOT_BUILT_YET",
+  "reported_exit": 14,
+  "rerun_exit": 14,
+  "same_exit": true,
+  "observed_lines_found": "6/6",
+  "rerun_output": "THE SATELLITE PROGRAMMING LANGUAGE\nVERSION 004 REVISION 08 BUILD 0099\nCLANG++ 24 ALMALINUX 10.2\n---------------------------------------------------------------\n\n--------------------------------------------------------------------------------\nSATELLITE CRITICAL ERROR REPORT\n--------------------------------------------------------------------------------\nS210: NOT_BUILT_YET\nsatl(run): satellite.console.display has no scenario for nothing\n\ndirectory: /tmp/claude-1000/-home-madness-code-satl/b70f905b-dca1-4f92-bbad-f66d8ce80b78/scratchpad/work/integers/nodecl.satl:6\nsyntax: satellite.console.display(n)\n        /\\\n\nthis word is numbered in the language and the library behind it does not exist\nyet. The word is right; there is nothing yet to run.\nmachine code 14 not_built_yet -- satl exits with this.\n\n--------------------------------------------------------------------------------\n[exit 14]\n"
+ },
+ {
+  "area": "integers",
+  "index": 6,
+  "title": "Numbered number methods abs, sqrt, floor, ceil, round, clamp, modulus, shift_left, digits are refused as 'not one of its methods -- only a spacesuit has capsules'",
+  "reported_exit": 13,
+  "rerun_exit": 13,
+  "same_exit": true,
+  "observed_lines_found": "3/4",
+  "rerun_output": "THE SATELLITE PROGRAMMING LANGUAGE\nVERSION 004 REVISION 08 BUILD 0099\nCLANG++ 24 ALMALINUX 10.2\n---------------------------------------------------------------\n\n--------------------------------------------------------------------------------\nSATELLITE CRITICAL ERROR REPORT\n--------------------------------------------------------------------------------\nS110: LINE_NOT_UNDERSTOOD\nsatl(check): in satellite.main, n is satellite.variable.number, and abs is not\none of its methods -- only an object of a satellite.spacesuit has capsules to\ncall\n\ndirectory: /tmp/claude-1000/-home-madness-code-satl/b70f905b-dca1-4f92-bbad-f66d8ce80b78/scratchpad/work/integers/number_abs.satl:6\nsyntax: satellite.console.display(n.abs())\n        /\\\n\nsatellite has no scenario for this line -- it is spelled in a shape the language\ndoes not have a meaning for.\nmachine code 13 satl_line_not_understood -- satl exits with this.\n\n--------------------------------------------------------------------------------\n[exit 13]\n"
+ },
+ {
+  "area": "integers",
+  "index": 7,
+  "title": "A negative number written out with a method applies the method before the sign: -5.add(1) is -6 but m.add(1) with m = -5 is -4, and -87.hex is refused",
+  "reported_exit": 0,
+  "rerun_exit": 0,
+  "same_exit": true,
+  "observed_lines_found": "0/1",
+  "rerun_output": "-4\n-6\n-4\nTHE SATELLITE PROGRAMMING LANGUAGE\nVERSION 004 REVISION 08 BUILD 0099\nCLANG++ 24 ALMALINUX 10.2\n---------------------------------------------------------------\n\n[exit 0]\n"
+ },
+ {
+  "area": "integers",
+  "index": 8,
+  "title": "A trailing operator with nothing after it is told it has no space ('this + has none'), and the display caret sits at column 0",
+  "reported_exit": 13,
+  "rerun_exit": 13,
+  "same_exit": true,
+  "observed_lines_found": "4/5",
+  "rerun_output": "THE SATELLITE PROGRAMMING LANGUAGE\nVERSION 004 REVISION 08 BUILD 0099\nCLANG++ 24 ALMALINUX 10.2\n---------------------------------------------------------------\n\n--------------------------------------------------------------------------------\nSATELLITE CRITICAL ERROR REPORT\n--------------------------------------------------------------------------------\nS110: LINE_NOT_UNDERSTOOD\nsatl(run): every math operation is written with a space on both sides of the\nsign, and this + has none\n\ndirectory: /tmp/claude-1000/-home-madness-code-satl/b70f905b-dca1-4f92-bbad-f66d8ce80b78/scratchpad/work/integers/trailing_op.satl:6\nsyntax: satellite.console.display(n +)\n        /\\\n\nsatellite has no scenario for this line -- it is spelled in a shape the language\ndoes not have a meaning for.\nmachine code 13 satl_line_not_understood -- satl exits with this.\n\n--------------------------------------------------------------------------------\n[exit 13]\n"
+ },
+ {
+  "area": "integers",
+  "index": 9,
+  "title": "Division by zero written with ** is reported as '^'",
+  "reported_exit": 22,
+  "rerun_exit": 22,
+  "same_exit": true,
+  "observed_lines_found": "3/3",
+  "rerun_output": "THE SATELLITE PROGRAMMING LANGUAGE\nVERSION 004 REVISION 08 BUILD 0099\nCLANG++ 24 ALMALINUX 10.2\n---------------------------------------------------------------\n\n--------------------------------------------------------------------------------\nSATELLITE CRITICAL ERROR REPORT\n--------------------------------------------------------------------------------\nS401: DIVISION_BY_ZERO\nsatl(run): the ^ of 0 and -1 is a division by zero\n\ndirectory: /tmp/claude-1000/-home-madness-code-satl/b70f905b-dca1-4f92-bbad-f66d8ce80b78/scratchpad/work/integers/stars_zero.satl:5\nsyntax: satellite.console.display(0 ** -1)\n                                    /\\\n\na divisor worked out to 0. There is no number this could answer, so it answers\nnothing rather than something.\nmachine code 22 division_by_zero -- satl exits with this.\n\n--------------------------------------------------------------------------------\n[exit 22]\n"
+ },
+ {
+  "area": "integers",
+  "index": 10,
+  "title": "A digit separator or exponent (1_000, 1e5) is refused as an undeclared name '_000' / 'e5'",
+  "reported_exit": 25,
+  "rerun_exit": 25,
+  "same_exit": true,
+  "observed_lines_found": "2/3",
+  "rerun_output": "THE SATELLITE PROGRAMMING LANGUAGE\nVERSION 004 REVISION 08 BUILD 0099\nCLANG++ 24 ALMALINUX 10.2\n---------------------------------------------------------------\n\n--------------------------------------------------------------------------------\nSATELLITE CRITICAL ERROR REPORT\n--------------------------------------------------------------------------------\nS201: NAME_NOT_DECLARED\nsatl(check): in satellite.main, _000 has no satellite.variable line declaring it\n\ndirectory: /tmp/claude-1000/-home-madness-code-satl/b70f905b-dca1-4f92-bbad-f66d8ce80b78/scratchpad/work/integers/digit_sep.satl:5\nsyntax: satellite.console.display(1_000 + 1)\n        /\\\n\nthis name was used and no satellite.variable line ever declared it. A name has\nto be given a type before it can hold anything.\nmachine code 25 name_not_declared -- satl exits with this.\n\n--------------------------------------------------------------------------------\n[exit 25]\n"
+ },
+ {
+  "area": "integers",
+  "index": 11,
+  "title": "An index past the end of a list or the arguments is S501 LINE_PAST_THE_END, with a paragraph about a file's lines",
+  "reported_exit": 47,
+  "rerun_exit": 47,
+  "same_exit": true,
+  "observed_lines_found": "5/6",
+  "rerun_output": "THE SATELLITE PROGRAMMING LANGUAGE\nVERSION 004 REVISION 08 BUILD 0099\nCLANG++ 24 ALMALINUX 10.2\n---------------------------------------------------------------\n\n--------------------------------------------------------------------------------\nSATELLITE CRITICAL ERROR REPORT\n--------------------------------------------------------------------------------\nS501: LINE_PAST_THE_END\nsatl(run): xs[4]: there is no such item -- the list holds 3 items, counting from\n1\n\ndirectory: /tmp/claude-1000/-home-madness-code-satl/b70f905b-dca1-4f92-bbad-f66d8ce80b78/scratchpad/work/integers/list_index.satl:6\nsyntax: satellite.console.display(xs[4])\n                                    /\\\n\na line was read by its number and the file has no line with that number. Lines\ncount from 1, and the last one is the file's size.\nmachine code 47 line_past_the_end -- satl exits with this.\n\n--------------------------------------------------------------------------------\n[exit 47]\n"
+ },
+ {
+  "area": "floats-fractions-percent",
+  "index": 0,
+  "title": "A whole number is refused as an item of a list (or map) of floats, but a float name, a float parameter and a float field all turn it into a float",
+  "reported_exit": 27,
+  "rerun_exit": 27,
+  "same_exit": true,
+  "observed_lines_found": "0/6",
+  "rerun_output": "10.0\nTHE SATELLITE PROGRAMMING LANGUAGE\nVERSION 004 REVISION 08 BUILD 0099\nCLANG++ 24 ALMALINUX 10.2\n---------------------------------------------------------------\n\n[satellite] satl(run): prices was declared satellite.container.list, and item 2 of it does not fit: it holds a number (machine_code: 27 types_do_not_meet)\n[exit 27]\n"
+ },
+ {
+  "area": "floats-fractions-percent",
+  "index": 1,
+  "title": ".contains and list == say a float and an equal whole number (or n/1 and n) differ, while == on the items says they are equal",
+  "reported_exit": 0,
+  "rerun_exit": 0,
+  "same_exit": true,
+  "observed_lines_found": "0/1",
+  "rerun_output": "true\nfalse\ntrue\nfalse\ntrue\nfalse\nTHE SATELLITE PROGRAMMING LANGUAGE\nVERSION 004 REVISION 08 BUILD 0099\nCLANG++ 24 ALMALINUX 10.2\n---------------------------------------------------------------\n\n[exit 0]\n"
+ },
+ {
+  "area": "floats-fractions-percent",
+  "index": 2,
+  "title": "The .sum of an empty list of percentages is the number 0, which a percentage name refuses; a non-empty one sums to a percentage",
+  "reported_exit": 27,
+  "rerun_exit": 27,
+  "same_exit": true,
+  "observed_lines_found": "0/2",
+  "rerun_output": "15%\nTHE SATELLITE PROGRAMMING LANGUAGE\nVERSION 004 REVISION 08 BUILD 0099\nCLANG++ 24 ALMALINUX 10.2\n---------------------------------------------------------------\n\n[satellite] satl(run): nothing_yet was declared satellite.variable.percentage, and it holds a number (machine_code: 27 types_do_not_meet)\n[exit 27]\n"
+ },
+ {
+  "area": "floats-fractions-percent",
+  "index": 3,
+  "title": "A percentage name given a fraction or an expression is told \"ERROR: expected <its first number>%\", e.g. p = 1/4 is told \"expected 1%\"",
+  "reported_exit": 27,
+  "rerun_exit": 27,
+  "same_exit": true,
+  "observed_lines_found": "3/4",
+  "rerun_output": "THE SATELLITE PROGRAMMING LANGUAGE\nVERSION 004 REVISION 08 BUILD 0099\nCLANG++ 24 ALMALINUX 10.2\n---------------------------------------------------------------\n\n--------------------------------------------------------------------------------\nSATELLITE CRITICAL ERROR REPORT\n--------------------------------------------------------------------------------\nS301: TYPES_DO_NOT_MEET\nsatl(check): in satellite.main, ERROR: expected 1%\n\ndirectory: /tmp/claude-1000/-home-madness-code-satl/b70f905b-dca1-4f92-bbad-f66d8ce80b78/scratchpad/work/floats-fractions-percent/min/f4_percent_expected_first_number.satl:5\nsyntax: satellite.variable.percent p = 1/4\n        /\\\n\nthis operator has no scenario for the two kinds it was given. Nothing was\nguessed at, because a guess here is an answer that is wrong and does not say so.\nmachine code 27 types_do_not_meet -- satl exits with this.\n\n--------------------------------------------------------------------------------\n[exit 27]\n"
+ },
+ {
+  "area": "floats-fractions-percent",
+  "index": 4,
+  "title": "A fraction name given a float division is told \"1.0 / 3 is whole-number division\"; given 2/4 / 2 it is told \"4 / 2 is whole-number division\"",
+  "reported_exit": 27,
+  "rerun_exit": 27,
+  "same_exit": true,
+  "observed_lines_found": "3/6",
+  "rerun_output": "THE SATELLITE PROGRAMMING LANGUAGE\nVERSION 004 REVISION 08 BUILD 0099\nCLANG++ 24 ALMALINUX 10.2\n---------------------------------------------------------------\n\n--------------------------------------------------------------------------------\nSATELLITE CRITICAL ERROR REPORT\n--------------------------------------------------------------------------------\nS301: TYPES_DO_NOT_MEET\nsatl(check): in satellite.main, 1.0 / 3 is whole-number division -- a fraction\nis written with a touching slash: 1.0/3\n\ndirectory: /tmp/claude-1000/-home-madness-code-satl/b70f905b-dca1-4f92-bbad-f66d8ce80b78/scratchpad/work/floats-fractions-percent/min/f5_fraction_float_division_called_whole.satl:5\nsyntax: satellite.variable.fraction f = 1.0 / 3\n        /\\\n\nthis operator has no scenario for the two kinds it was given. Nothing was\nguessed at, because a guess here is an answer that is wrong and does not say so.\nmachine code 27 types_do_not_meet -- satl exits with this.\n\n--------------------------------------------------------------------------------\n[exit 27]\n"
+ },
+ {
+  "area": "floats-fractions-percent",
+  "index": 5,
+  "title": "p.find(\"x\") on a percentage name runs the lines above it before it is refused; the same method on a float name, and p.size on the same percentage, are refused before anything runs",
+  "reported_exit": 27,
+  "rerun_exit": 27,
+  "same_exit": true,
+  "observed_lines_found": "3/5",
+  "rerun_output": "before\nTHE SATELLITE PROGRAMMING LANGUAGE\nVERSION 004 REVISION 08 BUILD 0099\nCLANG++ 24 ALMALINUX 10.2\n---------------------------------------------------------------\n\n--------------------------------------------------------------------------------\nSATELLITE CRITICAL ERROR REPORT\n--------------------------------------------------------------------------------\nS301: TYPES_DO_NOT_MEET\nsatl(run): find was written on a percentage and given a string, and there is no\nscenario for that\n\ndirectory: /tmp/claude-1000/-home-madness-code-satl/b70f905b-dca1-4f92-bbad-f66d8ce80b78/scratchpad/work/floats-fractions-percent/min/f6_percent_find_runs_first.satl:7\nsyntax: satellite.console.display(p.find(\"x\"))\n        /\\\n\nthis operator has no scenario for the two kinds it was given. Nothing was\nguessed at, because a guess here is an answer that is wrong and does not say so.\nmachine code 27 types_do_not_meet -- satl exits with this.\n\n--------------------------------------------------------------------------------\n[exit 27]\n"
+ },
+ {
+  "area": "floats-fractions-percent",
+  "index": 6,
+  "title": "f.hex (and f.binary) on a float name is refused as S210 not built only when its line runs; q.hex on a fraction name is refused before anything runs",
+  "reported_exit": 14,
+  "rerun_exit": 14,
+  "same_exit": true,
+  "observed_lines_found": "3/5",
+  "rerun_output": "before\nTHE SATELLITE PROGRAMMING LANGUAGE\nVERSION 004 REVISION 08 BUILD 0099\nCLANG++ 24 ALMALINUX 10.2\n---------------------------------------------------------------\n\n--------------------------------------------------------------------------------\nSATELLITE CRITICAL ERROR REPORT\n--------------------------------------------------------------------------------\nS210: NOT_BUILT_YET\nsatl(run): f.hex: base 16 text of a float (2.5) is not built yet -- a float\nmeeting a hex is one of the new types mixed together later\n\ndirectory: /tmp/claude-1000/-home-madness-code-satl/b70f905b-dca1-4f92-bbad-f66d8ce80b78/scratchpad/work/floats-fractions-percent/min/f7_float_hex_runs_first.satl:7\nsyntax: satellite.console.display(f.hex)\n        /\\\n\nthis word is numbered in the language and the library behind it does not exist\nyet. The word is right; there is nothing yet to run.\nmachine code 14 not_built_yet -- satl exits with this.\n\n--------------------------------------------------------------------------------\n[exit 14]\n"
+ },
+ {
+  "area": "floats-fractions-percent",
+  "index": 7,
+  "title": "A float's or a fraction's .reverse() says \"is not built yet\" but is reported as S301 TYPES_DO_NOT_MEET, exit 27, not S210 NOT_BUILT_YET, exit 14",
+  "reported_exit": 27,
+  "rerun_exit": 27,
+  "same_exit": true,
+  "observed_lines_found": "6/6",
+  "rerun_output": "THE SATELLITE PROGRAMMING LANGUAGE\nVERSION 004 REVISION 08 BUILD 0099\nCLANG++ 24 ALMALINUX 10.2\n---------------------------------------------------------------\n\n--------------------------------------------------------------------------------\nSATELLITE CRITICAL ERROR REPORT\n--------------------------------------------------------------------------------\nS301: TYPES_DO_NOT_MEET\nsatl(run): f.reverse() was written on a float, and a float's .reverse() is not\nbuilt yet (SATELLITE_INFINITY.md FLT-4)\n\ndirectory: /tmp/claude-1000/-home-madness-code-satl/b70f905b-dca1-4f92-bbad-f66d8ce80b78/scratchpad/work/floats-fractions-percent/min/f8_float_reverse_code.satl:6\nsyntax: satellite.console.display(f.reverse())\n        /\\\n\nthis operator has no scenario for the two kinds it was given. Nothing was\nguessed at, because a guess here is an answer that is wrong and does not say so.\nmachine code 27 types_do_not_meet -- satl exits with this.\n\n--------------------------------------------------------------------------------\n[exit 27]\n"
+ },
+ {
+  "area": "floats-fractions-percent",
+  "index": 8,
+  "title": "A float literal with a trailing point (5.) is refused only when its line runs, blaming \"& | << >> !!\" or a missing space around a math sign; 1.2.3 is also refused only at run time, with its caret past the end of the line",
+  "reported_exit": 13,
+  "rerun_exit": 13,
+  "same_exit": true,
+  "observed_lines_found": "0/4",
+  "rerun_output": "before\nTHE SATELLITE PROGRAMMING LANGUAGE\nVERSION 004 REVISION 08 BUILD 0099\nCLANG++ 24 ALMALINUX 10.2\n---------------------------------------------------------------\n\n[satellite] satl(run): x = ... could not be read to the end -- it stops at something with no meaning there yet (& | << >> !! are undecided), so the part before it is not the whole value (machine_code: 13 satl_line_not_understood)\n[exit 13]\n"
+ },
+ {
+  "area": "floats-fractions-percent",
+  "index": 9,
+  "title": "Scientific notation (1e-10) is refused as an undeclared name \"e\", not as notation satellite does not have",
+  "reported_exit": 25,
+  "rerun_exit": 25,
+  "same_exit": true,
+  "observed_lines_found": "5/6",
+  "rerun_output": "THE SATELLITE PROGRAMMING LANGUAGE\nVERSION 004 REVISION 08 BUILD 0099\nCLANG++ 24 ALMALINUX 10.2\n---------------------------------------------------------------\n\n--------------------------------------------------------------------------------\nSATELLITE CRITICAL ERROR REPORT\n--------------------------------------------------------------------------------\nS201: NAME_NOT_DECLARED\nsatl(check): in satellite.main, e has no satellite.variable line declaring it\n\ndirectory: /tmp/claude-1000/-home-madness-code-satl/b70f905b-dca1-4f92-bbad-f66d8ce80b78/scratchpad/work/floats-fractions-percent/min/f10_scientific.satl:5\nsyntax: satellite.variable.float tiny = 1e-10\n        /\\\n\nthis name was used and no satellite.variable line ever declared it. A name has\nto be given a type before it can hold anything.\nmachine code 25 name_not_declared -- satl exits with this.\n\n--------------------------------------------------------------------------------\n[exit 25]\n"
+ },
+ {
+  "area": "floats-fractions-percent",
+  "index": 10,
+  "title": "Displaying a float (or any name) declared with no value says S210 NOT_BUILT_YET, \"satellite.console.display has no scenario for nothing\"",
+  "reported_exit": 14,
+  "rerun_exit": 14,
+  "same_exit": true,
+  "observed_lines_found": "6/6",
+  "rerun_output": "THE SATELLITE PROGRAMMING LANGUAGE\nVERSION 004 REVISION 08 BUILD 0099\nCLANG++ 24 ALMALINUX 10.2\n---------------------------------------------------------------\n\n--------------------------------------------------------------------------------\nSATELLITE CRITICAL ERROR REPORT\n--------------------------------------------------------------------------------\nS210: NOT_BUILT_YET\nsatl(run): satellite.console.display has no scenario for nothing\n\ndirectory: /tmp/claude-1000/-home-madness-code-satl/b70f905b-dca1-4f92-bbad-f66d8ce80b78/scratchpad/work/floats-fractions-percent/min/f11_no_value_display.satl:6\nsyntax: satellite.console.display(total)\n        /\\\n\nthis word is numbered in the language and the library behind it does not exist\nyet. The word is right; there is nothing yet to run.\nmachine code 14 not_built_yet -- satl exits with this.\n\n--------------------------------------------------------------------------------\n[exit 14]\n"
+ },
+ {
+  "area": "floats-fractions-percent",
+  "index": 11,
+  "title": "A number plus text that spells a percentage or a fraction joins as text (100 + \"15%\" is 10015%), while text that spells a float adds (100 + \"0.5\" is 100.5)",
+  "reported_exit": 0,
+  "rerun_exit": 0,
+  "same_exit": true,
+  "observed_lines_found": "0/1",
+  "rerun_output": "100.5\n115\n10015%\n41/2\nTHE SATELLITE PROGRAMMING LANGUAGE\nVERSION 004 REVISION 08 BUILD 0099\nCLANG++ 24 ALMALINUX 10.2\n---------------------------------------------------------------\n\n[exit 0]\n"
+ },
+ {
+  "area": "spacesuits-and-library",
+  "index": 0,
+  "title": "A spacesuit's own capsule named lock() is never run: the built-in object lock runs instead, silently",
+  "reported_exit": 0,
+  "rerun_exit": 0,
+  "same_exit": true,
+  "observed_lines_found": "0/1",
+  "rerun_output": "false\nTHE SATELLITE PROGRAMMING LANGUAGE\nVERSION 004 REVISION 08 BUILD 0099\nCLANG++ 24 ALMALINUX 10.2\n---------------------------------------------------------------\n\n[exit 0]\n"
+ },
+ {
+  "area": "spacesuits-and-library",
+  "index": 1,
+  "title": "Two capsules named color and colour in one spacesuit: the second silently replaces the first (top-level capsules keep both)",
+  "reported_exit": 0,
+  "rerun_exit": 0,
+  "same_exit": true,
+  "observed_lines_found": "0/1",
+  "rerun_output": "blue\nblue\nTHE SATELLITE PROGRAMMING LANGUAGE\nVERSION 004 REVISION 08 BUILD 0099\nCLANG++ 24 ALMALINUX 10.2\n---------------------------------------------------------------\n\n[exit 0]\n"
+ },
+ {
+  "area": "spacesuits-and-library",
+  "index": 2,
+  "title": "Calling an object by another spelling of a method word runs a capsule it never declared: m.as_number() runs number()",
+  "reported_exit": 0,
+  "rerun_exit": 0,
+  "same_exit": true,
+  "observed_lines_found": "0/1",
+  "rerun_output": "before\n3\nTHE SATELLITE PROGRAMMING LANGUAGE\nVERSION 004 REVISION 08 BUILD 0099\nCLANG++ 24 ALMALINUX 10.2\n---------------------------------------------------------------\n\n[exit 0]\n"
+ },
+ {
+  "area": "spacesuits-and-library",
+  "index": 3,
+  "title": "satellite.library.contains and satellite.library.contain are refused as one value written twice",
+  "reported_exit": 26,
+  "rerun_exit": 26,
+  "same_exit": true,
+  "observed_lines_found": "4/5",
+  "rerun_output": "THE SATELLITE PROGRAMMING LANGUAGE\nVERSION 004 REVISION 08 BUILD 0099\nCLANG++ 24 ALMALINUX 10.2\n---------------------------------------------------------------\n\n--------------------------------------------------------------------------------\nSATELLITE CRITICAL ERROR REPORT\n--------------------------------------------------------------------------------\nS202: NAME_DECLARED_TWICE\nsatl(check): satellite.library.contains is written twice in this file -- a value\nis written once, and a second would quietly replace the first\n\ndirectory: /tmp/claude-1000/-home-madness-code-satl/b70f905b-dca1-4f92-bbad-f66d8ce80b78/scratchpad/work/spacesuits-and-library/min/library_contain_contains.satl:4\nsyntax: satellite.library.contain = 2\n        /\\\n\nthis name is already declared where this line stands -- a variable in its\ncapsule, or a capsule, a satellite.namespace or an included file in its file or\nspace. One name, one declaration -- the second would quietly replace the first.\nmachine code 26 name_declared_twice -- satl exits with this.\n\n--------------------------------------------------------------------------------\n[exit 26]\n"
+ },
+ {
+  "area": "spacesuits-and-library",
+  "index": 4,
+  "title": "A satellite.library value that was never written is read through another spelling: .upper and .uppercase read .up",
+  "reported_exit": 0,
+  "rerun_exit": 0,
+  "same_exit": true,
+  "observed_lines_found": "0/0",
+  "rerun_output": "5\n5\n5\nTHE SATELLITE PROGRAMMING LANGUAGE\nVERSION 004 REVISION 08 BUILD 0099\nCLANG++ 24 ALMALINUX 10.2\n---------------------------------------------------------------\n\n[exit 0]\n"
+ },
+ {
+  "area": "spacesuits-and-library",
+  "index": 5,
+  "title": "The refusal for changing satellite.library.str names satellite.library.to_string",
+  "reported_exit": 54,
+  "rerun_exit": 54,
+  "same_exit": true,
+  "observed_lines_found": "5/6",
+  "rerun_output": "THE SATELLITE PROGRAMMING LANGUAGE\nVERSION 004 REVISION 08 BUILD 0099\nCLANG++ 24 ALMALINUX 10.2\n---------------------------------------------------------------\n\n--------------------------------------------------------------------------------\nSATELLITE CRITICAL ERROR REPORT\n--------------------------------------------------------------------------------\nS250: LIBRARY_VALUE_IS_FIXED\nsatl(check): in satellite.main, satellite.library.to_string is written at the\ntop of its file and never changes -- a value every capsule could change would be\na global, and satellite has none. Copy it into a variable of your own and change\nthat\n\ndirectory: /tmp/claude-1000/-home-madness-code-satl/b70f905b-dca1-4f92-bbad-f66d8ce80b78/scratchpad/work/spacesuits-and-library/min/library_str_named_to_string.satl:8\nsyntax: satellite.library.str = \"b\"\n        /\\\n\na satellite.library value is written down at the top of its file -- one number,\ntext or other literal -- and nothing works it out or changes it afterwards. A\nvalue every capsule could change would be a global, and satellite has none.\nmachine code 54 library_value_is_fixed -- satl exits with this.\n\n--------------------------------------------------------------------------------\n[exit 54]\n"
+ },
+ {
+  "area": "spacesuits-and-library",
+  "index": 6,
+  "title": "A method called on an empty spacesuit field is refused with a false reason about undecided operators or math signs",
+  "reported_exit": 13,
+  "rerun_exit": 13,
+  "same_exit": true,
+  "observed_lines_found": "1/6",
+  "rerun_output": "THE SATELLITE PROGRAMMING LANGUAGE\nVERSION 004 REVISION 08 BUILD 0099\nCLANG++ 24 ALMALINUX 10.2\n---------------------------------------------------------------\n\n[satellite] satl(run): satellite.return(...) could not be read to the end -- it stops at something with no meaning there yet (& | << >> !! are undecided), so the part before it is not the whole value (machine_code: 13 satl_line_not_understood)\n[exit 13]\n"
+ },
+ {
+  "area": "spacesuits-and-library",
+  "index": 7,
+  "title": "A list of objects whose spacesuit declares to_string is refused because \"an object has no to_string capsule\"",
+  "reported_exit": 14,
+  "rerun_exit": 14,
+  "same_exit": true,
+  "observed_lines_found": "4/6",
+  "rerun_output": "a box\nTHE SATELLITE PROGRAMMING LANGUAGE\nVERSION 004 REVISION 08 BUILD 0099\nCLANG++ 24 ALMALINUX 10.2\n---------------------------------------------------------------\n\n--------------------------------------------------------------------------------\nSATELLITE CRITICAL ERROR REPORT\n--------------------------------------------------------------------------------\nS210: NOT_BUILT_YET\nsatl(run): satellite.console.display was given a list, and an object has no\nto_string capsule, and satellite does not invent one\n\ndirectory: /tmp/claude-1000/-home-madness-code-satl/b70f905b-dca1-4f92-bbad-f66d8ce80b78/scratchpad/work/spacesuits-and-library/min/list_of_objects_with_to_string.satl:19\nsyntax: satellite.console.display(l)\n        /\\\n\nthis word is numbered in the language and the library behind it does not exist\nyet. The word is right; there is nothing yet to run.\nmachine code 14 not_built_yet -- satl exits with this.\n\n--------------------------------------------------------------------------------\n[exit 14]\n"
+ },
+ {
+  "area": "spacesuits-and-library",
+  "index": 8,
+  "title": "display of an object is refused as S210 only when its line runs, after earlier lines have printed",
+  "reported_exit": 14,
+  "rerun_exit": 14,
+  "same_exit": true,
+  "observed_lines_found": "3/4",
+  "rerun_output": "before\nTHE SATELLITE PROGRAMMING LANGUAGE\nVERSION 004 REVISION 08 BUILD 0099\nCLANG++ 24 ALMALINUX 10.2\n---------------------------------------------------------------\n\n--------------------------------------------------------------------------------\nSATELLITE CRITICAL ERROR REPORT\n--------------------------------------------------------------------------------\nS210: NOT_BUILT_YET\nsatl(run): satellite.console.display has no scenario for an object\n\ndirectory: /tmp/claude-1000/-home-madness-code-satl/b70f905b-dca1-4f92-bbad-f66d8ce80b78/scratchpad/work/spacesuits-and-library/min/display_object_runtime.satl:18\nsyntax: satellite.console.display(a)\n        /\\\n\nthis word is numbered in the language and the library behind it does not exist\nyet. The word is right; there is nothing yet to run.\nmachine code 14 not_built_yet -- satl exits with this.\n\n--------------------------------------------------------------------------------\n[exit 14]\n"
+ },
+ {
+  "area": "spacesuits-and-library",
+  "index": 9,
+  "title": "A protected capsule reached through a map item is refused only at run time; through a list item it is refused before anything runs",
+  "reported_exit": 52,
+  "rerun_exit": 52,
+  "same_exit": true,
+  "observed_lines_found": "4/5",
+  "rerun_output": "before\nTHE SATELLITE PROGRAMMING LANGUAGE\nVERSION 004 REVISION 08 BUILD 0099\nCLANG++ 24 ALMALINUX 10.2\n---------------------------------------------------------------\n\n--------------------------------------------------------------------------------\nSATELLITE CRITICAL ERROR REPORT\n--------------------------------------------------------------------------------\nS230: MEMBER_IS_PROTECTED\nsatl(run): secret is inside the satellite.protected part of cell, so only cell's\nown capsules can reach it -- move it to satellite.public, or add a capsule there\nthat answers it\n\ndirectory: /tmp/claude-1000/-home-madness-code-satl/b70f905b-dca1-4f92-bbad-f66d8ce80b78/scratchpad/work/spacesuits-and-library/min/map_item_protected_capsule.satl:19\nsyntax: satellite.console.display(byname[\"a\"].secret())\n                                             /\\\n\nthis is inside a spacesuit, where only its own capsules can reach it -- every\nfield is, and so is a capsule written in satellite.protected. A capsule in\nsatellite.public that answers it is the way in from outside.\nmachine code 52 member_is_protected -- satl exits with this.\n\n--------------------------------------------------------------------------------\n[exit 52]\n"
+ },
+ {
+  "area": "spacesuits-and-library",
+  "index": 10,
+  "title": "A field read through a map item is refused as an undeclared variable (S201) instead of a protected field (S230)",
+  "reported_exit": 25,
+  "rerun_exit": 25,
+  "same_exit": true,
+  "observed_lines_found": "0/5",
+  "rerun_output": "THE SATELLITE PROGRAMMING LANGUAGE\nVERSION 004 REVISION 08 BUILD 0099\nCLANG++ 24 ALMALINUX 10.2\n---------------------------------------------------------------\n\n--------------------------------------------------------------------------------\nSATELLITE CRITICAL ERROR REPORT\n--------------------------------------------------------------------------------\nS201: NAME_NOT_DECLARED\nsatl(check): in satellite.main, v has no satellite.variable line declaring it\n\ndirectory: /tmp/claude-1000/-home-madness-code-satl/b70f905b-dca1-4f92-bbad-f66d8ce80b78/scratchpad/work/spacesuits-and-library/min/map_item_field_read.satl:15\nsyntax: satellite.console.display(byname[\"a\"].v)\n        /\\\n\nthis name was used and no satellite.variable line ever declared it. A name has\nto be given a type before it can hold anything.\nmachine code 25 name_not_declared -- satl exits with this.\n\n--------------------------------------------------------------------------------\n[exit 25]\n"
+ },
+ {
+  "area": "spacesuits-and-library",
+  "index": 11,
+  "title": "Writing a field through a list item says \"a call's answer cannot be given a value\" instead of S230",
+  "reported_exit": 13,
+  "rerun_exit": 13,
+  "same_exit": true,
+  "observed_lines_found": "5/6",
+  "rerun_output": "THE SATELLITE PROGRAMMING LANGUAGE\nVERSION 004 REVISION 08 BUILD 0099\nCLANG++ 24 ALMALINUX 10.2\n---------------------------------------------------------------\n\n--------------------------------------------------------------------------------\nSATELLITE CRITICAL ERROR REPORT\n--------------------------------------------------------------------------------\nS110: LINE_NOT_UNDERSTOOD\nsatl(check): in satellite.main, things is followed by something that is not a\nmethod call -- a call's answer cannot be given a value, a bracket must close on\nits line, and one statement is one line\n\ndirectory: /tmp/claude-1000/-home-madness-code-satl/b70f905b-dca1-4f92-bbad-f66d8ce80b78/scratchpad/work/spacesuits-and-library/min/list_item_field_write.satl:15\nsyntax: things[1].v = 5\n        /\\\n\nsatellite has no scenario for this line -- it is spelled in a shape the language\ndoes not have a meaning for.\nmachine code 13 satl_line_not_understood -- satl exits with this.\n\n--------------------------------------------------------------------------------\n[exit 13]\n"
+ },
+ {
+  "area": "spacesuits-and-library",
+  "index": 12,
+  "title": "Indexing the list a capsule answers, h.items()[2], is refused at run time with a false math-sign reason",
+  "reported_exit": 13,
+  "rerun_exit": 13,
+  "same_exit": true,
+  "observed_lines_found": "4/6",
+  "rerun_output": "3\nTHE SATELLITE PROGRAMMING LANGUAGE\nVERSION 004 REVISION 08 BUILD 0099\nCLANG++ 24 ALMALINUX 10.2\n---------------------------------------------------------------\n\n--------------------------------------------------------------------------------\nSATELLITE CRITICAL ERROR REPORT\n--------------------------------------------------------------------------------\nS110: LINE_NOT_UNDERSTOOD\nsatl(run): satellite.console.display was given something it could not read to\nthe end of -- check that every math sign has a space on both sides\n\ndirectory: /tmp/claude-1000/-home-madness-code-satl/b70f905b-dca1-4f92-bbad-f66d8ce80b78/scratchpad/work/spacesuits-and-library/min/index_method_answer.satl:22\nsyntax: satellite.console.display(h.items()[2])\n        /\\\n\nsatellite has no scenario for this line -- it is spelled in a shape the language\ndoes not have a meaning for.\nmachine code 13 satl_line_not_understood -- satl exits with this.\n\n--------------------------------------------------------------------------------\n[exit 13]\n"
+ },
+ {
+  "area": "spacesuits-and-library",
+  "index": 13,
+  "title": "list.contains(obj) and index_of compare objects, but obj == obj is refused as having no scenario",
+  "reported_exit": 27,
+  "rerun_exit": 27,
+  "same_exit": true,
+  "observed_lines_found": "4/6",
+  "rerun_output": "true\n1\nTHE SATELLITE PROGRAMMING LANGUAGE\nVERSION 004 REVISION 08 BUILD 0099\nCLANG++ 24 ALMALINUX 10.2\n---------------------------------------------------------------\n\n--------------------------------------------------------------------------------\nSATELLITE CRITICAL ERROR REPORT\n--------------------------------------------------------------------------------\nS301: TYPES_DO_NOT_MEET\nsatl(run): a comparison was given an object and an object, and there is no\nscenario for that pair\n\ndirectory: /tmp/claude-1000/-home-madness-code-satl/b70f905b-dca1-4f92-bbad-f66d8ce80b78/scratchpad/work/spacesuits-and-library/min/object_equality_contains.satl:20\nsyntax: satellite.console.display(xs[1] == a)\n                                        /\\\n\nthis operator has no scenario for the two kinds it was given. Nothing was\nguessed at, because a guess here is an answer that is wrong and does not say so.\nmachine code 27 types_do_not_meet -- satl exits with this.\n\n--------------------------------------------------------------------------------\n[exit 27]\n"
+ },
+ {
+  "area": "spacesuits-and-library",
+  "index": 14,
+  "title": "counter.bump() on a spacesuit's name says counter has no satellite.variable line declaring it",
+  "reported_exit": 25,
+  "rerun_exit": 25,
+  "same_exit": true,
+  "observed_lines_found": "3/4",
+  "rerun_output": "THE SATELLITE PROGRAMMING LANGUAGE\nVERSION 004 REVISION 08 BUILD 0099\nCLANG++ 24 ALMALINUX 10.2\n---------------------------------------------------------------\n\n--------------------------------------------------------------------------------\nSATELLITE CRITICAL ERROR REPORT\n--------------------------------------------------------------------------------\nS201: NAME_NOT_DECLARED\nsatl(check): in satellite.main, counter has no satellite.variable line declaring\nit\n\ndirectory: /tmp/claude-1000/-home-madness-code-satl/b70f905b-dca1-4f92-bbad-f66d8ce80b78/scratchpad/work/spacesuits-and-library/min/capsule_on_spacesuit_name.satl:17\nsyntax: satellite.console.display(counter.bump())\n        /\\\n\nthis name was used and no satellite.variable line ever declared it. A name has\nto be given a type before it can hold anything.\nmachine code 25 name_not_declared -- satl exits with this.\n\n--------------------------------------------------------------------------------\n[exit 25]\n"
+ },
+ {
+  "area": "spacesuits-and-library",
+  "index": 15,
+  "title": "other.cents inside the spacesuit's own capsule is refused because \"fields are reached from inside the spacesuit only\"",
+  "reported_exit": 52,
+  "rerun_exit": 52,
+  "same_exit": true,
+  "observed_lines_found": "5/6",
+  "rerun_output": "THE SATELLITE PROGRAMMING LANGUAGE\nVERSION 004 REVISION 08 BUILD 0099\nCLANG++ 24 ALMALINUX 10.2\n---------------------------------------------------------------\n\n--------------------------------------------------------------------------------\nSATELLITE CRITICAL ERROR REPORT\n--------------------------------------------------------------------------------\nS230: MEMBER_IS_PROTECTED\nsatl(check): in money.same, cents is a field of money and fields are reached\nfrom inside the spacesuit only -- write a capsule in money that answers it and\ncall that instead\n\ndirectory: /tmp/claude-1000/-home-madness-code-satl/b70f905b-dca1-4f92-bbad-f66d8ce80b78/scratchpad/work/spacesuits-and-library/min/other_objects_field_inside.satl:17\nsyntax: satellite.return(cents == other.cents)\n        /\\\n\nthis is inside a spacesuit, where only its own capsules can reach it -- every\nfield is, and so is a capsule written in satellite.protected. A capsule in\nsatellite.public that answers it is the way in from outside.\nmachine code 52 member_is_protected -- satl exits with this.\n\n--------------------------------------------------------------------------------\n[exit 52]\n"
+ },
+ {
+  "area": "maps-and-nesting",
+  "index": 0,
+  "title": "A whole number is refused by every float container (list<float>, map<_, float>, a list<float> parameter), though a float name and a float parameter take it",
+  "reported_exit": 27,
+  "rerun_exit": 27,
+  "same_exit": true,
+  "observed_lines_found": "0/2",
+  "rerun_output": "3.0\nTHE SATELLITE PROGRAMMING LANGUAGE\nVERSION 004 REVISION 08 BUILD 0099\nCLANG++ 24 ALMALINUX 10.2\n---------------------------------------------------------------\n\n[satellite] satl(run): fl was declared satellite.container.list, and item 1 of it does not fit: it holds a number (machine_code: 27 types_do_not_meet)\n[exit 27]\n"
+ },
+ {
+  "area": "maps-and-nesting",
+  "index": 1,
+  "title": "Container == and .contains use a stricter equality than ==: {1} == {1.0} is false while 1 == 1.0 is true",
+  "reported_exit": 0,
+  "rerun_exit": 0,
+  "same_exit": true,
+  "observed_lines_found": "0/1",
+  "rerun_output": "true\nfalse\ntrue\nfalse\ntrue\nfalse\nTHE SATELLITE PROGRAMMING LANGUAGE\nVERSION 004 REVISION 08 BUILD 0099\nCLANG++ 24 ALMALINUX 10.2\n---------------------------------------------------------------\n\n[exit 0]\n"
+ },
+ {
+  "area": "maps-and-nesting",
+  "index": 2,
+  "title": "Emptying a map is quadratic: 40,000 remove_last() take 14.5 s (a list's take 0.17 s for 80,000)",
+  "reported_exit": 0,
+  "rerun_exit": 0,
+  "same_exit": true,
+  "observed_lines_found": "0/1",
+  "rerun_output": "40000\n0\nTHE SATELLITE PROGRAMMING LANGUAGE\nVERSION 004 REVISION 08 BUILD 0099\nCLANG++ 24 ALMALINUX 10.2\n---------------------------------------------------------------\n\n[exit 0]\n"
+ },
+ {
+  "area": "maps-and-nesting",
+  "index": 3,
+  "title": "Indexing any result that is not a name (m.keys[2], f()[1], {10, 20}[2]) is refused only when the line runs, with a false hint about math signs",
+  "reported_exit": 13,
+  "rerun_exit": 13,
+  "same_exit": true,
+  "observed_lines_found": "4/6",
+  "rerun_output": "before\nTHE SATELLITE PROGRAMMING LANGUAGE\nVERSION 004 REVISION 08 BUILD 0099\nCLANG++ 24 ALMALINUX 10.2\n---------------------------------------------------------------\n\n--------------------------------------------------------------------------------\nSATELLITE CRITICAL ERROR REPORT\n--------------------------------------------------------------------------------\nS110: LINE_NOT_UNDERSTOOD\nsatl(run): satellite.console.display was given something it could not read to\nthe end of -- check that every math sign has a space on both sides\n\ndirectory: /tmp/claude-1000/-home-madness-code-satl/b70f905b-dca1-4f92-bbad-f66d8ce80b78/scratchpad/work/maps-and-nesting/keys_index.satl:7\nsyntax: satellite.console.display(age.keys[2])\n        /\\\n\nsatellite has no scenario for this line -- it is spelled in a shape the language\ndoes not have a meaning for.\nmachine code 13 satl_line_not_understood -- satl exits with this.\n\n--------------------------------------------------------------------------------\n[exit 13]\n"
+ },
+ {
+  "area": "maps-and-nesting",
+  "index": 4,
+  "title": "A map key type that can never be a key (list, map, float, fraction, hex) is accepted at declaration, and satellite.access prints a put line that is always refused",
+  "reported_exit": 27,
+  "rerun_exit": 27,
+  "same_exit": true,
+  "observed_lines_found": "6/6",
+  "rerun_output": "m is a map (list of numbers -> number), 0 keys\n  value       {}\n  m[key]      a number, key a list of numbers\n  m[key] = 1  puts a number under key\n  m.size      how many keys it holds\n  m.keys      the keys of it, as a list\nTHE SATELLITE PROGRAMMING LANGUAGE\nVERSION 004 REVISION 08 BUILD 0099\nCLANG++ 24 ALMALINUX 10.2\n---------------------------------------------------------------\n\n--------------------------------------------------------------------------------\nSATELLITE CRITICAL ERROR REPORT\n--------------------------------------------------------------------------------\nS301: TYPES_DO_NOT_MEET\nsatl(run): in m[...] = ..., the key is a list, and a key must be a number, a\nstring, a bool, a binary or a percentage -- something that cannot change after\nit is filed under\n\ndirectory: /tmp/claude-1000/-home-madness-code-satl/b70f905b-dca1-4f92-bbad-f66d8ce80b78/scratchpad/work/maps-and-nesting/list_key_map.satl:8\nsyntax: m[key] = 1\n         /\\\n\nthis operator has no scenario for the two kinds it was given. Nothing was\nguessed at, because a guess here is an answer that is wrong and does not say so.\nmachine code 27 types_do_not_meet -- satl exits with this.\n\n--------------------------------------------------------------------------------\n[exit 27]\n"
+ },
+ {
+  "area": "maps-and-nesting",
+  "index": 5,
+  "title": "The checker refuses map.sum/.max/.join before anything runs, but map.append/.insert/.remove_at/.truncate/.index_of, list.keys/.values and container.string only after earlier lines have run",
+  "reported_exit": 27,
+  "rerun_exit": 27,
+  "same_exit": true,
+  "observed_lines_found": "3/5",
+  "rerun_output": "this line ran\nTHE SATELLITE PROGRAMMING LANGUAGE\nVERSION 004 REVISION 08 BUILD 0099\nCLANG++ 24 ALMALINUX 10.2\n---------------------------------------------------------------\n\n--------------------------------------------------------------------------------\nSATELLITE CRITICAL ERROR REPORT\n--------------------------------------------------------------------------------\nS301: TYPES_DO_NOT_MEET\nsatl(run): in age, age.append -- an index has keys and not positions: write\nage[key] = value\n\ndirectory: /tmp/claude-1000/-home-madness-code-satl/b70f905b-dca1-4f92-bbad-f66d8ce80b78/scratchpad/work/maps-and-nesting/map_append_late.satl:7\nsyntax: age.append(4)\n        /\\\n\nthis operator has no scenario for the two kinds it was given. Nothing was\nguessed at, because a guess here is an answer that is wrong and does not say so.\nmachine code 27 types_do_not_meet -- satl exits with this.\n\n--------------------------------------------------------------------------------\n[exit 27]\n"
+ },
+ {
+  "area": "maps-and-nesting",
+  "index": 6,
+  "title": "map.insert/.remove_at/.truncate refusal says 'Take its keys first: age.keys.insert(...)', and that line is itself refused",
+  "reported_exit": 13,
+  "rerun_exit": 13,
+  "same_exit": true,
+  "observed_lines_found": "1/4",
+  "rerun_output": "THE SATELLITE PROGRAMMING LANGUAGE\nVERSION 004 REVISION 08 BUILD 0099\nCLANG++ 24 ALMALINUX 10.2\n---------------------------------------------------------------\n\n--------------------------------------------------------------------------------\nSATELLITE CRITICAL ERROR REPORT\n--------------------------------------------------------------------------------\nS110: LINE_NOT_UNDERSTOOD\nsatl(run): in age, age.insert changes a container, and this one has no name to\nchange\n\ndirectory: /tmp/claude-1000/-home-madness-code-satl/b70f905b-dca1-4f92-bbad-f66d8ce80b78/scratchpad/work/maps-and-nesting/map_insert_suggested.satl:6\nsyntax: age.keys.insert(1, \"al\")\n        /\\\n\nsatellite has no scenario for this line -- it is spelled in a shape the language\ndoes not have a meaning for.\nmachine code 13 satl_line_not_understood -- satl exits with this.\n\n--------------------------------------------------------------------------------\n[exit 13]\n"
+ },
+ {
+  "area": "maps-and-nesting",
+  "index": 7,
+  "title": "A list<number> or map<_, number> keeps a binary as a binary (so it is not == {5}), though a number name turns b101 into 5",
+  "reported_exit": 0,
+  "rerun_exit": 0,
+  "same_exit": true,
+  "observed_lines_found": "0/1",
+  "rerun_output": "5\n{b101}\nfalse\n{\"k\": b101}\nTHE SATELLITE PROGRAMMING LANGUAGE\nVERSION 004 REVISION 08 BUILD 0099\nCLANG++ 24 ALMALINUX 10.2\n---------------------------------------------------------------\n\n[exit 0]\n"
+ },
+ {
+  "area": "maps-and-nesting",
+  "index": 8,
+  "title": "Refusals call a map an 'index', though the help says a refusal uses the word you wrote",
+  "reported_exit": 47,
+  "rerun_exit": 47,
+  "same_exit": true,
+  "observed_lines_found": "2/3",
+  "rerun_output": "THE SATELLITE PROGRAMMING LANGUAGE\nVERSION 004 REVISION 08 BUILD 0099\nCLANG++ 24 ALMALINUX 10.2\n---------------------------------------------------------------\n\n--------------------------------------------------------------------------------\nSATELLITE CRITICAL ERROR REPORT\n--------------------------------------------------------------------------------\nS501: LINE_PAST_THE_END\nsatl(run): age.first: the index is empty\n\ndirectory: /tmp/claude-1000/-home-madness-code-satl/b70f905b-dca1-4f92-bbad-f66d8ce80b78/scratchpad/work/maps-and-nesting/map_word_index.satl:6\nsyntax: satellite.console.display(age.first)\n        /\\\n\na line was read by its number and the file has no line with that number. Lines\ncount from 1, and the last one is the file's size.\nmachine code 47 line_past_the_end -- satl exits with this.\n\n--------------------------------------------------------------------------------\n[exit 47]\n"
+ },
+ {
+  "area": "maps-and-nesting",
+  "index": 9,
+  "title": "The refusal for a multiple given a map of the wrong value kind says 'it holds an index, and this name takes ... satellite.container.map'",
+  "reported_exit": 27,
+  "rerun_exit": 27,
+  "same_exit": true,
+  "observed_lines_found": "1/2",
+  "rerun_output": "THE SATELLITE PROGRAMMING LANGUAGE\nVERSION 004 REVISION 08 BUILD 0099\nCLANG++ 24 ALMALINUX 10.2\n---------------------------------------------------------------\n\n[satellite] satl(run): m was declared satellite.container.multiple, and it holds an index, and this name takes satellite.variable.number or satellite.container.map (machine_code: 27 types_do_not_meet)\n[exit 27]\n"
+ },
+ {
+  "area": "maps-and-nesting",
+  "index": 10,
+  "title": "satellite.access drops the inner condition for a multiple nested in a multiple, so a line it says works fails",
+  "reported_exit": 27,
+  "rerun_exit": 27,
+  "same_exit": true,
+  "observed_lines_found": "3/4",
+  "rerun_output": "x is a multiple (string or list of multiples (number or list of numbers)), holding a list of multiples (number or list of numbers), 2 items\n  value           {1, {2, 3}}\n  x[n]            a multiple (number or list of numbers), n counting from 1 (1 to 2) -- when x holds a list of multiples\n  x[n][m]         a number, m counting from 1 -- when x holds a list of multiples\n  x.append({1})   adds a list of numbers -- when x holds a list of multiples\n  x[n].append(1)  adds a number -- when x holds a list of multiples\n  x.size          how many multiples it holds -- when x holds a list of multiples\nTHE SATELLITE PROGRAMMING LANGUAGE\nVERSION 004 REVISION 08 BUILD 0099\nCLANG++ 24 ALMALINUX 10.2\n---------------------------------------------------------------\n\n--------------------------------------------------------------------------------\nSATELLITE CRITICAL ERROR REPORT\n--------------------------------------------------------------------------------\nS301: TYPES_DO_NOT_MEET\nsatl(run): x[...] is a number, and [ ] reads a line of a file, an item of a\nlist, or a key of an index\n\ndirectory: /tmp/claude-1000/-home-madness-code-satl/b70f905b-dca1-4f92-bbad-f66d8ce80b78/scratchpad/work/maps-and-nesting/access_nested_multiple.satl:7\nsyntax: satellite.console.display(x[1][1])\n                                      /\\\n\nthis operator has no scenario for the two kinds it was given. Nothing was\nguessed at, because a guess here is an answer that is wrong and does not say so.\nmachine code 27 types_do_not_meet -- satl exits with this.\n\n--------------------------------------------------------------------------------\n[exit 27]\n"
+ },
+ {
+  "area": "maps-and-nesting",
+  "index": 11,
+  "title": "satellite.access shows string keys and string values unescaped, and a tab as \\x09, which satl then refuses",
+  "reported_exit": 0,
+  "rerun_exit": 0,
+  "same_exit": true,
+  "observed_lines_found": "3/4",
+  "rerun_output": "m is a map (string -> number), 2 keys\n  value         {\"say \\\"hi\\\"\": 1, \"tab\\there\": 2}\n  m[\"key\"]      a number, \"key\" a string, one of \"say \"hi\"\", \"tab\\x09here\"\n  m[\"key\"] = 1  puts a number under \"key\"\n  m.size        how many keys it holds\n  m.keys        the keys of it, as a list\ns is a string\n  value  \"a\"b\"\nTHE SATELLITE PROGRAMMING LANGUAGE\nVERSION 004 REVISION 08 BUILD 0099\nCLANG++ 24 ALMALINUX 10.2\n---------------------------------------------------------------\n\n[exit 0]\n"
+ },
+ {
+  "area": "maps-and-nesting",
+  "index": 12,
+  "title": "A refusal inside a chain or at depth names only the base name: m[\"n\"].size says 'm.size is not built for a number', and scores.keys.sum says 'scores.sum'",
+  "reported_exit": 14,
+  "rerun_exit": 14,
+  "same_exit": true,
+  "observed_lines_found": "2/3",
+  "rerun_output": "THE SATELLITE PROGRAMMING LANGUAGE\nVERSION 004 REVISION 08 BUILD 0099\nCLANG++ 24 ALMALINUX 10.2\n---------------------------------------------------------------\n\n--------------------------------------------------------------------------------\nSATELLITE CRITICAL ERROR REPORT\n--------------------------------------------------------------------------------\nS210: NOT_BUILT_YET\nsatl(run): m.size is not built for a number yet -- so far a file and a container\nhave it\n\ndirectory: /tmp/claude-1000/-home-madness-code-satl/b70f905b-dca1-4f92-bbad-f66d8ce80b78/scratchpad/work/maps-and-nesting/chain_name2.satl:6\nsyntax: satellite.console.display(m[\"n\"].size)\n        /\\\n\nthis word is numbered in the language and the library behind it does not exist\nyet. The word is right; there is nothing yet to run.\nmachine code 14 not_built_yet -- satl exits with this.\n\n--------------------------------------------------------------------------------\n[exit 14]\n"
+ },
+ {
+  "area": "maps-and-nesting",
+  "index": 13,
+  "title": "map.sort().by_value() quietly sorts the KEYS, while .max/.min/.sum on a map ask which half",
+  "reported_exit": 0,
+  "rerun_exit": 0,
+  "same_exit": true,
+  "observed_lines_found": "2/3",
+  "rerun_output": "{\"al\", \"bo\", \"zoe\"}\n{\"bo\", \"al\", \"zoe\"}\nTHE SATELLITE PROGRAMMING LANGUAGE\nVERSION 004 REVISION 08 BUILD 0099\nCLANG++ 24 ALMALINUX 10.2\n---------------------------------------------------------------\n\n[exit 0]\n"
+ },
+ {
+  "area": "maps-and-nesting",
+  "index": 14,
+  "title": "Displaying a multiple that has no value yet says S210 NOT_BUILT_YET ('the library behind it does not exist yet')",
+  "reported_exit": 14,
+  "rerun_exit": 14,
+  "same_exit": true,
+  "observed_lines_found": "4/5",
+  "rerun_output": "THE SATELLITE PROGRAMMING LANGUAGE\nVERSION 004 REVISION 08 BUILD 0099\nCLANG++ 24 ALMALINUX 10.2\n---------------------------------------------------------------\n\n--------------------------------------------------------------------------------\nSATELLITE CRITICAL ERROR REPORT\n--------------------------------------------------------------------------------\nS210: NOT_BUILT_YET\nsatl(run): satellite.console.display has no scenario for nothing\n\ndirectory: /tmp/claude-1000/-home-madness-code-satl/b70f905b-dca1-4f92-bbad-f66d8ce80b78/scratchpad/work/maps-and-nesting/multiple_unset_display.satl:6\nsyntax: satellite.console.display(m)\n        /\\\n\nthis word is numbered in the language and the library behind it does not exist\nyet. The word is right; there is nothing yet to run.\nmachine code 14 not_built_yet -- satl exits with this.\n\n--------------------------------------------------------------------------------\n[exit 14]\n"
+ },
+ {
+  "area": "maps-and-nesting",
+  "index": 15,
+  "title": "satellite.access placeholders collide with the name: a list named m is shown as m[n][m]",
+  "reported_exit": 0,
+  "rerun_exit": 0,
+  "same_exit": true,
+  "observed_lines_found": "3/4",
+  "rerun_output": "m is a list of lists of numbers, 2 items\n  value           {{1, 2}, {3}}\n  m[n]            a list of numbers, n counting from 1 (1 to 2)\n  m[n][m]         a number, m counting from 1\n  m.append({1})   adds a list of numbers\n  m[n].append(1)  adds a number\n  m.size          how many lists of numbers it holds\nTHE SATELLITE PROGRAMMING LANGUAGE\nVERSION 004 REVISION 08 BUILD 0099\nCLANG++ 24 ALMALINUX 10.2\n---------------------------------------------------------------\n\n[exit 0]\n"
+ },
+ {
+  "area": "syntax-and-layout",
+  "index": 0,
+  "title": "An empty block {} on a line of its own ends the enclosing body silently; inside a while it loops forever",
+  "reported_exit": 124,
+  "rerun_exit": 124,
+  "same_exit": true,
+  "observed_lines_found": "0/1",
+  "rerun_output": "\n0\n0\n0\n0\n0\n0\n0\n0\n0\n0\n0\n0\n0\n0\n0\n0\n0\n0\n0\n0\n0\n0\n0\n0\n0\n0\n0\n0\n0\n0\n0\n0\n0\n0\n0\n0\n0\n0\n0\n0\n0\n0\n0\n0\n0\n0\n0\n0\n0\n0\n0\n0\n0\n0\n0\n0\n0\n0\n0\n0\n0\n0\n0\n0\n0\n0\n0\n0\n0\n0\n0\n0\n0\n0\n0\n0\n0\n0\n0\n0\n0\n0\n0\n0\n0\n0\n0\n0\n0\n0\n0\n0\n0\n0\n0\n0\n0\n0\n0\n0\n0\n0\n0\n0\n0\n0\n0\n0\n0\n0\n0\n0\n0\n0\n0\n0\n0\n0\n0\n0\n0\n0\n0\n0\n0\n0\n0\n0\n0\n0\n0\n0\n0\n0\n0\n0\n0\n0\n0\n0\n0\n0\n0\n0\n0\n0\n0\n0\n0\n0\n0\n0\n0\n0\n0\n0\n0\n0\n0\n0\n0\n0\n0\n0\n0\n0\n0\n0\n0\n0\n0\n0\n0\n0\n0\n0\n0\n0\n0\n0\n0\n0\n0\n0\n0\n0\n0\n0\n0\n0\n0\n0\n0\n0\n0\n0\n0\n0\n0\n0\n0\n0\n0\n0\n0\n0\n0\n0\n0\n0\n0\n0\n0\n0\n0\n0\n0\n0\n0\n0\n0\n0\n0\n0\n0\n0\n0\n0\n0\n0\n0\n0\n0\n0\n0\n0\n0\n0\n0\n0\n0\n0\n0\n0\n0\n0\n0\n0\n0\n0\n0\n0\n0\n0\n0\n0\n0\n0\n0\n0\n0\n0\n0\n0\n0\n0\n0\n0\n0\n0\n0\n0\n0\n0\n0\n0\n0\n0\n0\n0\n0\n0\n0\n0\n0\n0\n0\n0\n0\n0\n0\n0\n0\n0\n0\n0\n0\n0\n0\n0\n0\n0\n0\n0\n0\n0\n0\n0\n0\n0\n0\n0\n0\n0\n0\n0\n0\n0\n0\n0\n0\n0\n0\n0\n0\n0\n0\n0\n0\n0\n0\n0\n0\n0\n0\n0\n0\n0\n0\n0\n0\n0\n0\n0\n0\n0\n0\n0\n0\n0\n0\n0\n0\n0\n0\n0\n0\n0\n0\n0\n0\n0\n0\n0\n0\n0\n0\n0\n0\n0\n0\n0\n0\n0\n0\n0\n0\n0\n0\n0\n0\n0\n0\n0\n0\n0\n0\n0\n0\n0\n0\n0\n0\n0\n0\n0\n0\n0\n0\n0\n0\n0\n0\n0\n0\n0\n0\n0\n0\n0\n0\n0\n0\n0\n0\n0\n0\n0\n0\n0\n0\n0\n0\n0\n0\n0\n0\n0\n0\n0\n0\n0\n0\n0\n0\n0\n0\n0\n0\n0\n0\n0\n0\n0\n0\n0\n0\n0\n0\n0\n0\n0\n0\n0\n0\n0\n0\n0\n0\n0\n0\n0\n0\n0\n0\n0\n0\n0\n0\n0\n0\n0\n0\n0\n0\n0\n0\n0\n0\n0\n0\n0\n0\n0\n0\n0\n0\n0\n0\n0\n0\n0\n0\n0\n0\n0\n0\n0\n0\n0\n0\n0\n0\n0\n0\n0\n0\n0\n0\n0\n0\n0\n0\n0\n0\n0\n0\n0\n0\n0\n0\n0\n0\n0\n0\n0\n0\n0\n0\n0\n0\n0\n0\n0\n0\n0\n0\n0\n0\n0\n0\n0\n0\n0\n0\n0\n0\n0\n0\n0\n0\n0\n0\n0\n0\n0\n0\n0\n0\n0\n0\n0\n0\n0\n0\n0\n0\n0\n0\n0\n0\n0\n0\n0\n0\n0\n0\n0\n0\n0\n0\n0\n0\n0\n0\n0\n0\n0\n0\n0\n0\n0\n0\n0\n0\n0\n0\n0\n0\n0\n0\n0\n0\n0\n0\n0\n0\n0\n0\n0\n0\n0\n0\n0\n0\n0\n0\n0\n0\n0\n0\n0\n0\n0\n0\n0\n0\n0\n0\n0\n0\n0\n0\n0\n0\n0\n0\n0\n0\n0\n0\n0\n0\n0\n0\n0\n0\n0\n0\n0\n0\n0\n0\n0\n0\n0\n0\n0\n0\n0\n0\n0\n0\n0\n0\n0\n0\n0\n0\n0\n0\n0\n0\n0\n0\n0\n0\n0\n0\n0\n0\n0\n0\n0\n0\n0\n0\n0\n0\n0\n0\n0\n0\n0\n0\n0\n0\n0\n0\n0\n0\n0\n0\n0\n0\n0\n0\n0\n0\n0\n0\n0\n0\n0\n0\n0\n0\n0\n0\n0\n0\n0\n0\n0\n0\n0\n0\n0\n0\n0\n0\n0\n0\n0\n0\n0\n0\n0\n0\n0\n0\n0\n0\n0\n0\n0\n0\n0\n0\n0\n0\n0\n0\n0\n0\n0\n0\n0\n0\n0\n0\n0\n0\n0\n0\n0\n0\n0\n0\n0\n0\n0\n0\n0\n0\n0\n0\n0\n0\n0\n0\n0\n0\n0\n0\n0\n0\n0\n0\n0\n0\n0\n0\n0\n0\n0\n0\n0\n0\n0\n0\n0\n0\n0\n0\n0\n0\n0\n0\n0\n0\n0\n0\n0\n0\n0\n0\n0\n0\n0\n0\n0\n0\n0\n0\n0\n0\n0\n0\n0\n0\n0\n0\n0\n0\n0\n0\n0\n0\n0\n0\n0\n0\n0\n0\n0\n0\n0\n0\n0\n0\n0\n0\n0\n0\n0\n0\n0\n0\n0\n0\n0\n0\n0\n0\n0\n0\n0\n0\n0\n0\n0\n0\n0\n0\n0\n0\n0\n0\n0\n0\n0\n0\n0\n0\n0\n0\n0\n0\n0\n0\n0\n0\n0\n0\n0\n0\n0\n0\n0\n0\n0\n0\n0\n0\n0\n0\n0\n0\n0\n0\n0\n0\n0\n0\n0\n0\n0\n0\n0\n0\n0\n0\n0\n0\n0\n0\n0\n0\n0\n0\n0\n0\n0\n0\n0\n0\n0\n0\n0\n0\n0\n0\n0\n0\n0\n0\n0\n0\n0\n0\n0\n0\n0\n0\n0\n0\n0\n0\n0\n0\n0\n0\n0\n0\n0\n0\n0\n0\n0\n0\n0\n0\n0\n0\n0\n0\n0\n0\n0\n0\n0\n0\n0\n0\n0\n0\n0\n0\n0\n0\n0\n0\n0\n0\n0\n0\n0\n0\n0\n0\n0\n0\n0\n0\n0\n0\n0\n0\n0\n0\n0\n0\n0\n0\n0\n0\n0\n0\n0\n0\n0\n0\n0\n0\n0\n0\n0\n0\n0\n0\n0\n0\n0\n0\n0\n0\n0\n0\n0\n0\n0\n0\n0\n0\n0\n0\n0\n0\n0\n0\n0\n0\n0\n0\n0\n0\n0\n0\n0\n0\n0\n0\n0\n0\n0\n0\n0\n0\n0\n0\n0\n0\n0\n0\n0\n0\n0\n0\n0\n0\n0\n0\n0\n0\n0\n0\n0\n0\n0\n0\n0\n0\n0\n0\n0\n0\n0\n0\n0\n0\n0\n0\n0\n0\n0\n0\n0\n0\n0\n0\n0\n0\n0\n0\n0\n0\n0\n0\n0\n0\n0\n0\n0\n0\n0\n0\n0\n0\n0\n0\n0\n0\n0\n0\n0\n0\n0\n0\n0\n0\n0\n0\n0\n0\n0\n0\n0\n0\n0\n0\n0\n0\n0\n0\n0\n0\n0\n0\n0\n0\n0\n0\n0\n0\n0\n0\n0\n0\n0\n0\n0\n0\n0\n0\n0\n0\n0\n0\n0\n0\n0\n0\n0\n0\n0\n0\n0\n0\n0\n0\n0\n0\n0\n0\n0\n0\n0\n0\n0\n0\n0\n0\n0\n0\n0\n0\n0\n0\n0\n0\n0\n0\n0\n0\n0\n0\n0\n0\n0\n0\n0\n0\n0\n0\n0\n0\n0\n0\n0\n0\n0\n0\n0\n0\n0\n0\n0\n0\n0\n0\n0\n0\n0\n0\n0\n0\n0\n0\n0\n0\n0\n0\n0\n0\n0\n0\n0\n0\n0\n0\n0\n0\n0\n0\n0\n0\n0\n0\n0\n0\n0\n0\n0\n0\n0\n0\n0\n0\n0\n0\n0\n0\n0\n0\n0\n0\n0\n0\n0\n0\n0\n0\n0\n0\n0\n0\n0\n0\n0\n0\n0\n0\n0\n0\n0\n0\n0\n0\n0\n0\n0\n0\n0\n0\n0\n0\n0\n0\n0\n0\n0\n0\n0\n0\n0\n0\n0\n0\n0\n0\n0\n0\n0\n0\n0\n0\n0\n0\n0\n0\n0\n0\n0\n0\n0\n0\n0\n0\n0\n0\n0\n0\n0\n0\n0\n0\n0\n0\n0\n0\n0\n0\n0\n0\n0\n0\n0\n0\n0\n0\n0\n0\n0\n0\n0\n0\n0\n0\n0\n0\n0\n0\n0\n0\n0\n0\n0\n0\n0\n0\n0\n0\n0\n0\n0\n0\n0\n0\n0\n0\n0\n0\n0\n0\n0\n0\n0\n0\n0\n0\n0\n0\n0\n0\n0\n0\n0\n0\n0\n0\n0\n0\n0\n0\n0\n0\n0\n0\n0\n0\n0\n0\n0\n0\n0\n0\n0\n0\n0\n0\n0\n0\n0\n0\n0\n0\n0\n0\n0\n0\n0\n0\n0\n0\n0\n0\n0\n0\n0\n0\n0\n0\n0\n0\n0\n0\n0\n0\n0\n0\n0\n0\n0\n0\n0\n0\n0\n0\n0\n0\n0\n0\n0\n0\n0\n0\n0\n0\n0\n0\n0\n0\n0\n0\n0\n0\n0\n0\n0\n0\n0\n0\n0\n0\n0\n0\n0\n0\n0\n0\n0\n0\n0\n0\n0\n0\n0\n0\n0\n0\n0\n0\n0\n0\n0\n0\n0\n0\n0\n0\n0\n0\n0\n0\n0\n0\n0\n0\n0\n0\n0\n0\n0\n0\n0\n0\n0\n0\n0\n0\n0\n0\n0\n0\n0\n0\n0\n0\n0\n0\n0\n0\n0\n0\n0\n0\n0\n0\n0\n0\n0\n0\n0\n0\n0\n0\n0\n0\n0\n0\n0\n0\n0\n0\n0\n0\n0\n0\n0\n0\n0\n0\n0\n0\n0\n0\n0\n0\n0\n0\n0\n0\n0\n0\n0\n0\n0\n0\n0\n0\n0\n0\n0\n0\n0\n0\n0\n0\n0\n0\n0\n0\n0\n0\n0\n0\n0\n0\n0\n0\n0\n0\n0\n0\n0\n0\n0\n0\n0\n0\n0\n0\n0\n0\n0\n0\n0\n0\n0\n0\n0\n0\n0\n0\n0\n0\n0\n0\n0\n0\n0\n0\n0\n0\n0\n0\n0\n0\n0\n0\n0\n0\n0\n0\n0\n0\n0\n0\n0\n0\n0\n0\n0\n0\n0\n0\n0\n0\n0\n0\n0\n0\n0\n0\n0\n0\n0\n0\n0\n0\n0\n0\n0\n0\n0\n0\n0\n0\n0\n0\n0\n0\n0\n0\n0\n0\n0\n0\n0\n0\n0\n0\n0\n0\n0\n0\n0\n0\n0\n0\n0\n0\n0\n0\n0\n0\n0\n0\n0\n0\n0\n0\n0\n0\n0\n0\n0\n0\n0\n0\n0\n0\n0\n0\n0\n0\n0\n0\n0\n0\n0\n0\n0\n0\n0\n0\n0\n0\n0\n0\n0\n0\n0\n0\n0\n0\n0\n0\n0\n0\n0\n0\n0\n0\n0\n0\n0\n0\n0\n0\n0\n0\n0\n0\n0\n0\n0\n0\n0\n0\n0\n0\n0\n0\n0\n0\n0\n0\n0\n0\n0\n0\n0\n0\n0\n0\n0\n0\n0\n0\n0\n0\n0\n0\n0\n0\n0\n0\n0\n0\n0\n0\n0\n0\n0\n0\n0\n0\n0\n0\n0\n0\n0\n0\n0\n0\n0\n0\n0\n0\n0\n0\n0\n0\n0\n0\n0\n0\n0\n0\n0\n0\n0\n0\n0\n0\n0\n0\n0\n0\n0\n0\n0\n0\n0\n0\n0\n0\n0\n0\n0\n0\n0\n0\n0\n0\n0\n0\n0\n0\n0\n0\n0\n0\n0\n0\n0\n0\n0\n0\n0\n0\n0\n0\n0\n0\n0\n0\n0\n0\n0\n0\n0\n0\n0\n0\n0\n0\n0\n0\n0\n0\n0\n0\n0\n0\n0\n0\n0\n0\n0\n0\n0\n0\n0\n0\n0\n0\n0\n0\n0\n0\n0\n0\n0\n0\n0\n0\n0\n0\n0\n0\n0\n0\n0\n0\n0\n0\n0\n0\n0\n0\n0\n0\n0\n0\n0\n0\n0\n0\n0\n0\n0\n0\n0\n0\n0\n0\n0\n0\n0\n0\n0\n0\n0\n0\n0\n0\n0\n0\n0\n0\n0\n0\n0\n0\n0\n0\n0\n0\n0\n0\n0\n0\n0\n0\n0\n0\n0\n0\n0\n0\n0\n0\n0\n0\n0\n0\n0\n0\n0\n0\n0\n0\n0\n0\n0\n0\n0\n0\n0\n0\n0\n0\n0\n0\n0\n0\n0\n0\n0\n0\n0\n0\n0\n0\n0\n0\n0\n0\n0\n0\n0\n0\n0\n0\n0\n0\n0\n0\n0\n0\n0\n0\n0\n0\n0\n0\n0\n0\n0\n0\n0\n0\n0\n0\n0\n0\n0\n0\n0\n0\n0\n0\n0\n0\n0\n0\n0\n0\n0\n0\n0\n0\n0\n0\n0\n0\n0\n0\n0\n0\n0\n0\n0\n0\n0\n0\n0\n0\n0\n0\n0\n0\n0\n0\n0\n0\n0\n0\n0\n0\n0\n0\n0\n0\n0\n0\n0\n0\n0\n0\n0\n0\n0\n0\n0\n0\n0\n0\n0\n0\n0\n0\n0\n0\n0\n0\n0\n0\n0\n0\n0\n0\n0\n0\n0\n0\n0\n0\n0\n0\n0\n0\n0\n0\n0\n0\n0\n0\n0\n0\n0\n0\n0\n0\n0\n0\n0\n0\n0\n0\n0\n0\n0\n0\n0\n0\n0\n0\n0\n0\n0\n0\n0\n0\n0\n0\n0\n0\n0\n0\n0\n0\n0\n0\n0\n0\n0\n0\n0\n0\n0\n0\n0\n0\n0\n0\n0\n0\n0\n0\n0\n0\n0\n0\n0\n0\n0\n0\n0\n0\n0\n0\n0\n0\n0\n0\n0\n0\n0\n0\n0\n0\n0\n0\n0\n0\n0\n0\n0\n0\n0\n0\n0\n0\n0\n0\n0\n0\n0\n0\n0\n0\n0\n0\n0\n0\n0\n0\n0\n0\n0\n0\n0\n0\n0\n0\n0\n0\n0\n0\n0\n0\n0\n0\n0\n0\n0\n0\n0\n0\n0\n0\n0\n0\n0\n0\n0\n0\n0\n0\n0\n0\n0\n0\n0\n0\n0\n0\n0\n0\n0\n0\n0\n0\n0\n0\n0\n0\n0\n0\n0\n0\n0\n0\n0\n0\n0\n0\n0\n0\n0\n0\n0\n0\n0\n0\n0\n0\n0\n0\n0\n0\n0\n0\n0\n0\n0\n0\n0\n0\n0\n0\n0\n0\n0\n0\n0\n0\n0\n0\n0\n0\n0\n0\n0\n0\n0\n0\n0\n0\n0\n0\n0\n0\n0\n0\n0\n0\n0\n0\n0\n0\n0\n0\n0\n0\n0\n0\n0\n0\n0\n0\n0\n0\n0\n0\n0\n0\n0\n0\n0\n0\n0\n0\n0\n0\n0\n0\n0\n0\n0\n0\n0\n0\n0\n0\n0\n0\n0\n0\n0\n0\n0\n0\n0\n0\n0\n0\n0\n0\n0\n0\n0\n0\n0\n0\n0\n0\n0\n0\n0\n0\n0\n0\n0\n0\n0\n0\n0\n0\n0\n0\n0\n0\n0\n0\n0\n0\n0\n0\n0\n0\n0\n0\n0\n0\n0\n0\n0\n0\n0\n0\n0\n0\n0\n0\n0\n0\n0\n0\n0\n0\n0\n0\n0\n0\n0\n0\n0\n0\n0\n0\n0\n0\n0\n0\n0\n0\n0\n0\n0\n0\n0\n0\n0\n0\n0\n0\n0\n0\n0\n0\n0\n0\n0\n0\n0\n0\n0\n0\n0\n0\n0\n0\n0\n0\n0\n0\n0\n0\n0\n0\n0\n0\n0\n0\n0\n0\n0\n0\n0\n0\n0\n0\n0\n0\n0\n0\n0\n0\n0\n0\n0\n0\n0\n0\n0\n0\n0\n0\n0\n0\n0\n0\n0\n0\n0\n0\n0\n0\n0\n0\n0\n0\n0\n0\n0\n0\n0\n0\n0\n0\n0\n0\n0\n0\n0\n0\n0\n0\n0\n0\n0\n0\n0\n0\n0\n0\n0\n0\n0\n0\n0\n0\n0\n0\n0\n0\n0\n0\n0\n0\n0\n0\n0\n0\n0\n0\n0\n0\n0\n0\n0\n0\n0\n0\n0\n0\n0\n0\n0\n0\n0\n0\n0\n0\n0\n0\n0\n0\n0\n0\n0\n0\n0\n0\n0\n0\n0\n0\n0\n0\n0\n0\n0\n0\n0\n0\n0\n0\n0\n0\n0\n0\n0\n0\n0\n0\n0\n0\n0\n0\n0\n0\n0\n0\n0\n0\n0\n0\n0\n0\n0\n0\n0\n0\n0\n0\n0\n0\n0\n0\n0\n0\n0\n0\n0\n0\n0\n0\n0\n0\n0\n0\n0\n0\n0\n0\n0\n0\n0\n0\n0\n0\n0\n0\n0\n0\n0\n0\n0\n0\n0\n0\n0\n0\n0\n0\n0\n0\n0\n0\n0\n0\n0\n0\n0\n0\n0\n0\n0\n0\n0\n0\n0\n0\n0\n0\n0\n0\n0\n0\n0\n0\n0\n0\n0\n0\n0\n0\n0\n0\n0\n0\n0\n0\n0\n0\n0\n0\n0\n0\n0\n0\n0\n0\n0\n0\n0\n0\n0\n0\n0\n0\n0\n0\n0\n0\n0\n0\n0\n0\n0\n0\n0\n0\n0\n0\n0\n0\n0\n0\n0\n0\n0\n0\n0\n0\n0\n0\n0\n0\n0\n0\n0\n0\n0\n0\n0\n0\n0\n0\n0\n0\n0\n0\n0\n0\n0\n0\n0\n0\n0\n0\n0\n0\n0\n0\n0\n0\n0\n0\n0\n0\n0\n0\n0\n0\n0\n0\n0\n0\n0\n0\n0\n0\n0\n0\n0\n0\n0\n0\n0\n0\n0\n0\n0\n0\n0\n0\n0\n0\n0\n0\n0\n0\n0\n0\n0\n0\n0\n0\n0\n0\n0\n0\n0\n0\n0\n0\n0\n0\n0\n0\n0\n0\n0\n0\n0\n0\n0\n0\n0\n0\n0\n0\n0\n0\n0\n0\n0THE SATELLITE PROGRAMMING LANGUAGE\nVERSION 004 REVISION 08 BUILD 0099\nCLANG++ 24 ALMALINUX 10.2\n---------------------------------------------------------------\n\n[exit 124]\n"
+ },
+ {
+  "area": "syntax-and-layout",
+  "index": 1,
+  "title": "A continuation line starting with an operator is dropped silently: total = 1 / + 2 / + 3 holds 1",
+  "reported_exit": 0,
+  "rerun_exit": 0,
+  "same_exit": true,
+  "observed_lines_found": "0/1",
+  "rerun_output": "1\nTHE SATELLITE PROGRAMMING LANGUAGE\nVERSION 004 REVISION 08 BUILD 0099\nCLANG++ 24 ALMALINUX 10.2\n---------------------------------------------------------------\n\n[exit 0]\n"
+ },
+ {
+  "area": "syntax-and-layout",
+  "index": 2,
+  "title": "A /* ... */ block comment inside a capsule is accepted, and the code 'commented out' in it runs",
+  "reported_exit": 0,
+  "rerun_exit": 0,
+  "same_exit": true,
+  "observed_lines_found": "1/2",
+  "rerun_output": "kept\ncommented out\nTHE SATELLITE PROGRAMMING LANGUAGE\nVERSION 004 REVISION 08 BUILD 0099\nCLANG++ 24 ALMALINUX 10.2\n---------------------------------------------------------------\n\n[exit 0]\n"
+ },
+ {
+  "area": "syntax-and-layout",
+  "index": 3,
+  "title": "A blank line or comment line between satellite.return(satellite) and main's } is refused as S103, 'the file could not be re-read'",
+  "reported_exit": 12,
+  "rerun_exit": 12,
+  "same_exit": true,
+  "observed_lines_found": "5/6",
+  "rerun_output": "THE SATELLITE PROGRAMMING LANGUAGE\nVERSION 004 REVISION 08 BUILD 0099\nCLANG++ 24 ALMALINUX 10.2\n---------------------------------------------------------------\n\n--------------------------------------------------------------------------------\nSATELLITE CRITICAL ERROR REPORT\n--------------------------------------------------------------------------------\nS103: FILE_HAS_NO_RETURN\nsatl(check): satellite.main's last line is satellite.return(satellite) -- it is\nwhere the program ends, so it goes just before main's closing }\n\ndirectory: /tmp/claude-1000/-home-madness-code-satl/b70f905b-dca1-4f92-bbad-f66d8ce80b78/scratchpad/work/syntax-and-layout/f04_blank_before_main_close.satl:7\nsyntax: (the file could not be re-read to show this line)\n\nexecution ends inside main, and main has to say so. Add this as main's last\nline, just before its closing }:\n\n    satellite.return(satellite)\nmachine code 12 satl_file_missing_satellite_return_satellite -- satl exits with\nthis.\n\n--------------------------------------------------------------------------------\n[exit 12]\n"
+ },
+ {
+  "area": "syntax-and-layout",
+  "index": 4,
+  "title": "satellite.statement.else followed by a // comment is refused 'has no body', including `else { // comment`",
+  "reported_exit": 13,
+  "rerun_exit": 13,
+  "same_exit": true,
+  "observed_lines_found": "3/5",
+  "rerun_output": "THE SATELLITE PROGRAMMING LANGUAGE\nVERSION 004 REVISION 08 BUILD 0099\nCLANG++ 24 ALMALINUX 10.2\n---------------------------------------------------------------\n\n--------------------------------------------------------------------------------\nSATELLITE CRITICAL ERROR REPORT\n--------------------------------------------------------------------------------\nS110: LINE_NOT_UNDERSTOOD\nsatl(check): in satellite.main, satellite.statement.else has no body\n\ndirectory: /tmp/claude-1000/-home-madness-code-satl/b70f905b-dca1-4f92-bbad-f66d8ce80b78/scratchpad/work/syntax-and-layout/f05_else_brace_comment.satl:10\nsyntax: satellite.statement.else { // not six\n        /\\\n\nsatellite has no scenario for this line -- it is spelled in a shape the language\ndoes not have a meaning for.\nmachine code 13 satl_line_not_understood -- satl exits with this.\n\n--------------------------------------------------------------------------------\n[exit 13]\n"
+ },
+ {
+  "area": "syntax-and-layout",
+  "index": 5,
+  "title": "A comment after an if's closing } (or a comment line before else) makes the else 'with no satellite.statement.if before it'",
+  "reported_exit": 13,
+  "rerun_exit": 13,
+  "same_exit": true,
+  "observed_lines_found": "4/6",
+  "rerun_output": "THE SATELLITE PROGRAMMING LANGUAGE\nVERSION 004 REVISION 08 BUILD 0099\nCLANG++ 24 ALMALINUX 10.2\n---------------------------------------------------------------\n\n--------------------------------------------------------------------------------\nSATELLITE CRITICAL ERROR REPORT\n--------------------------------------------------------------------------------\nS110: LINE_NOT_UNDERSTOOD\nsatl(check): in satellite.main, satellite.statement.else with no\nsatellite.statement.if before it\n\ndirectory: /tmp/claude-1000/-home-madness-code-satl/b70f905b-dca1-4f92-bbad-f66d8ce80b78/scratchpad/work/syntax-and-layout/f06_close_comment_then_else.satl:10\nsyntax: satellite.statement.else\n        /\\\n\nsatellite has no scenario for this line -- it is spelled in a shape the language\ndoes not have a meaning for.\nmachine code 13 satl_line_not_understood -- satl exits with this.\n\n--------------------------------------------------------------------------------\n[exit 13]\n"
+ },
+ {
+  "area": "syntax-and-layout",
+  "index": 6,
+  "title": "A comment line between an if/while/for header and its { is refused 'has no body'; a capsule header accepts one",
+  "reported_exit": 13,
+  "rerun_exit": 13,
+  "same_exit": true,
+  "observed_lines_found": "3/5",
+  "rerun_output": "THE SATELLITE PROGRAMMING LANGUAGE\nVERSION 004 REVISION 08 BUILD 0099\nCLANG++ 24 ALMALINUX 10.2\n---------------------------------------------------------------\n\n--------------------------------------------------------------------------------\nSATELLITE CRITICAL ERROR REPORT\n--------------------------------------------------------------------------------\nS110: LINE_NOT_UNDERSTOOD\nsatl(check): in satellite.main, satellite.statement.if has no body\n\ndirectory: /tmp/claude-1000/-home-madness-code-satl/b70f905b-dca1-4f92-bbad-f66d8ce80b78/scratchpad/work/syntax-and-layout/f07_comment_line_before_if_brace.satl:6\nsyntax: satellite.statement.if(n == 6)\n        /\\\n\nsatellite has no scenario for this line -- it is spelled in a shape the language\ndoes not have a meaning for.\nmachine code 13 satl_line_not_understood -- satl exits with this.\n\n--------------------------------------------------------------------------------\n[exit 13]\n"
+ },
+ {
+  "area": "syntax-and-layout",
+  "index": 7,
+  "title": "A name like x1, x2, xa or b1 is refused with a rule it satisfies ('a name is made of a-z, A-Z, 0-9 and _') or 'there is no name after it'",
+  "reported_exit": 13,
+  "rerun_exit": 13,
+  "same_exit": true,
+  "observed_lines_found": "5/6",
+  "rerun_output": "THE SATELLITE PROGRAMMING LANGUAGE\nVERSION 004 REVISION 08 BUILD 0099\nCLANG++ 24 ALMALINUX 10.2\n---------------------------------------------------------------\n\n--------------------------------------------------------------------------------\nSATELLITE CRITICAL ERROR REPORT\n--------------------------------------------------------------------------------\nS110: LINE_NOT_UNDERSTOOD\nsatl(check): in satellite.main, satellite.variable.number is followed by\nsomething that is not a name -- a name is made of a-z, A-Z, 0-9 and _, and does\nnot start with a digit\n\ndirectory: /tmp/claude-1000/-home-madness-code-satl/b70f905b-dca1-4f92-bbad-f66d8ce80b78/scratchpad/work/syntax-and-layout/f08_name_x1.satl:5\nsyntax: satellite.variable.number x1 = 4\n        /\\\n\nsatellite has no scenario for this line -- it is spelled in a shape the language\ndoes not have a meaning for.\nmachine code 13 satl_line_not_understood -- satl exits with this.\n\n--------------------------------------------------------------------------------\n[exit 13]\n"
+ },
+ {
+  "area": "syntax-and-layout",
+  "index": 8,
+  "title": "A capsule named x2 (or b1) is refused on its body's line as 'outside every capsule' or as a misplaced satellite.return(satellite)",
+  "reported_exit": 13,
+  "rerun_exit": 13,
+  "same_exit": true,
+  "observed_lines_found": "5/6",
+  "rerun_output": "THE SATELLITE PROGRAMMING LANGUAGE\nVERSION 004 REVISION 08 BUILD 0099\nCLANG++ 24 ALMALINUX 10.2\n---------------------------------------------------------------\n\n--------------------------------------------------------------------------------\nSATELLITE CRITICAL ERROR REPORT\n--------------------------------------------------------------------------------\nS110: LINE_NOT_UNDERSTOOD\nsatl(check): this line is outside every capsule, and nothing outside a capsule\never runs -- there are no globals in satellite, so it goes inside satellite.main\nor another capsule\n\ndirectory: /tmp/claude-1000/-home-madness-code-satl/b70f905b-dca1-4f92-bbad-f66d8ce80b78/scratchpad/work/syntax-and-layout/f09_capsule_x2.satl:5\nsyntax: satellite.console.display(n * 2)\n        /\\\n\nsatellite has no scenario for this line -- it is spelled in a shape the language\ndoes not have a meaning for.\nmachine code 13 satl_line_not_understood -- satl exits with this.\n\n--------------------------------------------------------------------------------\n[exit 13]\n"
+ },
+ {
+  "area": "syntax-and-layout",
+  "index": 9,
+  "title": "satellite.include(x1) is refused as 'names no file' though x1.satl exists",
+  "reported_exit": 13,
+  "rerun_exit": 13,
+  "same_exit": true,
+  "observed_lines_found": "5/6",
+  "rerun_output": "THE SATELLITE PROGRAMMING LANGUAGE\nVERSION 004 REVISION 08 BUILD 0099\nCLANG++ 24 ALMALINUX 10.2\n---------------------------------------------------------------\n\n--------------------------------------------------------------------------------\nSATELLITE CRITICAL ERROR REPORT\n--------------------------------------------------------------------------------\nS110: LINE_NOT_UNDERSTOOD\nsatl(check): this satellite.include names no file -- write\nsatellite.include(ship), satellite.include(parts/ship) or\nsatellite.include(\"parts/ship.satl\")\n\ndirectory: /tmp/claude-1000/-home-madness-code-satl/b70f905b-dca1-4f92-bbad-f66d8ce80b78/scratchpad/work/syntax-and-layout/inc/f10_include_x1.satl:2\nsyntax: satellite.include(x1)\n        /\\\n\nsatellite has no scenario for this line -- it is spelled in a shape the language\ndoes not have a meaning for.\nmachine code 13 satl_line_not_understood -- satl exits with this.\n\n--------------------------------------------------------------------------------\n[exit 13]\n"
+ },
+ {
+  "area": "syntax-and-layout",
+  "index": 10,
+  "title": "The same file included as shapes and ./shapes is called 'two files ... rename one of the files'",
+  "reported_exit": 13,
+  "rerun_exit": 13,
+  "same_exit": true,
+  "observed_lines_found": "4/6",
+  "rerun_output": "THE SATELLITE PROGRAMMING LANGUAGE\nVERSION 004 REVISION 08 BUILD 0099\nCLANG++ 24 ALMALINUX 10.2\n---------------------------------------------------------------\n\n--------------------------------------------------------------------------------\nSATELLITE CRITICAL ERROR REPORT\n--------------------------------------------------------------------------------\nS110: LINE_NOT_UNDERSTOOD\nsatl(check): in satellite.main, shapes.area could be either of two files this\nfile includes -- the files\n/tmp/claude-1000/-home-madness-code-satl/b70f905b-dca1-4f92-bbad-f66d8ce80b78/scratchpad/work/syntax-and-layout/inc/shapes.satl\nand\n/tmp/claude-1000/-home-madness-code-satl/b70f905b-dca1-4f92-bbad-f66d8ce80b78/scratchpad/work/syntax-and-layout/inc/./shapes.satl\nare both named shapes and both declare area, so rename one of the files\n\ndirectory: /tmp/claude-1000/-home-madness-code-satl/b70f905b-dca1-4f92-bbad-f66d8ce80b78/scratchpad/work/syntax-and-layout/inc/f11_same_file_two_spellings.satl:7\nsyntax: satellite.console.display(shapes.area(4, 5))\n        /\\\n\nsatellite has no scenario for this line -- it is spelled in a shape the language\ndoes not have a meaning for.\nmachine code 13 satl_line_not_understood -- satl exits with this.\n\n--------------------------------------------------------------------------------\n[exit 13]\n"
+ },
+ {
+  "area": "syntax-and-layout",
+  "index": 11,
+  "title": "A touching sign (a+1, a*2) in a capsule never called or a branch not taken is accepted silently",
+  "reported_exit": 0,
+  "rerun_exit": 0,
+  "same_exit": true,
+  "observed_lines_found": "0/1",
+  "rerun_output": "done\nTHE SATELLITE PROGRAMMING LANGUAGE\nVERSION 004 REVISION 08 BUILD 0099\nCLANG++ 24 ALMALINUX 10.2\n---------------------------------------------------------------\n\n[exit 0]\n"
+ },
+ {
+  "area": "syntax-and-layout",
+  "index": 12,
+  "title": "An empty {} body after if/while/for is refused 'has no body', while a capsule's {} and an else's {} are accepted",
+  "reported_exit": 13,
+  "rerun_exit": 13,
+  "same_exit": true,
+  "observed_lines_found": "0/5",
+  "rerun_output": "THE SATELLITE PROGRAMMING LANGUAGE\nVERSION 004 REVISION 08 BUILD 0099\nCLANG++ 24 ALMALINUX 10.2\n---------------------------------------------------------------\n\n--------------------------------------------------------------------------------\nSATELLITE CRITICAL ERROR REPORT\n--------------------------------------------------------------------------------\nS110: LINE_NOT_UNDERSTOOD\nsatl(check): in satellite.main, satellite.statement.if has no body\n\ndirectory: /tmp/claude-1000/-home-madness-code-satl/b70f905b-dca1-4f92-bbad-f66d8ce80b78/scratchpad/work/syntax-and-layout/f13_if_empty_braces.satl:9\nsyntax: satellite.statement.if(n == 1) {}\n        /\\\n\nsatellite has no scenario for this line -- it is spelled in a shape the language\ndoes not have a meaning for.\nmachine code 13 satl_line_not_understood -- satl exits with this.\n\n--------------------------------------------------------------------------------\n[exit 13]\n"
+ },
+ {
+  "area": "syntax-and-layout",
+  "index": 13,
+  "title": "`satellite.return(satellite)}` is refused as S103 at a line past the end of the file, asking for a return that is already there",
+  "reported_exit": 12,
+  "rerun_exit": 12,
+  "same_exit": true,
+  "observed_lines_found": "5/6",
+  "rerun_output": "THE SATELLITE PROGRAMMING LANGUAGE\nVERSION 004 REVISION 08 BUILD 0099\nCLANG++ 24 ALMALINUX 10.2\n---------------------------------------------------------------\n\n--------------------------------------------------------------------------------\nSATELLITE CRITICAL ERROR REPORT\n--------------------------------------------------------------------------------\nS103: FILE_HAS_NO_RETURN\nsatl(check): satellite.main's last line is satellite.return(satellite) -- it is\nwhere the program ends, so it goes just before main's closing }\n\ndirectory: /tmp/claude-1000/-home-madness-code-satl/b70f905b-dca1-4f92-bbad-f66d8ce80b78/scratchpad/work/syntax-and-layout/f14_return_close_same_line.satl:6\nsyntax: (the file could not be re-read to show this line)\n\nexecution ends inside main, and main has to say so. Add this as main's last\nline, just before its closing }:\n\n    satellite.return(satellite)\nmachine code 12 satl_file_missing_satellite_return_satellite -- satl exits with\nthis.\n\n--------------------------------------------------------------------------------\n[exit 12]\n"
+ },
+ {
+  "area": "syntax-and-layout",
+  "index": 14,
+  "title": "satellite.statement.else after a while's } is not caught by the checker: accepted silently in a capsule not run, and a one-line run-time error when reached",
+  "reported_exit": 0,
+  "rerun_exit": 0,
+  "same_exit": true,
+  "observed_lines_found": "0/1",
+  "rerun_output": "ran\nTHE SATELLITE PROGRAMMING LANGUAGE\nVERSION 004 REVISION 08 BUILD 0099\nCLANG++ 24 ALMALINUX 10.2\n---------------------------------------------------------------\n\n[exit 0]\n"
+ },
+ {
+  "area": "syntax-and-layout",
+  "index": 15,
+  "title": "A container type split after its < is not joined across lines: 'a type was expected here'",
+  "reported_exit": 13,
+  "rerun_exit": 13,
+  "same_exit": true,
+  "observed_lines_found": "3/4",
+  "rerun_output": "THE SATELLITE PROGRAMMING LANGUAGE\nVERSION 004 REVISION 08 BUILD 0099\nCLANG++ 24 ALMALINUX 10.2\n---------------------------------------------------------------\n\n--------------------------------------------------------------------------------\nSATELLITE CRITICAL ERROR REPORT\n--------------------------------------------------------------------------------\nS110: LINE_NOT_UNDERSTOOD\nsatl(check): in satellite.main, a type was expected here, and this is not one\n\ndirectory: /tmp/claude-1000/-home-madness-code-satl/b70f905b-dca1-4f92-bbad-f66d8ce80b78/scratchpad/work/syntax-and-layout/f16_type_split_after_angle.satl:5\nsyntax: satellite.container.list<\n        /\\\n\nsatellite has no scenario for this line -- it is spelled in a shape the language\ndoes not have a meaning for.\nmachine code 13 satl_line_not_understood -- satl exits with this.\n\n--------------------------------------------------------------------------------\n[exit 13]\n"
+ },
+ {
+  "area": "syntax-and-layout",
+  "index": 16,
+  "title": "A 100,000-line program aborts with std::bad_alloc (exit 134) while resident memory is ~35 MB: satl reserves ~9 GB of address space for an empty program",
+  "reported_exit": 134,
+  "rerun_exit": 134,
+  "same_exit": true,
+  "observed_lines_found": "2/6",
+  "rerun_output": "THE SATELLITE PROGRAMMING LANGUAGE\nVERSION 004 REVISION 08 BUILD 0099\nCLANG++ 24 ALMALINUX 10.2\n---------------------------------------------------------------\n\nterminate called after throwing an instance of 'std::bad_alloc'\nterminate called recursively\nterminate called recursively\n  what():  std::bad_alloc\nterminate called recursively\nterminate called recursively\nterminate called recursively\nterminate called recursively\nterminate called recursively\nterminate called recursively\nterminate called recursively\ntimeout: the monitored command dumped core\n/tmp/claude-1000/-home-madness-code-satl/b70f905b-dca1-4f92-bbad-f66d8ce80b78/scratchpad/satlrun.sh: line 15: 3063682 Aborted                 ( ulimit -v 16000000; exec env -u DISPLAY -u WAYLAND_DISPLAY -u XAUTHORITY -u GDK_BACKEND -u DBUS_SESSION_BUS_ADDRESS HOME=\"$H\" SATL_NO_WINDOW=1 XDG_RUNTIME_DIR=\"$X\" timeout -k 2 ${SATL_TIMEOUT:-20} /tmp/claude-1000/-home-madness-code-satl/b70f905b-dca1-4f92-bbad-f66d8ce80b78/scratchpad/satl-0099/satl \"$@\" < \"${SATL_STDIN:-/dev/null}\" )\n[exit 134]\n"
+ },
+ {
+  "area": "binary-hex-color-infinity-bool",
+  "index": 0,
+  "title": "A number capsule parameter given a binary keeps the binary, so it disagrees with a number name given the same binary",
+  "reported_exit": 0,
+  "rerun_exit": 0,
+  "same_exit": true,
+  "observed_lines_found": "0/1",
+  "rerun_output": "true\n5\n5\nfalse\nb0101\nb1010\n6\nTHE SATELLITE PROGRAMMING LANGUAGE\nVERSION 004 REVISION 08 BUILD 0099\nCLANG++ 24 ALMALINUX 10.2\n---------------------------------------------------------------\n\n[exit 0]\n"
+ },
+ {
+  "area": "binary-hex-color-infinity-bool",
+  "index": 1,
+  "title": "list<number> keeps a binary item as a binary, and refuses a hex item that a number name accepts",
+  "reported_exit": 27,
+  "rerun_exit": 27,
+  "same_exit": true,
+  "observed_lines_found": "1/2",
+  "rerun_output": "10\n{b0101}\nfalse\nTHE SATELLITE PROGRAMMING LANGUAGE\nVERSION 004 REVISION 08 BUILD 0099\nCLANG++ 24 ALMALINUX 10.2\n---------------------------------------------------------------\n\n[satellite] satl(run): hs was declared satellite.container.list, and item 1 of it does not fit: it holds a hex (machine_code: 27 types_do_not_meet)\n[exit 27]\n"
+ },
+ {
+  "area": "binary-hex-color-infinity-bool",
+  "index": 2,
+  "title": "A for loop's number counter refuses a binary or hex start value that a number name accepts",
+  "reported_exit": 27,
+  "rerun_exit": 27,
+  "same_exit": true,
+  "observed_lines_found": "1/2",
+  "rerun_output": "1\nTHE SATELLITE PROGRAMMING LANGUAGE\nVERSION 004 REVISION 08 BUILD 0099\nCLANG++ 24 ALMALINUX 10.2\n---------------------------------------------------------------\n\n[satellite] satl(run): satellite.statement.for declares satellite.variable.number k, and it was given a binary (machine_code: 27 types_do_not_meet)\n[exit 27]\n"
+ },
+ {
+  "area": "binary-hex-color-infinity-bool",
+  "index": 3,
+  "title": ".contains / .index_of / .remove disagree with == for a binary or hex and the number it is worth",
+  "reported_exit": 0,
+  "rerun_exit": 0,
+  "same_exit": true,
+  "observed_lines_found": "0/1",
+  "rerun_output": "true\nfalse\ntrue\n0\nTHE SATELLITE PROGRAMMING LANGUAGE\nVERSION 004 REVISION 08 BUILD 0099\nCLANG++ 24 ALMALINUX 10.2\n---------------------------------------------------------------\n\n[exit 0]\n"
+ },
+ {
+  "area": "binary-hex-color-infinity-bool",
+  "index": 4,
+  "title": "Bools are ordered by .max, .min and .sort().by_value(), but < on two bools is refused as having no order",
+  "reported_exit": 27,
+  "rerun_exit": 27,
+  "same_exit": true,
+  "observed_lines_found": "4/4",
+  "rerun_output": "true\n{false, true}\nTHE SATELLITE PROGRAMMING LANGUAGE\nVERSION 004 REVISION 08 BUILD 0099\nCLANG++ 24 ALMALINUX 10.2\n---------------------------------------------------------------\n\n--------------------------------------------------------------------------------\nSATELLITE CRITICAL ERROR REPORT\n--------------------------------------------------------------------------------\nS301: TYPES_DO_NOT_MEET\nsatl(run): < was given two bools, and only == and != order those\n\ndirectory: /tmp/claude-1000/-home-madness-code-satl/b70f905b-dca1-4f92-bbad-f66d8ce80b78/scratchpad/work/binary-hex-color-infinity-bool/min/bool_order.satl:10\nsyntax: satellite.console.display(f < t)\n                                    /\\\n\nthis operator has no scenario for the two kinds it was given. Nothing was\nguessed at, because a guess here is an answer that is wrong and does not say so.\nmachine code 27 types_do_not_meet -- satl exits with this.\n\n--------------------------------------------------------------------------------\n[exit 27]\n"
+ },
+ {
+  "area": "binary-hex-color-infinity-bool",
+  "index": 5,
+  "title": "A binary or hex name declared with a sum is refused as \"expected b1\" / \"expected x200\": only the first literal is read",
+  "reported_exit": 27,
+  "rerun_exit": 27,
+  "same_exit": true,
+  "observed_lines_found": "3/4",
+  "rerun_output": "THE SATELLITE PROGRAMMING LANGUAGE\nVERSION 004 REVISION 08 BUILD 0099\nCLANG++ 24 ALMALINUX 10.2\n---------------------------------------------------------------\n\n--------------------------------------------------------------------------------\nSATELLITE CRITICAL ERROR REPORT\n--------------------------------------------------------------------------------\nS301: TYPES_DO_NOT_MEET\nsatl(check): in satellite.main, ERROR: expected b1\n\ndirectory: /tmp/claude-1000/-home-madness-code-satl/b70f905b-dca1-4f92-bbad-f66d8ce80b78/scratchpad/work/binary-hex-color-infinity-bool/min/binary_sum_declared.satl:5\nsyntax: satellite.variable.binary a = 1 + 1\n        /\\\n\nthis operator has no scenario for the two kinds it was given. Nothing was\nguessed at, because a guess here is an answer that is wrong and does not say so.\nmachine code 27 types_do_not_meet -- satl exits with this.\n\n--------------------------------------------------------------------------------\n[exit 27]\n"
+ },
+ {
+  "area": "binary-hex-color-infinity-bool",
+  "index": 6,
+  "title": ".to_binary is refused on every type as \"not one of its methods\", though .to_hex works and satellite.variable.hex.to_binary is a numbered word",
+  "reported_exit": 13,
+  "rerun_exit": 13,
+  "same_exit": true,
+  "observed_lines_found": "4/5",
+  "rerun_output": "THE SATELLITE PROGRAMMING LANGUAGE\nVERSION 004 REVISION 08 BUILD 0099\nCLANG++ 24 ALMALINUX 10.2\n---------------------------------------------------------------\n\n--------------------------------------------------------------------------------\nSATELLITE CRITICAL ERROR REPORT\n--------------------------------------------------------------------------------\nS110: LINE_NOT_UNDERSTOOD\nsatl(check): in satellite.main, h is satellite.variable.hex, and to_binary is\nnot one of its methods -- only an object of a satellite.spacesuit has capsules\nto call\n\ndirectory: /tmp/claude-1000/-home-madness-code-satl/b70f905b-dca1-4f92-bbad-f66d8ce80b78/scratchpad/work/binary-hex-color-infinity-bool/min/hex_to_binary.satl:9\nsyntax: satellite.console.display(h.to_binary())\n        /\\\n\nsatellite has no scenario for this line -- it is spelled in a shape the language\ndoes not have a meaning for.\nmachine code 13 satl_line_not_understood -- satl exits with this.\n\n--------------------------------------------------------------------------------\n[exit 13]\n"
+ },
+ {
+  "area": "binary-hex-color-infinity-bool",
+  "index": 7,
+  "title": ".digits on a binary or hex says \"not one of its methods\" (S110), though the help says it is numbered and not built yet",
+  "reported_exit": 13,
+  "rerun_exit": 13,
+  "same_exit": true,
+  "observed_lines_found": "4/5",
+  "rerun_output": "THE SATELLITE PROGRAMMING LANGUAGE\nVERSION 004 REVISION 08 BUILD 0099\nCLANG++ 24 ALMALINUX 10.2\n---------------------------------------------------------------\n\n--------------------------------------------------------------------------------\nSATELLITE CRITICAL ERROR REPORT\n--------------------------------------------------------------------------------\nS110: LINE_NOT_UNDERSTOOD\nsatl(check): in satellite.main, a is satellite.variable.binary, and digits is\nnot one of its methods -- only an object of a satellite.spacesuit has capsules\nto call\n\ndirectory: /tmp/claude-1000/-home-madness-code-satl/b70f905b-dca1-4f92-bbad-f66d8ce80b78/scratchpad/work/binary-hex-color-infinity-bool/min/binary_digits.satl:6\nsyntax: satellite.console.display(a.digits)\n        /\\\n\nsatellite has no scenario for this line -- it is spelled in a shape the language\ndoes not have a meaning for.\nmachine code 13 satl_line_not_understood -- satl exits with this.\n\n--------------------------------------------------------------------------------\n[exit 13]\n"
+ },
+ {
+  "area": "binary-hex-color-infinity-bool",
+  "index": 8,
+  "title": "The S210 for binary .width (and .transparency on non-colours) says \"so far no type has it\", though hex has .width and colour has .transparency",
+  "reported_exit": 14,
+  "rerun_exit": 14,
+  "same_exit": true,
+  "observed_lines_found": "4/5",
+  "rerun_output": "THE SATELLITE PROGRAMMING LANGUAGE\nVERSION 004 REVISION 08 BUILD 0099\nCLANG++ 24 ALMALINUX 10.2\n---------------------------------------------------------------\n\n--------------------------------------------------------------------------------\nSATELLITE CRITICAL ERROR REPORT\n--------------------------------------------------------------------------------\nS210: NOT_BUILT_YET\nsatl(check): in satellite.main, a.width is not built for\nsatellite.variable.binary yet -- so far no type has it\n\ndirectory: /tmp/claude-1000/-home-madness-code-satl/b70f905b-dca1-4f92-bbad-f66d8ce80b78/scratchpad/work/binary-hex-color-infinity-bool/min/binary_width.satl:8\nsyntax: satellite.console.display(a.width)\n        /\\\n\nthis word is numbered in the language and the library behind it does not exist\nyet. The word is right; there is nothing yet to run.\nmachine code 14 not_built_yet -- satl exits with this.\n\n--------------------------------------------------------------------------------\n[exit 14]\n"
+ },
+ {
+  "area": "binary-hex-color-infinity-bool",
+  "index": 9,
+  "title": "A method on the bool literal, satellite.bool.true.string, is refused at run time with \"check that every math sign has a space\"",
+  "reported_exit": 13,
+  "rerun_exit": 13,
+  "same_exit": true,
+  "observed_lines_found": "4/5",
+  "rerun_output": "true\n(infinity)\nTHE SATELLITE PROGRAMMING LANGUAGE\nVERSION 004 REVISION 08 BUILD 0099\nCLANG++ 24 ALMALINUX 10.2\n---------------------------------------------------------------\n\n--------------------------------------------------------------------------------\nSATELLITE CRITICAL ERROR REPORT\n--------------------------------------------------------------------------------\nS110: LINE_NOT_UNDERSTOOD\nsatl(run): satellite.console.display was given something it could not read to\nthe end of -- check that every math sign has a space on both sides\n\ndirectory: /tmp/claude-1000/-home-madness-code-satl/b70f905b-dca1-4f92-bbad-f66d8ce80b78/scratchpad/work/binary-hex-color-infinity-bool/min/bool_literal_method.satl:7\nsyntax: satellite.console.display(satellite.bool.true.string)\n        /\\\n\nsatellite has no scenario for this line -- it is spelled in a shape the language\ndoes not have a meaning for.\nmachine code 13 satl_line_not_understood -- satl exits with this.\n\n--------------------------------------------------------------------------------\n[exit 13]\n"
+ },
+ {
+  "area": "binary-hex-color-infinity-bool",
+  "index": 10,
+  "title": "! works as negation, but the help says ! is coming and that none of it reads today",
+  "reported_exit": 0,
+  "rerun_exit": 0,
+  "same_exit": true,
+  "observed_lines_found": "0/1",
+  "rerun_output": "not done\ntrue\nTHE SATELLITE PROGRAMMING LANGUAGE\nVERSION 004 REVISION 08 BUILD 0099\nCLANG++ 24 ALMALINUX 10.2\n---------------------------------------------------------------\n\n[exit 0]\n"
+ },
+ {
+  "area": "binary-hex-color-infinity-bool",
+  "index": 11,
+  "title": "On a colour's declaring line, a colour name made of hex letters followed by a method is refused as \"read here as hex digits\"",
+  "reported_exit": 27,
+  "rerun_exit": 27,
+  "same_exit": true,
+  "observed_lines_found": "6/6",
+  "rerun_output": "THE SATELLITE PROGRAMMING LANGUAGE\nVERSION 004 REVISION 08 BUILD 0099\nCLANG++ 24 ALMALINUX 10.2\n---------------------------------------------------------------\n\n--------------------------------------------------------------------------------\nSATELLITE CRITICAL ERROR REPORT\n--------------------------------------------------------------------------------\nS301: TYPES_DO_NOT_MEET\nsatl(check): in satellite.main, ERROR: bead is read here as hex digits, and it\nis also a variable -- on the line that declares a color, a run of hex digits is\nthe color's digits. For the variable, declare the color first and give it bead\non the next line; as digits it is 4 hex digits, and a color is exactly six hex\ndigits, like x00FF00\n\ndirectory: /tmp/claude-1000/-home-madness-code-satl/b70f905b-dca1-4f92-bbad-f66d8ce80b78/scratchpad/work/binary-hex-color-infinity-bool/min/color_name_method.satl:6\nsyntax: satellite.variable.color faded = bead.transparency(20)\n        /\\\n\nthis operator has no scenario for the two kinds it was given. Nothing was\nguessed at, because a guess here is an answer that is wrong and does not say so.\nmachine code 27 types_do_not_meet -- satl exits with this.\n\n--------------------------------------------------------------------------------\n[exit 27]\n"
+ },
+ {
+  "area": "binary-hex-color-infinity-bool",
+  "index": 12,
+  "title": "A list holding a see-through colour displays as if it had one more item",
+  "reported_exit": 0,
+  "rerun_exit": 0,
+  "same_exit": true,
+  "observed_lines_found": "1/2",
+  "rerun_output": "{x112233, x000000, 50}\n2\nTHE SATELLITE PROGRAMMING LANGUAGE\nVERSION 004 REVISION 08 BUILD 0099\nCLANG++ 24 ALMALINUX 10.2\n---------------------------------------------------------------\n\n[exit 0]\n"
+ },
+ {
+  "area": "binary-hex-color-infinity-bool",
+  "index": 13,
+  "title": "A misspelled satellite.bool.X is refused as an undeclared variable, with no \"did you mean\"",
+  "reported_exit": 25,
+  "rerun_exit": 25,
+  "same_exit": true,
+  "observed_lines_found": "3/4",
+  "rerun_output": "THE SATELLITE PROGRAMMING LANGUAGE\nVERSION 004 REVISION 08 BUILD 0099\nCLANG++ 24 ALMALINUX 10.2\n---------------------------------------------------------------\n\n--------------------------------------------------------------------------------\nSATELLITE CRITICAL ERROR REPORT\n--------------------------------------------------------------------------------\nS201: NAME_NOT_DECLARED\nsatl(check): in satellite.main, flase has no satellite.variable line declaring\nit\n\ndirectory: /tmp/claude-1000/-home-madness-code-satl/b70f905b-dca1-4f92-bbad-f66d8ce80b78/scratchpad/work/binary-hex-color-infinity-bool/min/bool_typo.satl:5\nsyntax: satellite.variable.bool done = satellite.bool.flase\n        /\\\n\nthis name was used and no satellite.variable line ever declared it. A name has\nto be given a type before it can hold anything.\nmachine code 25 name_not_declared -- satl exits with this.\n\n--------------------------------------------------------------------------------\n[exit 25]\n"
+ },
+ {
+  "area": "binary-hex-color-infinity-bool",
+  "index": 14,
+  "title": "0x1F (the C spelling) outside a hex declaration: the refusal names & | << >> !!, which are not on the line, after earlier lines ran",
+  "reported_exit": 13,
+  "rerun_exit": 13,
+  "same_exit": true,
+  "observed_lines_found": "1/2",
+  "rerun_output": "before\nTHE SATELLITE PROGRAMMING LANGUAGE\nVERSION 004 REVISION 08 BUILD 0099\nCLANG++ 24 ALMALINUX 10.2\n---------------------------------------------------------------\n\n[satellite] satl(run): n = ... could not be read to the end -- it stops at something with no meaning there yet (& | << >> !! are undecided), so the part before it is not the whole value (machine_code: 13 satl_line_not_understood)\n[exit 13]\n"
+ },
+ {
+  "area": "binary-hex-color-infinity-bool",
+  "index": 15,
+  "title": "Bare colour digits outside a colour's own line are refused naming a fragment (ff00) as an undeclared variable",
+  "reported_exit": 25,
+  "rerun_exit": 25,
+  "same_exit": true,
+  "observed_lines_found": "3/4",
+  "rerun_output": "THE SATELLITE PROGRAMMING LANGUAGE\nVERSION 004 REVISION 08 BUILD 0099\nCLANG++ 24 ALMALINUX 10.2\n---------------------------------------------------------------\n\n--------------------------------------------------------------------------------\nSATELLITE CRITICAL ERROR REPORT\n--------------------------------------------------------------------------------\nS201: NAME_NOT_DECLARED\nsatl(check): in satellite.main, ff00 has no satellite.variable line declaring it\n\ndirectory: /tmp/claude-1000/-home-madness-code-satl/b70f905b-dca1-4f92-bbad-f66d8ce80b78/scratchpad/work/binary-hex-color-infinity-bool/min/color_digits_fragment.satl:5\nsyntax: satellite.console.display(\"ok\".foreground(00ff00))\n        /\\\n\nthis name was used and no satellite.variable line ever declared it. A name has\nto be given a type before it can hold anything.\nmachine code 25 name_not_declared -- satl exits with this.\n\n--------------------------------------------------------------------------------\n[exit 25]\n"
+ },
+ {
+  "area": "binary-hex-color-infinity-bool",
+  "index": 16,
+  "title": "An infinity joined to a string is refused with no .string hint, unlike a colour",
+  "reported_exit": 27,
+  "rerun_exit": 27,
+  "same_exit": true,
+  "observed_lines_found": "3/4",
+  "rerun_output": "THE SATELLITE PROGRAMMING LANGUAGE\nVERSION 004 REVISION 08 BUILD 0099\nCLANG++ 24 ALMALINUX 10.2\n---------------------------------------------------------------\n\n--------------------------------------------------------------------------------\nSATELLITE CRITICAL ERROR REPORT\n--------------------------------------------------------------------------------\nS301: TYPES_DO_NOT_MEET\nsatl(run): + was given a string and an infinity, and there is no scenario for\nthat pair\n\ndirectory: /tmp/claude-1000/-home-madness-code-satl/b70f905b-dca1-4f92-bbad-f66d8ce80b78/scratchpad/work/binary-hex-color-infinity-bool/min/infinity_join.satl:7\nsyntax: satellite.console.display(\"i = \" + i)\n                                         /\\\n\nthis operator has no scenario for the two kinds it was given. Nothing was\nguessed at, because a guess here is an answer that is wrong and does not say so.\nmachine code 27 types_do_not_meet -- satl exits with this.\n\n--------------------------------------------------------------------------------\n[exit 27]\n"
+ },
+ {
+  "area": "control-flow-and-capsules",
+  "index": 0,
+  "title": "A comment line after a tail self-call turns it into deep recursion: memory grows with depth and 3,000,000 levels segfault (exit 139)",
+  "reported_exit": 139,
+  "rerun_exit": 139,
+  "same_exit": true,
+  "observed_lines_found": "0/1",
+  "rerun_output": "THE SATELLITE PROGRAMMING LANGUAGE\nVERSION 004 REVISION 08 BUILD 0099\nCLANG++ 24 ALMALINUX 10.2\n---------------------------------------------------------------\n\ntimeout: the monitored command dumped core\n/tmp/claude-1000/-home-madness-code-satl/b70f905b-dca1-4f92-bbad-f66d8ce80b78/scratchpad/satlrun.sh: line 15: 3081640 Segmentation fault      ( ulimit -v 16000000; exec env -u DISPLAY -u WAYLAND_DISPLAY -u XAUTHORITY -u GDK_BACKEND -u DBUS_SESSION_BUS_ADDRESS HOME=\"$H\" SATL_NO_WINDOW=1 XDG_RUNTIME_DIR=\"$X\" timeout -k 2 ${SATL_TIMEOUT:-20} /tmp/claude-1000/-home-madness-code-satl/b70f905b-dca1-4f92-bbad-f66d8ce80b78/scratchpad/satl-0099/satl \"$@\" < \"${SATL_STDIN:-/dev/null}\" )\n[exit 139]\n"
+ },
+ {
+  "area": "control-flow-and-capsules",
+  "index": 1,
+  "title": "A name like x1, x2, xa, xc, x0, b0 or b1 cannot be a variable or parameter, and the refusal quotes a rule the name satisfies",
+  "reported_exit": 13,
+  "rerun_exit": 13,
+  "same_exit": true,
+  "observed_lines_found": "5/6",
+  "rerun_output": "THE SATELLITE PROGRAMMING LANGUAGE\nVERSION 004 REVISION 08 BUILD 0099\nCLANG++ 24 ALMALINUX 10.2\n---------------------------------------------------------------\n\n--------------------------------------------------------------------------------\nSATELLITE CRITICAL ERROR REPORT\n--------------------------------------------------------------------------------\nS110: LINE_NOT_UNDERSTOOD\nsatl(check): in satellite.main, satellite.variable.number is followed by\nsomething that is not a name -- a name is made of a-z, A-Z, 0-9 and _, and does\nnot start with a digit\n\ndirectory: /tmp/claude-1000/-home-madness-code-satl/b70f905b-dca1-4f92-bbad-f66d8ce80b78/scratchpad/work/control-flow-and-capsules/var_named_x1.satl:5\nsyntax: satellite.variable.number x1 = 3\n        /\\\n\nsatellite has no scenario for this line -- it is spelled in a shape the language\ndoes not have a meaning for.\nmachine code 13 satl_line_not_understood -- satl exits with this.\n\n--------------------------------------------------------------------------------\n[exit 13]\n"
+ },
+ {
+  "area": "control-flow-and-capsules",
+  "index": 2,
+  "title": "A capsule named x1 or b1 gets a false refusal about satellite.return(satellite) on a line that does not contain it",
+  "reported_exit": 13,
+  "rerun_exit": 13,
+  "same_exit": true,
+  "observed_lines_found": "4/6",
+  "rerun_output": "THE SATELLITE PROGRAMMING LANGUAGE\nVERSION 004 REVISION 08 BUILD 0099\nCLANG++ 24 ALMALINUX 10.2\n---------------------------------------------------------------\n\n--------------------------------------------------------------------------------\nSATELLITE CRITICAL ERROR REPORT\n--------------------------------------------------------------------------------\nS110: LINE_NOT_UNDERSTOOD\nsatl(check): satellite.return(satellite) goes inside satellite.main, as its last\nline -- outside a capsule nothing runs\n\ndirectory: /tmp/claude-1000/-home-madness-code-satl/b70f905b-dca1-4f92-bbad-f66d8ce80b78/scratchpad/work/control-flow-and-capsules/capsule_named_x1.satl:5\nsyntax: satellite.return(5)\n        /\\\n\nsatellite has no scenario for this line -- it is spelled in a shape the language\ndoes not have a meaning for.\nmachine code 13 satl_line_not_understood -- satl exits with this.\n\n--------------------------------------------------------------------------------\n[exit 13]\n"
+ },
+ {
+  "area": "control-flow-and-capsules",
+  "index": 3,
+  "title": "A comment between an if's } and satellite.statement.else makes the else \"with no if before it\"",
+  "reported_exit": 13,
+  "rerun_exit": 13,
+  "same_exit": true,
+  "observed_lines_found": "4/6",
+  "rerun_output": "THE SATELLITE PROGRAMMING LANGUAGE\nVERSION 004 REVISION 08 BUILD 0099\nCLANG++ 24 ALMALINUX 10.2\n---------------------------------------------------------------\n\n--------------------------------------------------------------------------------\nSATELLITE CRITICAL ERROR REPORT\n--------------------------------------------------------------------------------\nS110: LINE_NOT_UNDERSTOOD\nsatl(check): in satellite.main, satellite.statement.else with no\nsatellite.statement.if before it\n\ndirectory: /tmp/claude-1000/-home-madness-code-satl/b70f905b-dca1-4f92-bbad-f66d8ce80b78/scratchpad/work/control-flow-and-capsules/else_after_comment.satl:11\nsyntax: satellite.statement.else\n        /\\\n\nsatellite has no scenario for this line -- it is spelled in a shape the language\ndoes not have a meaning for.\nmachine code 13 satl_line_not_understood -- satl exits with this.\n\n--------------------------------------------------------------------------------\n[exit 13]\n"
+ },
+ {
+  "area": "control-flow-and-capsules",
+  "index": 4,
+  "title": "\"satellite.statement.else // comment\", or a comment line between an if/while header and its {, is refused as \"has no body\"",
+  "reported_exit": 13,
+  "rerun_exit": 13,
+  "same_exit": true,
+  "observed_lines_found": "2/4",
+  "rerun_output": "THE SATELLITE PROGRAMMING LANGUAGE\nVERSION 004 REVISION 08 BUILD 0099\nCLANG++ 24 ALMALINUX 10.2\n---------------------------------------------------------------\n\n--------------------------------------------------------------------------------\nSATELLITE CRITICAL ERROR REPORT\n--------------------------------------------------------------------------------\nS110: LINE_NOT_UNDERSTOOD\nsatl(check): in satellite.main, satellite.statement.else has no body\n\ndirectory: /tmp/claude-1000/-home-madness-code-satl/b70f905b-dca1-4f92-bbad-f66d8ce80b78/scratchpad/work/control-flow-and-capsules/else_trailing_comment.satl:10\nsyntax: satellite.statement.else // anything but one\n        /\\\n\nsatellite has no scenario for this line -- it is spelled in a shape the language\ndoes not have a meaning for.\nmachine code 13 satl_line_not_understood -- satl exits with this.\n\n--------------------------------------------------------------------------------\n[exit 13]\n"
+ },
+ {
+  "area": "control-flow-and-capsules",
+  "index": 5,
+  "title": "A name declared inside an if that did not run is refused at run time with a false \"no satellite.variable line declaring it\", after output",
+  "reported_exit": 25,
+  "rerun_exit": 25,
+  "same_exit": true,
+  "observed_lines_found": "4/6",
+  "rerun_output": "before\nTHE SATELLITE PROGRAMMING LANGUAGE\nVERSION 004 REVISION 08 BUILD 0099\nCLANG++ 24 ALMALINUX 10.2\n---------------------------------------------------------------\n\n--------------------------------------------------------------------------------\nSATELLITE CRITICAL ERROR REPORT\n--------------------------------------------------------------------------------\nS201: NAME_NOT_DECLARED\nsatl(run): size has no satellite.variable line declaring it\n\ndirectory: /tmp/claude-1000/-home-madness-code-satl/b70f905b-dca1-4f92-bbad-f66d8ce80b78/scratchpad/work/control-flow-and-capsules/if_decl_not_taken.satl:11\nsyntax: satellite.console.display(size)\n                                  /\\\n\nthis name was used and no satellite.variable line ever declared it. A name has\nto be given a type before it can hold anything.\nmachine code 25 name_not_declared -- satl exits with this.\n\n--------------------------------------------------------------------------------\n[exit 25]\n"
+ },
+ {
+  "area": "control-flow-and-capsules",
+  "index": 6,
+  "title": "A number parameter given a binary keeps it as a binary (shows b0011), while a number declaration given the same value holds 3",
+  "reported_exit": 0,
+  "rerun_exit": 0,
+  "same_exit": true,
+  "observed_lines_found": "0/1",
+  "rerun_output": "3\nb0011\nTHE SATELLITE PROGRAMMING LANGUAGE\nVERSION 004 REVISION 08 BUILD 0099\nCLANG++ 24 ALMALINUX 10.2\n---------------------------------------------------------------\n\n[exit 0]\n"
+ },
+ {
+  "area": "control-flow-and-capsules",
+  "index": 7,
+  "title": "Indexing a capsule's answer, names()[2], is refused at run time with false sentences (\"check that every math sign has a space\" / \"& | << >> !! are undecided\")",
+  "reported_exit": 13,
+  "rerun_exit": 13,
+  "same_exit": true,
+  "observed_lines_found": "4/5",
+  "rerun_output": "3\nTHE SATELLITE PROGRAMMING LANGUAGE\nVERSION 004 REVISION 08 BUILD 0099\nCLANG++ 24 ALMALINUX 10.2\n---------------------------------------------------------------\n\n--------------------------------------------------------------------------------\nSATELLITE CRITICAL ERROR REPORT\n--------------------------------------------------------------------------------\nS110: LINE_NOT_UNDERSTOOD\nsatl(run): satellite.console.display was given something it could not read to\nthe end of -- check that every math sign has a space on both sides\n\ndirectory: /tmp/claude-1000/-home-madness-code-satl/b70f905b-dca1-4f92-bbad-f66d8ce80b78/scratchpad/work/control-flow-and-capsules/index_call_answer.satl:11\nsyntax: satellite.console.display(names()[2])\n        /\\\n\nsatellite has no scenario for this line -- it is spelled in a shape the language\ndoes not have a meaning for.\nmachine code 13 satl_line_not_understood -- satl exits with this.\n\n--------------------------------------------------------------------------------\n[exit 13]\n"
+ },
+ {
+  "area": "control-flow-and-capsules",
+  "index": 8,
+  "title": "&& and || in a condition are refused only when the line runs, after output, and the sentence calls & | << >> !! undecided without naming && at all",
+  "reported_exit": 13,
+  "rerun_exit": 13,
+  "same_exit": true,
+  "observed_lines_found": "1/3",
+  "rerun_output": "before\nTHE SATELLITE PROGRAMMING LANGUAGE\nVERSION 004 REVISION 08 BUILD 0099\nCLANG++ 24 ALMALINUX 10.2\n---------------------------------------------------------------\n\n[satellite] satl(run): satellite.statement.if's condition could not be read to the end -- it stops at something with no meaning there yet (& | << >> !! are undecided), so the part before it is not the whole value (machine_code: 13 satl_line_not_understood)\n[exit 13]\n"
+ },
+ {
+  "area": "control-flow-and-capsules",
+  "index": 9,
+  "title": "An else after a while's or for's } is refused only after the loop has run, as a one-line message",
+  "reported_exit": 13,
+  "rerun_exit": 13,
+  "same_exit": true,
+  "observed_lines_found": "1/3",
+  "rerun_output": "before\nTHE SATELLITE PROGRAMMING LANGUAGE\nVERSION 004 REVISION 08 BUILD 0099\nCLANG++ 24 ALMALINUX 10.2\n---------------------------------------------------------------\n\n[satellite] satl(run): satellite.statement.else with no satellite.statement.if before it (machine_code: 13 satl_line_not_understood)\n[exit 13]\n"
+ },
+ {
+  "area": "control-flow-and-capsules",
+  "index": 10,
+  "title": "The run-time S240 (answer used, none handed back) names the capsule's header line, not the call that used the answer",
+  "reported_exit": 53,
+  "rerun_exit": 53,
+  "same_exit": true,
+  "observed_lines_found": "4/5",
+  "rerun_output": "THE SATELLITE PROGRAMMING LANGUAGE\nVERSION 004 REVISION 08 BUILD 0099\nCLANG++ 24 ALMALINUX 10.2\n---------------------------------------------------------------\n\n--------------------------------------------------------------------------------\nSATELLITE CRITICAL ERROR REPORT\n--------------------------------------------------------------------------------\nS240: CAPSULE_GAVE_NO_ANSWER\nsatl(run): positive_only's answer is used, and it ended without handing one back\n-- the way it went reached no satellite.return(...) with a value\n\ndirectory: /tmp/claude-1000/-home-madness-code-satl/b70f905b-dca1-4f92-bbad-f66d8ce80b78/scratchpad/work/control-flow-and-capsules/s240_names_header.satl:3\nsyntax: satellite.capsule positive_only(satellite.variable.number n)\n        /\\\n\nthis capsule's answer was used, and the way it went reached no\nsatellite.return(...) -- so there was nothing to hand back.\nmachine code 53 capsule_gave_no_answer -- satl exits with this.\n\n--------------------------------------------------------------------------------\n[exit 53]\n"
+ },
+ {
+  "area": "control-flow-and-capsules",
+  "index": 11,
+  "title": "A list of numbers refuses a hex that a number name accepts, but takes a binary and keeps it as a binary",
+  "reported_exit": 27,
+  "rerun_exit": 27,
+  "same_exit": true,
+  "observed_lines_found": "1/2",
+  "rerun_output": "255\nTHE SATELLITE PROGRAMMING LANGUAGE\nVERSION 004 REVISION 08 BUILD 0099\nCLANG++ 24 ALMALINUX 10.2\n---------------------------------------------------------------\n\n[satellite] satl(run): l was declared satellite.container.list, and item 1 of it does not fit: it holds a hex (machine_code: 27 types_do_not_meet)\n[exit 27]\n"
+ },
+ {
+  "area": "control-flow-and-capsules",
+  "index": 12,
+  "title": "The colour habit #FF8800 is refused as \"FF8800 has no satellite.variable line declaring it\" instead of the # hint",
+  "reported_exit": 25,
+  "rerun_exit": 25,
+  "same_exit": true,
+  "observed_lines_found": "3/4",
+  "rerun_output": "THE SATELLITE PROGRAMMING LANGUAGE\nVERSION 004 REVISION 08 BUILD 0099\nCLANG++ 24 ALMALINUX 10.2\n---------------------------------------------------------------\n\n--------------------------------------------------------------------------------\nSATELLITE CRITICAL ERROR REPORT\n--------------------------------------------------------------------------------\nS201: NAME_NOT_DECLARED\nsatl(check): in satellite.main, FF8800 has no satellite.variable line declaring\nit\n\ndirectory: /tmp/claude-1000/-home-madness-code-satl/b70f905b-dca1-4f92-bbad-f66d8ce80b78/scratchpad/work/control-flow-and-capsules/hash1.satl:5\nsyntax: satellite.variable.color c = #FF8800\n        /\\\n\nthis name was used and no satellite.variable line ever declared it. A name has\nto be given a type before it can hold anything.\nmachine code 25 name_not_declared -- satl exits with this.\n\n--------------------------------------------------------------------------------\n[exit 25]\n"
+ },
+ {
+  "area": "control-flow-and-capsules",
+  "index": 13,
+  "title": "A colour argument without its x, paint(00ff00), is refused as \"ff00 has no satellite.variable line declaring it\"",
+  "reported_exit": 25,
+  "rerun_exit": 25,
+  "same_exit": true,
+  "observed_lines_found": "3/4",
+  "rerun_output": "THE SATELLITE PROGRAMMING LANGUAGE\nVERSION 004 REVISION 08 BUILD 0099\nCLANG++ 24 ALMALINUX 10.2\n---------------------------------------------------------------\n\n--------------------------------------------------------------------------------\nSATELLITE CRITICAL ERROR REPORT\n--------------------------------------------------------------------------------\nS201: NAME_NOT_DECLARED\nsatl(check): in satellite.main, ff00 has no satellite.variable line declaring it\n\ndirectory: /tmp/claude-1000/-home-madness-code-satl/b70f905b-dca1-4f92-bbad-f66d8ce80b78/scratchpad/work/control-flow-and-capsules/color_argument.satl:10\nsyntax: paint(00ff00)\n        /\\\n\nthis name was used and no satellite.variable line ever declared it. A name has\nto be given a type before it can hold anything.\nmachine code 25 name_not_declared -- satl exits with this.\n\n--------------------------------------------------------------------------------\n[exit 25]\n"
+ },
+ {
+  "area": "control-flow-and-capsules",
+  "index": 14,
+  "title": "The ! operator works, but the only help page that mentions it says it does not read today",
+  "reported_exit": 0,
+  "rerun_exit": 0,
+  "same_exit": true,
+  "observed_lines_found": "0/1",
+  "rerun_output": "not done\ntrue\nTHE SATELLITE PROGRAMMING LANGUAGE\nVERSION 004 REVISION 08 BUILD 0099\nCLANG++ 24 ALMALINUX 10.2\n---------------------------------------------------------------\n\n[exit 0]\n"
+ }
+]

@@ -1,0 +1,9 @@
+
+satellite.include(satellite)
+
+satellite.capsule satellite.main(satellite.variable.arguments arguments)
+{
+    satellite.console.display(arguments)
+
+    satellite.return(satellite)
+}

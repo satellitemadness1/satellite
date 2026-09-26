@@ -1,0 +1,29 @@
+satellite.include(satellite)
+
+// commented out: satellite.return(satellite)
+
+satellite.capsule satellite.main()
+{
+    satellite.console.display("AMPLIFICATION OF CURRENTLY RUNNING PROGRAMS")
+
+    satellite.variable.number cast_count = 0
+
+    satellite.variable.number target_count = 999999
+
+    satellite.statement.while(cast_count < target_count)
+    {
+        satellite.console.display("AMPLIFY ALL CURRENT RUNNING PROGRAMS, INFINITELY  INFINITELY  INFINITELY  INFINITELY  INFINITELY  INFINITELY  INFINITELY  INFINITELY ")
+
+        satellite.console.display("AMPLIFY ALL CURRENTLY RUNNING PROGRAMS AS THOUGH THEY WERE AMPLIFIED.")
+
+        satellite.console.display("AMPLIFY ALL CURRENTLY RUNNING PROGRAMS WITH AN INFINITE AMOUNT OF TECHNIQUES AND TAKE THE AMOUNT BEFORE CASTING AND AMPLIFY ITS AMOUNT BY THE POWER OF INFINITY...")
+
+        satellite.console.display("AMPLIFY ALL CURRENTLY RUNNING PROGRAMS DEFINES PROGRAMS EXECUTING ON THIS MACHINE, NOT PROGRAMS RUNNING ON ANY OTHER MACHINE...")
+
+        satellite.console.display("AMPLIFY ALL PROGRAMS ON THIS MACHINE... AND ONLY ON THIS MACHINE...")
+
+        cast_count = cast_count + 1
+    }
+
+    satellite.return(satellite)
+}

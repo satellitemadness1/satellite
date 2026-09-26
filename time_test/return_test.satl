@@ -1,0 +1,16 @@
+
+satellite.include(satellite)
+
+satellite.capsule satellite.main()
+{
+    satellite.variable.number my_int = my_return()
+
+    satellite.console.display(my_int)
+
+    satellite.return(satellite)
+}
+
+satellite.capsule my_return()
+{
+    satellite.return(1)
+}

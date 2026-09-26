@@ -7,6 +7,11 @@ and what it is related to**, so whoever fixes one starts from the cause and not 
 ERRORS2.md still holds the older list; its Part 1b (the first finds of this same session)
 points here.
 
+**ERRORS4/ (a folder) holds 85 more**, one page each, from an error hunt run the same night
+against build 0099: thousands of ordinary programs, every suspect re-run and shrunk by a
+second agent. Its README.md is the index, most severe first. None is marked fixed yet --
+run a page's program on today's satl before fixing it.
+
 **Status words:** FIXED (with the commit), IN PROGRESS (a builder is on it), TO FIX, HIS TO RULE.
 
 **Two builder workflows are running as this is written**, each in its own worktree, to be
