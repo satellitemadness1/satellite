@@ -12,6 +12,5 @@ satellite.capsule satellite.main()
     satellite.console.display(2 ** 10)
     satellite.console.display(3 ** 2 + 1)
     satellite.console.display(2 ** 3 ^ 2)
+    satellite.return(satellite)
 }
-
-satellite.return(satellite)

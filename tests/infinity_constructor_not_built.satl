@@ -15,6 +15,5 @@ satellite.capsule satellite.main()
 {
     satellite.console.display("before")
     satellite.console.display(satellite.aasat())
+    satellite.return(satellite)
 }
-
-satellite.return(satellite)

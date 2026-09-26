@@ -14,6 +14,5 @@ satellite.capsule satellite.main()
     satellite.console.display("before")
     satellite.variable.number helper = 5
     helper()
+    satellite.return(satellite)
 }
-
-satellite.return(satellite)

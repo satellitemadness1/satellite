@@ -60,7 +60,7 @@ satellite.capsule before_a_return(satellite.variable.number n)
     {
         before_a_return(n - 1)
     }
-    satellite.return(satellite)
+    satellite.return()
 }
 
 // Through its own space's name.

@@ -70,6 +70,7 @@ inline constexpr std::size_t kNowhere = static_cast<std::size_t>(-1);
 // THE NAME RULE, AS THE LEXER KEEPS IT (DESIGN §7, bytecode_registry.cpp's
 // identifier_start): said in the two refusals a name that broke it lands in (M5).
 const std::string kNameRule = "a name is made of a-z, A-Z, 0-9 and _, and does not start with a digit";
+constexpr std::size_t kNoStatement = static_cast<std::size_t>(-1);
 
 // HABITS FROM ANOTHER LANGUAGE, said as what to write here (the error sweep, 2026-09-25),
 // for a person meeting satellite for the first time. Each shape was refused already, in
@@ -593,6 +594,20 @@ signed long long int method_on_a_name(const std::vector<std::bitset<16>> &row, s
         return success;
     }
 
+    // A STRING'S CASE, .upper() and .lower() and their second spellings (string_case.hpp):
+    // on a string, taking nothing; anything else has no case to change.
+    if (method == token::upper_token || method == token::lower_token) {
+        if (declared_as != word::code_of(1, 6, 1)) {
+            why = spelling + " is a string's -- " + word::spelling_of(declared_as) + " has no letters to change";
+            return types_do_not_meet;
+        }
+        std::size_t close = k + 2, given = 0;
+        if (code_at(row, k + 2) == token::left_parenthesis_token && (!brackets_at(row, k + 2, close, given) || given != 0)) {
+            why = spelling + "() takes nothing in its brackets";
+            return satl_line_not_understood;
+        }
+        return success;
+    }
     // A STRING'S COLOUR (console_style.hpp): one colour, in brackets, and a literal that
     // cannot be one is refused now.
     if (declared_as == word::code_of(1, 6, 1) &&
@@ -2176,6 +2191,8 @@ signed long long int check_program(const BytecodeRegistry &registry,
         // THE BODY THE FILE ENDS INSIDE is read to the file's end, or to the next thing the
         // file declares -- a capsule written after it is the file's, not a line of this one.
         const bool unclosed = held != nullptr && held->row == site.row && held->at == site.declared_at;
+        // THE LAST STATEMENT OF THE BODY ITSELF, for the rule below about main's.
+        std::size_t last_statement = kNoStatement, closing = row.size();
         for (std::size_t at = site.body; at < row.size(); ) {
             const Code code = code_at(row, at);
             if (code == token::end_of_file_token)
@@ -2183,13 +2200,14 @@ signed long long int check_program(const BytecodeRegistry &registry,
             if (unclosed && (code == word::code_of(1, 2) || code == word::code_of(1, 10) || code == word::code_of(1, 28)))
                 break;
             if (code == token::right_brace_token) {
-                if (depth == 0) break;      // the capsule's own closing brace
+                if (depth == 0) { closing = at; break; }      // the capsule's own closing brace
                 --depth;
                 ++at;
                 continue;
             }
             if (code == token::left_brace_token) { ++depth; ++at; continue; }
             const std::size_t was = at;
+            if (depth == 0) last_statement = at;
             std::string why;
             if (habit_from_another_language(row, at, why))
                 return raise_at(satl_line_not_understood, why, site.shown, state, row, at, "satl(check)");
@@ -2204,6 +2222,25 @@ signed long long int check_program(const BytecodeRegistry &registry,
                 return raise_at(code_of_line, why, site.shown, state, row, was, "satl(check)");
             if (at <= was)                  // a statement must always move forward
                 ++at;
+        }
+        // satellite.main ENDS WITH satellite.return(satellite) (the author, 2026-09-25: "let's
+        // refuse a main that doesnt have satellite.return(satellite) as the last line, but still
+        // allow the user to satellite.return(satellite) to quit the interpreter from anywhere").
+        // The program's own main only -- an included file's is not the one being run -- and
+        // its last statement at the body's own depth: a return inside a last if is a way to
+        // quit early, not the last line.
+        if (&site == capsules.main() && !unclosed) {
+            const bool ends_right = last_statement != kNoStatement &&
+                                    code_at(row, last_statement) == word::code_of(1, 15) &&
+                                    code_at(row, last_statement + 1) == token::left_parenthesis_token &&
+                                    code_at(row, last_statement + 2) == word::code_of(1) &&
+                                    code_at(row, last_statement + 3) == token::right_parenthesis_token;
+            if (!ends_right)
+                return raise_at(satl_file_missing_satellite_return_satellite,
+                                "satellite.main's last line is satellite.return(satellite) -- it is where the program "
+                                "ends, so it goes just before main's closing }",
+                                std::string(), state, row, last_statement != kNoStatement ? last_statement : closing,
+                                "satl(check)");
         }
     }
 

@@ -7,6 +7,5 @@ satellite.capsule satellite.main()
     {
         satellite.console.display("never")
     }
+    satellite.return(satellite)
 }
-
-satellite.return(satellite)

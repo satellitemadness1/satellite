@@ -4,15 +4,18 @@ SATELLITE 004: satellite.return()
 
 satellite.return(args) ends the capsule it is written in -- from wherever it
 stands, inside an if, a while or a for -- and hands back what is between its
-brackets. In main, satellite.return(satellite) ends the program, and satl exits
-0. satellite.return() and satellite.return(satellite) hand back nothing. A
-capsule other than main may leave it out: reaching its closing } ends it the
-same way, with nothing handed back.
+brackets. satellite.return() hands back nothing. A capsule other than main may
+leave it out: reaching its closing } ends it the same way, with nothing handed
+back.
 
-A program needs at least one. satl looks for a satellite.return anywhere in the
-file you run, and refuses a file with none before anything runs (S103, exit
-12) -- execution ends inside main, and the file has to say so. Its place is the
-last line of main.
+satellite.return(satellite) is different: it ends the WHOLE PROGRAM, from any
+capsule, at any depth, on any thread, and satl exits 0. It is how a program
+quits early.
+
+Every satellite.main ends with satellite.return(satellite) as its last line,
+just before main's closing }. satl refuses a main without it before anything
+runs (S103, exit 12) -- execution ends inside main, and main has to say so.
+Written outside every capsule it is refused too: nothing runs there.
 
 A capsule answers whatever its satellite.return hands back. Nothing after its
 brackets says what that is: only line ends and comments come between its ) and

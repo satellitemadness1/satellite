@@ -9,6 +9,7 @@
 // the operators in §6.6" in as many words, so this is the port, not an invention.
 
 #include "expression.hpp"
+#include "../satellite_object/string_case.hpp"
 
 #include "capsule_calls.hpp"
 #include "capsule_scopes.hpp"
@@ -481,6 +482,26 @@ Value call_method(const std::vector<std::bitset<16>> &row, std::size_t &at, cons
                 live = &held;
                 on_the_name = false;
             }
+            continue;
+        }
+
+        // A STRING IN CAPITALS OR SMALL LETTERS, .upper() and .lower() -- and .uppercase(),
+        // .up() and .lowercase(), which the lexer makes the same two codes (the author,
+        // 2026-09-25). A new string is answered (string_case.hpp); the name keeps its own.
+        if ((*live).is_string() && (method == token::upper_token || method == token::lower_token)) {
+            if (!arguments.empty()) {
+                context.refuse(satl_line_not_understood, name + "." + spelling + "() takes nothing in its brackets");
+                return Value();
+            }
+            satellite_string changed;
+            const signed long long int made = string_case(*(*live).as_string(), method == token::upper_token, changed);
+            if (made != success) {
+                context.refuse(made, name + "." + spelling + "() could not change that text");
+                return Value();
+            }
+            held = Value::of_string(std::move(changed));
+            live = &held;
+            on_the_name = false;
             continue;
         }
 

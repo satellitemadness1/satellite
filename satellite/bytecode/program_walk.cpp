@@ -1431,7 +1431,9 @@ signed long long int close_files(VariableTable &variables, signed long long int 
             report_error("satl(end): the changes to " + file.path() + " could not be saved when " + entry.first +
                              " went out of use -- " + file.error(),
                          file_unwritable);
-        if (!stops_the_program(answer)) answer = code;
+        // A SAVE THAT FAILS WHILE THE PROGRAM QUITS (satellite.return(satellite)) is still a
+        // failure, and its code is what satl exits with -- quitting is not a reason to lose it.
+        if (!stops_the_program(answer) || answer == program_returned) answer = code;
     }
     return answer;
 }
@@ -1626,6 +1628,10 @@ signed long long int run_statements(const BytecodeRegistry &registry,
         // (the review, 2026-09-23).
         if (stop_of_this_thread != nullptr && stop_of_this_thread->load(std::memory_order_relaxed))
             return thread_stopped;
+        // satellite.return(satellite) ON ANOTHER THREAD (thread_stop.hpp's program_quit): this
+        // walker ends here too, between two statements, and the program with it.
+        if (program_quit().load(std::memory_order_relaxed))
+            return program_returned;
 
         if (code == token::right_brace_token)
             return success;
@@ -1666,6 +1672,16 @@ signed long long int run_statements(const BytecodeRegistry &registry,
         // satellite.return, AND WHAT IT HANDS BACK (Frame says why it ends the whole
         // capsule). Worked out in THIS frame, before it goes.
         if (code == word::code_of(1, 15)) {
+            // satellite.return(satellite) ENDS THE WHOLE PROGRAM, FROM ANYWHERE -- any capsule,
+            // any depth, any thread (the author, 2026-09-25). As main's last line it is where
+            // every program ends; anywhere else it is how one quits early. `satellite.return()`
+            // and `satellite.return(x)` still end only the capsule they stand in.
+            if (code_at(row, at + 1) == token::left_parenthesis_token && code_at(row, at + 2) == word::code_of(1) &&
+                code_at(row, at + 3) == token::right_parenthesis_token) {
+                program_quit().store(true, std::memory_order_relaxed);
+                state.set("satellite.return(satellite)", success);
+                return program_returned;
+            }
             const std::size_t value_at = return_value_at(row, at);
             if (value_at != 0) {
                 ExpressionContext context{variables, functions, state};
@@ -2160,8 +2176,11 @@ signed long long int run_main(const BytecodeRegistry &registry,
     // MAIN'S FRAME HAS NO SITE, as it had no TailCall before one: main calling itself
     // last is not made a loop, and a return anywhere in it still ends the program.
     Frame frame;
-    return close_files(variables,
-                       run_statements(registry, capsules, functions, main->row, main->body, variables, state, frame));
+    const signed long long int ended =
+        close_files(variables, run_statements(registry, capsules, functions, main->row, main->body, variables, state, frame));
+    // satellite.return(satellite), from main's last line or from anywhere below it, is the
+    // program ENDING, not failing: satl exits 0.
+    return ended == program_returned ? success : ended;
 }
 
 } // namespace satellite004

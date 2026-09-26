@@ -117,6 +117,5 @@ satellite.capsule satellite.main()
     m.add_row({1, 2})
     m.add_row({30, 40})
     satellite.console.display(m.call_report())
+    satellite.return(satellite)
 }
-
-satellite.return(satellite)

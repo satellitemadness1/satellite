@@ -5,6 +5,5 @@ satellite.capsule satellite.main()
     satellite.console.display("before")
     satellite.statement.for(satellite.variable.number i = 0; i < 3; i++)
     satellite.console.display(i)
+    satellite.return(satellite)
 }
-
-satellite.return(satellite)

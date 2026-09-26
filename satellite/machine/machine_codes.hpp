@@ -133,6 +133,10 @@ enum MachineCode : signed long long int {
     thread_stopped = 61,                // the walk of a thread that .stop() asked to stop
     thread_cannot_share_yet = 62,       // a window handed to a thread, or a window word used on one (T3)
     wait_never_ends = 63,               // a lock or a join whose holder waits, through locks and joins, for this thread
+    // THE AUTHOR, 2026-09-25: "allow the user to satellite.return(satellite) to quit the
+    // interpreter from anywhere". Not a failure: it unwinds every frame as a refusal would,
+    // closing each one's files, and run_main turns it into success -- satl exits 0.
+    program_returned = 64,              // satellite.return(satellite) was reached: the whole program ends here
 
     // 130 AND NOT 32, ON PURPOSE (PLAN M0.6): 128 + SIGINT is what a shell and 003
     // both answer for Ctrl-C, and exit_status_of passes a code under 255 through as
@@ -196,6 +200,7 @@ inline const char *machine_code_name(signed long long int code)
     case thread_stopped: return "thread_stopped";
     case thread_cannot_share_yet: return "thread_cannot_share_yet";
     case wait_never_ends: return "wait_never_ends";
+    case program_returned: return "program_returned";
     case out_of_memory: return "out_of_memory";
     case libraries_not_understood: return "libraries_not_understood";
     case file_not_found: return "file_not_found";

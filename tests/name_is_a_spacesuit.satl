@@ -15,6 +15,5 @@ satellite.capsule satellite.main()
 {
     satellite.console.display("before")
     thing thing
+    satellite.return(satellite)
 }
-
-satellite.return(satellite)

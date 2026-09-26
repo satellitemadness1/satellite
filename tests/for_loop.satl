@@ -84,6 +84,5 @@ satellite.capsule satellite.main()
     {
         satellite.console.display(spot)
     }
+    satellite.return(satellite)
 }
-
-satellite.return(satellite)

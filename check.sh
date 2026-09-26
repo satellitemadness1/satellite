@@ -232,7 +232,7 @@ expect "INF-2: an infinity displays, orders, copies, sorts, and a family name ta
 # the rest. Answers the code, whether the reason was said, and how many "before" lines
 # ran first: 0 for a refusal the checker makes, 1 for one made while running.
 infinity_says() {
-    printf 'satellite.include(satellite)\n\nsatellite.capsule satellite.main()\n{\n    satellite.console.display("before")\n%s\n}\n\nsatellite.return(satellite)\n' "$1" > build/infinity_probe.satl
+    printf 'satellite.include(satellite)\n\nsatellite.capsule satellite.main()\n{\n    satellite.console.display("before")\n%s\n    satellite.return(satellite)\n}\n' "$1" > build/infinity_probe.satl
     "$interpreter" build/infinity_probe.satl > build/infinity_probe.out 2>&1; code=$?
     printf '%s|%s|%s' "$code" "$(tr '\n' ' ' < build/infinity_probe.out | grep -c -- "$2")" "$(grep -cx before build/infinity_probe.out)"
 }
@@ -266,20 +266,20 @@ expect "** on two infinities names INF-4 and INF-5" "14|1|1" \
 # generated method_name_of(), where a hand-kept table used to say "that method".
 for pair in power_of:power_of to_the_power_of:power_of power:power_of nines:nines resize:resize; do
     written=${pair%%:*}; named=${pair##*:}
-    printf 'satellite.include(satellite)\n\nsatellite.capsule satellite.main()\n{\n    satellite.variable.number n = 5\n    satellite.console.display(n.%s(1))\n}\n\nsatellite.return(satellite)\n' "$written" > build/method_probe.satl
+    printf 'satellite.include(satellite)\n\nsatellite.capsule satellite.main()\n{\n    satellite.variable.number n = 5\n    satellite.console.display(n.%s(1))\n    satellite.return(satellite)\n}\n' "$written" > build/method_probe.satl
     "$interpreter" build/method_probe.satl > build/method_probe.out 2>&1; code=$?
     expect "n.$written(1) on a number is not built yet" 14 $code
     expect "... and is named n.$named, which no type has yet" 1 \
            "$(tr '\n' ' ' < build/method_probe.out | grep -c "n.$named is not built for satellite.variable.number yet -- so far no type has it")"
 done
 # ...and a container's method on a number names the container, not "no type".
-printf 'satellite.include(satellite)\n\nsatellite.capsule satellite.main()\n{\n    satellite.variable.number n = 5\n    satellite.console.display(n.sort())\n}\n\nsatellite.return(satellite)\n' > build/method_probe.satl
+printf 'satellite.include(satellite)\n\nsatellite.capsule satellite.main()\n{\n    satellite.variable.number n = 5\n    satellite.console.display(n.sort())\n    satellite.return(satellite)\n}\n' > build/method_probe.satl
 "$interpreter" build/method_probe.satl > build/method_probe.out 2>&1
 expect "n.sort() on a number: so far it is a container's" 1 \
        "$(tr '\n' ' ' < build/method_probe.out | grep -c "n.sort is not built for satellite.variable.number yet -- so far it is a container's")"
 # A TOUCHING ** OUTSIDE A for IS NAMED TOO, with the caret on it: the generic "a space
 # on both sides" answer would send a person to write 2 * * 3.
-printf 'satellite.include(satellite)\n\nsatellite.capsule satellite.main()\n{\n    satellite.console.display(2**3)\n}\n\nsatellite.return(satellite)\n' > build/method_probe.satl
+printf 'satellite.include(satellite)\n\nsatellite.capsule satellite.main()\n{\n    satellite.console.display(2**3)\n    satellite.return(satellite)\n}\n' > build/method_probe.satl
 "$interpreter" build/method_probe.satl > build/method_probe.out 2>&1; code=$?
 expect "2**3 is refused" 13 $code
 expect "... by name: power is written with a space on both sides" 1 \
@@ -324,8 +324,8 @@ satellite.capsule satellite.main()
         i = i + 1
     }
     satellite.console.display("done")
+    satellite.return(satellite)
 }
-satellite.return(satellite)
 BOMB_EOF
 rm -f "$CHECK_HOME/.satl/feedback.txt"
 HOME="$CHECK_HOME" "$interpreter" build/feedback_bomb.satl > build/feedback.out 2>&1
@@ -1133,7 +1133,7 @@ expect "a nested append is linear too (4x the appends: ${na_small}s -> ${na_big}
 # Taken from the binary's own output, never re-typed here, so the test cannot
 # agree with a copy while the real one rots.
 "$interpreter" --help > build/help.out 2>&1
-sed -n '/YOUR FIRST PROGRAM/,/satellite.return(satellite)/p' build/help.out \
+sed -n '/YOUR FIRST PROGRAM/,/^    }$/p' build/help.out \
     | sed '1,2d' | sed 's/^    //' > build/help_example.satl
 expect "the example in --help is a whole program" "1|1|1" \
        "$(grep -c 'satellite.include(satellite)' build/help_example.satl)|$(grep -c 'satellite.capsule satellite.main()' build/help_example.satl)|$(grep -c 'satellite.return(satellite)' build/help_example.satl)"
@@ -4401,7 +4401,7 @@ access_home=$PWD/build/arguments-access-home
 rm -rf -- "$access_home"
 mkdir -p -- "$access_home/.satl"
 HOME=$access_home "$interpreter" --rebuild > build/arguments-access-rebuild.out 2>&1
-printf 'satellite.include(satellite)\n\nsatellite.capsule satellite.main(satellite.variable.arguments a)\n{\n    satellite.console.display(a.access)\n    a.access = satellite.bool.false\n    satellite.console.display(a.access)\n    satellite.console.display(a)\n    a["access"] = 7\n}\n\nsatellite.return(satellite)\n' > build/arguments_access.satl
+printf 'satellite.include(satellite)\n\nsatellite.capsule satellite.main(satellite.variable.arguments a)\n{\n    satellite.console.display(a.access)\n    a.access = satellite.bool.false\n    satellite.console.display(a.access)\n    satellite.console.display(a)\n    a["access"] = 7\n    satellite.return(satellite)\n}\n' > build/arguments_access.satl
 HOME=$access_home "$interpreter" build/arguments_access.satl > build/arguments_access.out 2>&1; code=$?
 expect "... and access, a setting, is written through to config.ini and the copy, and takes true or false only" \
        "34|true|false|1|1|1" \
@@ -4639,12 +4639,12 @@ expect "at a terminal: 003's bytes for display's options, and every colour 004 a
 
 # NO_COLOR SET AND NOT EMPTY DROPS THE COLOURS AND KEEPS BOLD AND ITALIC (no-color.org),
 # and leaves the terminal's own colours alone.
-printf 'satellite.include(satellite)\nsatellite.capsule satellite.main()\n{\n    satellite.terminal.foreground(xFF8800)\n    satellite.console.display("warning", foreground=xFF8800, bold=satellite.bool.true)\n    satellite.console.display("x".foreground(x00FF00))\n}\nsatellite.return(satellite)\n' > build/console_no_color.satl
+printf 'satellite.include(satellite)\nsatellite.capsule satellite.main()\n{\n    satellite.terminal.foreground(xFF8800)\n    satellite.console.display("warning", foreground=xFF8800, bold=satellite.bool.true)\n    satellite.console.display("x".foreground(x00FF00))\n    satellite.return(satellite)\n}\n' > build/console_no_color.satl
 expect "NO_COLOR: bold kept, every colour dropped, the terminal untouched" \
        "'\\r\\n\\x1b[1mwarning\\x1b[0m\\r\\nx\\r\\n'|exit 0" "$(CHECK_NO_COLOR=1 at_a_terminal build/console_no_color.satl)"
 
 # CTRL-C PUTS THE TERMINAL'S COLOURS BACK before satl goes, and it still goes by SIGINT.
-printf 'satellite.include(satellite)\nsatellite.capsule satellite.main()\n{\n    satellite.terminal.foreground(xFF8800)\n    satellite.variable.string a = satellite.console.input("waiting? ")\n}\nsatellite.return(satellite)\n' > build/console_ctrl_c.satl
+printf 'satellite.include(satellite)\nsatellite.capsule satellite.main()\n{\n    satellite.terminal.foreground(xFF8800)\n    satellite.variable.string a = satellite.console.input("waiting? ")\n    satellite.return(satellite)\n}\n' > build/console_ctrl_c.satl
 expect "Ctrl-C at the prompt after satellite.terminal.foreground writes OSC 110 -- only what it changed -- then dies of SIGINT" \
        "'\\r\\n\\x1b]10;rgb:ff/88/00\\x1b\\\\waiting? ^C\\x1b]110\\x1b\\\\'|signal 2" \
        "$(at_a_terminal build/console_ctrl_c.satl --ctrl-c)"
@@ -4657,7 +4657,7 @@ expect "input() with the input ended stops with S830 INPUT_ENDED, exit 55" "55|1
 # EVERY WRONG SPELLING IS REFUSED BEFORE ANYTHING RUNS -- the "before" line is never
 # printed -- except a see-through colour held in a variable, which is only a value running.
 console_says() {   # console_says <lines> <sentence>: machine code | sentence found | "before" printed
-    printf 'satellite.include(satellite)\nsatellite.capsule satellite.main()\n{\n    satellite.console.display("before")\n%s\n}\nsatellite.return(satellite)\n' "$1" > build/console_bad.satl
+    printf 'satellite.include(satellite)\nsatellite.capsule satellite.main()\n{\n    satellite.console.display("before")\n%s\n    satellite.return(satellite)\n}\n' "$1" > build/console_bad.satl
     "$interpreter" build/console_bad.satl > build/console_bad.out 2>&1
     printf '%s|%s|%s' "$?" "$(tr '\n' ' ' < build/console_bad.out | sed 's/  */ /g' | grep -c "$2")" "$(grep -cx before build/console_bad.out)"
 }
@@ -4706,7 +4706,7 @@ expect "a variable named end is still a variable, and == is not an option" "0|1|
 # A COLOURED STRING IS THE SAME STRING WHEREVER THE PROGRAM RUNS: .find and == answered
 # one thing at a terminal and another in a pipe while the codes were only put in at a
 # terminal. They are always in it now, and display is what leaves them out.
-printf 'satellite.include(satellite)\nsatellite.capsule satellite.main()\n{\n    satellite.variable.string s = "q".foreground(xFF0000)\n    satellite.console.display(s.find("q"))\n    satellite.console.display("OK".foreground(x00FF00) == "OK")\n}\nsatellite.return(satellite)\n' > build/console_same.satl
+printf 'satellite.include(satellite)\nsatellite.capsule satellite.main()\n{\n    satellite.variable.string s = "q".foreground(xFF0000)\n    satellite.console.display(s.find("q"))\n    satellite.console.display("OK".foreground(x00FF00) == "OK")\n    satellite.return(satellite)\n}\n' > build/console_same.satl
 "$interpreter" build/console_same.satl > build/console_same.out 2>/dev/null
 expect "a coloured string answers .find and == the same into a pipe as at a terminal" "15|false|'\\r\\n15\\r\\nfalse\\r\\n'|exit 0" \
        "$(tr '\n' '|' < build/console_same.out)$(at_a_terminal build/console_same.satl)"
@@ -4938,7 +4938,7 @@ fi
 { echo 'satellite.include(satellite)'; echo 'satellite.capsule satellite.main()'; echo '{'
   for text_file in a_three b_no_end c_empty d_crlf h_utf8 i_mark m_char_across n_return_across o_100000; do
       echo "    satellite.console.display(satellite.file.open(\"$sub_room/$text_file\").size())"
-  done; echo '}'; echo 'satellite.return(satellite)'; } > build/listing_sub_lines.satl
+  done; echo '    satellite.return(satellite)'; echo '}'; } > build/listing_sub_lines.satl
 # Both sides against the same written numbers, so neither can pass by being empty.
 expect "listing: each (lines) is what satellite.file.open(path).size() answers for that file" \
        "3 2 0 2 2 1 1 2 100000|3 2 0 2 2 1 1 2 100000" \
@@ -4949,7 +4949,7 @@ refused=0
 for not_text in e_lone_cr g_not_utf8 j_overlong k_surrogate l_return_at_end; do
     { echo 'satellite.include(satellite)'; echo 'satellite.capsule satellite.main()'; echo '{'
       echo "    satellite.console.display(satellite.file.open(\"$sub_room/$not_text\").size())"
-      echo '}'; echo 'satellite.return(satellite)'; } > build/listing_sub_refused.satl
+      echo '    satellite.return(satellite)'; echo '}'; } > build/listing_sub_refused.satl
     "$interpreter" build/listing_sub_refused.satl > build/listing_sub_refused.out 2>&1
     # the REASON, not only the code: a missing file is file_not_open too. The report
     # wraps at 80 columns, so its lines are joined before they are read.
@@ -5016,7 +5016,7 @@ expect "system: / is a row, and its size is df's" "$(mb_text $(df -B1 --output=s
 expect "system: a row for every device findmnt names under /dev, once however many places it is mounted" \
        "$(findmnt -rn -o MAJ:MIN,SOURCE | awk '$2 ~ "^/dev/" && !seen[$1]++' | wc -l)" \
        "$(( $(wc -l < build/drives.out) - 3 ))"
-printf 'satellite.include(satellite)\nsatellite.capsule satellite.main()\n{\n    satellite.directory.system()\n}\nsatellite.return(satellite)\n' > build/drives_in_a_program.satl
+printf 'satellite.include(satellite)\nsatellite.capsule satellite.main()\n{\n    satellite.directory.system()\n    satellite.return(satellite)\n}\n' > build/drives_in_a_program.satl
 expect "system: in a program it reads the drives and says there is no list type to hand them back in yet, as list() does" 1 \
        "$("$interpreter" build/drives_in_a_program.satl 2>&1 | tr '\n' ' ' | grep -c 'satellite.directory.system() read [0-9]* names')"
 
@@ -5057,14 +5057,14 @@ satellite.capsule satellite.main()
     satellite.console.display(one[1]["name"] + " " + one[1]["line_count"].string)
     satellite.variable.info short = satellite.info.dir("$info_room")
     satellite.console.display(short.size)
+    satellite.return(satellite)
 }
-satellite.return(satellite)
 INFO_EOF
 "$interpreter" build/info_each.satl > build/info_each.out 2>&1; code=$?
 expect "info: a program reads every name's index -- the author's keys, and a directory's files, sub, complete and approximate" \
        "0|4|a_three file rw-r--r-- size=14.0 b bytes=14 lines=3|b_binary file rw-r--r-- size=1.465 mb bytes=1536000|c_tree dir rwxr-xr-x size=105.0 b bytes=105 files=1 sub=2 complete=true approximate=false|d_link link rwxrwxrwx|1|a_three 3|4" \
        "$code|$(grep -v '^THE SATELLITE\|^VERSION\|^CLANG\|^G++\|^---\|^$' build/info_each.out | tr '\n' '|' | sed 's/|$//')"
-printf 'satellite.include(satellite)\nsatellite.capsule satellite.main()\n{\n    satellite.variable.info core = satellite.info.file("/proc/kcore")\n    satellite.console.display(core[1]["size"].string + " " + core[1]["size_type"] + " " + core[1]["bytes"].string)\n}\nsatellite.return(satellite)\n' > build/info_kcore.satl
+printf 'satellite.include(satellite)\nsatellite.capsule satellite.main()\n{\n    satellite.variable.info core = satellite.info.file("/proc/kcore")\n    satellite.console.display(core[1]["size"].string + " " + core[1]["size_type"] + " " + core[1]["bytes"].string)\n    satellite.return(satellite)\n}\n' > build/info_kcore.satl
 kcore_bytes=$(( $(awk '/^MemTotal:/ { print $2 }' /proc/meminfo) * 1024 ))
 # a float displays with no zero at its end but always one place: 61.930 is 61.93, 52.000 is 52.0
 expect "info: /proc/kcore's size is the machine's memory, as the table's" \
@@ -5075,7 +5075,7 @@ whole, places = number.split(".")
 print("%s.%s %s" % (whole, places.rstrip("0") or "0", unit))') $kcore_bytes" \
        "$("$interpreter" build/info_kcore.satl 2>&1 | grep -E '^[0-9]')"
 refused_by() {   # refused_by <body line> -> the machine code satl exits with
-    printf 'satellite.include(satellite)\nsatellite.capsule satellite.main()\n{\n    %s\n}\nsatellite.return(satellite)\n' "$1" > build/info_refused.satl
+    printf 'satellite.include(satellite)\nsatellite.capsule satellite.main()\n{\n    %s\n    satellite.return(satellite)\n}\n' "$1" > build/info_refused.satl
     "$interpreter" build/info_refused.satl > build/info_refused.out 2>&1; echo $?
 }
 expect "info: nothing at the path is file_not_found; a file given to directory is not_a_directory; a number is types_do_not_meet; two paths are refused before it runs" \
@@ -5085,7 +5085,7 @@ rm -rf "$info_room"
 # satellite.directory.free(d) (the author, 2026-09-25: "will give you a float of the free
 # space available"): mb to the thousandth, the listing's FREE SPACE number -- df's Avail.
 # /dev again, whose Avail holds still while this runs.
-printf 'satellite.include(satellite)\nsatellite.capsule satellite.main()\n{\n    satellite.console.display(satellite.directory.free("/dev"))\n    satellite.console.display(satellite.directory.free("/dev").string)\n}\nsatellite.return(satellite)\n' > build/free_dev.satl
+printf 'satellite.include(satellite)\nsatellite.capsule satellite.main()\n{\n    satellite.console.display(satellite.directory.free("/dev"))\n    satellite.console.display(satellite.directory.free("/dev").string)\n    satellite.return(satellite)\n}\n' > build/free_dev.satl
 expect "free: /dev's free space as a float in mb, df's Avail over 1024 twice, to the thousandth" \
        "$(df -B1 --output=avail /dev | tail -1 | python3 -c '
 import sys
@@ -5199,7 +5199,7 @@ expect "!@#\$%^&*() as a name: refused, and the refusal says what a name is" "13
        "$code|$(cat build/name_not.out)|$(tr '\n' ' ' < build/name_not.err | grep -c 'a name is made of a-z, A-Z, 0-9 and _, and does not start with a digit')"
 # A NAME HOLDING ESC [ 2 J CLEARED THE SCREEN OF THE PERSON BEING TOLD ABOUT IT: the
 # syntax row was written raw. Now it is \x1b, on the screen and in the log.
-printf 'satellite.include(satellite)\n\nsatellite.capsule satellite.main()\n{\n    satellite.variable.number a\001\033[2Jb = 5\n}\n\nsatellite.return(satellite)\n' \
+printf 'satellite.include(satellite)\n\nsatellite.capsule satellite.main()\n{\n    satellite.variable.number a\001\033[2Jb = 5\n    satellite.return(satellite)\n}\n' \
     > build/name_escape.satl
 "$interpreter" build/name_escape.satl > /dev/null 2> build/name_escape.err; code=$?
 expect "a name holding control bytes: refused, and they reach neither screen nor log raw" "13|0|1|0|1" \
@@ -5235,7 +5235,7 @@ printf '%s\n' "satellite.variable.file f = satellite.file.new(\"$log_room/prompt
 expect "satellite.log: three conversions typed at the prompt are three entries" 3 \
        "$(($(grep -c 'S020 NUMBER_TAKEN_AS_TEXT' "$log_file") - before))"
 # A tab in the syntax row is a space, and the caret stays under its character.
-printf 'satellite.include(satellite)\n\nsatellite.capsule satellite.main()\n{\n    satellite.variable.number z = 0\n    satellite.variable.number x = 1 / z\t\t// divide\n}\n\nsatellite.return(satellite)\n' \
+printf 'satellite.include(satellite)\n\nsatellite.capsule satellite.main()\n{\n    satellite.variable.number z = 0\n    satellite.variable.number x = 1 / z\t\t// divide\n    satellite.return(satellite)\n}\n' \
     > build/syntax_tabs.satl
 "$interpreter" build/syntax_tabs.satl > /dev/null 2> build/syntax_tabs.err
 expect "a tab in the syntax row shows as a space, not \\x09" "1|0" \
@@ -5341,8 +5341,8 @@ expect "a name assigned at the top of the file is refused" "13|1|0" \
        "$(top_refused top_assign 'n = 5' 'this line is outside every capsule')"
 expect "satellite.main() without satellite.capsule is S102, with the line to write" "11|1|0" \
        "$(top_refused main_bare "$(printf 'satellite.main()\n{\n}')" 'satellite.main is a capsule, so it is declared like one')"
-expect "comments, blank lines and a satellite.return at the top are still fine" "0|0|1" \
-       "$(top_refused top_fine "$(printf '// a comment\n\n   // another\nsatellite.return(satellite)')" 'outside every capsule')"
+expect "comments and blank lines at the top are still fine" "0|0|1" \
+       "$(top_refused top_fine "$(printf '// a comment\n\n   // another')" 'outside every capsule')"
 # A STRING WITH NO CLOSING QUOTE IS REFUSED BEFORE ANYTHING RUNS (capsule_scopes.cpp). It was
 # refused while running, after the lines above it had printed, told to check its math signs --
 # and without a ( on its line it was not refused at all.
@@ -5470,6 +5470,40 @@ expect "... and one that has it raises the build by one" "$(( $(config_row build
 import sys; sys.path.insert(0, '$bn_room/satellite/config'); import build_number
 print([r for r in build_number.live_rows(build_number.read_config()) if r['name'] == 'arguments.build'][0]['number'])")"
 rm -rf "$bn_room"
+# A7: "let's refuse a main that doesnt have satellite.return(satellite) as the last line, but
+# still allow the user to satellite.return(satellite) to quit the interpreter from anywhere".
+printf 'satellite.include(satellite)\n\nsatellite.capsule satellite.main()\n{\n    satellite.console.display("before")\n}\n' > "$sweep/main_no_return.satl"
+"$interpreter" "$sweep/main_no_return.satl" > "$sweep/main_no_return.out" 2>&1; code_run=$?
+expect "a main with no satellite.return(satellite) is refused before anything runs (S103)" "12|1|0" \
+       "$code_run|$(grep -c '^S103: FILE_HAS_NO_RETURN' "$sweep/main_no_return.out")|$(grep -cx before "$sweep/main_no_return.out")"
+printf 'satellite.include(satellite)\n\nsatellite.capsule satellite.main()\n{\n    satellite.console.display("before")\n    satellite.return(satellite)\n    satellite.console.display("after")\n}\n' > "$sweep/main_return_not_last.satl"
+"$interpreter" "$sweep/main_return_not_last.satl" > "$sweep/main_return_not_last.out" 2>&1; code_run=$?
+expect "... and one whose return is not its last line, naming where it goes" "12|1" \
+       "$code_run|$(tr '\n' ' ' < "$sweep/main_return_not_last.out" | grep -c "satellite.main's last line is satellite.return(satellite)")"
+expect "satellite.return(satellite) outside every capsule is refused" "13|1|0" \
+       "$(top_refused top_return 'satellite.return(satellite)' 'satellite.return(satellite) goes inside satellite.main, as its last line')"
+printf 'satellite.include(satellite)\n\nsatellite.capsule helper()\n{\n    satellite.console.display("in helper")\n    satellite.return(satellite)\n    satellite.console.display("NOT this")\n}\n\nsatellite.capsule deeper()\n{\n    satellite.statement.if(1 == 1)\n    {\n        helper()\n    }\n}\n\nsatellite.capsule satellite.main()\n{\n    satellite.console.display("before")\n    deeper()\n    satellite.console.display("NOT after")\n    satellite.return(satellite)\n}\n' > "$sweep/quit_deep.satl"
+"$interpreter" "$sweep/quit_deep.satl" > "$sweep/quit_deep.out" 2>&1; code_run=$?
+expect "satellite.return(satellite) two capsules down quits the program: exit 0, nothing after, no report" "0|before|in helper|0" \
+       "$code_run|$(grep -v '^$\|^THE SAT\|^VERSION\|^CLANG\|^---' "$sweep/quit_deep.out" | tr '\n' '|')$(grep -c 'NOT\|CRITICAL' "$sweep/quit_deep.out")"
+printf 'satellite.include(satellite)\n\nsatellite.capsule answer(satellite.variable.number n)\n{\n    satellite.statement.if(n > 0)\n    {\n        satellite.return(satellite)\n    }\n    satellite.return(n)\n}\n\nsatellite.capsule back()\n{\n    satellite.return()\n}\n\nsatellite.capsule satellite.main()\n{\n    back()\n    satellite.console.display("back() returned")\n    satellite.variable.number n = 1\n    satellite.console.display(n + answer(0))\n    satellite.console.display(n + answer(1))\n    satellite.console.display("NOT after")\n    satellite.return(satellite)\n}\n' > "$sweep/quit_in_expression.satl"
+"$interpreter" "$sweep/quit_in_expression.satl" > "$sweep/quit_in_expression.out" 2>&1; code_run=$?
+expect "satellite.return() ends only its capsule; satellite.return(satellite) inside an expression quits, silently" "0|1|1|0" \
+       "$code_run|$(grep -cx 'back() returned' "$sweep/quit_in_expression.out")|$(grep -cx 1 "$sweep/quit_in_expression.out")|$(grep -c 'NOT\|CRITICAL\|S2[0-9][0-9]' "$sweep/quit_in_expression.out")"
+printf 'satellite.include(satellite)\n\nsatellite.capsule stopper(satellite.variable.number n)\n{\n    satellite.return(satellite)\n}\n\nsatellite.capsule satellite.main()\n{\n    satellite.variable.thread t = satellite.thread.new(stopper(1))\n    t.start()\n    satellite.variable.number i = 0\n    satellite.statement.while(i < 1000000000)\n    {\n        i = i + 1\n    }\n    satellite.console.display("NOT after")\n    satellite.return(satellite)\n}\n' > "$sweep/quit_thread.satl"
+timeout 30 "$interpreter" "$sweep/quit_thread.satl" > "$sweep/quit_thread.out" 2>&1; code_run=$?
+expect "satellite.return(satellite) on a thread ends the whole program, main's long loop included: exit 0" "0|0" \
+       "$code_run|$(grep -c 'NOT\|CRITICAL' "$sweep/quit_thread.out")"
+# "we need str.upper() and str.uppercase() and str.up() a str.lower() and str.lowercase()"
+# (the author, 2026-09-25) -- every language's letters, not only a-z (string_case.hpp).
+printf 'satellite.include(satellite)\n\nsatellite.capsule satellite.main()\n{\n    satellite.variable.string s = "Héllo, Жук 42"\n    satellite.console.display(s.upper())\n    satellite.console.display(s.uppercase())\n    satellite.console.display(s.up())\n    satellite.console.display(s.lower())\n    satellite.console.display(s.lowercase())\n    satellite.console.display("mixed".upper().lower())\n    satellite.console.display(s)\n    satellite.return(satellite)\n}\n' > "$sweep/case.satl"
+output=$("$interpreter" "$sweep/case.satl" 2>/dev/null); code_run=$?
+expect "upper/uppercase/up and lower/lowercase change every language's letters, and the name keeps its own" \
+       "HÉLLO, ЖУК 42|HÉLLO, ЖУК 42|HÉLLO, ЖУК 42|héllo, жук 42|héllo, жук 42|mixed|Héllo, Жук 42|0" \
+       "$(printf '%s' "$output" | tr '\n' '|')|$code_run"
+expect "n.upper() on a number is refused before anything runs: a number has no letters" "27|1|0" \
+       "$(body_refused number_upper '    satellite.variable.number n = 5
+    satellite.console.display(n.upper())' 'n.upper is a string.s -- satellite.variable.number has no letters to change')"
 # A9: an unknown config.ini row gets its own code -- S016, a notice; the run carries on.
 mkdir -p "$sweep/config_home/.satl" && cp "$CHECK_HOME/.satl/config.ini" "$sweep/config_home/.satl/config.ini"
 printf 'no_such_row = 5\nbanana\n' >> "$sweep/config_home/.satl/config.ini"

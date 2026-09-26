@@ -411,7 +411,9 @@ bits              name                         what it is
 0000101101011010  wait_method_token            wait  [METHOD] thread.wait() -- a second name for thread.join() (the author, 2026-09-23); wait_token above is the batch mark
 0000101101011011  lock_token                   lock  [METHOD] object.lock() -- turns the object's lock ON; it is taken only while something WRITES to the object (the author, 2026-09-23)
 0000101101011100  unlock_token                 unlock  [METHOD] object.unlock() -- turns the object's lock off again: nothing is locked for it until the next .lock()
-0000101101011101  free                         to 0000101111111111, free for this family
+0000101101011101  upper_token                  upper/uppercase/up  [METHOD] string.upper() -- the text in capital letters, every language's that has them (the author, 2026-09-25: "str.upper() and str.uppercase() and str.up()")
+0000101101011110  lower_token                  lower/lowercase  [METHOD] string.lower() -- the text in small letters (the author, 2026-09-25: "str.lower() and str.lowercase()")
+0000101101011111  free                         to 0000101111111111, free for this family
 
 0001000000000000  word_base                    reserved: no word has this code
 0001000000000001  the first word               satellite -- and every satellite.something.something after it

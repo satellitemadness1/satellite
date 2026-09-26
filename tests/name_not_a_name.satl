@@ -7,6 +7,5 @@ satellite.capsule satellite.main()
 {
     satellite.console.display("before")
     satellite.variable.number !@#$%^&*() = 5
+    satellite.return(satellite)
 }
-
-satellite.return(satellite)

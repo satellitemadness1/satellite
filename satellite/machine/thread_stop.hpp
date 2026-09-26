@@ -22,4 +22,15 @@ inline thread_local const std::atomic<bool> *stop_of_this_thread = nullptr;
 // True on a thread a satellite program started, false on the main thread.
 inline bool on_a_program_thread() { return stop_of_this_thread != nullptr; }
 
+// satellite.return(satellite) REACHED ON ANY THREAD ENDS THE WHOLE PROGRAM (the author,
+// 2026-09-25: "quit the interpreter from anywhere"). The thread that reaches it sets this;
+// every walker -- main's and each thread's -- reads it between statements, exactly where a
+// thread's own stop is read, and ends with program_returned. Set once, never cleared: a run
+// that has been told to end does not start again.
+inline std::atomic<bool> &program_quit()
+{
+    static std::atomic<bool> quit{false};
+    return quit;
+}
+
 } // namespace satellite004

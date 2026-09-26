@@ -15,6 +15,5 @@ satellite.capsule satellite.main()
     }
     f.append(12345)
     satellite.console.display(f.size)
+    satellite.return(satellite)
 }
-
-satellite.return(satellite)

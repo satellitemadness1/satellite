@@ -33,6 +33,5 @@ satellite.capsule satellite.main()
     satellite.terminal.background(x101010)
     satellite.variable.string name = satellite.console.input("name? ", foreground=xFF8800)
     satellite.console.display("hello " + name)
+    satellite.return(satellite)
 }
-
-satellite.return(satellite)

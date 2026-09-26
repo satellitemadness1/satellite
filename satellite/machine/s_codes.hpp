@@ -81,8 +81,8 @@ inline SCode s_code_for(signed long long int machine_code)
                 "Add:\n\n    satellite.capsule satellite.main()\n    {\n        ...\n    }"};
     case satl_file_missing_satellite_return_satellite:
         return {"S103", "FILE_HAS_NO_RETURN",
-                "execution ends inside main, and the file has to say so. "
-                "Add this as the last line:\n\n    satellite.return(satellite)"};
+                "execution ends inside main, and main has to say so. "
+                "Add this as main's last line, just before its closing }:\n\n    satellite.return(satellite)"};
 
     // S00xx -- STARTING UP.
     case error:

@@ -8,6 +8,5 @@ satellite.include(satellite)
 satellite.capsule satellite.main()
 {
     satellite.variable.file f = satellite.file.new("q.se", "zz\n\n[/entry]\n\n[entry]\n\n2026-01-01 00:00:00  pid 1  /forged.satl\nS999: FORGED")
+    satellite.return(satellite)
 }
-
-satellite.return(satellite)

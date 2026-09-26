@@ -366,8 +366,8 @@ signed long long int close_every_thread()
             const std::lock_guard<std::mutex> hold(thread->lock);
             // joined_once is NOT set here: a program thread inside that thread's join() at
             // this moment would read it and say S724 for a join it made once (the review).
-            if (!thread->joined_once && thread->code != thread_stopped && stops_the_program(thread->code) &&
-                first_failure == success)
+            if (!thread->joined_once && thread->code != thread_stopped && thread->code != program_returned &&
+                stops_the_program(thread->code) && first_failure == success)
                 first_failure = thread->code;
         }
         closing.clear();

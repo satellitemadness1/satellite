@@ -61,6 +61,5 @@ satellite.capsule satellite.main()
             j = j + 1
         }
     }
+    satellite.return(satellite)
 }
-
-satellite.return(satellite)

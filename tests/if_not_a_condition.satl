@@ -6,5 +6,5 @@ satellite.capsule satellite.main()
     {
         satellite.console.display("x")
     }
+    satellite.return(satellite)
 }
-satellite.return(satellite)

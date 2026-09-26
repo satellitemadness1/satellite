@@ -16,6 +16,5 @@ satellite.capsule satellite.main()
     box first
     box second
     satellite.console.display("made")
+    satellite.return(satellite)
 }
-
-satellite.return(satellite)

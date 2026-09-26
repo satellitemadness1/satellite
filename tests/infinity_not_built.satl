@@ -18,6 +18,5 @@ satellite.capsule satellite.main()
 {
     satellite.console.display("before")
     satellite.variable.aasat my_aasat = satellite.aasat()
+    satellite.return(satellite)
 }
-
-satellite.return(satellite)

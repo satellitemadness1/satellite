@@ -700,8 +700,14 @@ void scan_row(CapsuleTable &table, const std::vector<std::bitset<16>> &row, std:
                 ++i;
                 continue;
             }
-            if (code == kReturn) {                  // satellite.return(satellite), where a file ends
-                ++i;
+            if (code == kReturn) {
+                // satellite.return(satellite) IS MAIN'S LAST LINE, and never the file's (the author,
+                // 2026-09-25): outside every capsule it ran nothing, and a program that ended there
+                // gave main no last line. program_check.cpp refuses a main that lacks it.
+                refuse(table, r, i, satl_line_not_understood,
+                       "satellite.return(satellite) goes inside satellite.main, as its last line -- outside a "
+                       "capsule nothing runs");
+                i = past_the_statement(row, i);
                 continue;
             }
             if (code == kMain)

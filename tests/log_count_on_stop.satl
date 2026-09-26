@@ -13,6 +13,5 @@ satellite.capsule satellite.main()
     }
     satellite.variable.number z = 0
     satellite.variable.number x = 1 / z
+    satellite.return(satellite)
 }
-
-satellite.return(satellite)

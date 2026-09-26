@@ -53,6 +53,5 @@ satellite.capsule satellite.main()
         count = count + 1
     }
     satellite.console.display(count)
+    satellite.return(satellite)
 }
-
-satellite.return(satellite)
