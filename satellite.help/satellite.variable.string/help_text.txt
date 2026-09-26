@@ -43,11 +43,35 @@ draws c red.
 .lower() (also .lowercase()) in small ones -- every language's letters, not only
 a-z, so "héllo".upper() is HÉLLO -- and the string itself is unchanged.
 
-Numbered under word 1 6 1 and not built yet in satellite 004: .size .empty
-.contains(x) .replace(a, b) .append(x) .clear .at(n) .substring(start, end)
-.starts_with(x) .ends_with(x) .split(separator) .trim .resolved and
-satellite.variable.string(x) as a call. Each is refused before anything runs
-(S210), and so is reading one character with s[n].
+.size is how many characters the string holds, so "héllo".size is 5, and
+.empty is whether it holds none; both may be written with () or without.
+.contains(x), .starts_with(x) and .ends_with(x) answer true or false, and ""
+is inside every string, at both ends.
+
+A character is read by its position, counting from 1 as a list's items do:
+s[1] and s.at(1) are the first character and s[s.size] the last, each answered
+as a string of one character. .substring(start, end) is the characters from
+start to end, both counted from 1 and both kept, so "hello".substring(2, 4) is
+ell; an empty piece is written with its end one before its start. A position
+of 0 or past the end is refused (S411), a negative one too (S410), and so is a
+range that runs backwards (S412).
+
+.split(separator) answers a satellite.container.list of the pieces between
+separators: "a,,b".split(",") is {"a", "", "b"}, the empty piece kept, and
+.split("") is every character on its own. .replace(a, b) swaps every a for b,
+left to right, and refuses an empty a (S421). .trim takes spaces, tabs,
+carriage returns and newlines off both ends, and .resolved answers the string
+as it is: satellite 004 has no live escapes to resolve. Each of these answers
+a new string and leaves the name as it was.
+
+.append(x) and .clear change the string on the name, as a list's .append
+changes the list: s.append("!") adds to the end of s, and s.clear empties it.
+They need a name to change, so "abc".append("d") is refused.
+
+Where one of these methods, or .find, takes text and is given a number, it
+takes the number's digits and writes S020 to satellite.log: "n42n".contains(42)
+is true. satellite.variable.string(x) as a call is numbered under word 1 6 1
+and not built yet (S210).
 
 A backslash inside the quotes starts an escape: \" is a double quote, \\ one
 backslash, \n a new line, \t a tab, \r a carriage return, and \' an apostrophe
@@ -74,6 +98,17 @@ satellite.capsule satellite.main()
     satellite.console.display(s.upper()) // HELLO WORLD
     satellite.console.display(s - "o") // hell world
     satellite.console.display(s.find("world")) // 6
+    satellite.console.display(s.size) // 11
+    satellite.console.display(s.contains("lo w")) // true
+    satellite.console.display(s.starts_with("hello")) // true
+    satellite.console.display(s[1] + s.at(7)) // hw
+    satellite.console.display(s.substring(1, 5)) // hello
+    satellite.console.display(s.split(" ")) // {"hello", "world"}
+    satellite.console.display(s.replace("o", "0")) // hell0 w0rld
+    satellite.console.display("[" + "  padded  ".trim() + "]") // [padded]
+    satellite.variable.string t = "abc"
+    t.append("def")
+    satellite.console.display(t) // abcdef
     satellite.console.display(s.reverse()) // dlrow olleh
     satellite.console.display("héllo→".reverse()) // →olléh
     satellite.console.display("42".number + 1) // 43

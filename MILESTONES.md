@@ -520,7 +520,7 @@ order. The one that matters most is **FO-6, the race**: two runs of a
 self-editing program can both read 7 and both write 8, because there is no file
 lock yet — the only open item likely to bite a real program rather than a test.
 
-## M16 — the rest of the string methods
+## M16 — the rest of the string methods — **BUILT 2026-09-26**, `c2b3500`
 
 `find` and the four conversions run. **The list is already frozen** — 23 methods
 at `1 6 1 n` — so none of this is a design question:
@@ -536,8 +536,29 @@ Each is one registry row, one `str_*.cpp`, one dispatch line.
 
 **`upper` and `lower` BUILT 2026-09-25 (`c7ec8a1`)**, on the author's word, with his second
 spellings `.uppercase()`, `.up()` and `.lowercase()` -- every language's letters through glibc's
-C.UTF-8 case table (`satellite_object/string_case.hpp`), where 003 changed a-z alone. The other
-fifteen are still owed, and still refused before anything runs (S210).
+C.UTF-8 case table (`satellite_object/string_case.hpp`), where 003 changed a-z alone.
+
+**The other thirteen BUILT 2026-09-26 (`c2b3500`)**, on "do M16 and M21", and `s[n]` with them:
+`size` `empty` `contains` `starts_with` `ends_with` `at` `substring` `split` `replace` `trim`
+`resolved` `append` `clear`, on the language's own 16-bit string -- `bytecode/string_calls.cpp`
+for the arguments and refusals, `satellite_object/string_pieces.hpp` for the loops (a header,
+so M21's libraries can include it). Not one `str_*.cpp` each: the table's shape of a pair
+fast path does not fit a method with no argument or two. Seven method rows are new (0x0B60
+to 0x0B66); the other six were already a file's or a container's words. M21 was not needed.
+Behaviour is 003's -- `strings/check_string_methods.py` runs its 44 cases through `build/satl`
+as well as the libraries, against 003's satl, and all match. **Choices he may overrule:**
+- **Positions count from 1**, as a list's items do: `s[1]` and `s.at(1)` are the first
+  character, and `substring(start, end)` keeps both ends -- 003's `substring(start - 1, end)`.
+  An empty piece is `substring(n + 1, n)`; 0 or past the end is S411, a negative S410,
+  backwards S412. **`.find` still counts from 0**, as it has since 2026-09-16 and as check.sh
+  pins it, so `s.substring(s.find(","), ...)` is one character off -- his to rule.
+- **`s[n]` reads; `s[n] = x` is refused** (S301), as is `"abc"[1]` straight after a literal
+  (a list literal has no `[ ]` either).
+- **A number where text goes is its digits, with S020** -- `.find` too, now. A bool, a list or
+  any other kind is refused (S301).
+- **`append` and `clear` change the name**, as a list's `append` does, and are refused on a
+  literal. `"".split("")` is an empty list and `"".split(",")` one empty piece, as in 003.
+- **`resolved` answers the string as it is**: 004 has no live escapes.
 
 **Answered, and one ruling covers both** (the author, 2026-09-16): for
 `string_object.replace(number1, number2)` and `string_object.find(number)`, a

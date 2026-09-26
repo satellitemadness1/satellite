@@ -5844,6 +5844,12 @@ output=$("$interpreter" "$sweep/m16_pieces.satl" 2>/dev/null); code_run=$?
 expect "split answers a list of strings, replace and trim a new string; append and clear change the name" \
        '{"a", "b", "c"}|3|{"a", "b", "c"}|value|a and b and c|aaaaaa|[pad]|as it is|abcdef|abcdefgh|[] true|{"hello!", "world"}|0' \
        "$(printf '%s' "$output" | tr '\n' '|')|$code_run"
+# AN EMPTY STRING SPLITS AS 003'S DID (asked of its satl, 2026-09-26): by "," into one empty
+# piece -- the one column of an empty line of CSV -- and by "" into no characters at all.
+printf 'satellite.include(satellite)\n\nsatellite.capsule satellite.main()\n{\n    satellite.variable.string s = ""\n    satellite.console.display(s.split(",").size)\n    satellite.console.display(s.split("").size)\n    satellite.return(satellite)\n}\n' > "$sweep/m16_split_empty.satl"
+output=$("$interpreter" "$sweep/m16_split_empty.satl" 2>/dev/null); code_run=$?
+expect "\"\".split(\",\") is one empty piece and \"\".split(\"\") is none, as in 003" "1|0|0" \
+       "$(printf '%s' "$output" | tr '\n' '|')|$code_run"
 # A WIDE CHARACTER'S LOW HALF IS NOT A CHARACTER (string_pieces.hpp): 😀 is 40000, 0x0001,
 # 0xF600, and "a" + U+F600 is 0x0001, 0xF600 -- its last two units. U+1005F ends in 95, a
 # space's code. Every walk steps from a character's start, so none of these is found.
