@@ -50,6 +50,15 @@ Value the_arguments_value(const Arguments *arguments, const FunctionTable &funct
 std::size_t past_the_argument_names(const std::vector<std::bitset<16>> &row, std::size_t at);
 std::size_t past_the_argument_names(const std::vector<std::bitset<16>> &row, std::size_t at, std::string &key);
 
+// A MACHINE FACT WRITTEN AS satellite.<fact> (ERRORS2 #9): `satellite.machine.cores()` is no
+// word, and was told "machine has no satellite.variable line declaring it" -- true, and about
+// something else. `at` on the first name after `satellite.` (or after `satellite.system.`, when
+// `after_system`); answers the refusal that says what 004 spells it -- the longest run of the
+// names written that is a row under satellite.library.main.arguments -- or "" when the names
+// spell none, and the refusal stays the one it was.
+std::string arguments_row_written_as_a_word(const std::vector<std::bitset<16>> &row, std::size_t at,
+                                            bool after_system);
+
 // THE WALKER: `at` on the `.` after the arguments name `name`. Reads the LONGEST
 // run of names that is a row -- `.memory.total` before `.memory` -- live when a
 // library answers it, and leaves `at` after it. `read` false means no row starts

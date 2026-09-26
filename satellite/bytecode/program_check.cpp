@@ -1200,10 +1200,16 @@ signed long long int names_in_statement(const std::vector<std::bitset<16>> &row,
                 // A FIELD'S VALUE NAMING ANOTHER FIELD: there is no object yet (003's S0511).
                 const bool a_field = where.field && capsules.scopes[scope].layout != nullptr &&
                                      capsules.scopes[scope].layout->slot_of(name) != kNoSlot;
+                // `satellite.machine.cores()`: a row of main's arguments, spelled as a word (ERRORS2 #9).
+                const bool after_satellite = before_this == token::method_token &&
+                                             (and_before_that == word::kFirst || and_before_that == word::code_of(1, 22));
+                const std::string a_row =
+                    after_satellite ? arguments_row_written_as_a_word(row, at, and_before_that != word::kFirst) : "";
                 why = a_field ? name + " is a field of " + capsules.scopes[scope].layout->shown +
                                     ", and a field's value is worked out before there is an object -- it cannot name "
                                     "another field; give it its value in the satellite.constructor instead"
-                              : name + " has no satellite.variable line declaring it";
+                      : !a_row.empty() ? a_row
+                                       : name + " has no satellite.variable line declaring it";
                 return name_not_declared;
             } else if (declared.find(name)->second == word::code_of(1, 6, 21) &&
                        past_the_argument_names(row, k) != k) {

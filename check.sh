@@ -4575,6 +4575,22 @@ arguments_refuses '    args.length.hex = 5' "35|0|1" 'args.length.hex is inside 
 arguments_refuses '    args.l.size = 99' "35|1|1" "args.l.size is inside args.l, a row of the program's own"
 arguments_refuses '    args["username"] = "x"' "35|1|1" 'args.username is a row satl holds'
 arguments_refuses '    args.n += 1' "14|0|1" 'args.n += ... is not built yet'
+# A ROW OF THE ARGUMENTS WRITTEN AS A WORD -- satellite.machine.cores(), satellite.system.hostname
+# -- is told what 004 spells it (ERRORS2 #9, 2026-09-26), where it was told "machine has no
+# satellite.variable line declaring it". A name that is no row keeps that sentence.
+arguments_word_says() {
+    printf 'satellite.include(satellite)\n\nsatellite.capsule satellite.main()\n{\n    satellite.console.display("before")\n    satellite.console.display(%s)\n    satellite.return(satellite)\n}\n' "$1" > build/arguments_word.satl
+    "$interpreter" build/arguments_word.satl > build/arguments_word.out 2>&1; code=$?
+    printf '%s|%s|%s' "$code" "$(grep -cx before build/arguments_word.out)" "$(tr '\n' ' ' < build/arguments_word.out | grep -cF -- "$2")"
+}
+expect "satellite.machine.cores() is told 004 spells it arguments.machine.cores, before anything runs" "25|0|1" \
+       "$(arguments_word_says 'satellite.machine.cores()' "satellite.machine.cores is not a word -- in 004 it is a row of main's arguments: arguments.machine.cores in a satellite.main(satellite.variable.arguments arguments), or satellite.library.main.arguments.machine.cores in any capsule")"
+expect "... satellite.system.hostname is arguments.system.hostname" "25|0|1" \
+       "$(arguments_word_says 'satellite.system.hostname' "satellite.system.hostname is not a word -- in 004 it is a row of main's arguments: arguments.system.hostname in a")"
+expect "... satellite.system.cores is arguments.cores" "25|0|1" \
+       "$(arguments_word_says 'satellite.system.cores' "satellite.system.cores is not a word -- in 004 it is a row of main's arguments: arguments.cores in a")"
+expect "... and satellite.nothing_here, no row, still has no satellite.variable line" "25|0|1" \
+       "$(arguments_word_says 'satellite.nothing_here' 'nothing_here has no satellite.variable line declaring it')"
 # AND access, A SETTING, IS WRITTEN THROUGH -- to config.ini and to the variable's own
 # copy -- in a home of its own, so the suite's config.ini is not the one changed under
 # the rows after this; and it takes true or false only, by either spelling.
