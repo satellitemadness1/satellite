@@ -463,6 +463,90 @@ signed long long int written_right_for(Code type, const std::vector<std::bitset<
     return success;
 }
 
+// A LONE LITERAL GIVEN TO A NAME OF A PLAIN TYPE IS JUDGED BEFORE ANYTHING RUNS (ERRORS2 #8,
+// 2026-09-26). `satellite.variable.number n = "abc"` was refused only when its line ran, so the
+// lines above it printed first -- while a literal's kind is known from its token alone. The
+// table is what the walker takes, measured cell by cell (a number takes 5, b101 and x1F; a
+// float takes 5 and 1.5; a fraction 5 and 1/3; an infinity 5), and the sentence is the
+// walker's, so the refusal reads the same, only sooner. A value worked out -- a name, a call,
+// a sum -- is still judged when it runs, and so is a colour, whose literals are its own
+// (color_check.cpp).
+enum class Literal { none, text, whole, decimal, boolean, binary, percentage, hexadecimal, fraction };
+
+Literal lone_literal(const std::vector<std::bitset<16>> &row, std::size_t at)
+{
+    std::size_t k = at;
+    const Code code = code_at(row, k);
+    Literal kind = Literal::none;
+    if (code == token::string_token) {
+        string_at(row, k);
+        kind = Literal::text;
+    } else if (code == token::number_token) {
+        const std::string digits = text_at(row, k);
+        kind = digits.find('.') == std::string::npos ? Literal::whole : Literal::decimal;
+        if (code_at(row, k) == token::fraction_token) {
+            ++k;
+            if (code_at(row, k) != token::number_token) return Literal::none;
+            text_at(row, k);
+            kind = Literal::fraction;
+        }
+    } else if (code == token::binary_token || code == token::hexadecimal_token || code == token::percentage_token) {
+        text_at(row, k);
+        kind = code == token::binary_token ? Literal::binary
+             : code == token::hexadecimal_token ? Literal::hexadecimal : Literal::percentage;
+    } else if (code == word::code_of(1, 17, 1) || code == word::code_of(1, 17, 2)) {   // satellite.bool.false, .true
+        ++k;
+        kind = Literal::boolean;
+    }
+    const Code after = code_at(row, k);
+    const bool ends = after == token::line_end_token || after == token::comment_token || after == token::end_of_file_token;
+    return ends ? kind : Literal::none;
+}
+
+// "" when a name declared `type` takes this literal, or what it holds, as kind_name says it.
+std::string literal_refused(Code type, Literal kind)
+{
+    if (kind == Literal::none) return "";
+    const auto is = [&](std::initializer_list<Literal> taken) {
+        for (const Literal each : taken) if (each == kind) return true;
+        return false;
+    };
+    bool takes = true;
+    if (type == word::code_of(1, 6, 4)) takes = is({Literal::whole, Literal::binary, Literal::hexadecimal});   // number
+    else if (type == word::code_of(1, 6, 1)) takes = is({Literal::text});                                    // string
+    else if (type == word::code_of(1, 6, 6)) takes = is({Literal::boolean});                                 // bool
+    else if (type == word::code_of(1, 6, 10)) takes = is({Literal::whole, Literal::decimal});                // float
+    else if (type == word::code_of(1, 6, 5)) takes = is({Literal::binary});                                  // binary
+    else if (type == word::code_of(1, 6, 16)) takes = is({Literal::percentage});                             // percentage
+    else if (type == word::code_of(1, 6, 11)) takes = is({Literal::hexadecimal});                            // hex
+    else if (type == word::code_of(1, 6, 20)) takes = is({Literal::whole, Literal::fraction});               // fraction
+    else if (type == word::code_of(1, 6, 17)) takes = is({Literal::whole});                                  // infinity
+    else if (type == word::code_of(1, 6, 2)) takes = false;                                                  // file
+    if (takes) return "";
+    switch (kind) {
+    case Literal::text: return "a string";
+    case Literal::whole: return "a number";
+    case Literal::decimal: return "a float";
+    case Literal::boolean: return "a bool";
+    case Literal::binary: return "a binary";
+    case Literal::percentage: return "a percentage";
+    case Literal::hexadecimal: return "a hex";
+    case Literal::fraction: return "a fraction";
+    case Literal::none: break;
+    }
+    return "";
+}
+
+// `name = <literal>` or a declaration's: refused in the walker's own sentence, or success.
+signed long long int literal_fits_the_name(Code type, const std::string &name, const std::vector<std::bitset<16>> &row,
+                                           std::size_t value_at, std::string &why)
+{
+    const std::string holds = literal_refused(type, lone_literal(row, value_at));
+    if (holds.empty()) return success;
+    why = name + " was declared " + std::string(word::spelling_of(type)) + ", and it holds " + holds;
+    return types_do_not_meet;
+}
+
 signed long long int method_right_for(Code type, Code method, const std::string &spelling, std::string &why)
 {
     if (type == word::code_of(1, 6, 10)) return float_method_check(method, spelling, why);
@@ -1890,6 +1974,10 @@ signed long long int check_statement(const std::vector<std::bitset<16>> &row,
             const signed long long int written = written_right_for(code, row, k + 1, declared, why);
             if (written != success) { at = stop; return written; }
         }
+        if (code_at(row, k) == token::assign_token) {
+            const signed long long int fits = literal_fits_the_name(code, name, row, k + 1, why);
+            if (fits != success) { at = stop; return fits; }
+        }
         const signed long long int held = names_in_statement(row, k, stop, declared, where, why);
         at = stop;
         return held;
@@ -2087,6 +2175,10 @@ signed long long int check_statement(const std::vector<std::bitset<16>> &row,
         if (found != declared.end() && one_of_the_four(found->second) && code_at(row, k) == token::assign_token) {
             const signed long long int written = written_right_for(found->second, row, k + 1, declared, why);
             if (written != success) { at = stop; return written; }
+        }
+        if (found != declared.end() && code_at(row, k) == token::assign_token) {
+            const signed long long int fits = literal_fits_the_name(found->second, name, row, k + 1, why);
+            if (fits != success) { at = stop; return fits; }
         }
         // satellite.variable.color (2026-09-22): `c = ff00aa` IS SIX HEX DIGITS AND NOT A
         // NAME (color_check.cpp's color_names_start), so the names are looked for after it.

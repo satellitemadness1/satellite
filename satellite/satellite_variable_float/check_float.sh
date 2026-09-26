@@ -109,5 +109,7 @@ expect "a float meeting a percentage waits for the new types to be mixed togethe
        "$code|$(tr '\n' ' ' < build/float_percentage.out | grep -c 'a float meeting a percentage is not built yet -- the new types are mixed together later')"
 "$interpreter" tests/float_into_number.satl > build/float_into_number.out 2>&1
 code=$?
+# A LITERAL IS JUDGED BEFORE THE RUN since 2026-09-26 (ERRORS2 #8), in a full report, which
+# wraps the sentence -- so it is read with its lines joined, as the rows above read theirs.
 expect "a float given to a number name is refused: it holds a float" "27|1" \
-       "$code|$(grep -c 'n was declared satellite.variable.number, and it holds a float' build/float_into_number.out)"
+       "$code|$(tr '\n' ' ' < build/float_into_number.out | grep -c 'n was declared satellite.variable.number, and it holds a float')"

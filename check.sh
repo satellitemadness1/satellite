@@ -238,10 +238,29 @@ infinity_says() {
 }
 expect "a satellite.variable.number name refuses an infinity" "27|1|1" \
        "$(infinity_says '    satellite.variable.number n = satellite.infinity()' 'n was declared satellite.variable.number, and it holds an infinity')"
-expect "an infinity name refuses a string" "27|1|1" \
+# A LONE LITERAL OF THE WRONG KIND IS REFUSED BEFORE ANYTHING RUNS since 2026-09-26 (ERRORS2
+# #8, program_check.cpp's literal_fits_the_name), so "before" is not printed: the last 0.
+expect "an infinity name refuses a string, before anything runs" "27|1|0" \
        "$(infinity_says '    satellite.variable.infinity x = "text"' 'x was declared satellite.variable.infinity, and it holds a string')"
-expect "an infinity name refuses a binary: besides its family it takes a plain number (Q24)" "27|1|1" \
+expect "an infinity name refuses a binary: besides its family it takes a plain number (Q24), before anything runs" "27|1|0" \
        "$(infinity_says '    satellite.variable.infinity x = b1010' 'and it holds a binary')"
+# THE WHOLE TABLE, cell by cell (ERRORS2 #8, 2026-09-26): what a plain name takes from a lone
+# literal runs ("before" printed, no refusal), and what it does not is refused BEFORE anything
+# runs, in the walker's sentence. Measured against the walker first: no cell changed its answer.
+wanted="" got=""
+for cell in 'number|"abc"|27' 'number|b101|0' 'number|x1F|0' 'number|1.5|27' 'number|50%|27' 'string|"s"|0' \
+            'string|5|27' 'bool|satellite.bool.true|0' 'bool|5|27' 'float|5|0' 'float|1.5|0' 'float|"x"|27' \
+            'binary|b101|0' 'percentage|50%|0' 'hex|x1F|0' 'hex|b101|27' 'fraction|1/3|0' 'fraction|5|0' \
+            'fraction|1.5|27' 'infinity|5|0' 'file|"f"|27'; do
+    type=${cell%%|*}; rest=${cell#*|}; literal=${rest%|*}; want=${rest##*|}
+    if [ "$want" = 0 ]; then wanted="$wanted $type=0|0|1"; else wanted="$wanted $type=27|1|0"; fi
+    got="$got $type=$(infinity_says "    satellite.variable.$type v = $literal" 'v was declared satellite.variable')"
+done
+expect "a lone literal a plain name does not take is refused before anything runs, and one it takes runs:$wanted" \
+       "$wanted" "$got"
+expect "and so is one given later with =, in the same sentence" "27|1|0" \
+       "$(infinity_says '    satellite.variable.number n = 1
+    n = "abc"' 'n was declared satellite.variable.number, and it holds a string')"
 expect ".reverse() on an infinity is refused by name" "27|1|1" \
        "$(infinity_says '    satellite.variable.infinity x = satellite.infinity()
     satellite.console.display(x.reverse())' 'x.reverse() was written on an infinity, and an infinity has no digits to turn round')"
