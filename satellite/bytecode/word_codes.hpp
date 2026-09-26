@@ -31,7 +31,7 @@ namespace word {
 inline constexpr token::Code kBase = 4096;       // reserved: no word has it
 inline constexpr token::Code kFirst = 4097;      // satellite
 inline constexpr token::Code kLast = 8191;       // the end of the range
-inline constexpr unsigned int kWordsInTable = 442;
+inline constexpr unsigned int kWordsInTable = 444;
 inline constexpr unsigned int kMaxDepth = 7;
 
 inline constexpr bool is_word_code(token::Code code) { return code >= kBase && code <= kLast; }
@@ -83,6 +83,7 @@ inline constexpr KeyedWord kKeyedWords[] = {
     {0x02011C0000000000ULL, 4514},  // 1 28 -- satellite.namespace
     {0x02011D0000000000ULL, 4524},  // 1 29 -- satellite.terminal
     {0x02011E0000000000ULL, 4535},  // 1 30 -- satellite.info
+    {0x02011F0000000000ULL, 4539},  // 1 31 -- satellite.access
     {0x0301010000000000ULL, 4099},  // 1 1 0 -- satellite.include()
     {0x0301010100000000ULL, 4100},  // 1 1 1 -- satellite.include(satellite)
     {0x0301010200000000ULL, 4101},  // 1 1 2 -- satellite.include(spaceship)
@@ -238,6 +239,7 @@ inline constexpr KeyedWord kKeyedWords[] = {
     {0x03011D0200000000ULL, 4528},  // 1 29 2 -- satellite.terminal.background
     {0x03011E0100000000ULL, 4536},  // 1 30 1 -- satellite.info.file(path)
     {0x03011E0200000000ULL, 4537},  // 1 30 2 -- satellite.info.directory(path)
+    {0x03011F0100000000ULL, 4540},  // 1 31 1 -- satellite.access(name)
     {0x0401040100000000ULL, 4110},  // 1 4 1 0 -- satellite.container.map()
     {0x0401040101000000ULL, 4111},  // 1 4 1 1 -- satellite.container.map.set(k, v)
     {0x0401040102000000ULL, 4112},  // 1 4 1 2 -- satellite.container.map.get(k)
@@ -944,6 +946,8 @@ inline constexpr WordFacts kWordFacts[] = {
     {"satellite.info.file(path)", {1, 30, 1, 0, 0, 0, 0}, 3},
     {"satellite.info.directory(path)", {1, 30, 2, 0, 0, 0, 0}, 3},
     {"satellite.directory.free(d)", {1, 18, 7, 0, 0, 0, 0}, 3},
+    {"satellite.access", {1, 31, 0, 0, 0, 0, 0}, 2},
+    {"satellite.access(name)", {1, 31, 1, 0, 0, 0, 0}, 3},
 };
 
 inline constexpr std::size_t kWordFactsCount = sizeof kWordFacts / sizeof kWordFacts[0];
@@ -956,6 +960,8 @@ struct SpelledWord { const char *path; token::Code code; };
 
 inline constexpr SpelledWord kSpelledWords[] = {
     {"satellite", 4097},
+    {"satellite.access", 4539},
+    {"satellite.access(name)", 4540},
     {"satellite.analyze", 4392},
     {"satellite.bool", 4393},
     {"satellite.bool()", 4394},

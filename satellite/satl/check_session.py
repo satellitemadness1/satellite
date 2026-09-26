@@ -170,6 +170,16 @@ t.type(b'}\r')
 check(t.wait_for('forty two') and 'not it' not in [r.strip() for r in t.screen.text()],
       'an if written at the prompt waits for its else, then runs, with a capsule the session declared')
 
+# satellite.access AT THE PROMPT (2026-09-26, access_calls.hpp): a map written whole is kept,
+# and a line of nothing but satellite.access(m) prints what m is and how to reach into it.
+t.at_prompt()
+t.type(b'satellite.container.map<satellite.variable.string, satellite.container.list<satellite.variable.number>> m = {"a": {1, 2}}\r')
+t.at_prompt()
+t.type(b'satellite.access(m)\r')
+check(t.wait_for(lambda t: any(r.startswith('m is a map (string -> list of numbers), 1 key') for r in t.screen.text())) and
+      t.wait_for(lambda t: any(r.startswith('  m["key"][n]') for r in t.screen.text())),
+      'satellite.access(m) on a line of its own prints what m is and how to reach every level of it')
+
 t.at_prompt()
 t.type(b'exit\r')
 check(t.finish() == 0, 'exit leaves with 0')

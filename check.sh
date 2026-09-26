@@ -743,6 +743,175 @@ expect "multiple<a, b> refuses a third type" "27|1" \
        "$(index_says '    satellite.container.multiple<satellite.variable.string, satellite.variable.number> x = {1, 2}' 'this name takes')"
 expect "multiple with one type is refused as saying nothing" "13|1" \
        "$(index_says '    satellite.container.multiple<satellite.variable.string> x = "a"' 'takes two or more types')"
+
+# satellite.container.map IS satellite.container.index (2026-09-26, type_shape.hpp): the
+# author's word for it, from M14 to his first "crazy combination" of containers
+# (SCRATCH.md/CONTAINERS.md). A map is WRITTEN WHOLE with {key: value}, the form satl has
+# always printed one in; a key written twice keeps its first place and its last value, as
+# m[k] = v twice does. satellite.container.map() is the empty one, as list() is.
+cat > build/map_word.satl <<'MAP_EOF'
+satellite.include(satellite)
+satellite.capsule satellite.main()
+{
+    satellite.container.map<satellite.variable.string, satellite.variable.number> age
+    age["zoe"] = 30
+    age["al"] = 4
+    satellite.console.display(age)
+    satellite.console.display(age.keys)
+    satellite.container.map<satellite.variable.string, satellite.variable.number> again = {"a": 1, "b": 2, "a": 3,}
+    satellite.console.display(again)
+    satellite.container.map m = satellite.container.map()
+    m[5] = {"x": {1, 2}}
+    satellite.console.display(m[5]["x"][2])
+    satellite.container.list<satellite.container.map<satellite.variable.string, satellite.container.list<satellite.variable.number>>> rows = {{"a": {1, 2}}, {"b": {3}}}
+    rows[2]["b"].append(4)
+    satellite.console.display(rows)
+    satellite.container.index<satellite.variable.string, satellite.variable.number> same = {"a": 1}
+    satellite.console.display(same == {"a": 1})
+    satellite.return(satellite)
+}
+MAP_EOF
+HOME="$CHECK_HOME" "$interpreter" build/map_word.satl > build/map_word.out 2>&1
+expect "map is an index; {k: v} writes one whole; map() is empty; a list of maps is reached and appended through" \
+       '{"zoe": 30, "al": 4}|{"zoe", "al"}|{"a": 3, "b": 2}|2|{{"a": {1, 2}}, {"b": {3, 4}}}|true' \
+       "$(tail -6 build/map_word.out | tr '\n' '|' | sed 's/|$//')"
+expect "a map's key of the wrong type is refused, and the name is said as declared, map" "27|1" \
+       "$(index_says '    satellite.container.map<satellite.variable.string, satellite.variable.number> m = {1: 2}' 'declared satellite.container.map, and a key of it does not fit')"
+expect "a list cannot be a key in a map written whole either" "27|1" \
+       "$(index_says '    satellite.container.map m = {{1}: 2}' 'a key in this map is a list')"
+expect "a map written whole with a comma missing is refused, after a string ending in U+0700 too (its code is the comma's)" "13|1" \
+       "$(index_says "    satellite.console.display({\"a\": \"$(printf '\334\200')\" \"b\": 2})" 'this map was opened with { and never closed')"
+expect "satellite.container.map() takes nothing" "13|1" \
+       "$(index_says '    satellite.container.map m = satellite.container.map(5)' 'makes a map of nothing and takes nothing')"
+# A WRITE THROUGH A multiple IS HELD TO THE TYPE IT HOLDS (type_shape.hpp's arm_holding):
+# the walk down the declaration stopped at a multiple, and everything below it went in --
+# 108 wrong values accepted in check_container_shapes' first sweep, 2026-09-26.
+expect "a write through a multiple is held to its arm: list<multiple<string, list<number>>> refuses a bool at [1][1]" "27|1" \
+       "$(index_says '    satellite.container.list<satellite.container.multiple<satellite.variable.string, satellite.container.list<satellite.variable.number>>> x = {{1}}
+    x[1][1] = satellite.bool.true' 'x\[1\]\[1\] does not fit: it holds a bool')"
+expect "an append to a multiple holding a list<number> is held to the number" "27|1" \
+       "$(index_says '    satellite.container.multiple<satellite.container.list<satellite.variable.number>, satellite.variable.number> m = {1}
+    m.append("x")' 'm.append: it holds a string')"
+# TWO TYPES OF ONE KIND ARE NOT CHOSEN BETWEEN (type_shape.hpp): an empty list fits both
+# list<number> and list<string>, and holding it to the first refused what the declaration
+# allows (the review, 2026-09-26). Below such a multiple a write is not checked, as before.
+expect "multiple<list<number>, list<string>>: an empty one takes a string, and {1} may become {\"a\"}" "0|1" \
+       "$(index_says '    satellite.container.multiple<satellite.container.list<satellite.variable.number>, satellite.container.list<satellite.variable.string>> e = {}
+    e.append("x")
+    satellite.console.display(e)
+    satellite.container.multiple<satellite.container.list<satellite.variable.number>, satellite.container.list<satellite.variable.string>> m = {1}
+    m[1] = "a"
+    satellite.console.display(m)' '{"x"} {"a"}')"
+expect "a key written through a multiple's map is held to the map's value type" "27|1" \
+       "$(index_says '    satellite.container.map<satellite.variable.string, satellite.container.multiple<satellite.variable.string, satellite.container.map<satellite.variable.string, satellite.variable.number>>> x = {"k": {"j": 1}}
+    x["k"]["j"] = "text"' 'the value does not fit: it holds a string')"
+
+# A SPACESUIT IN A CONTAINER AND A CONTAINER IN A SPACESUIT (CONTAINERS.md step 1): a
+# field that is a map of lists, a list of maps filled from inside; objects in a list, in a
+# map of lists and in a list of lists, their capsules called through [ ] chains; and a
+# multiple<string, shelf> holding one, whose capsules were refused before the run until
+# 2026-09-26 ("only an object of a satellite.spacesuit has capsules to call").
+cat > build/suit_containers.satl <<'SUITC_EOF'
+satellite.include(satellite)
+
+satellite.spacesuit shelf()
+{
+    satellite.protected
+    {
+        satellite.container.map<satellite.variable.string, satellite.container.list<satellite.variable.number>> bins = {"a": {1, 2}}
+        satellite.container.list<satellite.container.map<satellite.variable.string, satellite.variable.number>> rows
+    }
+
+    satellite.constructor()
+    {
+    }
+
+    satellite.public
+    {
+        satellite.capsule call_put(satellite.variable.string key, satellite.variable.number n)
+        {
+            bins[key] = {n}
+            bins[key].append(n + 1)
+            rows.append({key: n})
+        }
+        satellite.capsule call_read(satellite.variable.string key)
+        {
+            satellite.return(bins[key][2])
+        }
+        satellite.capsule call_rows()
+        {
+            satellite.return(rows)
+        }
+    }
+}
+
+satellite.capsule satellite.main()
+{
+    shelf s
+    s.call_put("b", 5)
+    satellite.console.display(s.call_read("a"))
+    satellite.console.display(s.call_read("b"))
+    satellite.console.display(s.call_rows())
+    satellite.container.list<shelf> shelves = {s}
+    shelves.append(s)
+    satellite.console.display(shelves.size)
+    satellite.console.display(shelves[2].call_read("b"))
+    satellite.container.map<satellite.variable.string, satellite.container.list<shelf>> by_room
+    by_room["hall"] = {s, s}
+    by_room["hall"][2].call_put("c", 9)
+    satellite.console.display(by_room["hall"][1].call_read("c"))
+    satellite.container.list<satellite.container.list<shelf>> grid = {{s}}
+    satellite.console.display(grid[1][1].call_read("b"))
+    satellite.container.multiple<satellite.variable.string, shelf> either = s
+    satellite.console.display(either.call_read("a"))
+    satellite.container.multiple<satellite.container.list<satellite.variable.number>, shelf> e = {1}
+    e.append(2)
+    satellite.console.display(e.size)
+    satellite.return(satellite)
+}
+SUITC_EOF
+HOME="$CHECK_HOME" "$interpreter" build/suit_containers.satl > build/suit_containers.out 2>&1
+expect "spacesuits hold maps of lists and lists of maps; lists, maps and lists of lists hold objects; a multiple's object runs its capsules, and its list still appends" \
+       '0|2|6|{{"b": 5}}|2|6|10|6|2|2' \
+       "$?|$(tail -9 build/suit_containers.out | tr '\n' '|' | sed 's/|$//')"
+
+# EVERY CONTAINER SHAPE TO DEPTH 2 (utility/check_container_shapes.py): list, map, index and
+# multiple over number, string, float and bool -- each declared with a literal, shown back
+# exactly, read and written at its deepest item and filled from empty; a wrong kind refused
+# in the literal and in the deepest write; and every line satellite.access(x) shows, run as
+# code. Depth 4 is 5,412 programs and about a minute: run it by hand after a change here.
+python3 utility/check_container_shapes.py "$interpreter" 2 build/container_shapes > build/container_shapes.out 2>&1; code=$?
+expect "every container shape to depth 2: $(head -1 build/container_shapes.out)" 0 $code
+
+# satellite.access(name) (2026-09-26, access_calls.hpp; CONTAINERS.md step 2): what a name
+# is, what it holds, and how to reach every level of it, from its declaration. A line of
+# nothing but satellite.access(x) prints it; anywhere else it answers the same text.
+cat > build/access_rows.satl <<'ACC_EOF'
+satellite.include(satellite)
+satellite.capsule satellite.main()
+{
+    satellite.container.list<satellite.container.map<satellite.variable.string, satellite.container.list<satellite.variable.number>>> rows = {{"a": {1, 2}}, {"b": {3}}}
+    satellite.access(rows)
+    satellite.variable.number n = 5
+    satellite.console.display(satellite.access(n))
+    satellite.variable.string kept = satellite.access(n)
+    satellite.console.display(kept == satellite.access(n))
+    satellite.return(satellite)
+}
+ACC_EOF
+HOME="$CHECK_HOME" "$interpreter" build/access_rows.satl > build/access_rows.out 2>&1
+expect "satellite.access(rows) shows the type, the value and a line for every level, and fills them" \
+       'rows is a list of maps (string -> list of numbers), 2 items|  value                      {{"a": {1, 2}}, {"b": {3}}}|  rows[n]                    a map (string -> list of numbers), n counting from 1 (1 to 2)|  rows[n]["key"]             a list of numbers, "key" a string|  rows[n]["key"][m]          a number, m counting from 1|  rows.append({"key": {1}})  adds a map|  rows[n]["key"] = {1}       puts a list of numbers under "key"|  rows[n]["key"].append(1)   adds a number|  rows.size                  how many maps it holds|  rows[n].keys               the keys of a map, as a list' \
+       "$(grep -A9 '^rows is' build/access_rows.out | tr '\n' '|' | sed 's/|$//')"
+expect "inside display it answers the same text, and a string keeps it" "n is a number|  value  5|true" \
+       "$(tail -3 build/access_rows.out | tr '\n' '|' | sed 's/|$//')"
+expect "satellite.access of a name nothing declared is refused before the run" "25|1" \
+       "$(index_says '    satellite.access(nobody)' 'nobody has no satellite.variable line')"
+for inside in '5' '' 'rows, rows' 'rows + 1'; do
+    expect "satellite.access($inside) is refused before the run: it takes one name" "13|1" \
+           "$(index_says "    satellite.container.list rows
+    satellite.access($inside)" 'satellite.access(name) takes the name of something declared')"
+done
 # THE CONTAINER METHODS (the author, 2026-09-18): .append, .size, .contains and
 # .contain as an alias, and sort as `.sort().by_name()` / `.sort().by_value()`
 # with `.reverse()` in place of the old .sort("up") / .sort("down").

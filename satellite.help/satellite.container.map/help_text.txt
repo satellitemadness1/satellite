@@ -1,34 +1,34 @@
-
 --------------------------------------------------------------------------------
 SATELLITE 004: satellite.container.map
 --------------------------------------------------------------------------------
 
-satellite.container.map is the word satellite numbered for a std::map, a
-container of keys and the values filed under them (word 1 4 1, with .set(k, v)
-.get(k) .has(k) .remove(k) .keys .values and more numbered under it). It is not
-built yet in satellite 004, and a line that declares one is refused (S110)
-before anything runs. Write satellite.container.index (word 1 4 5) instead: it
-is the key-to-value container that is built, and it is a python dict rather
-than a std::map. Its keys come back in the order you put them in, not sorted,
-and finding a key costs one hash.
+satellite.container.map is a container of keys and the values filed under them
+(word 1 4 1). It is the same container as satellite.container.index (word
+1 4 5): either word declares it, and a refusal says the word you wrote. It is a
+python dict rather than a std::map. Its keys come back in the order you put
+them in, not sorted, and finding a key costs one hash.
 
-satellite.container.index<key, value> age declares an empty one, and with no <>
-it takes any key and any value. age["al"] = 4 puts a key in, or changes the
+satellite.container.map<key, value> age declares an empty one, and with no <>
+it takes any key and any value. satellite.container.map() is an empty one
+too. A map written whole is braces around key: value pairs --
+{"zoe": 30, "al": 4} -- which is how satl shows one; a key written twice keeps
+its first place and its last value. age["al"] = 4 puts a key in, or changes the
 value of a key already there without moving it. age["al"] reads it, and a key
 that is not there is refused (S501) rather than answered with nothing. A key
 must be a number, a string, a bool, a binary or a percentage, never a list or
-another index, because a key must not be able to change after it is filed; 1
-and "1" are two different keys. A value can be anything, a list included, and
-teams["red"][2] reaches into the list filed under "red".
+another map, because a key must not be able to change after it is filed; 1
+and "1" are two different keys. A value can be anything, a list or a map
+included, to any depth: teams["red"][2] reaches into the list filed under
+"red", and satellite.access(teams) shows the way into every level.
 
-The words numbered under map are spelled this way on an index: .set(k, v) is
-age[k] = v, .get(k) is age[k], .has(k) is .contains(k), and .remove(k), .keys,
-.values, .size, .empty and .clear are spelled the same. .keys and .values
-answer two lists in the same order, .first and .last are the first and last
-key, and .remove_first() and .remove_last() take out the oldest and the newest
-entry. .append .insert .remove_at .truncate .index_of and .search are refused,
-because an index has keys and not positions. Two indexes are == when they hold
-the same entries, whatever order those went in.
+The words numbered under map are spelled this way: .set(k, v) is age[k] = v,
+.get(k) is age[k], .has(k) is .contains(k), and .remove(k), .keys, .values,
+.size, .empty and .clear are spelled the same. .keys and .values answer two
+lists in the same order, .first and .last are the first and last key, and
+.remove_first() and .remove_last() take out the oldest and the newest entry.
+.append .insert .remove_at .truncate .index_of and .search are refused,
+because a map has keys and not positions. Two maps are == when they hold the
+same entries, whatever order those went in.
 
 example:
 
@@ -36,7 +36,7 @@ satellite.include(satellite)
 
 satellite.capsule satellite.main()
 {
-    satellite.container.index<satellite.variable.string, satellite.variable.number> age
+    satellite.container.map<satellite.variable.string, satellite.variable.number> age
     age["zoe"] = 30
     age["al"] = 4
     age["bo"] = 100
@@ -48,15 +48,17 @@ satellite.capsule satellite.main()
     satellite.console.display(age.contains("bo")) // true
     age.remove("al")
     satellite.console.display(age.size) // 2
+    satellite.container.list<satellite.container.map<satellite.variable.string, satellite.variable.number>> rows = {{"a": 1}, {"b": 2}}
+    satellite.console.display(rows[2]["b"]) // 2
     satellite.return(satellite)
 }
 
-refused today:
+refused, before anything runs -- a map() given something:
 
 satellite.include(satellite)
 
 satellite.capsule satellite.main()
 {
-    satellite.container.map age // refused: S110, LINE_NOT_UNDERSTOOD
+    satellite.container.map age = satellite.container.map(5) // refused: S110, LINE_NOT_UNDERSTOOD
     satellite.return(satellite)
 }

@@ -184,15 +184,25 @@ std::string index_refuses(token::Code method, const std::string &name)
 // ---------------------------------------------------------------------------
 // `satellite.container.list()` -- the header says why it has no library.
 // ---------------------------------------------------------------------------
+// AND satellite.container.map() (1 4 1 0), since 2026-09-26: the map is an index
+// (type_shape.hpp), so map() is the empty one, as list() is the empty list.
+bool is_map_word(token::Code code)
+{
+    return code == word::code_of(1, 4, 1) || code == word::code_of(1, 4, 1, 0);
+}
+
 bool is_container_word(token::Code code)
 {
-    return code == word::code_of(1, 4, 2) || code == word::code_of(1, 4, 2, 0);
+    return code == word::code_of(1, 4, 2) || code == word::code_of(1, 4, 2, 0) || is_map_word(code);
 }
 
 std::string container_word_refused(token::Code code, std::size_t given)
 {
     if (!is_container_word(code) || given == 0)
         return "";
+    if (is_map_word(code))
+        return "satellite.container.map() makes a map of nothing and takes nothing -- a map that holds "
+               "something is written with braces, {\"key\": value}";
     return "satellite.container.list() makes a list of nothing and takes nothing -- a list that holds "
            "something is written with braces, {1, 2}";
 }
@@ -204,6 +214,8 @@ Value call_container_word(token::Code code, const std::vector<Value> &arguments,
         context.refuse(satl_line_not_understood, refused);
         return Value();
     }
+    if (is_map_word(code))
+        return Value::of_index(make_index());
     return Value::of_list(make_list());
 }
 
@@ -466,9 +478,12 @@ Value call_container_method(token::Code method, Value &receiver, Value *home, co
             // rule -- and reading its A as the item type refused
             // `multiple<list, number> m = {1}` then m.append(3), "it holds a number",
             // while m[1] = 3 went in (the review, 2026-09-23).
+            // A MULTIPLE IS ASKED WHICH ARM THE LIST IS HELD AS (type_shape.hpp), so
+            // `multiple<list<number>, number> m = {1}` then m.append("x") is refused.
             std::string unfit;
-            if (shape != nullptr && shape->word == word::code_of(1, 4, 2) && !shape->parameters.empty() &&
-                !value_fits(shape->parameters[0], going_in, unfit)) {
+            const TypeShape *held = shape != nullptr ? &arm_holding(*shape, receiver) : nullptr;
+            if (held != nullptr && held->word == word::code_of(1, 4, 2) && !held->parameters.empty() &&
+                !value_fits(held->parameters[0], going_in, unfit)) {
                 context.refuse(types_do_not_meet, what + ": " + unfit);
                 return Value();
             }

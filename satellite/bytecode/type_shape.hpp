@@ -86,6 +86,19 @@ inline std::string shape_written(const TypeShape &shape)
     return shape.is_a_suit() ? suit_written(shape) : std::string(word::spelling_of(shape.word));
 }
 
+// satellite.container.map (1 4 1) IS satellite.container.index (1 4 5), since
+// 2026-09-26. The author's word for it has always been map -- M14 names it, his
+// satellite.variable.info/README.md draws one, and the first "crazy combination" he
+// wrote to try containers declares a list<list<map<...>>> -- while 004 built the
+// container and called it index. Map is 003's numbered row and cannot become a
+// second spelling in aliases.tsv (a spelling that is already a word is refused
+// there), so it stays its own code and is read as the same container here, by
+// every test that asks. A refusal names the word as it was written.
+inline bool is_an_index_word(token::Code word)
+{
+    return word == word::code_of(1, 4, 5) || word == word::code_of(1, 4, 1);
+}
+
 // EVERY WORD THAT NAMES A TYPE, and the arm it means. One function, so the
 // checker and the walker cannot come to disagree about what a word accepts --
 // which is the same reason index_into and write_through_index share position_of.
@@ -99,7 +112,7 @@ inline satelliteObject::Kind kind_of_type_word(token::Code word)
     if (word == word::code_of(1, 6, 6)) return satelliteObject::boolean;
     if (word == word::code_of(1, 6, 17)) return satelliteObject::infinity;   // and every level above (INF-2)
     if (word == word::code_of(1, 4, 2)) return satelliteObject::list;
-    if (word == word::code_of(1, 4, 5)) return satelliteObject::index;
+    if (is_an_index_word(word)) return satelliteObject::index;               // and .map
     if (word == word::code_of(1, 6, 18)) return satelliteObject::window;   // and a button (WIN-3)
     if (word == word::code_of(1, 6, 10)) return satelliteObject::floating;     // and .double (2026-09-22)
     if (word == word::code_of(1, 6, 11)) return satelliteObject::hexadecimal;  // and .hexadecimal
@@ -122,7 +135,7 @@ inline bool is_a_type_word(token::Code word)
 inline int parameters_wanted(token::Code word)
 {
     if (word == word::code_of(1, 4, 2)) return 1;    // list<of what>
-    if (word == word::code_of(1, 4, 5)) return 2;    // index<key, value>
+    if (is_an_index_word(word)) return 2;            // index<key, value>, map<key, value>
     if (word == word::code_of(1, 4, 6)) return -1;   // multiple<a, b, c, ...>
     return 0;                                        // a plain type takes none
 }
@@ -153,6 +166,24 @@ inline bool any_of_fits(const std::vector<TypeShape> &shapes, const satelliteObj
     why = "it holds " + std::string(value.kind_name()) + ", and this name takes " + names;
     return false;
 }
+
+// THE ARM OF A `multiple` THAT A VALUE IS HELD AS, or `shape` itself when it is not
+// a multiple (2026-09-26). A write into `x[1][2]` walks the declared shape down beside
+// the value, and a multiple on the way used to end the walk: its arms describe the
+// NAME, not an item, so everything under it was taken as "anything" and
+// `list<multiple<string, list<number>>> x = {{1}}` then `x[1][1] = satellite.bool.true`
+// went in -- a value the declaration refuses, accepted one item at a time
+// (utility/check_container_shapes.py found 108 such). The walk goes on through the
+// arm the value really is: the one of its kind.
+//
+// TWO ARMS OF ONE KIND -- multiple<list<number>, list<string>> -- ARE NOT CHOSEN BETWEEN,
+// and the multiple itself comes back, so below it is unchecked as it always was. Choosing
+// "the first the value fits now" was tried and refused what the declaration allows (an
+// empty list fits both, so e.append("x") was held to list<number>), and asking whether the
+// value fits some arm AFTER each write walks the whole value every time -- 20,000 appends
+// took 7.8 s where a list<number> takes 0.07 (the review, 2026-09-26). Checking that one
+// case right needs a write that can be taken back; it is written down in CONTAINERS.md.
+const TypeShape &arm_holding(const TypeShape &shape, const satelliteObject &value);
 
 // READ `satellite.container.index<a, b>` OFF THE TOKENS, `at` on the word.
 // Leaves `at` on whatever follows -- the name, in a declaration.

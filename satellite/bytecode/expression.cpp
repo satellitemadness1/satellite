@@ -16,6 +16,7 @@
 
 #include "file_calls.hpp"
 #include "info_calls.hpp"
+#include "access_calls.hpp"
 #include "color_values.hpp"
 #include "container_calls.hpp"
 #include "console_calls.hpp"
@@ -852,6 +853,7 @@ Value *slot_through_index(Value &root, const std::vector<Value> &indices, const 
                            name + " has no value yet -- give it one with = before changing an item of it", where);
             return nullptr;
         }
+        here = &arm_holding(*here, *target);          // through a multiple, the arm it is held as
         if (IndexHandle *keys = target->as_index()) {
             std::string key_name;
             if (!key_name_of(indices[step], key_name)) {
@@ -867,7 +869,7 @@ Value *slot_through_index(Value &root, const std::vector<Value> &indices, const 
                 context.refuse(line_past_the_end, what + ": there is no such key in it", where);
                 return nullptr;
             }
-            here = (here->word == word::code_of(1, 4, 5) && here->parameters.size() > 1)
+            here = (is_an_index_word(here->word) && here->parameters.size() > 1)
                        ? &here->parameters[1] : &kAnything;
             target = found;
             what += "[key]";
@@ -899,7 +901,7 @@ Value *slot_through_index(Value &root, const std::vector<Value> &indices, const 
         target = item;
         what += "[" + std::to_string(position) + "]";
     }
-    *inner = here;
+    *inner = &arm_holding(*here, *target);
     return target;
 }
 
@@ -947,6 +949,59 @@ Value after_an_argument(const std::vector<std::bitset<16>> &row, std::size_t &at
         return call_method(row, at, *slot, what, context, slot, inner);
     }
     return maybe_a_method(row, at, std::move(current), "that argument", context);
+}
+
+// `{"zoe": 30, "al": 4}` -- A MAP WRITTEN WHOLE (2026-09-26), `at` on the first `:`,
+// its key already worked out. Before this a map could only be filled one key at a
+// time, so a list of maps took a line a key and a name a map -- and satl printed every
+// map in exactly this form, which could not be read back in. Each key and value is a
+// whole expression, as a list's items are, so a map of lists of maps is one literal.
+//
+// A KEY WRITTEN TWICE KEEPS ITS FIRST PLACE AND ITS LAST VALUE, which is what
+// `m[k] = v` twice does and what Python's {"a": 1, "a": 2} does.
+Value map_literal(const std::vector<std::bitset<16>> &row, std::size_t &at, std::size_t brace_at, Value key,
+                  ExpressionContext &context)
+{
+    IndexHandle made = make_index();
+    for (;;) {
+        std::string key_name;
+        if (!key_name_of(key, key_name)) {
+            context.refuse(types_do_not_meet,
+                           "a key in this map is " + std::string(key.kind_name()) +
+                               ", and a key must be a number, a string, a bool, a binary or a percentage -- "
+                               "something that cannot change after it is filed under",
+                           brace_at);
+            return Value();
+        }
+        ++at;                                        // past the `:`
+        Value value = evaluate_at(row, at, 1, context);
+        if (context.code != success)
+            return Value();
+        value_for_writing(*made, key_name, key) = std::move(value);
+
+        // WHETHER A COMMA WAS TAKEN IS KEPT, never read back from `at - 1`: the code before
+        // `at` may be the last of a string's payload, and U+0700 has the comma's code (the
+        // review, 2026-09-26: {"a": "\u0700" "b": 2} was taken without its comma).
+        const bool comma = code_at(row, at) == token::comma_token;
+        if (comma) ++at;                             // and a trailing one, as a list allows
+        if (code_at(row, at) == token::right_brace_token) {
+            ++at;
+            break;
+        }
+        if (comma) {
+            key = evaluate_at(row, at, 1, context);
+            if (context.code != success)
+                return Value();
+            if (code_at(row, at) == token::colon_token)
+                continue;
+        }
+        context.refuse(satl_line_not_understood,
+                       "this map was opened with { and never closed with } -- each entry is a key, a : and "
+                       "a value, and entries are separated by commas, as in {\"zoe\": 30, \"al\": 4}",
+                       brace_at);
+        return Value();
+    }
+    return maybe_a_method(row, at, Value::of_index(std::move(made)), "that map", context);
 }
 
 Value one_operand(const std::vector<std::bitset<16>> &row, std::size_t &at, ExpressionContext &context)
@@ -1053,6 +1108,10 @@ Value one_operand(const std::vector<std::bitset<16>> &row, std::size_t &at, Expr
             Value item = evaluate_at(row, at, 1, context);
             if (context.code != success)
                 return Value();
+            // A `:` AFTER THE FIRST ITEM MAKES THE BRACES A MAP (2026-09-26): {"zoe": 30,
+            // "al": 4}, the way satl has always printed one and Python writes a dict.
+            if (items.empty() && code_at(row, at) == token::colon_token)
+                return map_literal(row, at, brace_at, std::move(item), context);
             items.push_back(std::move(item));
 
             const Code next = code_at(row, at);
@@ -1517,6 +1576,9 @@ Value call_word(const std::vector<std::bitset<16>> &row, std::size_t &at, Expres
     // on this thread, and hand the thread its answer. 003's first build did exactly that.
     if (is_thread_word(code) && code_at(row, at) == token::left_parenthesis_token)
         return call_thread_new(row, at, context);
+    // ...and satellite.access's argument is a NAME, read by its declaration (access_calls.hpp).
+    if (is_access_word(code) && code_at(row, at) == token::left_parenthesis_token)
+        return call_access(row, at, context);
 
     // THE ARGUMENTS ARE A LIST (2026-09-18), divided by commas at their own depth:
     // `satellite.file.new(path, "text")` is the first word a program can call with
@@ -1821,6 +1883,7 @@ signed long long int write_through_index(Value &root, const std::vector<Value> &
                            name + " has no value yet -- give it one with = before changing an item of it", where);
             return context.code;
         }
+        here = &arm_holding(*here, *target);          // through a multiple, the arm it is held as (type_shape.hpp)
         // A FILE'S LINES ARE NOT WRITTEN THIS WAY. `f[2] = "x"` looks like it
         // should work and must not quietly do nothing: a file has its own words
         // for changing a line, and `[ ]` on a file reads.
@@ -1840,7 +1903,7 @@ signed long long int write_through_index(Value &root, const std::vector<Value> &
             // in: an index that has already taken a key of the wrong type cannot
             // be un-taken, and the entry would sit there for the rest of the run.
             std::string unfit;
-            if (here->word == word::code_of(1, 4, 5) && !here->parameters.empty() &&
+            if (is_an_index_word(here->word) && !here->parameters.empty() &&
                 !value_fits(here->parameters[0], indices[step], unfit)) {
                 context.refuse(types_do_not_meet,
                                "the key does not fit: " + unfit, where);
@@ -1851,7 +1914,7 @@ signed long long int write_through_index(Value &root, const std::vector<Value> &
             // index's <key, value> made `multiple<list, number> m = {1, 2}` then
             // `m[1] = "text"` refuse, because parameters[0] (a list) was being
             // asked to describe an item.
-            const bool a_plain_index = here->word == word::code_of(1, 4, 5);
+            const bool a_plain_index = is_an_index_word(here->word);
             const TypeShape *inside = (a_plain_index && here->parameters.size() > 1)
                                           ? &here->parameters[1] : &kAnything;
 

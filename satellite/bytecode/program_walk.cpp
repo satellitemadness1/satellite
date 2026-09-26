@@ -1075,7 +1075,7 @@ signed long long int run_for(const BytecodeRegistry &registry,
 // name_not_declared already reports when it is read too early.
 Value empty_container_for(Code declared)
 {
-    if (declared == word::code_of(1, 4, 5)) return Value::of_index(make_index());
+    if (is_an_index_word(declared)) return Value::of_index(make_index());
     if (declared == word::code_of(1, 4, 2)) return Value::of_list(make_list());
     return Value();
 }

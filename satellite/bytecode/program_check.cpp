@@ -32,6 +32,7 @@
 #include "suit_run.hpp"
 #include "file_calls.hpp"
 #include "info_calls.hpp"
+#include "access_calls.hpp"
 #include "color_values.hpp"
 #include "console_calls.hpp"
 #include "container_calls.hpp"
@@ -157,6 +158,9 @@ struct Where {
     // AND EACH LIST DECLARED TO HOLD A SPACESUIT'S OBJECTS, with that spacesuit -- so
     // `units[i].call_x()` is judged by what the list was declared to hold.
     DeclaredObjects lists;
+    // AND EACH multiple WITH ONE SPACESUIT AMONG ITS TYPES, with that spacesuit: asked only
+    // for a capsule after its dot, since its container methods are a container's (remember_shape).
+    DeclaredObjects multiples;
     std::size_t statement = kNowhere;    // where the statement being judged starts
     const Arguments *arguments = nullptr;  // the rows satl holds, which `argz.row = x` may not write
     bool typed_line = false;             // at the prompt: declaring a kept name again replaces it
@@ -183,12 +187,40 @@ bool declares(Where &where, DeclaredNames &declared, const std::string &name, Co
 
 // A NAME THAT HOLDS OBJECTS, OR A LIST OF THEM, FROM ITS DECLARED SHAPE -- kept or
 // forgotten, so a name declared again as something else is not judged as the old one.
+//
+// A `multiple` WITH ONE SPACESUIT AMONG ITS TYPES holds an object of that one whenever
+// it holds an object (2026-09-26), so a CAPSULE after its dot is judged by it:
+// `multiple<string, shelf> either = s` then `either.call_read("a")`, which was refused as
+// "only an object of a satellite.spacesuit has capsules to call". Kept apart from
+// `objects`, because its other types keep their methods -- `multiple<list, shelf> e`
+// still appends (the review, 2026-09-26: in `objects`, e.append(2) was told "shelf has
+// no append"). Two different spacesuits among its types would each need judging, and
+// stay refused.
+std::size_t suit_it_may_hold(const TypeShape &shape)
+{
+    if (shape.is_a_suit()) return shape.suit;
+    if (shape.word != word::code_of(1, 4, 6)) return kNoSuit;
+    std::size_t found = kNoSuit;
+    for (const TypeShape &arm : shape.parameters) {
+        const std::size_t one = suit_it_may_hold(arm);
+        if (one == kNoSuit) continue;
+        if (found != kNoSuit && found != one) return kNoSuit;
+        found = one;
+    }
+    return found;
+}
+
 void remember_shape(Where &where, const std::string &name, const TypeShape &shape)
 {
     if (shape.is_a_suit())
         where.objects[name] = shape.suit;
     else
         where.objects.erase(name);
+    const std::size_t suit = shape.is_a_suit() ? kNoSuit : suit_it_may_hold(shape);
+    if (suit != kNoSuit)
+        where.multiples[name] = suit;
+    else
+        where.multiples.erase(name);
     if (shape.word == word::code_of(1, 4, 2) && shape.parameters.size() == 1 && shape.parameters[0].is_a_suit())
         where.lists[name] = shape.parameters[0].suit;
     else
@@ -466,7 +498,7 @@ signed long long int method_on_a_name(const std::vector<std::bitset<16>> &row, s
     // hand-written set that used to be here went stale the same afternoon it was
     // written, refusing `n.first` before the program ran while the walker had it.
     const bool of_a_container = container_arity(method) >= 0;
-    const bool a_container = declared_as == word::code_of(1, 4, 2) || declared_as == word::code_of(1, 4, 5) ||
+    const bool a_container = declared_as == word::code_of(1, 4, 2) || is_an_index_word(declared_as) ||
                              declared_as == word::code_of(1, 4, 6) ||
                              declared_as == word::code_of(1, 6, 21) ||   // the arguments: an index
                              declared_as == word::code_of(1, 6, 22);     // an info: a list of indexes
@@ -519,7 +551,7 @@ signed long long int method_on_a_name(const std::vector<std::bitset<16>> &row, s
             }
             // A NAME DECLARED AN INDEX is told which half to ask, before the run, in
             // the walker's own sentence (container_calls.hpp).
-            if (declared_as == word::code_of(1, 4, 5)) {
+            if (is_an_index_word(declared_as)) {
                 const std::string refused = index_refuses(method, name);
                 if (!refused.empty()) {
                     why = spelling + " -- " + refused;
@@ -1072,10 +1104,17 @@ signed long long int names_in_statement(const std::vector<std::bitset<16>> &row,
             // the spacesuit the name holds an object of (2026-09-22). `k` comes back on the
             // call's `(`, so its arguments are judged as the loop goes on.
             if (!after_a_dot && code_at(row, k) == token::method_token && declared.count(name) != 0) {
+                const std::size_t *suit = nullptr;
                 const DeclaredObjects::const_iterator object = where.objects.find(name);
-                if (object != where.objects.end()) {
+                if (object != where.objects.end())
+                    suit = &object->second;
+                else if (code_at(row, k + 1) == token::name_token) {
+                    const DeclaredObjects::const_iterator multiple = where.multiples.find(name);
+                    if (multiple != where.multiples.end()) suit = &multiple->second;
+                }
+                if (suit != nullptr) {
                     const signed long long int judged =
-                        member_of_an_object(row, k, at, name, object->second, where, why);
+                        member_of_an_object(row, k, at, name, *suit, where, why);
                     if (judged != success) return judged;
                     at = k;
                     continue;
@@ -1235,6 +1274,19 @@ signed long long int names_in_statement(const std::vector<std::bitset<16>> &row,
                 return satl_line_not_understood;
             }
             at = past;
+            continue;
+        }
+
+        // satellite.access(name) (2026-09-26, access_calls.hpp): what is inside is a NAME,
+        // read by its declaration and never worked out as a value -- one name, nothing else,
+        // which the loop then judges as declared from the `(`, as it judges every name.
+        if (is_access_word(code)) {
+            const std::string refused = access_refused(row, at);
+            if (!refused.empty()) {
+                why = refused;
+                return satl_line_not_understood;
+            }
+            ++at;
             continue;
         }
 
@@ -1502,6 +1554,7 @@ signed long long int check_object_declaration(const std::vector<std::bitset<16>>
     declared[name] = word::code_of(1, 10);
     where.objects[name] = suit;
     where.lists.erase(name);
+    where.multiples.erase(name);
     at = stop;
     return success;
 }
@@ -1809,7 +1862,7 @@ signed long long int check_statement(const std::vector<std::bitset<16>> &row,
             why = std::string(word::spelling_of(code)) + " " + name +
                   " is a declaration, and only satellite.variable.number, .string, .binary, "
                   ".percentage, .file, .bool, .infinity, .float, .hex, .color, .fraction, .window, "
-                  ".thread and satellite.container.list, .index and .multiple are built yet";
+                  ".thread and satellite.container.list, .map (or .index) and .multiple are built yet";
             at = stop;
             return satl_line_not_understood;
         }

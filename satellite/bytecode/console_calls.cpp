@@ -99,6 +99,8 @@ const char *const kInputOptions[] = {"foreground", "background", "bold", "italic
 bool a_colour_option(const std::string &name) { return name == "foreground" || name == "background"; }
 bool a_switch_option(const std::string &name) { return name == "bold" || name == "italic"; }
 
+} // namespace
+
 // WHAT display PRINTS FOR A VALUE, as text -- the same text each of call_word's
 // scenarios prints, so a styled line reads exactly as the plain one does.
 bool display_text(const Value &value, std::string &text, std::string &why)
@@ -119,6 +121,8 @@ bool display_text(const Value &value, std::string &text, std::string &why)
     text = written.to_utf8();
     return true;
 }
+
+namespace {
 
 // THE OPTIONS, JUDGED BY VALUE, into a style -- and `end=` into what ends the line.
 // Every option is judged whether or not anything will be written (003's rule).

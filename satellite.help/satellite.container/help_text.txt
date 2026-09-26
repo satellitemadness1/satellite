@@ -9,20 +9,21 @@ type, and a line that declares one is refused (S110), so you always name the
 kind:
 
   satellite.container.list       objects in a row, counted from 1 (std::vector)
-  satellite.container.index      keys and their values, in the order they went
+  satellite.container.map        keys and their values, in the order they went
                                  in (a python dict)
+  satellite.container.index      the same container as map, by its other word
   satellite.container.multiple   a name that may hold any one of several types
                                  (std::variant); a declaration, not a container
-  satellite.container.map        keys and values (std::map): numbered, not built
-                                 yet, so write satellite.container.index today
 
-list, index and multiple are built in satellite 004. satellite.container.map,
+list, map (or index) and multiple are built in satellite 004.
 satellite.container.arguments and satellite.container.result are numbered and
 not built yet, and a line that declares one is refused (S110).
 
-Braces make a list wherever a value goes: {1, 2}, and {} for an empty one. Any
-container can hold any other, a list of lists or an index of lists, and a[1][2]
-reaches in through both, to read or to write. What you write between < and >
+Braces make a list wherever a value goes: {1, 2}, and {} for an empty one;
+with key: value pairs they make a map, {"a": 1, "b": 2}. Any container can hold
+any other, to any depth -- a list of maps of lists -- and a[1]["k"][2] reaches in
+through each, to read or to write. satellite.access(a) shows the way into every
+level of a name, worked out from its declaration. What you write between < and >
 says what a container holds, and it is checked on every way in; with no <> a
 container holds anything. A container is a value, not a reference: b = a
 copies it, and the copy costs nothing until one of them is written to. == and

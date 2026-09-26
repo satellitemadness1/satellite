@@ -3,27 +3,57 @@
 SATELLITE 004: satellite.access()
 --------------------------------------------------------------------------------
 
-satellite.access(object_name) is meant to give you the type and value of the
-last instance of a name -- the last known name, type and value of every object,
-kept in memory for as long as the interpreter runs, so you can still ask about
-an object after the program has stopped. It is on by default.
+satellite.access(name) shows what a name is, what it holds, and how to reach
+every level of it -- worked out from the name's declaration, so it is right
+for any container of containers, however deep. Lists count from 1.
 
-Only its switch is built in satellite 004. satellite.access is not a word yet:
-satellite.access(x) is refused S110, "no capsule named access", before anything
-runs. The store it would read -- one row a name, only the last value -- is not
-built either, so today the switch turns nothing on or off. satl --rebuild lists
-access as built; what is built is the switch.
+A line that is nothing but satellite.access(name) prints it. Anywhere else it
+answers the same text as a string, so satellite.console.display(satellite.access(
+name)) prints it too, and a program can keep it in a string.
 
-The switch is satellite.library.main.arguments.access, 1 14 1 1 10, which the
-design documents write arguments.access. Spell it in full anywhere, or read it
-short as a row of the arguments variable when main declares one --
-satellite.main(satellite.variable.arguments arguments), then arguments.access
-(satellite.help(arguments)).
-You read it with no brackets and write it with =, and it lasts: writing it
-rewrites the row access = true or access = false in ~/.satl/config.ini, adds
-the row when there is none, and leaves every other line of that file as it
-was. With no row it reads true -- the author: "arguments.access will always be
-on, on this machine, as we are testing it". It takes satellite.bool.true or
+For each level it shows the way to reach one item and what that item is, the
+way to put one in, and how many there are:
+
+    satellite.container.list<satellite.container.map<satellite.variable.string, satellite.container.list<satellite.variable.number>>> rows = {{"a": {1, 2}}, {"b": {3}}}
+    satellite.access(rows)
+
+    rows is a list of maps (string -> list of numbers), 2 items
+      value                      {{"a": {1, 2}}, {"b": {3}}}
+      rows[n]                    a map (string -> list of numbers), n counting from 1 (1 to 2)
+      rows[n]["key"]             a list of numbers, "key" a string
+      rows[n]["key"][m]          a number, m counting from 1
+      rows.append({"key": {1}})  adds a map
+      rows[n]["key"] = {1}       puts a list of numbers under "key"
+      rows[n]["key"].append(1)   adds a number
+      rows.size                  how many maps it holds
+      rows[n].keys               the keys of a map, as a list
+
+n, m, p ... stand for positions and "key", "key2" ... for keys; the lines that
+fill a level show a value of the right shape, written as a program writes it.
+A multiple shows the lines for each type it may hold that can be reached into,
+each marked "when it holds ..."; an object of a spacesuit shows its fields and
+their values, which only its own capsules can reach, and the capsules you can
+call on it.
+
+The name must be one the line can see: satellite.access(nobody) is refused
+before anything runs, and so is anything in the brackets but one name.
+
+satellite.access also has a switch, satellite.library.main.arguments.access,
+1 14 1 1 10, which the design documents write arguments.access. The author
+meant access to keep "the last known name, type and value of every object, kept
+in memory for as long as the interpreter runs, so you can still ask about an
+object after the program has stopped". That store is not built yet, so the
+switch turns nothing on or off, and satellite.access(name) reads a name that is
+in scope now, whatever the switch says.
+
+Spell the switch in full anywhere, or read it short as a row of the arguments
+variable when main declares one -- satellite.main(satellite.variable.arguments
+arguments), then arguments.access (satellite.help(arguments)). You read it with
+no brackets and write it with =, and it lasts: writing it rewrites the row
+access = true or access = false in ~/.satl/config.ini, adds the row when there
+is none, and leaves every other line of that file as it was. With no row it
+reads true -- the author: "arguments.access will always be on, on this
+machine, as we are testing it". It takes satellite.bool.true or
 satellite.bool.false and nothing else; = 5 stops the program with machine code
 34 setting_is_not_a_flag.
 
@@ -37,24 +67,25 @@ the object, the objects value and type only, whereas satellite.help is
 information on that type". satellite.history is the other half: every value a
 name ever held, written to disk, and off by default.
 
-example (it writes your config.ini, and puts access back to true at the end):
+example:
 
 satellite.include(satellite)
 
-satellite.capsule satellite.main(satellite.container.list<satellite.variable.string> arguments)
+satellite.capsule satellite.main()
 {
-    satellite.console.display(satellite.library.main.arguments.access) // true
-    satellite.library.main.arguments.access = satellite.bool.false
-    satellite.console.display(satellite.library.main.arguments.access) // false
-    satellite.library.main.arguments.access = satellite.bool.true
-
-    satellite.statement.if(satellite.library.main.arguments.access)
-    {
-        satellite.console.display("access is on") // access is on
-    }
-
+    satellite.container.map<satellite.variable.string, satellite.container.list<satellite.variable.number>> teams = {"red": {1, 2}}
+    satellite.access(teams)
+    satellite.variable.string about = satellite.access(teams)
+    satellite.console.display(about == satellite.access(teams)) // true
     satellite.return(satellite)
 }
 
-// refused today, before anything runs -- S110 LINE_NOT_UNDERSTOOD:
-// satellite.console.display(satellite.access(x))
+refused, before anything runs -- a name nothing declared:
+
+satellite.include(satellite)
+
+satellite.capsule satellite.main()
+{
+    satellite.access(nobody) // refused: S201, NAME_NOT_DECLARED
+    satellite.return(satellite)
+}

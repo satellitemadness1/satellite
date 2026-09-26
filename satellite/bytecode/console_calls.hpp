@@ -105,6 +105,10 @@ bool a_colour_word_given_one(token::Code code);
 // satellite.console.display, asked without a search (call_word asks it of every word).
 bool is_display_word(token::Code code);
 
+// WHAT display PRINTS FOR A VALUE, as text: false, with why, for one that has none.
+// satellite.access's value line is written by it too (access_calls.hpp).
+bool display_text(const Value &value, std::string &text, std::string &why);
+
 // satellite.console.width and .height, read with no brackets.
 bool is_console_fact(token::Code code);
 Value console_fact(token::Code code);

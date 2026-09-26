@@ -112,6 +112,37 @@ bool value_fits(const TypeShape &shape, const satelliteObject &value, std::strin
     return true;
 }
 
+namespace {
+
+// EVERY TYPE OF A multiple THAT IS OF THE VALUE'S KIND, through multiples of multiples,
+// counted; the first is kept. A multiple with no types among them is every type, so of any.
+void of_its_kind(const TypeShape &shape, const satelliteObject &value, const TypeShape *&first, int &count)
+{
+    for (const TypeShape &arm : shape.parameters) {
+        const bool a_multiple = arm.word == word::code_of(1, 4, 6);
+        if (a_multiple && !arm.parameters.empty()) {
+            of_its_kind(arm, value, first, count);
+            continue;
+        }
+        const bool fits = a_multiple || (arm.is_a_suit() ? value.as_user_defined() != nullptr
+                                                          : kind_of_type_word(arm.word) == value.kind());
+        if (!fits) continue;
+        if (count++ == 0) first = &arm;
+    }
+}
+
+} // namespace
+
+const TypeShape &arm_holding(const TypeShape &shape, const satelliteObject &value)
+{
+    if (shape.word != word::code_of(1, 4, 6) || shape.parameters.empty())
+        return shape;
+    const TypeShape *first = nullptr;
+    int count = 0;
+    of_its_kind(shape, value, first, count);
+    return count == 1 ? *first : shape;          // none, or two of its kind: not chosen (the header)
+}
+
 // ---------------------------------------------------------------------------
 // READING `<a, b>` OFF THE TOKENS.
 // ---------------------------------------------------------------------------
