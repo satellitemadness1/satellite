@@ -94,7 +94,7 @@ HEADERS = $(ARGUMENTS)/arguments.hpp $(ARGUMENTS)/command_line.hpp $(ARGUMENTS)/
           $(BYTECODE)/window_calls.hpp $(BYTECODE)/window_readers.hpp \
           $(WINDOW_DIR)/satellite_window.hpp $(WINDOW_DIR)/window_desk.hpp \
           $(WINDOW_DIR)/window_spill.hpp $(WINDOW_DIR)/window_menu.hpp $(WINDOW_DIR)/window_canvas.hpp \
-          $(WINDOW_DIR)/window_frame.hpp $(WINDOW_DIR)/window_console.hpp \
+          $(WINDOW_DIR)/window_frame.hpp $(WINDOW_DIR)/window_console.hpp $(WINDOW_DIR)/console_feed.hpp \
           $(BYTECODE)/sate_file.hpp $(BYTECODE)/cascade_convert.hpp \
           $(NUMBER)/satellite_number.hpp $(NUMBER)/satellite_number_limbs.hpp \
           $(NUMBER)/number_arithmetic.hpp $(NUMBER)/number_conversions.hpp \

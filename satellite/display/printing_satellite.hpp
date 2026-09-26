@@ -35,6 +35,7 @@
 #include "../bytecode/value.hpp"
 
 #include <cstddef>
+#include <cstdint>
 #include <string>
 
 namespace satellite004 {
@@ -86,5 +87,37 @@ void display_let_go_of_what_waits();
 void hand_over_what_std_cout_holds();
 // ...and std::cout pointed at the printing satellite.
 void std_cout_goes_to_the_printing_satellite();
+
+// ---------------------------------------------------------------------------------------------
+// STEP 5 (FAST_PRINTING.md): IN satl'S OWN CONSOLE THE DISPLAY THREAD FEEDS VTE, NOT THE PTY.
+// The author: "wire it into libvte as fast as we can get it to go into libvte". The console
+// (satellite_variable_window/console_feed.cpp) hands the display thread its taker; each piece
+// then goes to the window's thread with every '\n' made "\r\n" -- what the pty's ONLCR did --
+// and a flush waits until VTE has been FED, so whatever satl writes to the pty after a flush
+// lands after it. Null everywhere else, and then a piece is one write() to fd 1, as before.
+//
+// `take` answers false when the console has gone: the piece is written to fd 1 instead. It may
+// wait, when the window's thread is behind by its limit -- and then his buffer counts, as it
+// does for a slow terminal. `hurry` is a flush beginning to wait: what the window's thread holds
+// is fed at once rather than at the next frame.
+using ConsoleTaker = bool (*)(std::string &bytes, std::uint64_t through);
+using ConsoleHurry = void (*)();
+using ConsoleFlows = void (*)();
+void display_goes_to_the_console(ConsoleTaker take, ConsoleHurry hurry, ConsoleFlows flows);
+// A FLUSH IS WAITING for jobs not yet on the screen. The taker asks it under its own lock, so a
+// flush that begins while a piece is being handed over cannot be missed by both.
+bool display_a_flush_waits();
+// ON THE WINDOW'S THREAD, after vte_terminal_feed: every job before `through` is in VTE, and a
+// flush waiting for them may go on.
+void display_fed_through(std::uint64_t through);
+
+// SATL'S OWN WORDS THAT STILL WRITE THE PTY DIRECTLY -- the prompt's line, the listing's progress
+// line -- say so here, and the window's thread feeds nothing until the kernel has passed them to
+// VTE's side of the pty (console_feed.cpp says why that takes a moment, and how long it waits).
+void the_pty_was_written_directly();
+std::int64_t when_the_pty_was_last_written_directly();   // steady_clock ticks, 0 for never
+// THE PROMPT TOOK THE PTY RAW, turning its flow control off -- and the kernel starts a pty that
+// Ctrl-S had stopped when that happens, so a Ctrl-S hold on the feed ends with it.
+void the_pty_flows_again();
 
 } // namespace satellite004

@@ -262,6 +262,7 @@ GTK_SOURCES = $(SATELLITE)/satellite_variable_window/window_desk.cpp \
               $(SATELLITE)/satellite_variable_window/window_spill.cpp \
               $(SATELLITE)/satellite_variable_window/window_console.cpp \
               $(SATELLITE)/satellite_variable_window/console_launch.cpp \
+              $(SATELLITE)/satellite_variable_window/console_feed.cpp \
               $(SATELLITE)/satellite_variable_window/console_menu.cpp \
               $(SATELLITE)/satellite_variable_window/console_settings.cpp \
               $(SATELLITE)/satellite_variable_window/console_status.cpp

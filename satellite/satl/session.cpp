@@ -81,7 +81,10 @@ InputAnswer read_for_the_program(const std::string &text, const std::string &dra
     if (!the_sessions_reader->interactive())
         std::cout << (drawn.empty() ? text : drawn);
     std::cout.flush();
-    switch (the_sessions_reader->read(prompt::Prompt{text, drawn}, line)) {
+    const prompt::LineStatus status = the_sessions_reader->read(prompt::Prompt{text, drawn}, line);
+    the_pty_was_written_directly();   // the reader drew the line on the pty (printing_satellite.hpp)
+    the_pty_flows_again();            // ...and took it raw, which ends a Ctrl-S
+    switch (status) {
     case prompt::LineStatus::Line: return InputAnswer::line;
     case prompt::LineStatus::Interrupted: return InputAnswer::interrupted;
     case prompt::LineStatus::EndOfFile: break;
@@ -638,6 +641,11 @@ signed long long int run_session(const Arguments &arguments, const FunctionTable
         the_interpreter_is_running().store(false, std::memory_order_relaxed);
         const prompt::LineStatus status = reader.read(gathering ? more : the_prompt_now(), line);
         the_interpreter_is_running().store(true, std::memory_order_relaxed);
+        // THE READER DREW THE LINE, AND ITS ENTER, ON THE PTY ITSELF -- in satl's own console the
+        // line's output is fed past the pty, and must not overtake them (printing_satellite.hpp).
+        // And it took the pty raw, which ends a Ctrl-S.
+        the_pty_was_written_directly();
+        the_pty_flows_again();
         if (status == prompt::LineStatus::EndOfFile) {
             if (else_may_follow)
                 finish();

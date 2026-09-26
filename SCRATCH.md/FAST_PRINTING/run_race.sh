@@ -17,14 +17,17 @@ spill=$(ls -d "$runtime"/satl-window-* 2>/dev/null | tail -1)
 [ -n "$spill" ] || { echo "no $runtime/satl-window-* -- run satellite/satellite_variable_window/prove-console.sh, which makes it (never open the console on the desktop)"; exit 1; }
 cd "$out"
 cat > inside.sh <<INSIDE
+# A socket left by a mutter that did not clean up would pass the wait below at once, and the
+# race would find nobody there ("Failed to open display"). The name is the race's own.
+rm -f "\$XDG_RUNTIME_DIR/satlrace" "\$XDG_RUNTIME_DIR/satlrace.lock"
 mutter --headless --virtual-monitor 1280x800 --wayland-display=satlrace > mutter.log 2>&1 &
 mpid=\$!
 tries=0
 while [ ! -S "\$XDG_RUNTIME_DIR/satlrace" ] && [ \$tries -lt 60 ]; do sleep 0.25; tries=\$((tries+1)); done
 [ -S "\$XDG_RUNTIME_DIR/satlrace" ] || { echo "mutter never made its socket"; kill \$mpid; exit 1; }
 env -u DISPLAY -u DBUS_SESSION_BUS_ADDRESS -u XAUTHORITY WAYLAND_DISPLAY=satlrace GDK_BACKEND=wayland \
-    GDK_DEBUG=no-portals XKB_CONFIG_ROOT=$spill/xkb FONTCONFIG_FILE=$spill/fonts.conf FONTCONFIG_PATH=$spill \
-    GSETTINGS_SCHEMA_DIR=$spill/schemas timeout 180 ./vte_print_race < /dev/null > race.stdout 2> race.err
+    GDK_DEBUG=no-portals${RACE_GDK_DEBUG:+,$RACE_GDK_DEBUG} XKB_CONFIG_ROOT=$spill/xkb FONTCONFIG_FILE=$spill/fonts.conf FONTCONFIG_PATH=$spill \
+    GSETTINGS_SCHEMA_DIR=$spill/schemas timeout 600 ./vte_print_race < /dev/null > race.stdout 2> race.err
 echo "race exit \$?"
 kill \$mpid
 INSIDE

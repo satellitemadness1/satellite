@@ -430,6 +430,9 @@ Value call_console_word(Code code, const std::vector<Value> &arguments, const st
         }
         if (!std::getline(std::cin, line))
             got = InputAnswer::ended;
+        // THE KERNEL ECHOED THE LINE, AND ITS ENTER, INTO THE PTY: in satl's own console the next
+        // line is fed past the pty, and must not overtake them (printing_satellite.hpp).
+        the_pty_was_written_directly();
     }
     if (got == InputAnswer::interrupted) {
         context.refuse(interrupted, spelled + " was stopped with Ctrl-C before a line was finished");

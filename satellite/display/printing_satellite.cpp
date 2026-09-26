@@ -27,6 +27,7 @@
 #include <chrono>
 #include <csignal>
 #include <cstdint>
+#include <cstring>
 #include <deque>
 #include <mutex>
 #include <new>
@@ -204,6 +205,13 @@ struct Satellite {
     std::atomic<bool> refused{false};                    // the screen refused a write: said once
     std::atomic<bool> out_of_memory_here{false};         // a line had no memory to be made in: said once
     bool display_runs = false;                           // else the printing satellite writes itself
+
+    // STEP 5: satl's own console, fed straight -- and the piece as the pty would have sent it.
+    std::atomic<ConsoleTaker> console{nullptr};
+    std::atomic<ConsoleHurry> hurry{nullptr};
+    std::atomic<ConsoleFlows> flows{nullptr};
+    std::string fed;                                     // the display thread's (or the printer's, in turn)
+    std::atomic<std::int64_t> pty_written_at{0};         // the last direct write to the pty
 };
 
 Satellite &the_satellite()
@@ -294,21 +302,70 @@ void append_the_job(const Job &job, std::string &out)
 // single std::string, display it, and then get the next one". One piece, one write().
 // ---------------------------------------------------------------------------------------------
 
+// A PTY'S ONLCR, done here because a feed goes past the pty: every '\n' becomes "\r\n" -- every
+// one, as the pty does, so a "\r\n" satl wrote itself arrives as "\r\r\n" exactly as before.
+void as_the_pty_sends_it(const std::string &piece, std::string &out)
+{
+    out.clear();
+    out.reserve(piece.size() + piece.size() / 8);
+    const char *at = piece.data();
+    const char *const end = at + piece.size();
+    while (at < end) {
+        const void *found = std::memchr(at, '\n', static_cast<std::size_t>(end - at));
+        if (found == nullptr) {
+            out.append(at, end);
+            break;
+        }
+        const char *newline = static_cast<const char *>(found);
+        out.append(at, newline);
+        out += "\r\n";
+        at = newline + 1;
+    }
+}
+
+// STEP 5: the piece into satl's own console, when there is one to take it. False: write it.
+bool fed_to_the_console(Satellite &s, const std::string &piece, std::uint64_t through)
+{
+    const ConsoleTaker take = s.console.load(std::memory_order_acquire);
+    if (take == nullptr)
+        return false;
+    bool fed = false;
+    try {
+        as_the_pty_sends_it(piece, s.fed);
+        fed = take(s.fed, through);
+    } catch (const std::bad_alloc &) {
+        // NO MEMORY FOR THE "\r\n" COPY: the piece is let go, as the printing satellite lets go of
+        // a line it has no memory for, and the next display says out_of_memory. Its jobs still
+        // settle in order, through an empty piece -- which takes no memory to hand over.
+        std::string().swap(s.fed);
+        s.out_of_memory_here.store(true, std::memory_order_release);
+        fed = take(s.fed, through);
+    }
+    if (s.fed.capacity() > kKeepAtMost)
+        std::string().swap(s.fed);
+    return fed;
+}
+
 void write_the_piece(std::uint64_t which)
 {
     Satellite &s = the_satellite();
     std::string &piece = s.pieces[which % kPieces];
-    if (!piece.empty() && !write_all(piece.data(), piece.size()))
+    const std::uint64_t through = s.piece_through[which % kPieces];
+    // FED, IT IS SETTLED BY THE WINDOW'S THREAD once VTE has it (display_fed_through), and the
+    // piece comes back now; written, it is settled here.
+    const bool fed = fed_to_the_console(s, piece, through);
+    if (!fed && !piece.empty() && !write_all(piece.data(), piece.size()))
         s.refused.store(true, std::memory_order_release);
     if (piece.capacity() > kKeepAtMost)
         std::string().swap(piece);   // one huge line does not keep a huge piece for the rest of the run
     else
         piece.clear();
-    const std::uint64_t through = s.piece_through[which % kPieces];
     s.written.store(which + 1, std::memory_order_release);
-    raise_to(s.settled, through);
+    if (!fed)
+        raise_to(s.settled, through);
     std::atomic_thread_fence(std::memory_order_seq_cst);   // the sleepers' "asleep" is read after this
-    ring(s.flushers, true);
+    if (!fed)
+        ring(s.flushers, true);
     ring(s.printer);   // it may be waiting for a piece to fill
 }
 
@@ -728,6 +785,9 @@ signed long long int display_drain()
         raise_to(s.flush_wanted, target);
         std::atomic_thread_fence(std::memory_order_seq_cst);
         ring(s.printer);
+        // satl's OWN CONSOLE FEEDS ONCE A FRAME; a flush waiting has it fed now (console_feed.cpp).
+        if (const ConsoleHurry hurry = s.hurry.load(std::memory_order_acquire))
+            hurry();
         const Clock::time_point until = Clock::now() + kPrinterLooks;
         while (!done() && !stopped() && Clock::now() < until)
             pause_a_moment();
@@ -791,6 +851,44 @@ void display_let_go_of_what_waits()
 {
     if (!writes_directly())
         let_go_of_everything_handed();
+}
+
+void display_goes_to_the_console(ConsoleTaker take, ConsoleHurry hurry, ConsoleFlows flows)
+{
+    Satellite &s = the_satellite();
+    s.flows.store(flows, std::memory_order_release);
+    s.hurry.store(hurry, std::memory_order_release);
+    s.console.store(take, std::memory_order_release);
+}
+
+bool display_a_flush_waits()
+{
+    Satellite &s = the_satellite();
+    return s.flush_wanted.load(std::memory_order_acquire) > s.settled.load(std::memory_order_acquire);
+}
+
+void display_fed_through(std::uint64_t through)
+{
+    Satellite &s = the_satellite();
+    raise_to(s.settled, through);
+    std::atomic_thread_fence(std::memory_order_seq_cst);   // the sleepers' "asleep" is read after this
+    ring(s.flushers, true);
+}
+
+void the_pty_was_written_directly()
+{
+    the_satellite().pty_written_at.store(Clock::now().time_since_epoch().count(), std::memory_order_release);
+}
+
+std::int64_t when_the_pty_was_last_written_directly()
+{
+    return the_satellite().pty_written_at.load(std::memory_order_acquire);
+}
+
+void the_pty_flows_again()
+{
+    if (const ConsoleFlows flows = the_satellite().flows.load(std::memory_order_acquire))
+        flows();
 }
 
 } // namespace satellite004

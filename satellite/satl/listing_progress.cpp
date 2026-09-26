@@ -3,6 +3,7 @@
 #include "listing_progress.hpp"
 
 #include "listing.hpp"
+#include "../display/printing_satellite.hpp"
 
 #include <chrono>
 #include <iostream>
@@ -32,9 +33,10 @@ void write_all(const std::string &text)
     while (at < text.size()) {
         const ssize_t wrote = ::write(STDOUT_FILENO, text.data() + at, text.size() - at);
         if (wrote <= 0)
-            return;
+            break;
         at += static_cast<std::size_t>(wrote);
     }
+    the_pty_was_written_directly();   // in satl's own console, the listing's lines must not overtake it
 }
 
 } // namespace

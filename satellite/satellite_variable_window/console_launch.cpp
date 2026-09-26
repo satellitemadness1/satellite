@@ -38,7 +38,9 @@
 
 #if SATELLITE_HAS_CONSOLE
 
+#include "console_feed.hpp"
 #include "window_console.hpp"
+#include "../display/printing_satellite.hpp"
 
 #include <cerrno>
 #include <csignal>
@@ -174,6 +176,37 @@ gboolean fit_cells(GtkWidget *widget, GdkFrameClock *, gpointer data)
 // controller -- which is what orders it for the desk -- and read on the desk.
 bool the_pty_is_satls_terminal = false;
 
+// std::cerr IN satl'S OWN CONSOLE: every byte to where it went before, and every write said.
+class StampedStream final : public std::streambuf {
+public:
+    explicit StampedStream(std::streambuf *to) : to_(to) {}
+
+protected:
+    int_type overflow(int_type c) override
+    {
+        const int_type wrote = traits_type::eq_int_type(c, traits_type::eof())
+                                   ? traits_type::not_eof(c)
+                                   : to_->sputc(traits_type::to_char_type(c));
+        the_pty_was_written_directly();
+        return wrote;
+    }
+    std::streamsize xsputn(const char *bytes, std::streamsize size) override
+    {
+        const std::streamsize wrote = to_->sputn(bytes, size);
+        the_pty_was_written_directly();
+        return wrote;
+    }
+    int sync() override
+    {
+        const int synced = to_->pubsync();
+        the_pty_was_written_directly();
+        return synced;
+    }
+
+private:
+    std::streambuf *to_;
+};
+
 // WRITTEN AND READ ON THE DESK ONLY: set by the parcel that puts up the hold.
 bool the_console_is_held = false;
 
@@ -224,6 +257,17 @@ gboolean the_keys(GtkEventControllerKey *, guint keyval, guint, GdkModifierType 
             kill(getpid(), SIGINT);
             return TRUE;
         }
+        return FALSE;
+    }
+    // CTRL-S AND CTRL-Q, WHILE THE PTY TAKES THEM AS FLOW CONTROL (IXON: a program running; the
+    // prompt turns it off and has them as keys). The key still goes to the pty, whose kernel stops
+    // or starts what is written there; the lines fed past it stop and start with them
+    // (console_feed.cpp), so Ctrl-S pauses the console as it always did.
+    if (a_control_chord && !the_console_is_held &&
+        (keyval == GDK_KEY_s || keyval == GDK_KEY_S || keyval == GDK_KEY_q || keyval == GDK_KEY_Q)) {
+        struct termios now;
+        if (tcgetattr(console->slave, &now) == 0 && (now.c_iflag & IXON) != 0)
+            console_feed_holds(keyval == GDK_KEY_s || keyval == GDK_KEY_S);
         return FALSE;
     }
     if (the_console_is_held && !is_only_a_modifier(keyval)) {
@@ -310,7 +354,18 @@ bool open_the_interpreters_console(const std::string &title, std::string &why)
         gtk_event_controller_set_propagation_phase(keys, GTK_PHASE_CAPTURE);
         g_signal_connect(keys, "key-pressed", G_CALLBACK(the_keys), raw);
         gtk_widget_add_controller(static_cast<GtkWidget *>(raw->widget), keys);
+        // FAST_PRINTING.md STEP 5: from here on what satl displays goes into this terminal straight
+        // from the display thread, not through the pty. Typed keys still come in through it.
+        console_feed_starts(raw->terminal, vte_pty_get_fd(static_cast<VtePty *>(raw->pty)));
     });
+    // A REPORT STILL GOES TO fd 2, THIS PTY, after std::cout is flushed -- so after every line fed
+    // before it -- and each write says so, so the lines fed after it wait until the kernel has
+    // passed it to VTE (console_feed.cpp). NOT through std::cout's door: a report would then be a
+    // display job, and one made during an overrun would be let go with the program's lines (a
+    // fresh reader, 2026-09-26).
+    // NEVER DESTROYED, as display_stream.cpp's is not: std::cerr is flushed after main() returns.
+    static StampedStream *const reports = new StampedStream(std::cerr.rdbuf());
+    std::cerr.rdbuf(reports);
     the_interpreters_console = console;
     return true;
 }
@@ -344,6 +399,9 @@ void the_interpreters_console_is_done(bool hold, const std::string &message)
     // not fed to the terminal: fed, it would draw at once, AHEAD of whatever
     // the program printed last that the desk has not drained yet. Written, it
     // queues behind everything already on its way, as a last line should.
+    // AND EVERYTHING BEFORE IT IS IN THE TERMINAL FIRST: a flush waits until it has been fed
+    // (console_feed.cpp), and a write to the pty after that lands after it.
+    std::cout.flush();
     const std::string line = "\n" + message + "\n";
     const ssize_t wrote = write(STDERR_FILENO, line.data(), line.size());
     (void)wrote;   // the pty may be gone; then there is nobody to tell

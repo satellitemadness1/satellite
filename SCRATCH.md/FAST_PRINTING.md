@@ -5,9 +5,10 @@ It replaces the open design in `SCRATCH.md/DISPLAY_THREADS.md`. That file still 
 attempt: why it was pulled out, and every measurement it made. `SCRATCH.md/RUNNING_PROGRAMS.md`
 holds the running-programs half.
 
-**Steps 1 to 4 are built.** 1 and 2 are installed and pushed (builds 0109 `ab6e7d7`, 0111 `fbf0788`);
-3 and 4 went in together as build 0113 (0112 was the same before the review's fixes, never kept).
-**Steps 5 and 6 are next.** The measurements below are real.
+**Steps 1 to 5 are built.** 1 and 2 are installed and pushed (builds 0109 `ab6e7d7`, 0111 `fbf0788`);
+3 and 4 went in together as build 0113 (0112 was the same before the review's fixes, never kept); step 5
+is build 0118 (0114-0117 were the same before the two fresh readers' fixes, never kept) -- its own section says how it
+was measured. **Step 6 is next, and it needs his answers first.** The measurements below are real.
 The code they came from is in `SCRATCH.md/FAST_PRINTING/`.
 
 | best of five (step 2: of three) | 0108 (read in the step-1 race) | 0109, step 1 | 0111, step 2 | 0112, steps 3+4 (0113's own times: the line below) |
@@ -38,6 +39,21 @@ And his last words before the `/clear`, on 0113's times: *"still going fast besi
 0.22s is still fast for 200 1 mb strings, it's still running fast, and we can retune it when we're done"*.
 So **retuning waits until steps 5 and 6 are built.** The list is under START HERE.
 
+**STEP 5 CAME OUT FASTER, in satl's own console, and 0113 CRASHED THERE.** `console_race.sh`, 0113
+against the step-5 builds, five rounds each, alternating, best of five (start to exit). Three races: the
+first build, the build after the first reader's fixes, and 0118 itself:
+
+| in satl's own console | 0113 (the pty) | step 5 (fed straight into VTE) | 0118's own race |
+|---|---|---|---|
+| 1,000,000 lines | 1.31 / 1.36 / 1.34 s | 1.19 / 1.19 s | **1.21 s** |
+| 1,000,000 numbers | 1.01 / 1.03 / 1.01 s | 0.98 / 0.98 s | **0.99 s** |
+| 200 × 1 MiB | 3.01 / 3.02 / 3.07 s | 2.41 / 2.44 s | **2.49 s** |
+
+**0113 stopped with S840 in 5 of its 18 1,000,000-line runs** in its own console, warm-ups counted
+(satellite.log in each race's work folder has every one): through the pty, VTE could not keep up, and his
+buffer overran. The step-5 builds: none in 54 runs. Output to a file (HOW TO MEASURE's loop) did not move
+-- 0118: lines 1.03 / 1.04 s, numbers 0.83 / 0.83, big 0.30 / 0.21-0.31 (both builds swing), byte-identical.
+
 ---
 
 ## START HERE AFTER `/clear`
@@ -48,9 +64,11 @@ So **retuning waits until steps 5 and 6 are built.** The list is under START HER
   before a push that adds files, scan them for the values in `~/.config/satellite-foundation` without
   printing them (the old scanner, secret_scan.py, was in session 8164ac05's scratchpad on tmpfs and
   may be gone; a grep of the new files for those values does the same).
-- **Installed:** `~/.satl/satl` is build 0113, commit `c8fca60` (steps 3 and 4). This file's own last
-  update is the commit after it. `git log --oneline -5` shows both.
+- **Installed:** `~/.satl/satl` is build 0118, step 5 (`git log --oneline -5` shows its commit).
 - **`./check.sh`: 1035 of 1035.**
+- **`prove-console.sh`: 5 of its 6 stages.** The sixth -- a PROGRAM's console typed into -- fails the same
+  way on 0113: its main ends with `satellite.return(satellite)`, which answers machine code 64
+  (program_returned) and ends satl before the line is typed. Whether the proof or satl is wrong is his.
 - **Nothing is half-built.** `git status --short` should show only `?? .claude/`; anything else is not
   this session's.
 
@@ -58,7 +76,8 @@ So **retuning waits until steps 5 and 6 are built.** The list is under START HER
 then for tokens (memory note everything-on-github-for-cloud). It's his to schedule, and it isn't dropped.
 
 **What is next, in order:**
-1. **Step 5, straight into VTE** (below). It can start at once. The risk to measure first: satl's own
+1. ~~**Step 5, straight into VTE**~~ -- BUILT, build 0118; see its section. What this item said before it
+   was built, kept because the section answers it: The risk to measure first: satl's own
    console window gets text by TWO roads today, and step 5 adds a third:
    - the pty, which carries the prompt's line editor (`satellite/prompt/render.cpp` writes fd 1
      directly), the terminal's own echo of typed keys, and every program output today
@@ -449,9 +468,73 @@ writing `std::cout`. The libraries share satl's libstdc++ and its `std::cout` (`
 - SIGTTOU stays open on the display thread, so a background satl still stops at the terminal under
   `stty tostop`.
 
-### Step 5 — straight into VTE, in satl's own window
+### Step 5 — straight into VTE, in satl's own window — BUILT, build 0118
 
-**What changes:** when satl runs in its own console window (the in-process VTE, `window_console.cpp`),
+**The race first, as START HERE asked** (`vte_print_race.cpp`, row D added: fed once a frame on the frame
+clock's `before-paint`; `RACE_PRINTS`, `RACE_ROUNDS`, `RACE_TRACE` added; the pause between runs no longer a
+whole number of frames -- 300 ms is exactly 18, and it put each row at the same phase every round):
+
+| per print, end to end | 1,000 prints, 15 rounds | 100,000 prints, 5 rounds |
+|---|---|---|
+| D, fed once a frame | 20.3 µs | **1.04 µs** |
+| C, std::cout into the pty | **2.8 µs** | 1.96 µs |
+
+- **A's 17 µs was not VTE parsing, it was GTK's frame pacing.** VTE 0.84 parses everything it has ONCE A
+  FRAME, fed or read from the pty (`scheduler.cc`: a tick callback). The timeline (`RACE_TRACE=1`): the
+  first frame comes within ~100 µs with a few lines, and the rest wait ~16 ms for the next -- GTK holds a
+  frame until its cadence (`gdkframeclockidle.c`'s `min_next_frame_time`) and the compositor's frame
+  callback. The pty row got its second frame 1.6 ms after its first, every time; why is not found.
+- **At volume, fed wins 1.9×**, and its main thread never waits (0.89 µs against 1.90).
+- **In satl the volume case is the one that shows** -- the console race above. A burst of a few lines
+  arrives within a frame either way.
+
+**As built** (`satellite_variable_window/console_feed.cpp`, the display thread in `printing_satellite.cpp`),
+and where it differs from the plan -- my choices, his to overrule:
+- **The display thread** makes each piece's `\n` into `\r\n` (every one, as the pty's ONLCR did; raw mode
+  keeps OPOST) and hands it to the desk instead of `write()`. Anywhere else, fd 1 as before.
+- **The desk feeds on `before-paint`, not from a tick callback.** Tick callbacks are prepended, so one
+  VTE adds during the update loop runs a frame late; `before-paint` runs ahead of `update`, where VTE
+  parses, so what is fed in a frame is parsed in that frame.
+- **A waiting flush is fed at once** -- a flush now waits until VTE has been FED, and every
+  `std::cout.flush()` (each prompt, each report, satellite.access, the console colours) would otherwise
+  wait up to a frame. The flush says so itself (`hurry`), and a piece handed over while one waits says so
+  under the same lock.
+- **A frame's budget, VTE's own rule.** VTE parses all it was fed in one go; a 100 MB display fed whole
+  would stop the window, and Ctrl-C with it, for seconds. Its pty was read at most enough for ~100 ms of
+  parsing a frame (`time_process_incoming`); the feed keeps the same rule, tuned the same way, starting at
+  4 MiB. The display thread waits past a frame's budget, so his buffer and S840 mean what they meant.
+- **No frame for 100 ms** (a minimized window): fed anyway, VTE's own fallback rate.
+- **Nothing overtakes the pty.** Reports (`std::cerr`), the prompt's line, the listing's progress line,
+  `satellite.console.input`'s echo and the hold message still go through the pty. VTE reads it BELOW the
+  frame clock's priority, and a byte written to a pty's slave reaches the master only when the kernel's
+  flip-buffer work runs (measured up to ~45 µs; FIONREAD cannot see it before). So a feed waits while the
+  master has unread bytes, and for 1 ms after any of those writes (`the_pty_was_written_directly`).
+- **Ctrl-S still pauses the console** while a program runs: the keys that stop and start the pty stop and
+  start the feed.
+- **Out of memory on the display thread** lets that piece go and the next display says so, as the printing
+  satellite does -- the thread used to allocate nothing.
+
+**TWO FRESH READERS.** The first found five things, all fixed: no per-frame budget (the freeze), the
+display thread able to die of `bad_alloc`, `console.input`'s echo unstamped, Ctrl-S no longer pausing,
+and reports -- then sent through std::cout's door -- let go during an overrun (std::cerr is back on fd 2,
+each write stamped). The second read the fixes and found four more, all fixed in 0118: the budget could
+still run to 64 MiB (bytes fed by the no-frame fallback were parsed by VTE's own fallback, and the next,
+empty frame was timed against them -- now it tunes only on what a frame's own `before-paint` fed, only
+when the budget held some back, and never more than doubles); a Ctrl-S hold outlived the pty's own stop
+(the prompt's raw mode turns IXON off, and the kernel restarts the pty -- now the prompt's reads end the
+hold, and a feed seeing IXON off does too); a stale wait on the pty survived a hold; and the std::cerr
+wrapper was destroyed before std::cerr's last flush (now never destroyed, as display_stream.cpp's).
+
+**Left as it is, and his to weigh:** every std::cerr write holds the next feed for 1 ms (the settle rule
+above). A program alternating a report and a display would be held near 1,000 a second in satl's own
+console; nothing does that today that the readers found. The flip-buffer delay measured ~45 µs, and
+GLib's timers count milliseconds.
+
+**Not done, and why:** a program's own console (`satellite.console.new`) still writes its pty -- step 5 is
+satl's own window. Ctrl-C at the prompt lets go of what the printing satellite holds, but not of what is
+already waiting on the desk (at most one frame's budget).
+
+**What was planned:** when satl runs in its own console window (the in-process VTE, `window_console.cpp`),
 the display thread stops writing the pty. It hands its bytes to the window's thread, which calls
 `vte_terminal_feed` **once a frame**, from a tick callback. `\n` becomes `\r\n` on the way.
 
@@ -536,6 +619,12 @@ grep -E 'before|after' $S/times | sort
 valgrind --tool=callgrind --max-threads=1200 --callgrind-out-file=$S/cg.out \
     build/satl SCRATCH.md/FAST_PRINTING/callgrind_display.satl > /dev/null
 callgrind_annotate $S/cg.out | head -40
-# 4. His VTE race, on its own headless mutter (nothing reaches the desktop):
+# 4. His VTE race, on its own headless mutter (nothing reaches the desktop). RACE_PRINTS=100000 for
+#    throughput, RACE_ROUNDS=15, RACE_TRACE=1 for each row's frames and feeds, RACE_GDK_DEBUG=frames:
 sh SCRATCH.md/FAST_PRINTING/build_race.sh && sh SCRATCH.md/FAST_PRINTING/run_race.sh
+# 5. satl IN ITS OWN CONSOLE (step 5's own timing), old against new, best of five, on its own headless
+#    mutter. A run that stopped (S840) holds its console until the limit: satellite.log in the kept
+#    work folder's home says what it stopped on.
+TMPDIR=$S KEEP_WORK=1 CONSOLE_RACE_LIMIT=90 XDG_RUNTIME_DIR=/run/user/1000 \
+    sh SCRATCH.md/FAST_PRINTING/console_race.sh $S/before/satl build/satl 5 "lines numbers big"
 ```

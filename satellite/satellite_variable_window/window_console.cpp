@@ -78,6 +78,7 @@ bool a_console_that_is_open(const satellite_window &which, std::string &why)
 
 #if SATELLITE_HAS_CONSOLE
 
+#include "console_feed.hpp"
 #include "window_console.hpp"
 #include "window_frame.hpp"
 
@@ -155,6 +156,10 @@ int open_the_slave_of(VtePty *pty, std::string &why)
 void the_console_went_away(GtkWidget *, gpointer user_data)
 {
     satellite_window *console = static_cast<satellite_window *>(user_data);
+    // satl'S OWN CONSOLE IS FED STRAIGHT (console_feed.cpp): no more of that, and a flush waiting
+    // on it goes on -- before the terminal is let go of.
+    if (console->is_satls_own)
+        console_feed_stops();
     if (console->typed_watch != 0) {
         g_source_remove(console->typed_watch);
         console->typed_watch = 0;
