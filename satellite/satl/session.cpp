@@ -504,6 +504,7 @@ signed long long int run_one_line(const std::string &line, const FunctionTable &
 {
     BytecodeRegistry registry;
     BytecodeFilenames filenames;
+    loaded_sources()["<typed>"] = line;   // so a refusal can say what it wrote (program_check.cpp's file_of)
     build_bytecode_registry("<typed>", line, threads, batches, registry, filenames, state);
     if (registry.empty())
         return success;

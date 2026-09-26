@@ -269,16 +269,19 @@ expect "* by a percentage names INF-3 and INF-4, not the percentage's pair" "14|
 expect "** on two infinities names INF-4 and INF-5" "14|1|1" \
        "$(infinity_says '    satellite.console.display(satellite.infinity() ** satellite.infinity())' "(SATELLITE_INFINITY.md, INF-4 and INF-5)")"
 # THE INFINITY'S THREE METHOD TOKENS (INF-1): every spelling lexes to its token and is
-# refused BY NAME on a type that does not have it -- the registry's own name, from the
-# generated method_name_of(), where a hand-kept table used to say "that method".
-for pair in power_of:power_of to_the_power_of:power_of power:power_of nines:nines resize:resize; do
-    written=${pair%%:*}; named=${pair##*:}
+# refused BY NAME on a type that does not have it, where a hand-kept table used to say "that
+# method". REBASED 2026-09-26 (ERRORS2 #10): by the name WRITTEN -- `n.power(2)` was told
+# "n.power_of is not built", the registry's first spelling, which he never wrote.
+for written in power_of to_the_power_of power nines resize; do
     printf 'satellite.include(satellite)\n\nsatellite.capsule satellite.main()\n{\n    satellite.variable.number n = 5\n    satellite.console.display(n.%s(1))\n    satellite.return(satellite)\n}\n' "$written" > build/method_probe.satl
     "$interpreter" build/method_probe.satl > build/method_probe.out 2>&1; code=$?
     expect "n.$written(1) on a number is not built yet" 14 $code
-    expect "... and is named n.$named, which no type has yet" 1 \
-           "$(tr '\n' ' ' < build/method_probe.out | grep -c "n.$named is not built for satellite.variable.number yet -- so far no type has it")"
+    expect "... and is named n.$written, as written, which no type has yet" 1 \
+           "$(tr '\n' ' ' < build/method_probe.out | grep -c "n.$written is not built for satellite.variable.number yet -- so far no type has it")"
 done
+printf 'satellite.variable.number n = 5\nsatellite.console.display(n.power(1))\n' | "$interpreter" --repl > build/method_probe.out 2>&1
+expect "... and at the prompt, n.power(1) is named n.power" 1 \
+       "$(tr '\n' ' ' < build/method_probe.out | grep -c "n.power is not built for satellite.variable.number yet -- so far no type has it")"
 # ...and a container's method on a number names the container, not "no type".
 printf 'satellite.include(satellite)\n\nsatellite.capsule satellite.main()\n{\n    satellite.variable.number n = 5\n    satellite.console.display(n.sort())\n    satellite.return(satellite)\n}\n' > build/method_probe.satl
 "$interpreter" build/method_probe.satl > build/method_probe.out 2>&1

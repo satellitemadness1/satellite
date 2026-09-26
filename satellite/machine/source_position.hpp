@@ -44,6 +44,7 @@
 #include "../bytecode/token_codes.hpp"
 
 #include <bitset>
+#include <cctype>
 #include <cstddef>
 #include <fstream>
 #include <string>
@@ -200,6 +201,35 @@ inline void report_at(CriticalReport &report, const BytecodeRegistry &registry,
                       const BytecodeFilenames &filenames, std::size_t which_row, std::size_t at)
 {
     report_at(report, place_of(registry, filenames, which_row, at));
+}
+
+// WHAT WAS WRITTEN FOR THE METHOD CODE AT `at` (ERRORS2 #10). One method has one code and may
+// have several spellings -- `power`, `power_of` and `to_the_power_of` are one -- and a refusal
+// named it by the registry's first, so `n.power(2)` was told "n.power_of is not built". Read
+// back from the loaded text of `filename` at the code's own column, and lexed again: answered
+// only when what stands there IS that method. `fallback` otherwise -- no text (the prompt), or
+// a statement joined from several lines whose method is past its first line.
+inline std::string method_as_written(const std::vector<std::bitset<16>> &row, std::size_t at,
+                                     const std::string &filename, const std::string &fallback)
+{
+    const std::string text = source_line(filename, line_of(row, at));
+    if (text.empty() || at >= row.size()) return fallback;
+    const std::size_t column = column_of(row, at, text);
+    std::size_t end = column;
+    while (end < text.size() && (std::isalnum(static_cast<unsigned char>(text[end])) != 0 || text[end] == '_'))
+        ++end;
+    if (end == column) return fallback;
+    const std::string written = text.substr(column, end - column);
+    std::vector<std::bitset<16>> again;
+    tokenise_one_line("x." + written, again);
+    for (std::size_t k = 0; k < again.size();) {
+        const token::Code code = static_cast<token::Code>(again[k].to_ulong());
+        if (token::carries_a_count(code)) { skip_payload(again, k); continue; }
+        if (code == token::method_token)
+            return k + 1 < again.size() && again[k + 1] == row[at] ? written : fallback;
+        ++k;
+    }
+    return fallback;
 }
 
 // WHICH ROW A ROW IS, BY ITS ADDRESS.
