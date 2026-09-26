@@ -1,4 +1,24 @@
-# PUBLISH THE WEBSITE — still to do
+# PUBLISH THE WEBSITE — DONE 2026-09-26
+
+**Published 2026-09-26 ~06:10 UTC** (the server answered again), at his word ("let's publish
+the site"): every page and post as below, plus four new posts -- recursion-a-million-deep (548),
+a-syntax-tree-of-objects (549), build-an-interpreter-in-cpp (550), and containers-of-any-shape
+(547, the day's map literal, nested containers and satellite.access). The maps post, the
+history-and-access post, the full reference's containers/map/access sections and one tutorial
+sentence were rewritten first: they said map and satellite.access were refused. 327 examples,
+0 failing. Nothing on the site had changed since his 2026-09-24 21:13-21:40 edits; his
+categories and tags were pulled first and survived. Then tags were added to the 19 posts that
+had none (his "you can add more tags"), in his style, by one whole-site upload.py run without
+the pull (the pull would have put the site's empty tags back). publish.sh now lists
+containers-of-any-shape after multiple.
+
+**Next time:** after M16 merges, post-strings says which methods are refused -- check_examples
+will flag those examples as FLIPPED; rewrite them and publish.sh again.
+
+---
+
+(What follows is the note as it was written before publishing.)
+
 
 The author, 2026-09-25, late: *"we will publish the website later tonight, after we have worked
 for awhile... leave yourself a note in /SCRATCH.md/PUBLISH.md that we need to publish the
