@@ -167,7 +167,8 @@ He tested the installed satl (2119b0f) in another window while the site was publ
   item, a map's key). Same family: S301's paragraph says "this operator has no scenario for the
   two kinds it was given" under a list `.append` or a `[ ] =` write that does not fit.
 
-He is running each program past its stop point to find more; add them here as he reports them.
+**A, B, D and E are FIXED (5b8cdf3); C is his to rule. Everything his testers found after these, and
+the status of each, is in SCRATCH.md/ERRORS3.md.**
 
 ## Part 2 — can be fixed without him (not done yet)
 
