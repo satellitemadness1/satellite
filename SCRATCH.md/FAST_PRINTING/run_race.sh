@@ -6,14 +6,15 @@
 # The results land in build/vte_race/race.err.
 #
 # THE FONTS AND KEYBOARD DATA ARE satl's OWN, from the folder satl's console unpacks
-# them into (window_spill.cpp): open satl's console once if there is none.
+# them into (window_spill.cpp). If there is none, run prove-console.sh, which makes it -- never open
+# the console on the author's desktop for it.
 set -u
 root=$(cd "$(dirname "$0")/../.." && pwd)
 out="$root/build/vte_race"
 runtime=/run/user/$(id -u)
 [ -x "$out/vte_print_race" ] || { echo "run build_race.sh first"; exit 1; }
 spill=$(ls -d "$runtime"/satl-window-* 2>/dev/null | tail -1)
-[ -n "$spill" ] || { echo "no $runtime/satl-window-* -- open satl's console once"; exit 1; }
+[ -n "$spill" ] || { echo "no $runtime/satl-window-* -- run satellite/satellite_variable_window/prove-console.sh, which makes it (never open the console on the desktop)"; exit 1; }
 cd "$out"
 cat > inside.sh <<INSIDE
 mutter --headless --virtual-monitor 1280x800 --wayland-display=satlrace > mutter.log 2>&1 &

@@ -10,7 +10,7 @@ holds the running-programs half.
 **Steps 5 and 6 are next.** The measurements below are real.
 The code they came from is in `SCRATCH.md/FAST_PRINTING/`.
 
-| best of five (step 2: of three) | 0108 | 0109, step 1 | 0111, step 2 | 0112, steps 3+4 (0113 the same) |
+| best of five (step 2: of three) | 0108 (read in the step-1 race) | 0109, step 1 | 0111, step 2 | 0112, steps 3+4 (0113's own times: the line below) |
 |---|---|---|---|---|
 | 1,000,000 lines | 2.34 s | 1.07 s | 1.06 s (0109 read 1.12 in that race) | 1.07 s (0111 read 1.02) |
 | 1,000,000 numbers | 2.10 s | 0.83 s | 0.83 s | 0.85 s (0111 read 0.81) |
@@ -33,6 +33,121 @@ build a mini satl for printing someday"*, then *"keep step 3"*. Why it is slower
 
 After step 1 he said: *"we are building a fast-enough-plan anyways, we gave up on racing compiled C++
 with our interpreter"*. **The rule below still holds** (a slower step stops), but no C++ race is owed.
+
+And his last words before the `/clear`, on 0113's times: *"still going fast besides the 1 MB strings, but
+0.22s is still fast for 200 1 mb strings, it's still running fast, and we can retune it when we're done"*.
+So **retuning waits until steps 5 and 6 are built.** The list is under START HERE.
+
+---
+
+## START HERE AFTER `/clear`
+
+**Where things stand (2026-09-26):**
+- **The repo:** `/home/madness/code/cxx/satellite`, branch `milestones-install-and-no-console-handover`.
+  Every commit also goes to GitHub's main through `utility/push_to_main.sh`. **The repo is PUBLIC:**
+  before a push that adds files, scan them for the values in `~/.config/satellite-foundation` without
+  printing them (the old scanner, secret_scan.py, was in session 8164ac05's scratchpad on tmpfs and
+  may be gone; a grep of the new files for those values does the same).
+- **Installed:** `~/.satl/satl` is build 0113, commit `c8fca60` (steps 3 and 4). This file's own last
+  update is the commit after it. `git log --oneline -5` shows both.
+- **`./check.sh`: 1035 of 1035.**
+- **Nothing is half-built.** `git status --short` should show only `?? .claude/`; anything else is not
+  this session's.
+
+**Also owed, from earlier on 2026-09-26:** a fresh review of the M16 + errors merge (`8923ad3`), skipped
+then for tokens (memory note everything-on-github-for-cloud). It's his to schedule, and it isn't dropped.
+
+**What is next, in order:**
+1. **Step 5, straight into VTE** (below). It can start at once. The risk to measure first: satl's own
+   console window gets text by TWO roads today, and step 5 adds a third:
+   - the pty, which carries the prompt's line editor (`satellite/prompt/render.cpp` writes fd 1
+     directly), the terminal's own echo of typed keys, and every program output today
+   - a direct `vte_terminal_feed` (step 5's new road)
+
+   Output fed straight in can overtake bytes still in the pty, or fall behind them. So a flush must
+   wait until VTE has been FED, not just until the bytes were handed to the window's thread. The flush
+   is `display_drain()` in `printing_satellite.cpp`, reached through `std::cout.flush()` (display_stream.cpp's
+   `sync`). The one before every prompt is `session.cpp` line 625. And anything that still writes the
+   pty must come after the feed.
+   - **The console's pieces:**
+     - `satellite/satellite_variable_window/window_console.cpp`: `a_terminal_to_type_in` makes the
+       VteTerminal and its pty; `open_the_slave_of`
+     - `console_launch.cpp`: the pty's slave becomes fd 1
+     - `window_desk.hpp`: the window's own thread, the only one that may touch VTE
+   - **Do not hand pieces over with `window_desk.hpp`'s `on_the_desk()`.** It WAITS for the GTK
+     thread, which is the opposite of once a frame. The non-waiting shape is the race's: an eventfd
+     watched with `g_unix_fd_add` (`on_wake` in `vte_print_race.cpp`).
+   - **What the race says, read right:** rows A and B BOTH feed VTE directly; C writes the pty.
+     - **Step 5 builds A's shape:** the interpreter's side makes the line, and the window's thread
+       feeds it. B is the bypass (SECRET.md's), not this step.
+     - **As raced, A took 17,355 ns a print end to end against C's 3,738:** the direct feed was SLOWER.
+       The race feeds on every wake, with no once-a-frame mode, so the 60 Hz explanation is untested.
+     - **Step 5 counts only if A, fed once a frame, beats C end to end.** Add that mode to the race and
+       measure it BEFORE building step 5 into satl.
+   - **How to time step 5 in satl:** HOW TO MEASURE's loop only proves the file and pipe path did not
+     get slower. The step itself must be timed in satl's own console on the headless mutter: `satl
+     --console prog.satl`, prove-console.sh's `loud` shape, with WAYLAND_DISPLAY set to its socket, 0113
+     against the new build. No script for that exists yet: write it before building, or tell him.
+2. **Step 6, a running program's output** (below). **satl starts no programs today** (no posix_spawn in
+   satellite/; the only program start is prompt_run.cpp's fork+execv of satl itself), so step 6 IS
+   building `RUNNING_PROGRAMS.md`, with its output joining before the display thread. **Ask him first:**
+   its open questions 1-4, 6 and 7 are his and unanswered -- the satellite spelling of running a
+   program, whether satl waits for it, keyboard input for it, and Ctrl-C. Question 5 is answered by his
+   drawing: program output goes between the printing satellite and the display thread. **Why it matters, his words before the `/clear`:**
+   *"this is a pre-requisite for running a pre-version of quad ai that another ai cooked up, I dunno, we
+   do need to run std::system, or a command like it anyways"* -- running programs (the fast std::system
+   on posix_spawn, `RUNNING_PROGRAMS.md`) stands between satellite and QUAD AI's first run. That
+   pre-version is mostly another AI's: *"it's only like... 15% built by me"* -- so its choices are not
+   his rulings unless he says so.
+3. **Then the retune he asked for**, once 5 and 6 are in:
+   - the 1 MiB strings: a slot keeps its value until reused, so 200 x 1 MiB peaks at 440 MB. The
+     printing satellite could let go of a big value as soon as it is written. It is a cross-thread free,
+     which costs ~100 ns and does not matter at 1 MiB.
+   - the +4-8% on short lines and numbers. The option he did not take: the interpreter makes its own line, as 0111
+     did, and hands over whole 8 KB pieces, so no hand-off is paid per display.
+   - Someday, his: the mini satl for printing (SECRET.md, *"the whole 3.5 ns thing"*).
+4. **Then the errors.** His words before the `/clear`: *"there's still... 200 errors to fix or something
+   like that, when this is done"*.
+   - The list is `SCRATCH.md/ERRORS4/README.md`: one page per error, 85 pages merged from 178 suspected
+     (127 confirmed new), found 2026-09-26 on build 0099. Older lists: `SCRATCH.md/ERRORS2.md`
+     and `SCRATCH.md/ERRORS3.md`.
+   - **None is re-checked since build 0099.** Today's builds 0109-0113 changed call_word, string
+     literals and all of display, so run each page's own program on today's satl before fixing it.
+     Some may be gone; page 083 (`083-display-thread-nothing-s210.md`) is about display and threads.
+
+**How to build and check, the rules that cost something to learn:**
+- **Keep the build to beat first:** `cp -a build/satl build/satellite-numbers <scratch>/before/`. satl
+  loads its word libraries from beside itself.
+- **Build without installing:** `make INSTALL_AFTER_BUILD=no`, in the background (about a minute:
+  PGO + ThinLTO + BOLT). A bare `make` installs into `~/.satl`. **One make at a time.**
+- **Race old against new:** the loop in HOW TO MEASURE, with output compared byte for byte.
+  **Slower: stop and tell him** with the numbers. His answer this time was "keep step 3"; the next may not
+  be.
+- **Then:** `./check.sh` (about 1.5 min, in the background); a fresh reader for any concurrency code (this
+  time it found eleven real defects); commit; `utility/push_to_main.sh`;
+  `SATELLITE_JUST_BUILT=yes sh satellite_enterprise/install.sh`.
+- **callgrind** needs `--max-threads=1200`, because of the 1024 start-up threads.
+- **GUI tests with a window** go on a headless mutter with the REAL `XDG_RUNTIME_DIR`, its own
+  `--wayland-display=<name>`, and satl run under `env -u DISPLAY -u DBUS_SESSION_BUS_ADDRESS
+  WAYLAND_DISPLAY=<name>` inside `dbus-run-session` (prove-console.sh lines 200-213; run_race.sh).
+- **A run that must open NO window** uses the memory note's recipe instead: an empty 700
+  `XDG_RUNTIME_DIR`, `-u XAUTHORITY -u GDK_BACKEND`. Anything else can reach his desktop.
+- **run_race.sh needs `/run/user/1000/satl-window-*`** (the console's fonts and keyboard data, on tmpfs,
+  gone after a reboot). If it is gone, run `prove-console.sh`, which makes it. Never make it by opening
+  the console on his desktop.
+
+**Where the printing satellite lives:**
+- `satellite/display/printing_satellite.hpp`: the design and his words.
+- `printing_satellite.cpp`: the ring, his buffer and limit, the pieces, the display thread, the sleeps,
+  and the flush.
+- `display_stream.cpp`: std::cout's 8 KB.
+- `bytecode/expression.cpp`'s `display_plainly`: what the interpreter keeps and what it hands over.
+- `console_calls.cpp`'s `display_with_options`: a styled line, made on the interpreter's thread.
+- `program_walk.cpp`: search `display_overran`; the S840 stop between statements.
+- `structured-library.cpp`: `main` starts the printing satellite; `run_satl` reports an overrun found
+  after the last statement.
+- `satl/session.cpp`: the overrun and Ctrl-C let-go between prompt lines.
+- `arguments/arguments.cpp`: the `display.buffer` row.
 
 ---
 
@@ -74,7 +189,8 @@ parentheses itself. Nothing here closes the door on it. Steps 1 and 3 are what i
 
 ## What was measured today — the facts this plan stands on
 
-**Build 0108 is the build to beat.** Output to a file, best of five:
+**Build 0108 is the build to beat** -- read in the callgrind session, the one the 1.27 µs comes from
+(the top table's 0108 column was read in the step-1 race). Output to a file, best of five:
 
 | | 1,000,000 lines | 1,000,000 numbers | 200 × 1 MiB |
 |---|---|---|---|
@@ -167,7 +283,7 @@ ignores my timings: give him the command, and lead with right/wrong counts.
 - **`word::code_of` becomes `constexpr`.** Its tables already are. Every `code == word::code_of(1, 8, 1)`
   in `is_file_word`, `is_info_word`, `is_infinity_word`, `is_container_word`, `is_access_word`,
   `is_thread_word` and `call_word`'s own compares then folds to a constant.
-  - `word_codes.hpp` is generated by `make_words.py`, and check.sh compares it byte for byte, so the
+  - `word_codes.hpp` is generated by `satellite/bytecode/make_word_codes.py`, and check.sh compares it byte for byte, so the
     change goes in the generator.
 - **For every other word, the window words get a table built at compile time.** It's indexed by
   `code - kFirst`: about 450 bytes, one per word. `is_window_word` becomes one read, not a walk. Every
@@ -340,8 +456,9 @@ the display thread stops writing the pty. It hands its bytes to the window's thr
 `vte_terminal_feed` **once a frame**, from a tick callback. `\n` becomes `\r\n` on the way.
 
 **Why:**
-- The race: B had every line in VTE in 1.6 µs a print, against 3.7 µs for `std::cout` through the pty.
-- Feeding once a frame is also the fix to prove for A's 17 µs.
+- The race: B (the bypass) had every line in VTE in 1.6 µs a print, against 3.7 µs for `std::cout`
+  through the pty. But A -- step 5's own shape -- took 17.4 µs, SLOWER than the pty.
+- Feeding once a frame is the fix to prove for A's 17 µs, and step 5 counts only if it does (START HERE).
 - Only output skips the pty. Typed keys still come in through it.
 
 **Everywhere else** (VS Code's terminal, gnome-terminal, a pipe, a file): the display thread writes
@@ -349,15 +466,15 @@ fd 1 in big pieces, never a line at a time.
 
 ### Step 6 — a running program's output joins before the display thread
 
-**What changes:** each program satl starts (posix_spawn, `RUNNING_PROGRAMS.md`) gets one pool thread
-to watch it:
+**What changes:** satl starts no programs today, so this step builds `RUNNING_PROGRAMS.md` itself. Each
+program satl then starts (posix_spawn) gets one pool thread to watch it:
 - `poll()` on its output pipe, its error pipe and its pidfd
 - whole lines cut out, with the `\033` rule applied to each
 - the lines handed to the display thread, between the printing satellite and the screen, as he drew it
 - when the pidfd says the program ended: the last partial line, then the exit code
 
 The watcher is one of the start-up threads (`startup_threads.hpp`'s `submit()`).
-**RUNNING_PROGRAMS.md's open questions 1–7 still apply.**
+**RUNNING_PROGRAMS.md's open questions 1-4, 6 and 7 still apply; 5 is answered by this design.**
 
 ---
 
@@ -389,7 +506,8 @@ std::cout's 8 KB (satl's own text) ───────────────
    capped bytes at 512 MB. His to rule.
 4. **S840 / machine code 65 / the message:** above; his to reword.
 5. **SECRET.md:** his, for another time.
-6. **RUNNING_PROGRAMS.md 1–7:** the spelling, whether satl waits, keyboard input, Ctrl-C.
+6. **RUNNING_PROGRAMS.md 1-4, 6, 7:** the spelling, whether satl waits, keyboard input, Ctrl-C (5 is
+   answered by his drawing: step 6).
 7. **Someday, his:** the mini satl for printing (*"the whole 3.5 ns thing that beats compiled C++"*), and
    the option he did not take today -- the interpreter makes its own line, as 0111 did, and hands
    over whole 8 KB pieces, so nothing is paid a display.
@@ -399,22 +517,25 @@ std::cout's 8 KB (satl's own text) ───────────────
 ## HOW TO MEASURE
 
 ```bash
-# 1. Keep the build to beat -- satl finds its word libraries BESIDE ITSELF, so copy both.
-mkdir -p /tmp/before && cp -a build/satl build/satellite-numbers /tmp/before/
+# S is YOUR SCRATCHPAD (the session's, never /tmp). The times file is emptied first: a second race
+# appended to the first mixes old times into the new best-of-five.
+S=<scratchpad>; mkdir -p $S/before; : > $S/times
+# 1. Keep the build to beat -- satl finds its word libraries BESIDE ITSELF, so copy both. BEFORE building.
+cp -a build/satl build/satellite-numbers $S/before/
 # 2. Alternate old and new, best of five, output to a file:
 for p in lines numbers big; do
   for t in 1 2 3 4 5; do
-    /usr/bin/time -f "$p before %e s" env SATL_NO_WINDOW=1 /tmp/before/satl SCRATCH.md/DISPLAY_THREADS/bench_$p.satl > /tmp/$p.before 2>>/tmp/times
-    /usr/bin/time -f "$p after  %e s" env SATL_NO_WINDOW=1 build/satl SCRATCH.md/DISPLAY_THREADS/bench_$p.satl > /tmp/$p.after 2>>/tmp/times
+    /usr/bin/time -f "$p before %e s" env SATL_NO_WINDOW=1 $S/before/satl SCRATCH.md/DISPLAY_THREADS/bench_$p.satl > $S/$p.before 2>>$S/times
+    /usr/bin/time -f "$p after  %e s" env SATL_NO_WINDOW=1 build/satl SCRATCH.md/DISPLAY_THREADS/bench_$p.satl > $S/$p.after 2>>$S/times
   done
-  cmp /tmp/$p.before /tmp/$p.after && echo "$p identical"
+  cmp $S/$p.before $S/$p.after && echo "$p identical"
 done
-grep -E 'before|after' /tmp/times | sort
+grep -E 'before|after' $S/times | sort
 # 3. Instructions per display (about a minute each). --max-threads because of the 1024 start-up
 #    threads: valgrind's default of 500 crashes on satl.
-valgrind --tool=callgrind --max-threads=1200 --callgrind-out-file=/tmp/cg.out \
+valgrind --tool=callgrind --max-threads=1200 --callgrind-out-file=$S/cg.out \
     build/satl SCRATCH.md/FAST_PRINTING/callgrind_display.satl > /dev/null
-callgrind_annotate /tmp/cg.out | head -40
+callgrind_annotate $S/cg.out | head -40
 # 4. His VTE race, on its own headless mutter (nothing reaches the desktop):
 sh SCRATCH.md/FAST_PRINTING/build_race.sh && sh SCRATCH.md/FAST_PRINTING/run_race.sh
 ```

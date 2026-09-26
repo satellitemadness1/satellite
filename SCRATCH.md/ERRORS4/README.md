@@ -14,7 +14,7 @@ own programs (2,258 of them, 460 MB with their bytecode) stayed on the author's 
 `/home/madness/Documents/satl/hunt-data/probes/`; each page carries its smallest program.
 
 **NOT YET RE-CHECKED.** Every page was true of build 0099. What landed after it (0da03d9,
-5b8cdf3, 15f5119) and the two branches not yet merged (`m16-string-methods`,
+5b8cdf3, 15f5119) and the two branches merged after it at `8923ad3` (`m16-string-methods`,
 `errors-2026-09-26`) may fix some; run each page's program on today's satl before fixing it.
 
 | # | error | severity | kind | area |

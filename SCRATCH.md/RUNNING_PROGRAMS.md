@@ -1,8 +1,8 @@
 # RUNNING PROGRAMS — satellite running `clang++` and anything else, and a fast std::system on posix_spawn
 
 Written 2026-09-26 for **the session after `/clear`**. Read this whole file first. Its companion
-is `SCRATCH.md/DISPLAY_THREADS.md`. This is where the day started, and the display threads are
-where it stopped.
+is now `SCRATCH.md/FAST_PRINTING.md`, whose step 6 builds this file's work. (It was
+`SCRATCH.md/DISPLAY_THREADS.md`, where the first display attempt stopped.)
 
 **Nothing here is built.** The day produced answers, two small programs that demonstrate them,
 and one decision about output that led to the display threads. Those were built and then pulled
@@ -37,7 +37,10 @@ That led to DISPLAY_THREADS.md. After it was pulled out:
 > *"I learned alot about.. std::system anyway, we can still use that knowledge to build a fast
 > std::system call using posix_spawn"* ... *"during this context"*
 
-**So the next step, in his words, is a fast std::system call built on posix_spawn.**
+**So the next step, in his words, is a fast std::system call built on posix_spawn.** Since then
+FAST_PRINTING.md orders the work: its step 5 first, then this as its step 6. And his words later that
+day: *"this is a pre-requisite for running a pre-version of quad ai that another ai cooked up, I dunno,
+we do need to run std::system, or a command like it anyways"*.
 
 ---
 
@@ -185,7 +188,10 @@ pidfd. No shell.
    - the errors separately
 4. **Whether the program waits for it, or satl carries on while it runs.** He said *"satl may be
    doing other things while this is going on"*.
-5. **How the live output meets satl's own lines.** His concern was that they *"will compete for
+5. **How the live output meets satl's own lines.** SUPERSEDED 2026-09-26: build 0113 has a printer
+   thread (`satellite/display/`), and his drawing puts program output between the printing satellite
+   and the display thread -- FAST_PRINTING.md step 6 is that design, and the console_lock option below
+   is dropped. What follows is as it was written. His concern was that they *"will compete for
    the printer thread"*. **004 has no printer thread**: a line is written by whichever thread
    displays it, holding one lock once a thread exists (`satellite/machine/console_lock.hpp`). With
    the display threads pulled out, this is open again. One option was put to him before the
