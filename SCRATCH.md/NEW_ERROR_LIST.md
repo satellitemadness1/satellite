@@ -29,7 +29,7 @@ What I **did** fix is at the bottom, so you know what changed under you.
 | A1 | a string + a number converts the number | **built**, every kind of number; a number first still adds |
 | A2 | threads / thread = what satl may create; machine.thread(s) = hardware threads | **built** |
 | A3 | the build number in an untracked file, counted on this machine only | **built**: `.satellite_counts_builds` |
-| A4 | accept anything valid across any number of lines, strings included | queued |
+| A4 | accept anything valid across any number of lines, strings included | **built**: open ( [ { or string, a trailing operator or comma, a leading . -- line numbers stay exact |
 | A5 | refuse characters that have no meaning | **built**, by name |
 | A6 | refuse an unknown escape; `\\` writes a backslash | **built** |
 | A7 | main must end with satellite.return(satellite); it quits from anywhere | **built**: S103 names it; any capsule, any depth, any thread quits, exit 0; 36 test programs moved |

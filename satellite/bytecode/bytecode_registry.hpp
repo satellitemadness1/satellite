@@ -65,6 +65,25 @@ using BytecodeRegistry = std::vector<std::vector<std::bitset<16>>>;
 // name never has to be spelled in tokens to be carried.
 using BytecodeFilenames = std::vector<std::string>;
 
+// A STATEMENT MAY SPAN LINES (the author, 2026-09-25: "it should accept anything that is
+// valid satellite regardless of how many spaces or lines are in it, we should accept strings
+// that span 90 lines"). A line goes on into the next while a string, a ( , a [ or a list's {
+// is open, while it ends in a comma or in an operator waiting for its right side, or when
+// the next line begins with a dot (a method chain). The lines of one statement are joined
+// onto its FIRST line -- a line break inside a string stays in the string, anywhere else
+// it becomes a space, and a // comment at the end of a joined line is dropped -- and each
+// line after the first is left EMPTY, so every line_end_token still stands where its line
+// does: line numbers stay the ones an editor shows, and a report inside a joined statement
+// names the line it began on.
+//
+// Answers what the file ENDS inside -- a string, a (, a [ or a list that never closes, or a
+// list closed with the wrong bracket -- by the physical line (0-based) where it opened.
+struct NeverClosed {
+    std::size_t line = 0;
+    std::string why;
+};
+std::vector<NeverClosed> join_statements_across_lines(std::vector<std::string> &lines);
+
 // Appends one row -- this file, tokenised on `threads` in batches of lines --
 // and its name to `filenames`, so the two stay row for row. The main .satl goes
 // in first; a spaceship taken in by satellite.include() adds its own row behind

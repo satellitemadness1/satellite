@@ -4,10 +4,12 @@
 #include "include_shape.hpp"
 
 #include "../machine/s_codes.hpp"
+#include "../machine/source_position.hpp"
 
 #include "word_codes.hpp"
 
 #include <cstdlib>
+#include <unordered_map>
 
 namespace satellite004 {
 namespace {
@@ -216,6 +218,39 @@ signed long long int file_can_run(const std::vector<std::bitset<16>> &row,
                                   const std::string &filename,
                                   MachineState &state)
 {
+    // WHAT THE FILE ENDS INSIDE COMES FIRST (2026-09-25): a string or a ( that never closes
+    // takes the rest of the file into itself -- its satellite.return, its main -- so the three
+    // refusals below would name a line that IS there and hide the one thing that is wrong.
+    // The lexer's own join says where (bytecode_registry.hpp); the caret goes on that line.
+    {
+        const std::unordered_map<std::string, std::string>::const_iterator loaded = loaded_sources().find(filename);
+        if (loaded != loaded_sources().end()) {
+            std::vector<std::string> lines;
+            const std::string &text = loaded->second;
+            for (std::size_t start = 0; start <= text.size();) {
+                const std::size_t stop = text.find('\n', start);
+                lines.push_back(text.substr(start, stop == std::string::npos ? std::string::npos : stop - start));
+                if (stop == std::string::npos) break;
+                start = stop + 1;
+            }
+            if (!lines.empty() && lines.front().compare(0, 2, "#!") == 0)
+                lines.front().clear();
+            const std::vector<NeverClosed> never = join_statements_across_lines(lines);
+            if (!never.empty()) {
+                const NeverClosed *first = &never.front();
+                for (const NeverClosed &each : never)
+                    if (each.line < first->line) first = &each;
+                std::size_t at = 0;
+                for (std::size_t seen = 0; seen < first->line && at < row.size();) {
+                    if (token::carries_a_count(code_at(row, at))) { std::size_t k = at; text_at(row, k); at = k; continue; }
+                    if (code_at(row, at) == token::line_end_token) ++seen;
+                    ++at;
+                }
+                return raise_at(satl_line_not_understood, first->why, std::string(), state, row, at, "satl(check)");
+            }
+        }
+    }
+
     bool marker = false, main = false, returns = false;
 
     for (std::size_t i = 0; i < row.size(); ) {

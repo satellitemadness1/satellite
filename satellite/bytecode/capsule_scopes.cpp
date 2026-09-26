@@ -281,47 +281,30 @@ std::size_t next_declaration_after(const std::vector<std::bitset<16>> &row, std:
     return row.size();
 }
 
-// A STRING WITH NO CLOSING QUOTE (the error sweep, 2026-09-25). The lexer lets it run to
-// the line's end and records nothing, so `display("hello)` was refused only when it RAN
-// -- after the lines above it had printed -- as something "it could not read to the end
-// of", and `s = "abc` was quietly "abc". The author's own quad_main.satl line 6 is the
-// first shape. Read from the loaded text by the lexer's own two rules -- a `//` outside a
-// string ends the line, and inside one a backslash takes the character after it -- so
-// the two cannot disagree about where a string ends.
+// WHAT THE FILE ENDS INSIDE IS REFUSED BY NAME, BEFORE ANYTHING RUNS, at the line where it
+// opened. A statement may span any number of lines (the author, 2026-09-25: "if the string
+// is just... never closed, then when it is closed, that is the whole string"), so a string,
+// a ( or a list is refused only when the file ends before it closes -- found by the lexer's
+// own join (join_statements_across_lines), run again on the loaded text so the two cannot
+// disagree about where anything ends. A shebang's first line is not satellite's to read.
 void refuse_unclosed_strings(CapsuleTable &table, const std::vector<std::bitset<16>> &row, std::size_t r,
                              const std::string &file)
 {
     const std::unordered_map<std::string, std::string>::const_iterator loaded = loaded_sources().find(file);
     if (loaded == loaded_sources().end())
         return;
+    std::vector<std::string> lines;
     const std::string &text = loaded->second;
-    std::size_t line = 0;
-    std::size_t from = 0;
-    if (text.compare(0, 2, "#!") == 0) {                // a shebang is not satellite's to read
-        from = text.find('\n');
-        if (from == std::string::npos) return;
-        ++from;
-        line = 1;
+    for (std::size_t start = 0; start <= text.size();) {
+        const std::size_t stop = text.find('\n', start);
+        lines.push_back(text.substr(start, stop == std::string::npos ? std::string::npos : stop - start));
+        if (stop == std::string::npos) break;
+        start = stop + 1;
     }
-    for (std::size_t start = from; start <= text.size(); ++line) {
-        std::size_t end = text.find('\n', start);
-        if (end == std::string::npos) end = text.size();
-        for (std::size_t k = start; k < end;) {
-            if (text[k] == '/' && k + 1 < end && text[k + 1] == '/') break;
-            if (text[k] != '"') { ++k; continue; }
-            ++k;
-            while (k < end && text[k] != '"') k += (text[k] == '\\' && k + 1 < end) ? 2 : 1;
-            if (k >= end) {
-                refuse(table, r, first_code_of_line(row, line), satl_line_not_understood,
-                       "a string on this line has no closing \" -- a string begins and ends with \" on the "
-                       "same line, and a \" inside one is written \\\"");
-                break;
-            }
-            ++k;
-        }
-        if (end == text.size()) break;
-        start = end + 1;
-    }
+    if (!lines.empty() && lines.front().compare(0, 2, "#!") == 0)
+        lines.front().clear();
+    for (const NeverClosed &each : join_statements_across_lines(lines))
+        refuse(table, r, first_code_of_line(row, each.line), satl_line_not_understood, each.why);
 }
 
 // A SHEBANG, `#!/usr/bin/env satl`, AS A FILE'S FIRST LINE: what makes a program a script a

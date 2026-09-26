@@ -605,6 +605,105 @@ void tokenise_one_line(std::string_view text, std::vector<std::bitset<16>> &row,
         offsets->push_back(n);   // the line end sits past the last character
 }
 
+std::vector<NeverClosed> join_statements_across_lines(std::vector<std::string> &lines)
+{
+    struct Open {
+        char what;           // ( [ or L, a list's {
+        std::size_t line;
+    };
+    const auto never_closed_because = [](char what) {
+        return what == '(' ? std::string("this ( is never closed -- the file ends inside it, so its ) is missing")
+             : what == '[' ? std::string("this [ is never closed -- the file ends inside it, so its ] is missing")
+                           : std::string("this list was opened with { and never closed with } -- items are "
+                                         "separated by commas, as in {\"one\", \"two\"}");
+    };
+    std::vector<NeverClosed> never;
+    std::vector<Open> open;
+    bool in_string = false;
+    std::size_t string_line = 0;
+    char last = '\0';                  // the last character that is not a space, outside strings and comments
+    bool spaced_before_last = false;   // whether a space stood just before it
+    std::size_t into = std::string::npos;
+    std::string joined, joiner;
+
+    for (std::size_t i = 0; i < lines.size(); ++i) {
+        const std::string &physical = lines[i];
+        std::size_t code_end = physical.size();
+        for (std::size_t k = 0; k < physical.size(); ++k) {
+            const char c = physical[k];
+            if (in_string) {
+                if (c == '\\' && k + 1 < physical.size()) { ++k; continue; }
+                if (c == '"') { in_string = false; last = '"'; spaced_before_last = false; }
+                continue;
+            }
+            if (c == '/' && k + 1 < physical.size() && physical[k + 1] == '/') { code_end = k; break; }
+            if (c == ' ' || c == '\t') continue;
+            if (c == '"') {
+                in_string = true;
+                string_line = i;
+                continue;
+            }
+            if (c == '(' || c == '[') {
+                open.push_back({c, i});
+            } else if (c == '{') {
+                // A LIST'S { stands where a value goes; a BLOCK'S follows a ), a name or a word
+                // and is the statements' business, never this pass's.
+                if (!open.empty() || last == '(' || last == ',' || last == '=' || last == '[')
+                    open.push_back({'L', i});
+            } else if (c == ')' || c == ']' || c == '}') {
+                const char wants = c == ')' ? '(' : c == ']' ? '[' : 'L';
+                bool held = false;
+                for (const Open &each : open) held = held || each.what == wants;
+                if (held) {
+                    // AN OPENER CLOSED WITH THE WRONG BRACKET was never closed: `display({1, 2)`.
+                    while (open.back().what != wants) {
+                        never.push_back({open.back().line, never_closed_because(open.back().what)});
+                        open.pop_back();
+                    }
+                    open.pop_back();
+                }
+            }
+            spaced_before_last = k > 0 && (physical[k - 1] == ' ' || physical[k - 1] == '\t');
+            last = c;
+        }
+
+        // DOES THE STATEMENT GO ON INTO THE NEXT LINE?
+        bool goes_on = in_string || !open.empty() || last == ',' || last == '=' || last == '&' || last == '|' ||
+                       (spaced_before_last && (last == '+' || last == '-' || last == '*' || last == '/' ||
+                                               last == '%' || last == '^'));
+        if (!goes_on && i + 1 < lines.size()) {
+            const std::size_t first = lines[i + 1].find_first_not_of(" \t");
+            goes_on = first != std::string::npos && lines[i + 1][first] == '.';
+        }
+        const std::string part = in_string ? physical : physical.substr(0, code_end);
+        if (into == std::string::npos) {
+            if (!goes_on || i + 1 >= lines.size())
+                continue;                        // a statement of one line keeps its line exactly
+            into = i;
+            joined = part;
+        } else {
+            joined += joiner + part;
+            lines[i].clear();
+        }
+        if (goes_on && i + 1 < lines.size()) {
+            joiner = in_string ? "\n" : " ";
+            // after an operator or a comma the statement is still one expression: the next
+            // line's { is a list's, and last is kept as it is for that
+        } else {
+            lines[into] = joined;
+            into = std::string::npos;
+        }
+    }
+    if (into != std::string::npos)
+        lines[into] = joined;
+    if (in_string)
+        never.push_back({string_line, "a string that begins on this line is never closed -- the file ends inside "
+                                      "it, so its closing \" is missing"});
+    for (const Open &each : open)
+        never.push_back({each.line, never_closed_because(each.what)});
+    return never;
+}
+
 void add_file_to_bytecode_registry(const std::string &filename,
                                    const std::string &source,
                                    StartupThreads &threads,
@@ -637,6 +736,9 @@ void add_file_to_bytecode_registry(const std::string &filename,
         file.push_back(std::bitset<16>(token::end_of_file_token));
         return;
     }
+    // A STATEMENT OVER SEVERAL LINES BECOMES ONE, on its first line, the rest left empty
+    // (join_statements_across_lines). What the file ends inside is refused by the scan.
+    join_statements_across_lines(lines);
 
     // EVERY LINE ON THE 1024 WARM THREADS, IN ANY ORDER, BEFORE ANYTHING RUNS
     // (the author). cascade_convert.hpp holds the design. `batches` is the number

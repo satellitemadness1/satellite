@@ -5351,10 +5351,12 @@ body_refused() {   # body_refused <file> <body lines> <sentence> -> machine code
     "$interpreter" "$sweep/$1.satl" > "$sweep/$1.out" 2>&1; code_run=$?
     printf '%s|%s|%s' "$code_run" "$(tr '\n' ' ' < "$sweep/$1.out" | grep -c -- "$3")" "$(grep -cx before "$sweep/$1.out")"
 }
-expect "display(\"hello) -- a string with no closing quote -- is refused before anything runs" "13|1|0" \
-       "$(body_refused unclosed_call '    satellite.console.display("hello)' 'a string on this line has no closing "')"
+# REBASED 2026-09-25 (A4): a string may span lines, so one that never closes runs to the file's
+# end, and is refused as that -- at the line it began on, before anything runs.
+expect "display(\"hello) -- a string that never closes -- is refused before anything runs" "13|1|0" \
+       "$(body_refused unclosed_call '    satellite.console.display("hello)' 'a string that begins on this line is never closed')"
 expect "s = \"abc -- with no ( on the line -- is refused too, not quietly \"abc\"" "13|1|0" \
-       "$(body_refused unclosed_store '    satellite.variable.string s = "abc' 'a string on this line has no closing "')"
+       "$(body_refused unclosed_store '    satellite.variable.string s = "abc' 'a string that begins on this line is never closed')"
 expect "an escaped quote, an escaped backslash and a // inside a string are still fine" '0|0|1' \
        "$(body_refused quotes_fine '    satellite.console.display("a \" b")
     satellite.console.display("c \\")
@@ -5362,8 +5364,10 @@ expect "an escaped quote, an escaped backslash and a // inside a string are stil
 expect "... and they print as written" 'before|a " b|c \|// d' \
        "$("$interpreter" "$sweep/quotes_fine.satl" 2>/dev/null | tr '\n' '|' | sed 's/|$//')"
 # A MISSING ) SAYS SO (expression.cpp), instead of "check that every math sign has a space".
-expect "display(\"hello\" -- a missing ) -- is named as a ( never closed" "13|1|1" \
-       "$(body_refused missing_bracket '    satellite.console.display("hello"' "satellite.console.display's ( is never closed")"
+# REBASED 2026-09-25 (A4): a ( open at a line's end carries the statement on, so a missing ) runs
+# to the file's end -- refused as that before anything runs, where it was refused while running.
+expect "display(\"hello\" -- a missing ) -- is named as a ( never closed, before anything runs" "13|1|0" \
+       "$(body_refused missing_bracket '    satellite.console.display("hello"' "this ( is never closed -- the file ends inside it")"
 # A MISSPELLED WORD IS ASKED WHAT IT MEANT (program_check.cpp).
 expect "satellite.console.dispaly asks: did you mean satellite.console.display?" "13|1|0" \
        "$(body_refused typo '    satellite.console.dispaly("hello")' 'satellite.console has no word named dispaly -- did you mean satellite.console.display?')"
@@ -5532,6 +5536,51 @@ expect ".center() and .centre() at 40 columns: hello after 17 spaces, two after 
        "'                 hello'|'                  two'|'left'" "$centred_at_40"
 expect "... and into a pipe, which has no width, as written" "hello|two|left" \
        "$("$interpreter" "$sweep/center.satl" 2>/dev/null | tr '\n' '|' | sed 's/|$//')"
+# A4: "it should accept anything that is valid satellite regardless of how many spaces or lines
+# are in it, we should accept strings that span 90 lines" (bytecode_registry.cpp,
+# join_statements_across_lines). His own example first, then every way a line goes on.
+cat > "$sweep/multi_line.satl" <<'MULTI_EOF'
+satellite.include(satellite)
+
+satellite.capsule total_of(satellite.variable.number a,
+                           satellite.variable.number b,     // one parameter a line
+                           satellite.variable.number c)
+{
+    satellite.return(a + b + c)
+}
+
+satellite.capsule satellite.main()
+{
+    satellite.container.list<satellite.container.list<satellite.variable.number>> grid = {{0, 0},
+{0, 0}}
+    satellite.console.display(grid)
+    satellite.console.display("one
+two
+three")
+    satellite.console.display(total_of(1,     // a comment at a line's end is dropped
+                                       2,
+                                       3))
+    satellite.variable.number n = 1 +
+        2
+    satellite.console.display(n)
+    satellite.variable.string s = "shout"
+    satellite.console.display(s
+        .upper())
+    satellite.container.list<satellite.variable.string> words = {
+        "a",
+        "b"
+    }
+    satellite.console.display(words)
+    satellite.return(satellite)
+}
+MULTI_EOF
+output=$("$interpreter" "$sweep/multi_line.satl" 2>/dev/null); code_run=$?
+expect "multi-line: his {{0, 0}, / {0, 0}}, a 3-line string, a call and a header over lines, a + at a line's end, a .method on the next line, a list over 4 lines" \
+       "{{0, 0}, {0, 0}}|one|two|three|6|3|SHOUT|{\"a\", \"b\"}|0" "$(printf '%s' "$output" | tr '\n' '|')|$code_run"
+printf 'satellite.include(satellite)\n\nsatellite.capsule satellite.main()\n{\n    satellite.console.display("a" +\n        "b")\n    satellite.console.display(nobody)\n    satellite.return(satellite)\n}\n' > "$sweep/multi_line_numbers.satl"
+"$interpreter" "$sweep/multi_line_numbers.satl" > "$sweep/multi_line_numbers.out" 2>&1
+expect "... and a report after a statement over two lines names the line an editor shows" "1" \
+       "$(grep -c 'multi_line_numbers.satl:7$' "$sweep/multi_line_numbers.out")"
 # A9: an unknown config.ini row gets its own code -- S016, a notice; the run carries on.
 mkdir -p "$sweep/config_home/.satl" && cp "$CHECK_HOME/.satl/config.ini" "$sweep/config_home/.satl/config.ini"
 printf 'no_such_row = 5\nbanana\n' >> "$sweep/config_home/.satl/config.ini"
