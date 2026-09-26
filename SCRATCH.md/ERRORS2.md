@@ -136,6 +136,39 @@ an if, while or for runs. A statement over several lines is gathered too. Termin
 
 ---
 
+## Part 1b — found by the author's own testing, 2026-09-26 (to fix)
+
+He tested the installed satl (2119b0f) in another window while the site was published:
+
+- **A. `m.has("a")` is refused on a map**, though `satellite.help(satellite.container.map)`
+  names `.has(k)` -- the page says ".has(k) is .contains(k)", meaning it is SPELLED contains,
+  and he read it (reasonably) as a method a map has. Map's numbered words are `.set(k, v)`
+  `.get(k)` `.has(k)` (1 4 1 1-3). Fix: accept `.has`, `.get`, `.set` on a map (or index) as
+  second spellings of `.contains(k)`, `m[k]` and `m[k] = v` -- or, if he would rather not,
+  reword the page so it cannot be read as offering them. His to choose; accepting them is the
+  reversible, friendlier default.
+- **B. A bare `satellite.variable.string empty` cannot be displayed** -- a string declared with
+  no value holds nothing, and display refuses nothing. A container declared bare starts empty
+  (program_walk.cpp `empty_container_for`); a string declared bare could start as "" the same
+  way. Whether a bare number starts as 0 (C++ would say no, Python has no bare declaration) is
+  his to rule; the string is the case he met.
+
+- **C. A name declared inside an if block is still readable after the block** (`y` declared in
+  the if, read after its `}`). No ruling on block scope is written anywhere (searched the docs):
+  a for loop's own number is erased when the loop ends (M20.A), but a body's VariableTable is one
+  per capsule, so a block's names live until the capsule ends. C++ and 003-style braces say a
+  block's names end at its `}`; Python says they live on. **His to rule** before it is changed --
+  he was checking whether the leak is intended.
+- **D. `.set(k, v)` and `.get(k)` are refused on a map the same way as `.has`** -- confirms A:
+  all three of map's numbered words.
+- **E. S501's explanation calls every position "the file's lines"**: a list or map read past its
+  end (`age["max"]`, `l[9]`) prints "a line was read by its number and the file has no line with
+  that number". The S-code's paragraph was written for files. Say it for what was read (a list's
+  item, a map's key). Same family: S301's paragraph says "this operator has no scenario for the
+  two kinds it was given" under a list `.append` or a `[ ] =` write that does not fit.
+
+He is running each program past its stop point to find more; add them here as he reports them.
+
 ## Part 2 — can be fixed without him (not done yet)
 
 ### 7. A type refusal at run time is one line, not a report
