@@ -5759,6 +5759,168 @@ expect "upper/uppercase/up and lower/lowercase change every language's letters, 
 expect "n.upper() on a number is refused before anything runs: a number has no letters" "27|1|0" \
        "$(body_refused number_upper '    satellite.variable.number n = 5
     satellite.console.display(n.upper())' 'n.upper is a string.s -- satellite.variable.number has no letters to change')"
+# M16, THE REST OF THE STRING METHODS (string_calls.hpp, string_pieces.hpp): MILESTONES M16's
+# frozen list with 003's behaviour -- strings/check_string_methods.py runs the same 44 cases
+# through this walker and 003's satl -- and positions counted from 1, as a list's items are,
+# so s[1] is the first character and substring keeps both ends. A character is a character:
+# "héllo wörld".size is 11, never its 13 bytes.
+cat > "$sweep/m16_questions.satl" <<'M16_EOF'
+satellite.include(satellite)
+
+satellite.capsule satellite.main()
+{
+    satellite.variable.string s = "héllo wörld"
+    satellite.console.display(s.size)
+    satellite.console.display(s.size())
+    satellite.console.display("".empty)
+    satellite.console.display(s.empty())
+    satellite.console.display(s.contains("lo w"))
+    satellite.console.display(s.contains("xyz"))
+    satellite.console.display(s.contains(""))
+    satellite.console.display(s.starts_with("hé"))
+    satellite.console.display(s.ends_with("wörld"))
+    satellite.console.display(s.ends_with("hé"))
+    satellite.return(satellite)
+}
+M16_EOF
+output=$("$interpreter" "$sweep/m16_questions.satl" 2>/dev/null); code_run=$?
+expect "size and size() count characters; empty, contains, starts_with and ends_with answer true or false" \
+       "11|11|true|false|true|false|true|true|true|false|0" "$(printf '%s' "$output" | tr '\n' '|')|$code_run"
+cat > "$sweep/m16_positions.satl" <<'M16_EOF'
+satellite.include(satellite)
+
+satellite.capsule satellite.main()
+{
+    satellite.variable.string s = "héllo wörld"
+    satellite.variable.string j = "日本語"
+    satellite.console.display(s[1])
+    satellite.console.display(s[2])
+    satellite.console.display(s[s.size])
+    satellite.console.display(s.at(5))
+    satellite.console.display(j[3])
+    satellite.console.display(s.substring(1, 5))
+    satellite.console.display(s.substring(7, s.size))
+    satellite.console.display("[" + s.substring(6, 5) + "]")
+    satellite.console.display(s.upper().at(1))
+    satellite.variable.string line = "1 + 2"
+    satellite.statement.for(satellite.variable.number i = 1; i <= line.size; i++)
+    {
+        satellite.console.display("<" + line[i] + ">")
+    }
+    satellite.return(satellite)
+}
+M16_EOF
+output=$("$interpreter" "$sweep/m16_positions.satl" 2>/dev/null); code_run=$?
+expect "s[n] and s.at(n) count from 1; substring(start, end) keeps both; a line read one character at a time" \
+       "h|é|d|o|語|héllo|wörld|[]|H|<1>|< >|<+>|< >|<2>|0" "$(printf '%s' "$output" | tr '\n' '|')|$code_run"
+cat > "$sweep/m16_pieces.satl" <<'M16_EOF'
+satellite.include(satellite)
+
+satellite.capsule satellite.main()
+{
+    satellite.console.display("a,b,c".split(","))
+    satellite.console.display("a,,b".split(",").size)
+    satellite.console.display("abc".split(""))
+    satellite.container.list<satellite.variable.string> kv = "key=value".split("=")
+    satellite.console.display(kv[2])
+    satellite.console.display("a,b,c".replace(",", " and "))
+    satellite.console.display("aaa".replace("a", "aa"))
+    satellite.console.display("[" + "  \t pad \r\n ".trim() + "]")
+    satellite.console.display("as it is".resolved)
+    satellite.variable.string t = "abc"
+    t.append("def")
+    satellite.console.display(t)
+    t.append("g").append("h")
+    satellite.console.display(t)
+    t.clear
+    satellite.console.display("[" + t + "]" + t.empty)
+    satellite.container.list<satellite.variable.string> words = "hello world".split(" ")
+    words[1].append("!")
+    satellite.console.display(words)
+    satellite.return(satellite)
+}
+M16_EOF
+output=$("$interpreter" "$sweep/m16_pieces.satl" 2>/dev/null); code_run=$?
+expect "split answers a list of strings, replace and trim a new string; append and clear change the name" \
+       '{"a", "b", "c"}|3|{"a", "b", "c"}|value|a and b and c|aaaaaa|[pad]|as it is|abcdef|abcdefgh|[] true|{"hello!", "world"}|0' \
+       "$(printf '%s' "$output" | tr '\n' '|')|$code_run"
+# A WIDE CHARACTER'S LOW HALF IS NOT A CHARACTER (string_pieces.hpp): 😀 is 40000, 0x0001,
+# 0xF600, and "a" + U+F600 is 0x0001, 0xF600 -- its last two units. U+1005F ends in 95, a
+# space's code. Every walk steps from a character's start, so none of these is found.
+python3 -c "
+with open('$sweep/m16_wide.satl', 'w', encoding='utf-8') as f:
+    f.write('''satellite.include(satellite)
+
+satellite.capsule satellite.main()
+{
+    satellite.variable.string e = \"\U0001F600\"
+    satellite.console.display(e.ends_with(\"a\"))
+    satellite.console.display(e.contains(\"a\"))
+    satellite.console.display(e.split(\"a\").size)
+    satellite.console.display(\"x\U0001005F\".trim().size)
+    satellite.console.display(\"\U0001F30D\U0001F680\".split(\"\").size)
+    satellite.console.display(e.replace(\"a\", \"b\") == e)
+    satellite.return(satellite)
+}
+''')"
+output=$("$interpreter" "$sweep/m16_wide.satl" 2>/dev/null); code_run=$?
+expect "a wide character's halves are never matched, trimmed or split as characters of their own" \
+       "false|false|1|2|2|true|0" "$(printf '%s' "$output" | tr '\n' '|')|$code_run"
+before=$(grep -c 'S020 NUMBER_TAKEN_AS_TEXT: s.contains takes text and was given the number 42' "$log_file")
+printf 'satellite.include(satellite)\n\nsatellite.capsule satellite.main()\n{\n    satellite.variable.string s = "n42n"\n    satellite.console.display(s.contains(42))\n    satellite.console.display(s.replace(4, 2))\n    satellite.return(satellite)\n}\n' > "$sweep/m16_number.satl"
+output=$("$interpreter" "$sweep/m16_number.satl" 2>/dev/null); code_run=$?
+expect "a number where a string method takes text is its digits, and satellite.log has S020 (the author, 2026-09-16)" \
+       "true|n22n|0|1|1" \
+       "$(printf '%s' "$output" | tr '\n' '|')|$code_run|$(($(grep -c 'S020 NUMBER_TAKEN_AS_TEXT: s.contains takes text and was given the number 42' "$log_file") - before))|$(grep -c 'S020 NUMBER_TAKEN_AS_TEXT: s.replace takes text and was given the number 4,' "$log_file")"
+expect "s.size(1) is refused before anything runs: size takes nothing" "13|1|0" \
+       "$(body_refused m16_size_given '    satellite.variable.string s = "abc"
+    satellite.console.display(s.size(1))' 's.size takes 0 arguments, and was given 1')"
+expect "s.substring(1) is refused before anything runs: it takes a start and an end" "13|1|0" \
+       "$(body_refused m16_substring_one '    satellite.variable.string s = "abc"
+    satellite.console.display(s.substring(1))' 's.substring takes 2 arguments, and was given 1')"
+expect "s.contains with no brackets is refused before anything runs" "13|1|0" \
+       "$(body_refused m16_contains_bare '    satellite.variable.string s = "abc"
+    satellite.console.display(s.contains)' 's.contains takes 1 argument, in brackets after it')"
+expect "\"abc\".substring(1) -- on a literal -- is refused before anything runs too" "13|1|0" \
+       "$(body_refused m16_literal_count '    satellite.console.display("abc".substring(1))' 'that string.substring takes 2 arguments, and was given 1')"
+expect "s.at(\"x\"): text where a position goes is refused before anything runs" "27|1|0" \
+       "$(body_refused m16_at_text '    satellite.variable.string s = "abc"
+    satellite.console.display(s.at("x"))' "s.at takes a character's position -- a number, counting from 1 -- and was given text")"
+expect "s.contains(b101): a binary where text goes is refused before anything runs" "27|1|0" \
+       "$(body_refused m16_contains_binary '    satellite.variable.string s = "abc"
+    satellite.console.display(s.contains(b101))' 's.contains takes text, and was given a binary')"
+expect "n.split(\",\") on a number names the string as the type that has it" "14|1|0" \
+       "$(body_refused m16_number_split '    satellite.variable.number n = 5
+    satellite.console.display(n.split(","))' "n.split is not built for satellite.variable.number yet -- so far it is a string's")"
+expect "n.contains(\"4\") on a number names the string, the file and the container" "14|1|0" \
+       "$(body_refused m16_number_contains '    satellite.variable.number n = 45
+    satellite.console.display(n.contains("4"))' 'so far a string, a file and a container have it')"
+expect "s[0] is refused, S411: characters count from 1" "16|1|1|1" \
+       "$(body_refused m16_zero '    satellite.variable.string s = "abc"
+    satellite.console.display(s[0])' 's\[0\]: characters count from 1, so the first is s\[1\]')|$(grep -c '^S411: POSITION_PAST_THE_END$' "$sweep/m16_zero.out")"
+expect "s[9] past the end says how many characters there are" "16|1|1" \
+       "$(body_refused m16_past '    satellite.variable.string s = "héllo"
+    satellite.console.display(s[9])' 's\[9\]: there is no such character -- it holds 5 characters, counting from 1')"
+expect "s.at(-1) is refused, S410" "19|1|1" \
+       "$(body_refused m16_negative '    satellite.variable.string s = "abc"
+    satellite.console.display(s.at(-1))' 's.at(-1) -- characters count from 1')"
+expect "s.substring(4, 2) runs backwards and is refused, S412, naming the empty piece's spelling" "17|1|1" \
+       "$(body_refused m16_backwards '    satellite.variable.string s = "hello"
+    satellite.console.display(s.substring(4, 2))' 'starts after it ends -- an empty piece is written with its end one before its start, as s.substring(3, 2)')"
+expect "s.replace(\"\", \"x\") has nothing to look for, and is refused, S421" "18|1|1" \
+       "$(body_refused m16_replace_empty '    satellite.variable.string s = "abc"
+    satellite.console.display(s.replace("", "x"))' 'an empty text is found everywhere -- there is nothing to replace')"
+expect "\"abc\".append(\"d\") has no name to change, and is refused" "13|1|1" \
+       "$(body_refused m16_literal_append '    satellite.console.display("abc".append("d"))' 'that string.append changes a string, and this one has no name to change')"
+expect "s.contains(satellite.bool.true): a bool is not text, S301" "27|1|1" \
+       "$(body_refused m16_contains_bool '    satellite.variable.string s = "abc"
+    satellite.console.display(s.contains(satellite.bool.true))' 's.contains takes text, and was given a bool')"
+expect "starts_with ends_with substring split trim at resolved are registry rows 0x0B60 to 0x0B66, and token_codes.hpp agrees" \
+       "1|1|1|1|1|1|1|1|1|1|1|1|1|1" \
+       "$(for pair in starts_with:0B60:0000101101100000 ends_with:0B61:0000101101100001 substring:0B62:0000101101100010 split:0B63:0000101101100011 trim:0B64:0000101101100100 at:0B65:0000101101100101 resolved:0B66:0000101101100110; do
+              n=${pair%%:*}; rest=${pair#*:}; hex=${rest%%:*}; bits=${rest#*:}
+              printf '%s|%s|' "$(grep -c "^$bits  ${n}_token " REGISTRY.satellite)" "$(grep -c "Code ${n}_token = 0x$hex;" satellite/bytecode/token_codes.hpp)"
+          done | sed 's/|$//')"
 # .center() ON A DISPLAY (the author, 2026-09-25): the line in the middle of the console, for the
 # width it has as it is shown -- a terminal of 40 columns puts "hello" after 17 spaces, "centre"
 # is the second spelling, and a pipe, which has no width, gets the text as written.

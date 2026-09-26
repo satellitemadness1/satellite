@@ -224,7 +224,8 @@ inline SCode s_code_for(signed long long int machine_code)
                 "the text looked for is not in this string."};
     case position_past_the_end:
         return {"S411", "POSITION_PAST_THE_END",
-                "this position is past the last character of the string."};
+                "this position is not one of the string's characters. They count from 1, and the "
+                "last one is the string's size."};
     case positions_backwards:
         return {"S412", "POSITIONS_BACKWARDS",
                 "the start of this range is after its end."};

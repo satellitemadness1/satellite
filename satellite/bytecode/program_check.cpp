@@ -36,6 +36,7 @@
 #include "color_values.hpp"
 #include "console_calls.hpp"
 #include "container_calls.hpp"
+#include "string_calls.hpp"
 #include "main_arguments.hpp"
 #include "float_values.hpp"
 #include "fraction_values.hpp"
@@ -626,6 +627,17 @@ signed long long int method_on_a_name(const std::vector<std::bitset<16>> &row, s
         return success;
     }
 
+    // A STRING'S OWN METHODS (M16, string_calls.hpp): how many each takes, and a literal
+    // that can never be right in its place, judged here so nothing above it prints first.
+    if (declared_as == word::code_of(1, 6, 1) && string_method_arity(method) >= 0) {
+        std::size_t close = k + 2, given = 0;
+        const bool bracketed = code_at(row, k + 2) == token::left_parenthesis_token;
+        if (bracketed && !brackets_at(row, k + 2, close, given)) {
+            why = spelling + "( is never closed on its line";
+            return satl_line_not_understood;
+        }
+        return string_method_check(row, k + 2, bracketed, given, method, spelling, why);
+    }
     // A STRING'S CASE, .upper() and .lower() and their second spellings (string_case.hpp):
     // on a string, taking nothing; anything else has no case to change.
     if (method == token::upper_token || method == token::lower_token) {
@@ -1436,8 +1448,25 @@ signed long long int names_in_statement(const std::vector<std::bitset<16>> &row,
                 why = colour_literal_refused(row, past + 3, spelled);
                 if (!why.empty()) return types_do_not_meet;
             }
-            if (code_at(row, past) == token::method_token && container_arity(method) >= 0 &&
-                method != token::reverse_token) {
+            // A STRING'S OWN METHOD ON A STRING LITERAL (M16): judged as a name's is, by
+            // string_calls.hpp, and let through when it is right -- `"a,b".split(",")`.
+            if (code_at(row, past) == token::method_token && code == token::string_token &&
+                string_method_arity(method) >= 0) {
+                const std::string spelled = std::string("that string.") + method_spelling(method);
+                std::size_t close = past + 2, given = 0;
+                const bool bracketed = code_at(row, past + 2) == token::left_parenthesis_token;
+                if (bracketed && !brackets_at(row, past + 2, close, given)) {
+                    why = spelled + "( is never closed on its line";
+                    return satl_line_not_understood;
+                }
+                const signed long long int judged =
+                    string_method_check(row, past + 2, bracketed, given, method, spelled, why);
+                if (judged != success)
+                    return judged;
+            } else if (code_at(row, past) == token::method_token &&
+                       (container_arity(method) >= 0 ||
+                        (string_method_arity(method) >= 0 && method != token::find_token)) &&
+                       method != token::reverse_token) {
                 const char *kind = code == token::string_token   ? "a string"
                                    : code == token::number_token ? "a number"
                                    : code == token::binary_token ? "a binary"

@@ -19,6 +19,7 @@
 #include "access_calls.hpp"
 #include "color_values.hpp"
 #include "container_calls.hpp"
+#include "string_calls.hpp"
 #include "console_calls.hpp"
 #include "thread_calls.hpp"
 #include "../satellite_object/object_lock.hpp"
@@ -518,6 +519,23 @@ Value call_method(const std::vector<std::bitset<16>> &row, std::size_t &at, cons
             continue;
         }
 
+        // A STRING'S OWN METHODS (M16, string_calls.cpp): .size .empty .contains .starts_with
+        // .ends_with .find .at .substring .split .replace .trim .resolved answer something
+        // new, and .append and .clear change the string on the name -- so, as a list's
+        // .append does, those two leave the chain where it is.
+        if ((*live).is_string() && string_method_arity(method) >= 0) {
+            Value answer = call_string_method(method, *live, on_the_name ? live : nullptr, arguments,
+                                              had_parentheses, name, context);
+            if (context.code != success)
+                return Value();
+            if (!changes_a_string(method)) {
+                held = std::move(answer);
+                live = &held;
+                on_the_name = false;
+            }
+            continue;
+        }
+
         // A FILE ANSWERS ITS OWN METHODS (file_calls.cpp). The (*live) is a
         // handle, so the method acts on the one open file every name for it shares.
         if (satellite_file *file = (*live).as_file()) {
@@ -783,6 +801,11 @@ Value index_into(const Value &current, const Value &index, const std::string &wh
         return *found;
     }
 
+    // A STRING'S CHARACTER, `s[n]` (M16) -- counting from 1, as an item and a line do, and
+    // answered as a string of one character: satellite has no character type.
+    if (current.is_string())
+        return character_of(current, index, what, where, context);
+
     if (satellite_file *file = current.as_file()) {
         // A LOCKED FILE'S LINE IS READ UNDER ITS LOCK, as its methods are (the second review:
         // f[n] beside another thread's f.append(...) read a half-moved line, S514).
@@ -795,7 +818,8 @@ Value index_into(const Value &current, const Value &index, const std::string &wh
     }
 
     context.refuse(types_do_not_meet, what + " is " + current.kind_name() +
-                                          ", and [ ] reads a line of a file, an item of a list, or a key of an index",
+                                          ", and [ ] reads a line of a file, an item of a list, a key of an index, "
+                                          "or a character of a string",
                    where);
     return Value();
 }
@@ -1384,7 +1408,13 @@ Value one_operand(const std::vector<std::bitset<16>> &row, std::size_t &at, Expr
         // while instead of an if, because each step just indexes whatever the
         // last one answered -- a list of lists is not a second kind of thing.
         if (code_at(row, at) == token::left_square_bracket_token) {
-            Value current = *found.value;
+            // THE FIRST BRACKET READS THE VARIABLE WHERE IT IS, AND COPIES NOTHING (M16). A
+            // string is held by value, so `Value current = *found.value` -- this line until
+            // today -- copied all of it for every s[i]: a loop reading each character of a
+            // string of 163,840 took 4.6 s, and four times the characters seventeen times as
+            // long. A list or an index is a handle, so for them it only saves a count.
+            Value current;
+            const Value *reading = found.value;
             std::string what = name;
             // KEPT SO A MUTATOR AT THE END OF THE CHAIN CAN BE WALKED AGAIN,
             // this time reaching the real slot rather than a copy of it. Reading
@@ -1404,13 +1434,14 @@ Value one_operand(const std::vector<std::bitset<16>> &row, std::size_t &at, Expr
                     return Value();
                 }
                 ++at;
-                if (current.is_nothing()) {
+                if (reading->is_nothing()) {
                     context.refuse(satl_line_not_understood, name + " has no value yet -- give it one with = before "
                                                                  "reading an item of it", opened_at);
                     return Value();
                 }
                 used.push_back(index);
-                current = index_into(current, index, what, opened_at, context);
+                current = index_into(*reading, index, what, opened_at, context);
+                reading = &current;
                 if (context.code != success)
                     return Value();
                 what += "[...]";
