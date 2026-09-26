@@ -65,7 +65,7 @@ HEADERS = $(ARGUMENTS)/arguments.hpp $(ARGUMENTS)/command_line.hpp $(ARGUMENTS)/
           $(SATELLITE)/config/run_feedback.hpp $(NUMBERS)/feedback_book.hpp \
           $(MACHINE)/critical_report.hpp $(MACHINE)/satellite_log.hpp $(MACHINE)/source_position.hpp $(MACHINE)/s_codes.hpp \
           $(MACHINE)/machine_codes.hpp $(MACHINE)/machine_state.hpp $(MACHINE)/exit_status.hpp $(MACHINE)/shown.hpp \
-          $(MACHINE)/stop_flag.hpp $(MACHINE)/input_source.hpp $(MACHINE)/stack_share.hpp $(MACHINE)/run_state.hpp $(SATELLITE)/satl/session.hpp $(SATELLITE)/satl/listing.hpp $(SATELLITE)/satl/listing_counts.hpp \
+          $(MACHINE)/stop_flag.hpp $(MACHINE)/input_source.hpp $(MACHINE)/stack_share.hpp $(MACHINE)/stack_segments.hpp $(MACHINE)/run_state.hpp $(SATELLITE)/satl/session.hpp $(SATELLITE)/satl/listing.hpp $(SATELLITE)/satl/listing_counts.hpp \
           $(SATELLITE)/satl/listing_progress.hpp $(SATELLITE)/satl/drives.hpp $(MACHINE)/filesystems.hpp \
           $(SATELLITE)/satl/prompt_run.hpp $(SATELLITE)/satl/prompt_help.hpp \
           $(BYTECODE)/main_arguments.hpp \

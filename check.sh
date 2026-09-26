@@ -5581,6 +5581,27 @@ printf 'satellite.include(satellite)\n\nsatellite.capsule satellite.main()\n{\n 
 "$interpreter" "$sweep/multi_line_numbers.satl" > "$sweep/multi_line_numbers.out" 2>&1
 expect "... and a report after a statement over two lines names the line an editor shows" "1" \
        "$(grep -c 'multi_line_numbers.satl:7$' "$sweep/multi_line_numbers.out")"
+# A8: a capsule calling itself mid-body must not crash the interpreter (the author: "we could build
+# code that ONLY applies to this special circumstance so the interpreter doesnt' crash"). Every
+# capsule call measures the stack left and moves to a fresh segment under a megabyte
+# (machine/stack_segments.hpp). On an 8 MiB stack this died near 2,500 deep.
+printf 'satellite.include(satellite)\n\nsatellite.capsule down(satellite.variable.number n)\n{\n    satellite.statement.if(n > 0)\n    {\n        down(n - 1)\n    }\n    satellite.statement.else\n    {\n        satellite.console.display("reached the bottom")\n    }\n    satellite.variable.number after = n\n}\n\nsatellite.capsule satellite.main()\n{\n    down(100000)\n    satellite.console.display("back in main")\n    satellite.return(satellite)\n}\n' > "$sweep/deep_middle.satl"
+output=$( ( ulimit -Ss 8192; ulimit -Hs 8192; "$interpreter" "$sweep/deep_middle.satl" ) 2>/dev/null ); code_run=$?
+expect "a capsule calling itself mid-body 100,000 deep on an 8 MiB stack: it moves to fresh stacks, and comes back" \
+       "0|reached the bottom|back in main" "$code_run|$(printf '%s' "$output" | tr '\n' '|' | sed 's/|$//')"
+printf 'satellite.include(satellite)\n\nsatellite.capsule down(satellite.variable.number n)\n{\n    satellite.statement.if(n > 0)\n    {\n        down(n - 1)\n    }\n    satellite.statement.else\n    {\n        satellite.console.display(1 / n)\n    }\n    satellite.variable.number after = n\n}\n\nsatellite.capsule satellite.main()\n{\n    down(50000)\n    satellite.return(satellite)\n}\n' > "$sweep/deep_refusal.satl"
+( ulimit -Ss 8192; ulimit -Hs 8192; "$interpreter" "$sweep/deep_refusal.satl" > "$sweep/deep_refusal.out" 2>&1 ); code_run=$?
+expect "... and a refusal 50,000 deep, stacks away from main, is reported as any other, and satl exits with its code" \
+       "22|1" "$code_run|$(grep -c '^S[0-9]*: ' "$sweep/deep_refusal.out")"
+printf 'satellite.include(satellite)\n\nsatellite.capsule down(satellite.variable.number n)\n{\n    satellite.variable.number got = 0\n    satellite.statement.if(n > 0)\n    {\n        got = down(n - 1)\n    }\n    satellite.return(got + 1)\n}\n\nsatellite.capsule satellite.main()\n{\n    satellite.variable.thread t = satellite.thread.new(down(30000))\n    t.start()\n    satellite.console.display(t.join())\n    satellite.return(satellite)\n}\n' > "$sweep/deep_thread.satl"
+output=$( ( ulimit -Ss 8192; ulimit -Hs 8192; timeout 60 "$interpreter" "$sweep/deep_thread.satl" ) 2>/dev/null ); code_run=$?
+expect "... and on a thread, 30,000 deep, each level handing its answer back up" "30001|0" "$output|$code_run"
+# THE TAIL CALL STILL COSTS NO MEMORY, which a crash used to prove and now nothing would: 100,000
+# levels that are frames would hold a few hundred MiB; as a loop they hold what satl starts with.
+/usr/bin/time -o "$sweep/tail_peak" -f '%M' "$interpreter" tests/tail_call.satl > /dev/null 2>&1
+tail_peak=$(tail -1 "$sweep/tail_peak")
+expect "the tail calls of tests/tail_call.satl stay a loop: under 200 MiB at their deepest (${tail_peak} KiB)" "yes" \
+       "$([ "${tail_peak:-999999999}" -lt 204800 ] && echo yes)"
 # A9: an unknown config.ini row gets its own code -- S016, a notice; the run carries on.
 mkdir -p "$sweep/config_home/.satl" && cp "$CHECK_HOME/.satl/config.ini" "$sweep/config_home/.satl/config.ini"
 printf 'no_such_row = 5\nbanana\n' >> "$sweep/config_home/.satl/config.ini"

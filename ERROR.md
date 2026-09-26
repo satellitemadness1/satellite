@@ -172,6 +172,18 @@ made it compile (the includes, a row struct, a return type), and
 
 ## The walker recurses on the C++ stack, and 200,000 deep segfaults
 
+**CAPSULE RECURSION FIXED 2026-09-25, on the author's word** (*"we could build code that ONLY
+applies to this special circumstance so the interpreter doesnt' crash ... it will only slow the
+interpreter down every 1 million calls"*). Every capsule call measures the stack it has left,
+and under a megabyte it moves onto a fresh 256 MiB segment on the same thread and comes back
+when the call returns (machine/stack_segments.hpp, run_site in program_walk.cpp). Measured:
+1,000,000 levels of a mid-body self-call ran in 5.3 s and peaked at 5.4 GB (it died near
+603,000 on the raised stack); 100,000 levels on an 8 MiB stack, which died near 2,500, ran in
+0.57 s. Memory is the only bound. **What this does NOT cover:** nesting inside ONE statement --
+`display(display(...))` 30,000 deep -- still recurses through evaluate() on the stack it is on;
+the author's ruling of 2026-09-16 below ("leave it") still stands for that. The text below is the
+entry as it was.
+
 **Found 2026-09-16 by the author asking "your building another tree walking ast
 aren't you?"** — and measured rather than argued:
 

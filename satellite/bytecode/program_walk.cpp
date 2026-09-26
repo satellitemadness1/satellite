@@ -30,6 +30,7 @@
 #include "program_walk.hpp"
 
 #include "../machine/s_codes.hpp"
+#include "../machine/stack_segments.hpp"
 #include "../machine/thread_stop.hpp"
 
 #include "statement_ring.hpp"
@@ -1978,15 +1979,15 @@ signed long long int run_turn(const BytecodeRegistry &registry,
 // `answered`, WHEN IT IS GIVEN, MAKES THE ANSWER OPTIONAL (threads, 2026-09-23): a thread's
 // capsule that ends without a value is not a fault -- its join() answers nothing -- so
 // instead of refusing with capsule_gave_no_answer this says whether there was one.
-signed long long int run_site(const BytecodeRegistry &registry,
-                              const CapsuleTable &capsules,
-                              const FunctionTable &functions,
-                              const CapsuleSite &site,
-                              std::vector<Value> arguments,
-                              const UserDefinedHandle &given,
-                              MachineState &state,
-                              Value *answer,
-                              bool *answered)
+signed long long int run_site_here(const BytecodeRegistry &registry,
+                                   const CapsuleTable &capsules,
+                                   const FunctionTable &functions,
+                                   const CapsuleSite &site,
+                                   std::vector<Value> arguments,
+                                   const UserDefinedHandle &given,
+                                   MachineState &state,
+                                   Value *answer,
+                                   bool *answered)
 {
     // THE OBJECT IS HELD BY A HANDLE OF ITS OWN FOR EVERY TURN: `given` is a reference
     // into whoever called, and a capsule may give the name it came from another object.
@@ -2024,6 +2025,31 @@ signed long long int run_site(const BytecodeRegistry &registry,
         }
         return code;
     }
+}
+
+// EVERY CAPSULE CALL ASKS FIRST HOW MUCH STACK IS LEFT (machine/stack_segments.hpp; the author,
+// 2026-09-25: a capsule calling itself mid-body must not crash the interpreter "at like 1 million
+// calls"). Less than a megabyte, and the call runs on a fresh segment, on this same thread, and
+// comes back when it returns; otherwise it runs here, exactly as before, for the cost of one
+// comparison.
+signed long long int run_site(const BytecodeRegistry &registry,
+                              const CapsuleTable &capsules,
+                              const FunctionTable &functions,
+                              const CapsuleSite &site,
+                              std::vector<Value> arguments,
+                              const UserDefinedHandle &given,
+                              MachineState &state,
+                              Value *answer,
+                              bool *answered)
+{
+    if (stack_is_running_low()) {
+        signed long long int ran = success;
+        on_a_fresh_stack([&] {
+            ran = run_site_here(registry, capsules, functions, site, std::move(arguments), given, state, answer, answered);
+        });
+        return ran;
+    }
+    return run_site_here(registry, capsules, functions, site, std::move(arguments), given, state, answer, answered);
 }
 
 } // namespace

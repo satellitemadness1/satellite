@@ -33,7 +33,7 @@ What I **did** fix is at the bottom, so you know what changed under you.
 | A5 | refuse characters that have no meaning | **built**, by name |
 | A6 | refuse an unknown escape; `\\` writes a backslash | **built** |
 | A7 | main must end with satellite.return(satellite); it quits from anywhere | **built**: S103 names it; any capsule, any depth, any thread quits, exit 0; 36 test programs moved |
-| A8 | deep recursion must not crash: a counter, and special code past ~100,000 | queued |
+| A8 | deep recursion must not crash: a counter, and special code past ~100,000 | **built**: fresh stack segments when under 1 MiB is left; 1,000,000 deep ran in 5.3 s |
 | A9 | an unknown config.ini row gets its own S-code | **built**: S016 CONFIG_ROW_NOT_UNDERSTOOD, a notice naming each row and its line |
 | A10 | the edits were your categories and tags: keep them, add a gap under code, publish | in progress |
 | new | str.upper()/uppercase()/up(), str.lower()/lowercase() | **built**, every language's letters, not only a-z |
