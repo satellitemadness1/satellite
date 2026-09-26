@@ -90,7 +90,24 @@ struct NeverClosed {
     std::size_t column = std::string::npos;
     bool at_the_end = true;
 };
-std::vector<NeverClosed> join_statements_across_lines(std::vector<std::string> &lines);
+
+// WHERE EACH PIECE OF A LINE THE JOIN LEFT WAS WRITTEN (ERRORS2 #11, 2026-09-26), for a report's
+// line and caret: from offset `at` of that line on, the text is physical line `line`'s (0-based)
+// from `column` on. A line the join did not touch is one piece, {0, itself, 0}; a line it emptied
+// has none; a statement's first line has one for every line joined onto it; and a line a block's
+// { was moved to the front of begins with a piece that is that {, where it was written.
+struct JoinedPiece {
+    std::size_t at = 0;
+    std::size_t line = 0;
+    std::size_t column = 0;
+};
+using JoinedPieces = std::vector<std::vector<JoinedPiece>>;   // one entry a line
+
+std::vector<NeverClosed> join_statements_across_lines(std::vector<std::string> &lines,
+                                                      JoinedPieces *pieces = nullptr);
+
+// Where offset `at` of a line the join left was written: the last piece at or before it, moved on.
+JoinedPiece written_at(const std::vector<JoinedPiece> &pieces, std::size_t at);
 
 // WHERE ONE OF THEM IS REFUSED: its opener's code in `row` -- the caret under the { itself --
 // when the opener stands on a statement's first line; otherwise its line's first code.

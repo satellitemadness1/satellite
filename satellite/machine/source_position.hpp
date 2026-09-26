@@ -142,6 +142,42 @@ inline std::size_t column_of(const std::vector<std::bitset<16>> &row, std::size_
     return offsets[which];
 }
 
+// WHERE A CODE WAS WRITTEN, when its line is not the line it was lexed on (ERRORS2 #11): a
+// statement over several lines is lexed on its first, and a block's { is moved to the front of
+// the next, so the tokens of a line are not always that line's text. The lexer's own join is run
+// again on the loaded text, as the registry's rows were made, and `at`'s offset in the line it
+// left is followed back to the physical line and column (JoinedPiece). `line` comes in as the
+// line the code was lexed on (1-based) and goes out as the one it was written on. False when
+// the file was never loaded, and the caller keeps what it had.
+inline bool written_place(const std::string &filename, const std::vector<std::bitset<16>> &row, std::size_t at,
+                          std::size_t &line, std::size_t &column, std::string &text)
+{
+    const std::unordered_map<std::string, std::string>::const_iterator loaded = loaded_sources().find(filename);
+    if (loaded == loaded_sources().end() || line == 0 || at >= row.size()) return false;
+    std::vector<std::string> lines;
+    const std::string &source = loaded->second;
+    for (std::size_t from = 0; from <= source.size();) {
+        const std::size_t stop = source.find('\n', from);
+        lines.push_back(source.substr(from, stop == std::string::npos ? std::string::npos : stop - from));
+        if (stop == std::string::npos) break;
+        from = stop + 1;
+    }
+    JoinedPieces pieces;
+    join_statements_across_lines(lines, &pieces);
+    const std::size_t r = line - 1;
+    if (r >= lines.size() || pieces[r].empty()) return false;
+    const std::size_t start = line_starts_at(row, at);
+    std::vector<std::bitset<16>> again;
+    std::vector<std::size_t> offsets;
+    tokenise_one_line(lines[r], again, &offsets);
+    if (at < start || at - start >= offsets.size()) return false;
+    const JoinedPiece written = written_at(pieces[r], offsets[at - start]);
+    line = written.line + 1;
+    column = written.column;
+    text = source_line(filename, line);
+    return true;
+}
+
 // WHERE ONE POSITION IS, all four answers together. Everything a report's
 // `directory:` and `syntax:` rows need, gathered in one call so no caller has to
 // know the order they are worked out in.
@@ -161,6 +197,8 @@ inline SourcePlace place_of(const BytecodeRegistry &registry, const BytecodeFile
     place.known = true;
     place.filename = which_row < filenames.size() ? filenames[which_row] : std::string();
     place.line = line_of(registry[which_row], at);
+    if (written_place(place.filename, registry[which_row], at, place.line, place.column, place.text))
+        return place;
     place.text = source_line(place.filename, place.line);
     place.column = column_of(registry[which_row], at, place.text);
     return place;
@@ -206,15 +244,18 @@ inline void report_at(CriticalReport &report, const BytecodeRegistry &registry,
 // WHAT WAS WRITTEN FOR THE METHOD CODE AT `at` (ERRORS2 #10). One method has one code and may
 // have several spellings -- `power`, `power_of` and `to_the_power_of` are one -- and a refusal
 // named it by the registry's first, so `n.power(2)` was told "n.power_of is not built". Read
-// back from the loaded text of `filename` at the code's own column, and lexed again: answered
-// only when what stands there IS that method. `fallback` otherwise -- no text (the prompt), or
-// a statement joined from several lines whose method is past its first line.
+// back from the loaded text of `filename` where the code was written (written_place), and lexed
+// again: answered only when what stands there IS that method; `fallback` otherwise.
 inline std::string method_as_written(const std::vector<std::bitset<16>> &row, std::size_t at,
                                      const std::string &filename, const std::string &fallback)
 {
-    const std::string text = source_line(filename, line_of(row, at));
+    std::size_t line = line_of(row, at), column = 0;
+    std::string text;
+    if (!written_place(filename, row, at, line, column, text)) {
+        text = source_line(filename, line);
+        column = column_of(row, at, text);
+    }
     if (text.empty() || at >= row.size()) return fallback;
-    const std::size_t column = column_of(row, at, text);
     std::size_t end = column;
     while (end < text.size() && (std::isalnum(static_cast<unsigned char>(text[end])) != 0 || text[end] == '_'))
         ++end;

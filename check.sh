@@ -5898,6 +5898,22 @@ printf 'satellite.container.list l = {1, 2\nsatellite.console.display("swallowed
     "$interpreter" --repl > "$sweep/open_list_session.out" 2>&1; code_run=$?
 expect "... and at the prompt it is refused with the line after it, and the session goes on" "13|1|0|1" \
        "$code_run|$(tr '\n' ' ' < "$sweep/open_list_session.out" | grep -c 'this list was opened with { and never closed')|$(grep -cx 'swallowed with it' "$sweep/open_list_session.out")|$(grep -cx after "$sweep/open_list_session.out")"
+# ERRORS2 #11 (the error sweep, 2026-09-26): A REPORT INSIDE A STATEMENT OVER SEVERAL LINES names the
+# line the mistake is on, with the caret under it -- it named the statement's first line with the
+# caret at column 0 -- and a statement on the line after a block's { (which the join moves to the
+# front of that line) has its caret where it was written, not one code late.
+caret_under_first() { awk -v want="$2" '/^syntax: /{b=index($0,want); getline; print (b>0 && index($0,"/\\")==b)?1:0; exit}' "$1"; }
+expect "a division by zero on a statement's second line names that line, the caret under its /" "22|1|1|1" \
+       "$(body_refused joined_zero '    satellite.console.display(1 +
+        (2 / 0))' 'division by zero' | cut -d'|' -f1,2)|$(grep -c 'joined_zero.satl:7$' "$sweep/joined_zero.out")|$(caret_under_first "$sweep/joined_zero.out" /)"
+expect "... and on the line after an if's {, the caret is under the /, not a code late" "22|1|1|1" \
+       "$(body_refused after_brace '    satellite.statement.if(1 == 1) {
+        satellite.console.display(2 / 0)
+    }' 'division by zero' | cut -d'|' -f1,2)|$(grep -c 'after_brace.satl:7$' "$sweep/after_brace.out")|$(caret_under_first "$sweep/after_brace.out" /)"
+expect "... and a method on a statement's second line is refused by the name written, n.power" "14|1" \
+       "$(body_refused joined_method '    satellite.variable.number n = 3
+    satellite.console.display(n
+        .power(2))' 'n.power is not built for satellite.variable.number' | cut -d'|' -f1,2)"
 # A8: a capsule calling itself mid-body must not crash the interpreter (the author: "we could build
 # code that ONLY applies to this special circumstance so the interpreter doesnt' crash"). Every
 # capsule call measures the stack left and moves to a fresh segment under a megabyte

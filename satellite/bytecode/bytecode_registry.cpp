@@ -605,8 +605,20 @@ void tokenise_one_line(std::string_view text, std::vector<std::bitset<16>> &row,
         offsets->push_back(n);   // the line end sits past the last character
 }
 
-std::vector<NeverClosed> join_statements_across_lines(std::vector<std::string> &lines)
+JoinedPiece written_at(const std::vector<JoinedPiece> &pieces, std::size_t at)
 {
+    JoinedPiece found{at, 0, at};
+    for (const JoinedPiece &each : pieces)
+        if (each.at <= at) found = {at, each.line, each.column + (at - each.at)};
+    return found;
+}
+
+std::vector<NeverClosed> join_statements_across_lines(std::vector<std::string> &lines, JoinedPieces *pieces)
+{
+    if (pieces != nullptr) {
+        pieces->assign(lines.size(), {});
+        for (std::size_t i = 0; i < lines.size(); ++i) (*pieces)[i].push_back({0, i, 0});
+    }
     struct Open {
         char what;           // ( [ or L, a list's {
         std::size_t line;
@@ -718,6 +730,10 @@ std::vector<NeverClosed> join_statements_across_lines(std::vector<std::string> &
         } else {
             joined += joiner + part;
             lines[i].clear();
+            if (pieces != nullptr) {
+                (*pieces)[into].push_back({joined.size() - part.size(), i, 0});
+                (*pieces)[i].clear();
+            }
         }
         if (goes_on && i + 1 < lines.size()) {
             joiner = in_string ? "\n" : " ";
@@ -766,6 +782,13 @@ std::vector<NeverClosed> join_statements_across_lines(std::vector<std::string> &
                                         before_brace != '=' && before_brace != '[' && before_brace != '{';
             if (!a_blocks_brace)
                 continue;
+            if (pieces != nullptr) {
+                // the { stands at the front of the next line now, and is shown where it was written
+                const JoinedPiece brace = written_at((*pieces)[i], brace_at);
+                for (JoinedPiece &each : (*pieces)[i]) if (each.at > brace_at) --each.at;
+                for (JoinedPiece &each : (*pieces)[i + 1]) each.at += 2;
+                (*pieces)[i + 1].insert((*pieces)[i + 1].begin(), JoinedPiece{0, brace.line, brace.column});
+            }
             lines[i].erase(brace_at, 1);
             lines[i + 1].insert(0, "{ ");
         }
