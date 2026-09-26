@@ -163,6 +163,35 @@ int terminal_size(bool across)
     return across ? 80 : 24;       // 003's, and v1's before it: no terminal, the shape of one
 }
 
+// EACH LINE IN THE MIDDLE OF THE CONSOLE (.center(), the author 2026-09-25: "it doesn't need
+// to change with a resized console, just for that console at that time"). Padded with half
+// of what is left of the width the terminal has NOW, counted in characters; a line as wide
+// as the console or wider is left as it is. NOT A TERMINAL -- a file, a pipe -- has no width
+// to be in the middle of, and the text goes out as written, as colour does there.
+std::string centred_text(const std::string &text)
+{
+    if (!isatty(STDOUT_FILENO))
+        return text;
+    const std::size_t width = static_cast<std::size_t>(terminal_size(true));
+    std::string out;
+    std::size_t start = 0;
+    for (;;) {
+        const std::size_t end = text.find('\n', start);
+        const std::string line = text.substr(start, end == std::string::npos ? std::string::npos : end - start);
+        std::size_t shown = 0;
+        for (const char c : line)
+            if ((static_cast<unsigned char>(c) & 0xC0) != 0x80) ++shown;
+        if (shown < width)
+            out.append((width - shown) / 2, ' ');
+        out += line;
+        if (end == std::string::npos)
+            break;
+        out += '\n';
+        start = end + 1;
+    }
+    return out;
+}
+
 } // namespace
 
 bool an_option_at(const std::vector<std::bitset<16>> &row, std::size_t at, std::string &name, std::size_t &value_at)
@@ -414,7 +443,7 @@ Value call_console_word(Code code, const std::vector<Value> &arguments, const st
 }
 
 Value display_with_options(Code code, const Scenarios &scenarios, const Value &argument,
-                           const std::vector<NamedOption> &options, ExpressionContext &context)
+                           const std::vector<NamedOption> &options, ExpressionContext &context, bool centred)
 {
     const std::string spelled(word::spelling_of(code));
     // THE CONSOLE'S COLOURS FIRST, and the call's own options over them.
@@ -432,6 +461,8 @@ Value display_with_options(Code code, const Scenarios &scenarios, const Value &a
         context.refuse(not_built_yet, spelled + " has no text scenario");
         return Value();
     }
+    if (centred)
+        text = centred_text(text);
     // ONE CALL, ONE LINE: the style's reset goes before end= or the newline (003).
     const signed long long int answer =
         scenarios.text(for_the_screen(styled_line(text, style) + (ended ? ending : "\n")), false);

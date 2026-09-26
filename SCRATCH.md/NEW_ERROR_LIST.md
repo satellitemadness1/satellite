@@ -37,7 +37,7 @@ What I **did** fix is at the bottom, so you know what changed under you.
 | A9 | an unknown config.ini row gets its own S-code | **built**: S016 CONFIG_ROW_NOT_UNDERSTOOD, a notice naming each row and its line |
 | A10 | the edits were your categories and tags: keep them, add a gap under code, publish | in progress |
 | new | str.upper()/uppercase()/up(), str.lower()/lowercase() | **built**, every language's letters, not only a-z |
-| new | satellite.console.display(...).center() | queued |
+| new | satellite.console.display(...).center() | **built**, and .centre(): the width the console has as the line is shown; a pipe gets it as written |
 
 ---
 

@@ -1571,6 +1571,19 @@ Value call_word(const std::vector<std::bitset<16>> &row, std::size_t &at, Expres
     if (context.code != success)
         return Value();
 
+    // .center() WRITTEN ON A DISPLAY (the author, 2026-09-25: satellite.console.display(
+    // "something").center() "renders the text in the middle of the console window"). Taken
+    // here, brackets and all, so the line is centred BEFORE it is printed -- a method on
+    // display's answer would come after the line had already gone out.
+    bool centred = false;
+    if (is_display_word(code) && code_at(row, at) == token::method_token &&
+        code_at(row, at + 1) == token::center_token) {
+        centred = true;
+        at += 2;
+        if (code_at(row, at) == token::left_parenthesis_token && code_at(row, at + 1) == token::right_parenthesis_token)
+            at += 2;
+    }
+
     // satellite.file's words answer a HANDLE, which no library can (file_calls.hpp).
     if (is_file_word(code))
         return call_file_word(code, arguments, row, context);
@@ -1628,8 +1641,8 @@ Value call_word(const std::vector<std::bitset<16>> &row, std::size_t &at, Expres
     // (console_calls.hpp). Without either it takes the path below untouched, so a
     // plain display pays one test and nothing else.
     const bool to_the_screen = is_display_word(code);
-    if (to_the_screen && (!options.empty() || (console_colours_ever_set() && console_colours().any())))
-        return display_with_options(code, *scenarios, argument, options, context);
+    if (to_the_screen && (centred || !options.empty() || (console_colours_ever_set() && console_colours().any())))
+        return display_with_options(code, *scenarios, argument, options, context, centred);
     if (scenarios->directory != nullptr)
         return call_directory_word(code, *scenarios, argument, context);
 

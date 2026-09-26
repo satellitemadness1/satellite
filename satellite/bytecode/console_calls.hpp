@@ -116,8 +116,10 @@ Value call_console_word(token::Code code, const std::vector<Value> &arguments,
 
 // display with options, or with console colours set. `scenarios` is display's
 // library; what it prints is one line, as 003 queued one unit.
+// `centred` is .center() written on the call: each line in the middle of the console.
 Value display_with_options(token::Code code, const Scenarios &scenarios, const Value &argument,
-                           const std::vector<NamedOption> &options, ExpressionContext &context);
+                           const std::vector<NamedOption> &options, ExpressionContext &context,
+                           bool centred = false);
 
 // A STRING'S .foreground(c) / .background(c). `name` is for the sentence.
 Value string_coloured(const Value &receiver, token::Code method, const std::vector<Value> &arguments,

@@ -5504,6 +5504,34 @@ expect "upper/uppercase/up and lower/lowercase change every language's letters, 
 expect "n.upper() on a number is refused before anything runs: a number has no letters" "27|1|0" \
        "$(body_refused number_upper '    satellite.variable.number n = 5
     satellite.console.display(n.upper())' 'n.upper is a string.s -- satellite.variable.number has no letters to change')"
+# .center() ON A DISPLAY (the author, 2026-09-25): the line in the middle of the console, for the
+# width it has as it is shown -- a terminal of 40 columns puts "hello" after 17 spaces, "centre"
+# is the second spelling, and a pipe, which has no width, gets the text as written.
+printf 'satellite.include(satellite)\n\nsatellite.capsule satellite.main()\n{\n    satellite.console.display("hello").center()\n    satellite.console.display("two").centre()\n    satellite.console.display("left")\n    satellite.return(satellite)\n}\n' > "$sweep/center.satl"
+centred_at_40=$(python3 - "$interpreter" "$sweep/center.satl" <<'CENTRE_EOF'
+import fcntl, os, pty, struct, sys, termios
+pid, fd = pty.fork()
+if pid == 0:
+    fcntl.ioctl(1, termios.TIOCSWINSZ, struct.pack('HHHH', 24, 40, 0, 0))
+    os.execv(sys.argv[1], [sys.argv[1], sys.argv[2]])
+out = b''
+while True:
+    try:
+        chunk = os.read(fd, 4096)
+    except OSError:
+        break
+    if not chunk:
+        break
+    out += chunk
+os.waitpid(pid, 0)
+lines = out.decode('utf-8', 'replace').replace('\r', '').split('\n')
+print('|'.join(repr(l) for l in lines if l.strip() in ('hello', 'two', 'left')))
+CENTRE_EOF
+)
+expect ".center() and .centre() at 40 columns: hello after 17 spaces, two after 18, the next line where it was" \
+       "'                 hello'|'                  two'|'left'" "$centred_at_40"
+expect "... and into a pipe, which has no width, as written" "hello|two|left" \
+       "$("$interpreter" "$sweep/center.satl" 2>/dev/null | tr '\n' '|' | sed 's/|$//')"
 # A9: an unknown config.ini row gets its own code -- S016, a notice; the run carries on.
 mkdir -p "$sweep/config_home/.satl" && cp "$CHECK_HOME/.satl/config.ini" "$sweep/config_home/.satl/config.ini"
 printf 'no_such_row = 5\nbanana\n' >> "$sweep/config_home/.satl/config.ini"
