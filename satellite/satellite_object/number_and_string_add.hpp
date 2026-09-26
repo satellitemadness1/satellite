@@ -8,9 +8,12 @@
 // number + string. THE FILE THE AUTHOR NAMED when he gave the convention, and the
 // one pair in the set that REFUSES on purpose.
 //
+// RULED 2026-09-25, AND ANSWERED IN satelliteObject::add BEFORE THIS FILE IS ASKED: the
+// author, "we need 4 + "2" to return the number 6" -- text that reads as a number is added,
+// and any other text is joined after the number (4 + "abc" is "4abc", 003's rule). This
+// function still refuses, for the pair table's sake; nothing reaches it. What it said before:
 // NOTHING IS CONVERTED (DESIGN 1.1). `"n = " + 4` is refused rather than quietly
-// becoming "n = 4", and check.sh asserts that refusal by name -- 'a string and a
-// number converts nothing -> 27'. A program that wants the join writes the
+// becoming "n = 4". A program that wants the join writes the
 // conversion out loud, and number_to_string.hpp is the fast path it writes.
 //
 // THIS IS A SEAM, NOT A WALL. If the author rules that `+` may convert, the

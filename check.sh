@@ -5435,8 +5435,12 @@ printf 'satellite.include(satellite)\n\nsatellite.capsule satellite.main()\n{\n 
 output=$("$interpreter" "$sweep/join.satl" 2>/dev/null); code_run=$?
 expect "a string + any kind of number joins it as its text: 4, 1.5, 50%, b1010, x1F, 1/3, and .add(7)" \
        "total: 4|f 1.5|p 50%|b b1010|h x1F|q 1/3|abc7|0" "$(printf '%s' "$output" | tr '\n' '|')|$code_run"
-expect "4 + \"2\" -- a number first -- still adds, and is told how to join" "27|1|1" \
-       "$(body_refused number_first '    satellite.console.display(4 + "2")' 'with a number first, + adds; to join them, put the text first')"
+# ...and a number first: "we need 4 + \"2\" to return the number 6" (the author, 2026-09-25). Text
+# that reads as a number is added; any other text joins after the number, as 003 did.
+printf 'satellite.include(satellite)\n\nsatellite.capsule satellite.main()\n{\n    satellite.console.display(4 + "2")\n    satellite.variable.number six = 4 + "2"\n    satellite.console.display(six * 2)\n    satellite.console.display(1.5 + "2")\n    satellite.console.display(4 + "2.5")\n    satellite.console.display(4 + "-10")\n    satellite.console.display(4 + "abc")\n    satellite.console.display(4 + " 2")\n    satellite.return(satellite)\n}\n' > "$sweep/number_first.satl"
+output=$("$interpreter" "$sweep/number_first.satl" 2>/dev/null); code_run=$?
+expect "4 + \"2\" is the number 6 (6 * 2 is 12), 1.5 + \"2\" is 3.5, 4 + \"2.5\" is 6.5, 4 + \"-10\" is -6; 4 + \"abc\" joins" \
+       "6|12|3.5|6.5|-6|4abc|4 2|0" "$(printf '%s' "$output" | tr '\n' '|')|$code_run"
 # A2: "arguments.threads or arguments.thread = how many the interpreter can create, and
 # arguments.machine.thread = how many physical threads exist on the machine".
 printf 'satellite.include(satellite)\n\nsatellite.capsule satellite.main(satellite.variable.arguments arguments)\n{\n    satellite.console.display(arguments.threads)\n    satellite.console.display(arguments.thread)\n    satellite.console.display(arguments.machine.threads)\n    satellite.console.display(arguments.machine.thread)\n    satellite.return(satellite)\n}\n' > "$sweep/threads.satl"

@@ -20,6 +20,7 @@
 #include "fast_paths.hpp"
 #include "object_color.hpp"
 #include "object_float.hpp"
+#include "../satellite_variable_float/float_scaled.hpp"
 #include "object_fraction.hpp"
 #include "object_hexadecimal.hpp"
 // The list arm's items, which satellite_object.hpp cannot name: a list holds
@@ -84,16 +85,44 @@ signed long long int refuse_pair(const satelliteObject &left, const satelliteObj
 // The pairs that refuse by converting nothing say so in the conversion's own
 // words, since "no scenario" would be untrue -- the scenario exists and is a
 // conversion the program has to write out loud.
-// ONLY number + string REACHES THIS NOW: a string on the left joins a number since
-// 2026-09-25 (add() below). With the number on the left, + adds, and what adding a string
-// means is not ruled yet -- so the sentence says how to write the join that works.
+// NOTHING REACHES THIS SINCE 2026-09-25 (add() below answers every number and string, both
+// orders); kept for the pair table's number + string arm, which add() answers first.
 signed long long int refuse_conversion(const satelliteObject &left, const satelliteObject &right,
                                        std::string &why)
 {
     why = std::string("+ was given ") + left.kind_name() + " and then " + right.kind_name() +
-          " -- with a number first, + adds; to join them, put the text first (\"total: \" + n) or write "
-          "n.string";
+          ", and could not add or join them";
     return types_do_not_meet;
+}
+
+// A NUMBER WRITTEN AS TEXT, read the way a program's own literal reads: whole ("42", "-7") or
+// decimal ("2.5", a float). False for anything else -- " 42", "4e3", "abc", "", "1.2.3" -- so
+// text that only looks a little like a number is joined, never guessed at.
+bool number_in_text(const satellite_string &text, satelliteObject &out)
+{
+    const std::string written = text.to_utf8();
+    const std::size_t start = !written.empty() && written[0] == '-' ? 1 : 0;
+    const auto all_digits = [&written](std::size_t from, std::size_t to) {
+        if (from >= to) return false;
+        for (std::size_t i = from; i < to; ++i)
+            if (written[i] < '0' || written[i] > '9') return false;
+        return true;
+    };
+    const std::size_t dot = written.find('.');
+    std::size_t bad_offset = 0;
+    if (dot == std::string::npos) {
+        satellite_number whole;
+        if (!all_digits(start, written.size()) || satellite_number::from_text(written, whole, bad_offset) != success)
+            return false;
+        out = satelliteObject::of_number(std::move(whole));
+        return true;
+    }
+    satellite_number scaled;
+    if (!all_digits(start, dot) || !all_digits(dot + 1, written.size()) ||
+        satellite_number::from_text(written.substr(0, dot) + written.substr(dot + 1), scaled, bad_offset) != success)
+        return false;
+    out = satelliteObject::of_float(float_from_scaled(std::move(scaled), written.size() - dot - 1));
+    return true;
 }
 
 // A BINARY IN ARITHMETIC AND IN AN ORDERING IS READ BY WHAT ITS BITS ARE WORTH,
@@ -387,6 +416,26 @@ signed long long int satelliteObject::add(const satelliteObject &other, satellit
         }
         if (code != success) {
             if (why.empty()) why = "the string and " + std::string(other.kind_name()) + " could not be joined";
+            return code;
+        }
+        out = satelliteObject::of_string(std::move(answer));
+        return success;
+    }
+    // A NUMBER FIRST, THEN TEXT (the author, 2026-09-25: "we need 4 + "2" to return the number
+    // 6"). Text that reads as a number IS that number, and + adds -- 4 + "2" is 6, 1.5 + "2" is
+    // 3.5, by the arithmetic every kind already has. Any other text is joined after the
+    // number's own .string: 4 + "abc" is "4abc", as 003 answered (bca7302).
+    if (other.is_string() && (is_number() || is_float() || is_fraction() || is_percentage() || is_hexadecimal() ||
+                              is_binary())) {
+        satelliteObject read;
+        if (number_in_text(*other.as_string(), read))
+            return add(read, out, why);
+        satellite_string mine, answer;
+        signed long long int code = to_string(mine, why);
+        if (code == success)
+            code = string_and_string_add(mine, *other.as_string(), answer);
+        if (code != success) {
+            if (why.empty()) why = std::string(kind_name()) + " and the string could not be joined";
             return code;
         }
         out = satelliteObject::of_string(std::move(answer));
