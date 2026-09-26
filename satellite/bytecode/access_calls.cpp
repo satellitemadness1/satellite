@@ -169,7 +169,7 @@ void lay_out(const std::vector<Line> &lines, std::size_t width, std::string &tex
 
 bool is_access_word(Code code)
 {
-    return code == word::code_of(1, 31) || code == word::code_of(1, 31, 1);
+    return code == word::fixed_code<1, 31> || code == word::fixed_code<1, 31, 1>;
 }
 
 std::string access_refused(const std::vector<std::bitset<16>> &row, std::size_t at)

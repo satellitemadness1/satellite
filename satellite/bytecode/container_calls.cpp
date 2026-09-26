@@ -188,12 +188,12 @@ std::string index_refuses(token::Code method, const std::string &name)
 // (type_shape.hpp), so map() is the empty one, as list() is the empty list.
 bool is_map_word(token::Code code)
 {
-    return code == word::code_of(1, 4, 1) || code == word::code_of(1, 4, 1, 0);
+    return code == word::fixed_code<1, 4, 1> || code == word::fixed_code<1, 4, 1, 0>;
 }
 
 bool is_container_word(token::Code code)
 {
-    return code == word::code_of(1, 4, 2) || code == word::code_of(1, 4, 2, 0) || is_map_word(code);
+    return code == word::fixed_code<1, 4, 2> || code == word::fixed_code<1, 4, 2, 0> || is_map_word(code);
 }
 
 std::string container_word_refused(token::Code code, std::size_t given)

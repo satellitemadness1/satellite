@@ -138,7 +138,8 @@ bool one_entry(const std::string &path, const std::string &name, std::vector<uns
 
 bool is_info_word(Code code)
 {
-    return code == word::code_of(1, 30, 1) || code == word::code_of(1, 30, 2) || code == word::code_of(1, 18, 7);
+    return code == word::fixed_code<1, 30, 1> || code == word::fixed_code<1, 30, 2> ||
+           code == word::fixed_code<1, 18, 7>;
 }
 
 Value call_info_word(Code code, const std::vector<Value> &arguments, ExpressionContext &context)

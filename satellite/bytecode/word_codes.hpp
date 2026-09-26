@@ -1433,7 +1433,7 @@ inline constexpr std::size_t kSpelledWordCount = sizeof kSpelledWords / sizeof k
 // the table, deeper than kMaxDepth, or a number past 255. The caller then
 // writes word_number_token and the numbers, which has no ceiling, so a
 // language with no limits keeps none here either.
-inline token::Code code_of(const int *numbers, std::size_t depth)
+inline constexpr token::Code code_of(const int *numbers, std::size_t depth)
 {
     const std::uint64_t key = key_of(numbers, depth);
     if (key == 0) return 0;
@@ -1453,11 +1453,21 @@ inline token::Code code_of(const int *numbers, std::size_t depth)
 // code_of(pointer, depth) too and tried to cast the pointer to an int.
 template <class... Numbers>
     requires (sizeof...(Numbers) > 0 && (... && std::is_integral_v<Numbers>))
-inline token::Code code_of(Numbers... numbers)
+inline constexpr token::Code code_of(Numbers... numbers)
 {
     const int written[] = {static_cast<int>(numbers)...};
     return code_of(written, sizeof...(Numbers));
 }
+
+// THE SAME CODE, WORKED OUT BY THE COMPILER: word::fixed_code<1, 5, 1> IS 4163, a
+// constant, where code_of(1, 5, 1) inside a running function is the binary search
+// above on every call -- constexpr allows the compiler to fold it and never makes it.
+// callgrind on build 0108 (2026-09-26): those searches, in the word-family checks
+// call_word asks on every word call, were ~10,500 of the ~11,600 instructions a
+// display cost. Every comparison against a word the source spells out uses this.
+template <int... Numbers>
+    requires (sizeof...(Numbers) > 0)
+inline constexpr token::Code fixed_code = code_of(Numbers...);
 
 // The way back, for whatever writes a .sat file out again. Answers nullptr
 // and leaves `depth` at 0 when `code` is not a word this table holds.

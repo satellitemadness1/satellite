@@ -345,9 +345,11 @@ bool a_colour_word_given_one(Code code)
     return colour.is && colour.shape != 0;
 }
 
+// ONE COMPARE AGAINST A CONSTANT: call_word asks this first of every word call, and a
+// display then skips every other family's question (expression.cpp).
 bool is_display_word(Code code)
 {
-    return code == display_word();
+    return code == word::fixed_code<1, 5, 1>;
 }
 
 bool is_console_fact(Code code)

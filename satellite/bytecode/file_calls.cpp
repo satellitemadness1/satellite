@@ -316,8 +316,9 @@ std::string file_word_takes(Code code)
 
 bool is_file_word(Code code)
 {
-    return code == word::code_of(1, 8, 1) || code == word::code_of(1, 8, 2) || code == word::code_of(1, 8, 3) ||
-           code == word::code_of(1, 8, 4) || code == word::code_of(1, 8, 5) || code == word::code_of(1, 8, 6);
+    return code == word::fixed_code<1, 8, 1> || code == word::fixed_code<1, 8, 2> ||
+           code == word::fixed_code<1, 8, 3> || code == word::fixed_code<1, 8, 4> ||
+           code == word::fixed_code<1, 8, 5> || code == word::fixed_code<1, 8, 6>;
 }
 
 Value call_file_word(Code code, const std::vector<Value> &arguments, const std::vector<std::bitset<16>> &row,

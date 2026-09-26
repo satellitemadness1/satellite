@@ -11,7 +11,7 @@ namespace satellite004 {
 
 bool is_infinity_word(token::Code code)
 {
-    return code == word::code_of(1, 26) || code == word::code_of(1, 26, 0);
+    return code == word::fixed_code<1, 26> || code == word::fixed_code<1, 26, 0>;
 }
 
 std::string infinity_word_not_built(token::Code code, std::size_t given)

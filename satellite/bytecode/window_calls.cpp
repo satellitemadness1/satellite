@@ -18,7 +18,7 @@ namespace {
 
 using token::Code;
 
-Code window_word() { return word::code_of(1, 27); }
+Code window_word() { return word::fixed_code<1, 27>; }
 
 // ---------------------------------------------------------------------------
 // EVERY WORD UNDER satellite.window, IN ONE TABLE (GTK-0's recipe).
@@ -147,9 +147,15 @@ constexpr bool a_frame(satellite_window::Piece piece)
     return piece == satellite_window::window || piece == satellite_window::console;
 }
 
-// A LINEAR SCAN, AND IT STAYS ONE. This is asked once a window word in a
-// program, not once a line, and seven rows -- eighteen one day -- is nothing
-// beside the code_of() call it is comparing against.
+// WHICH ROW OF kWords A CODE IS, AS A TABLE THE COMPILER FILLS IN: one byte a word code,
+// so word_at is one read. IT WAS A LINEAR SCAN, calling code_of() -- a binary search --
+// twice a row, on the belief that it was "asked once a window word in a program, not once
+// a line". It was asked on EVERY word call: call_word asks is_window_word before any word
+// reaches its own path, and the checker asks it of every call it reads. callgrind on
+// build 0108 (2026-09-26): ~8,600 instructions a satellite.console.display, three
+// quarters of what a display cost, spent here.
+//
+// FIRST ROW WINS, as the scan's order did: a code is filled in only while its byte is empty.
 //
 // A WORD THAT TAKES NOTHING IS **TWO ROWS** IN words.tsv, and both answer the
 // one row here. That is satellite.infinity's own shape -- `1 26` is the name and
@@ -159,15 +165,40 @@ constexpr bool a_frame(satellite_window::Piece piece)
 // capsule named switch"**, which tells a person nothing. Measured 2026-09-21;
 // `satellite.window.nosuchword("on")` says exactly the same thing, which is what
 // proved it was the unregistered NAME and not the switch.
+constexpr std::size_t kWordRows = sizeof kWords / sizeof kWords[0];
+static_assert(kWordRows < 255, "a row is one byte, and 255 means no row");
+constexpr unsigned char kNoRow = 255;
+
+struct RowOfCode {
+    unsigned char row[word::kWordFactsCount];
+};
+
+constexpr RowOfCode rows_of_codes()
+{
+    RowOfCode made{};
+    for (unsigned char &each : made.row)
+        each = kNoRow;
+    const auto fill = [&made](Code code, std::size_t row) {
+        const bool a_word = code >= word::kFirst && code < word::kFirst + word::kWordFactsCount;
+        if (a_word && made.row[code - word::kFirst] == kNoRow)
+            made.row[code - word::kFirst] = static_cast<unsigned char>(row);
+    };
+    for (std::size_t at = 0; at < kWordRows; ++at) {
+        fill(word::code_of(1, kWords[at].family, kWords[at].number), at);
+        if (kWords[at].arity == 0)
+            fill(word::code_of(1, kWords[at].family, kWords[at].number, 0), at);
+    }
+    return made;
+}
+
+constexpr RowOfCode kRowOfCode = rows_of_codes();
+
 const AWord *word_at(Code code)
 {
-    for (const AWord &row : kWords) {
-        if (code == word::code_of(1, row.family, row.number))
-            return &row;
-        if (row.arity == 0 && code == word::code_of(1, row.family, row.number, 0))
-            return &row;
-    }
-    return nullptr;
+    if (code < word::kFirst || code >= word::kFirst + word::kWordFactsCount)
+        return nullptr;
+    const unsigned char row = kRowOfCode.row[code - word::kFirst];
+    return row == kNoRow ? nullptr : &kWords[row];
 }
 
 } // namespace

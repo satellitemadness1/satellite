@@ -1757,8 +1757,15 @@ Value call_word(const std::vector<std::bitset<16>> &row, std::size_t &at, Expres
     // "something").center() "renders the text in the middle of the console window"). Taken
     // here, brackets and all, so the line is centred BEFORE it is printed -- a method on
     // display's answer would come after the line had already gone out.
+    //
+    // AND A DISPLAY ASKS NO OTHER FAMILY (the author, 2026-09-26: "we need to bypass those
+    // 8,000 lines when we are printing at least"). One compare against a constant says it is
+    // display, and it goes straight to its own path below: not one of the file, info,
+    // infinity, window, container or console questions is asked of it. callgrind on build
+    // 0108 had those questions at ~10,500 of the ~11,600 instructions a display cost.
+    const bool to_the_screen = is_display_word(code);
     bool centred = false;
-    if (is_display_word(code) && code_at(row, at) == token::method_token &&
+    if (to_the_screen && code_at(row, at) == token::method_token &&
         code_at(row, at + 1) == token::center_token) {
         centred = true;
         at += 2;
@@ -1766,44 +1773,48 @@ Value call_word(const std::vector<std::bitset<16>> &row, std::size_t &at, Expres
             at += 2;
     }
 
-    // satellite.file's words answer a HANDLE, which no library can (file_calls.hpp).
-    if (is_file_word(code))
-        return call_file_word(code, arguments, row, context);
-    // ...and satellite.info's words answer a list of indexes, which no library can
-    // make either (info_calls.hpp).
-    if (is_info_word(code))
-        return call_info_word(code, arguments, context);
-    // ...and so does satellite.infinity() (infinity_calls.hpp).
-    if (is_infinity_word(code))
-        return call_infinity_word(code, arguments, context);
-    // ...and so does satellite.window.new() (window_calls.hpp). Three word
-    // families now, which is why that header stops calling it a departure.
-    //
-    // A WINDOW IS THE MAIN THREAD'S (window_desk.hpp: one interpreter thread writes a
-    // piece), so a program's thread may not open or build one yet (THREADS.md T3).
-    if (is_window_word(code) && on_a_program_thread()) {
-        context.refuse(thread_cannot_share_yet, std::string(word::spelling_of(code)) +
-                                                    " -- a window belongs to the main thread, and a thread the "
-                                                    "program started may not open or build one yet");
-        return Value();
+    if (!to_the_screen) {
+        // satellite.file's words answer a HANDLE, which no library can (file_calls.hpp).
+        if (is_file_word(code))
+            return call_file_word(code, arguments, row, context);
+        // ...and satellite.info's words answer a list of indexes, which no library can
+        // make either (info_calls.hpp).
+        if (is_info_word(code))
+            return call_info_word(code, arguments, context);
+        // ...and so does satellite.infinity() (infinity_calls.hpp).
+        if (is_infinity_word(code))
+            return call_infinity_word(code, arguments, context);
+        // ...and so does satellite.window.new() (window_calls.hpp). Three word
+        // families now, which is why that header stops calling it a departure.
+        //
+        // A WINDOW IS THE MAIN THREAD'S (window_desk.hpp: one interpreter thread writes a
+        // piece), so a program's thread may not open or build one yet (THREADS.md T3).
+        // ASKED ONCE, and it is one read of window_calls.cpp's table.
+        if (is_window_word(code)) {
+            if (on_a_program_thread()) {
+                context.refuse(thread_cannot_share_yet, std::string(word::spelling_of(code)) +
+                                                            " -- a window belongs to the main thread, and a thread "
+                                                            "the program started may not open or build one yet");
+                return Value();
+            }
+            return call_window_word(code, arguments, context);
+        }
+        // ...and satellite.container.list(), a list of nothing (container_calls.hpp).
+        if (is_container_word(code))
+            return call_container_word(code, arguments, context);
     }
-    if (is_window_word(code))
-        return call_window_word(code, arguments, context);
-    // ...and satellite.container.list(), a list of nothing (container_calls.hpp).
-    if (is_container_word(code))
-        return call_container_word(code, arguments, context);
     // ONE LINE AT A TIME ONCE A THREAD EXISTS (machine/console_lock.hpp): the console's
     // words and every numbered library below are called holding the console lock, because
     // display writes std::cout from inside its library. NOT input, which waits for a person:
     // holding the lock there would stop every other thread's lines until somebody typed.
     // Before any start() the hold holds nothing, and a plain display pays one load.
-    const bool waits_for_a_person = code == word::code_of(1, 5, 2) || code == word::code_of(1, 5, 3);
+    const bool waits_for_a_person = code == word::fixed_code<1, 5, 2> || code == word::fixed_code<1, 5, 3>;
     std::optional<ConsoleHold> one_line;
     if (!waits_for_a_person)
         one_line.emplace();
 
     // ...and satellite.console's own words and satellite.terminal's (console_calls.hpp).
-    if (is_console_word(code))
+    if (!to_the_screen && is_console_word(code))
         return call_console_word(code, arguments, options, context);
 
     if (arguments.size() > 1) {
@@ -1812,7 +1823,9 @@ Value call_word(const std::vector<std::bitset<16>> &row, std::size_t &at, Expres
                                                      std::to_string(arguments.size()));
         return Value();
     }
-    const Value argument = arguments.empty() ? Value() : arguments.front();
+    // MOVED, NOT COPIED: `arguments` is this call's own, and a copy here was a second
+    // whole copy of every value displayed (the first attempt's review, 2026-09-26).
+    Value argument = arguments.empty() ? Value() : std::move(arguments.front());
 
     signed long long int answer = success;
     if (scenarios == nullptr) {
@@ -1822,7 +1835,6 @@ Value call_word(const std::vector<std::bitset<16>> &row, std::size_t &at, Expres
     // display WITH OPTIONS, OR WITH THE CONSOLE'S COLOURS SET, is one styled line
     // (console_calls.hpp). Without either it takes the path below untouched, so a
     // plain display pays one test and nothing else.
-    const bool to_the_screen = is_display_word(code);
     if (to_the_screen && (centred || !options.empty() || (console_colours_ever_set() && console_colours().any())))
         return display_with_options(code, *scenarios, argument, options, context, centred);
     if (scenarios->directory != nullptr)

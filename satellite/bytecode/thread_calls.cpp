@@ -262,7 +262,7 @@ Value join(const ThreadHandle &which, const std::string &name, const std::string
 
 bool is_thread_word(token::Code code)
 {
-    return code == word::code_of(1, 23, 1);
+    return code == word::fixed_code<1, 23, 1>;
 }
 
 Value call_thread_new(const std::vector<std::bitset<16>> &row, std::size_t &at, ExpressionContext &context)
