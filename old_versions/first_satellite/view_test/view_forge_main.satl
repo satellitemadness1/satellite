@@ -1,0 +1,1107 @@
+satellite.include(satellite)
+
+satellite.include("object/forge_object.satl")
+satellite.include("object/view_type.satl")
+satellite.include("declarations/types/people/people.satl")
+satellite.include("declarations/types/places/places.satl")
+satellite.include("declarations/types/organizations/organizations.satl")
+satellite.include("declarations/types/concepts/concepts.satl")
+satellite.include("declarations/types/history/history.satl")
+satellite.include("declarations/types/space/space.satl")
+satellite.include("declarations/objects/concepts/concepts.satl")
+satellite.include("declarations/objects/people/people.satl")
+satellite.include("declarations/objects/continents/continents.satl")
+satellite.include("declarations/objects/space/space.satl")
+satellite.include("declarations/objects/countries/germany.satl")
+satellite.include("declarations/objects/countries/ukraine.satl")
+satellite.include("declarations/objects/countries/north_korea.satl")
+satellite.include("declarations/objects/countries/china.satl")
+satellite.include("declarations/objects/countries/russia.satl")
+satellite.include("declarations/objects/countries/united_states.satl")
+satellite.include("declarations/objects/countries/britain.satl")
+satellite.include("declarations/objects/countries/canada.satl")
+satellite.include("declarations/objects/countries/mexico.satl")
+satellite.include("declarations/objects/countries/japan.satl")
+satellite.include("declarations/objects/places/places.satl")
+satellite.include("declarations/objects/organizations/organizations.satl")
+satellite.include("declarations/objects/history/history.satl")
+satellite.include("declarations/historic/civil_war/union.satl")
+satellite.include("declarations/historic/civil_war/south.satl")
+satellite.include("declarations/types/fiction/fiction.satl")
+satellite.include("declarations/fiction/warhammer/imperium.satl")
+satellite.include("declarations/fiction/warhammer/imperium_figures.satl")
+satellite.include("declarations/fiction/warhammer/krieg.satl")
+satellite.include("declarations/fiction/warhammer/chaos.satl")
+satellite.include("declarations/fiction/warhammer/xenos.satl")
+satellite.include("declarations/fiction/warhammer/necrons.satl")
+satellite.include("declarations/fiction/warhammer/events.satl")
+
+satellite.spacesuit view_forge()
+{
+    satellite.protected
+    {
+        satellite.variable.number forge_id = 0
+        
+        satellite.variable.string forge_target = "UNSET"
+        
+        satellite.variable.bool target_list_has_unset = TRUE
+        satellite.container.list<satellite.variable.string> target_list = {"UNSET", "UNSET"}
+        
+        satellite.variable.number banner_width = 80
+        satellite.variable.number view_dash_width = 75
+        
+        satellite.variable.string solid_line_str = "UNSET"
+        satellite.variable.string view_line_str = "UNSET"
+        satellite.variable.bool banner_lines_built = FALSE
+        
+        satellite.capsule set_forge_target(satellite.variable.string target_input)
+        {
+            satellite.console.display("FROM satellite.spacesuit::satellite.protected::satellite.capsule set_forge_target(" + target_input + ")")
+            satellite.console.display("VARIABLE \"target_input\" (satellite.variable.string) INFO")
+            satellite.console.display("VARIABLE LENGTH=" + target_input.size())
+            satellite.console.display("VARIABLE DATA=" + target_input)
+            
+            satellite.console.display("SETTING VARIABLE \"forge_target\" WITH VARIABLE DATA " + target_input + " FROM \"target_input\"")
+            forge_target = target_input
+            
+            satellite.console.display("CHECKING IF \"target_list\" HAS UNSET VARIABLES...")
+            
+            satellite.statement.if(target_list_has_unset == TRUE)
+            {
+                satellite.console.display("LIBRARY CONTAINS \"UNSET\"... CHECKING LIBRARY...")
+                
+                satellite.statement.if(target_list[1] == "UNSET")
+                {                    
+                    satellite.console.display("FIRST TARGET IN LIBRARY CONTAINS THE DATA \"UNSET\"")
+                    
+                    satellite.console.display("DISPLAYING THE DATA \"target_list[0]\": " + target_list[0])
+                    
+                    satellite.statement.if(target_list[0] == "UNSET")
+                    {
+                        satellite.console.display("LIBRARY CONTAINS AN ADDITIONAL UNSET VARIABLE...")
+                        
+                        satellite.console.display("SETTING \"target_list[1]\" TO THE TARGET DATA OF: " + target_input)
+                        
+                        target_list[1] = target_input
+                        
+                        satellite.console.display("SET VARIABLE \"target_list[1]\" TO THE TARGET DATA OF: " + target_list[1])
+                    }
+                    satellite.statement.else()
+                    {
+                        satellite.console.display("LIBRARY HAS BEEN PREVIOUSLY SET...")
+                        
+                        target_list[1] = target_input
+                        
+                        satellite.console.display("SET VARIABLE \"target_list[0]\" TO THE TARGET DATA OF: " + target_input)
+                    }
+                }
+                satellite.statement.else()
+                {
+                    satellite.statement.if(target_list[0] == "UNSET")
+                    {
+                        satellite.console.display("TARGET LIST STILL HOLDS UNSET DATA POINT(S)")
+                        
+                        satellite.console.display("SETTING \"target_list[0]\" TO THE TARGET DATA OF: " + target_input)
+                        
+                        target_list[0] = target_input
+                        
+                        satellite.console.display("DISPLAYING \"target_list[0]\": " + target_list[0])
+                    }
+                    satellite.statement.else()
+                    {
+                        satellite.console.display("THE LIBRARY \"target_list\" DOESN\'T CONTAIN UNSET DATA...")
+                        
+                        satellite.console.display("ADDING TARGET TO THE FRONT OF THE LIBRARY AT POINT " + target_list.length() + 1)
+                        
+                        target_list.append(target_input)
+                    }
+                }
+            }
+            satellite.statement.else()
+            {
+                satellite.console.display("THE LIBRARY \"target_list\" DOESN\'T CONTAIN UNSET DATA...")
+                
+                satellite.console.display("ADDING THE TARGET DATA OF: " + target_input + " TO THE LIBRARY \"target_list\"")
+                
+                target_list.append(target_input)
+            }
+            
+            satellite.console.display("TARGET INFO(DATA) NOW SET!\n\n")
+            
+            satellite.console.display("NOW LEAVING: satellite.spacesuit::satellite.protected::satellite.capsule set_forge_target()")
+            
+            satellite.console.display("CALLING \"satellite.return()\"")            
+            satellite.return()
+        }
+        
+        satellite.capsule build_banner_lines()
+        {
+            satellite.console.display("\n>>> ENTERING satellite.spacesuit view_forge()::satellite.protected::satellite.capsule build_banner_lines()")
+            
+            satellite.console.display("PURPOSE: THIS CAPSULE BUILDS THE TWO LINES THAT EVERY VIEW BANNER IS DRAWN OUT OF, AND STORES THEM IN THE VARIABLES \"solid_line_str\" AND \"view_line_str\"")
+            
+            satellite.console.display("WHY: EVERY DASH LINE OF A VIEW BANNER IS EXACTLY " + banner_width + " CHARACTERS WIDE, AND BUILDING BOTH LINES ONCE AND KEEPING THEM MEANS THE FORGE NEVER GLUES THE SAME " + banner_width + " DASHES TOGETHER TWICE")
+            
+            satellite.console.display("THIS CAPSULE IS satellite.protected, AND IT IS ONLY EVER CALLED BY display_view_banner() THE FIRST TIME A BANNER IS NEEDED")
+            
+            satellite.console.display("VARIABLE \"banner_width\" (satellite.variable.number) INFO")
+            satellite.console.display("VARIABLE DATA=" + banner_width)
+            satellite.console.display("WHY: " + banner_width + " CHARACTERS IS THE FULL WIDTH OF A CLASSIC CONSOLE, SO EVERY BANNER LINE RUNS EDGE TO EDGE")
+            
+            satellite.console.display("VARIABLE \"view_dash_width\" (satellite.variable.number) INFO")
+            satellite.console.display("VARIABLE DATA=" + view_dash_width)
+            satellite.console.display("WHY: THE WORD \"view\" IS 4 CHARACTERS AND THE SPACE AFTER IT IS 1 MORE, SO 5 + " + view_dash_width + " DASHES LANDS THE VIEW LINE ON EXACTLY " + banner_width + " CHARACTERS")
+            
+            satellite.console.display("BUILDING THE SOLID LINE FIRST...")
+            
+            satellite.console.display("CHANGING THE VARIABLE \"solid_line_str\"")
+            satellite.console.display("CHANGING IT FROM THE PLACEHOLDER \"UNSET\" TO AN EMPTY STRING, SO DASHES CAN BE GLUED ONTO IT ONE AT A TIME")
+            
+            solid_line_str = ""
+            
+            satellite.variable.number solid_dash_index = 0
+            
+            satellite.console.display("ENTERING satellite.statement.while(solid_dash_index < banner_width)")
+            satellite.console.display("WHY: ONE DASH IS GLUED ONTO \"solid_line_str\" PER PASS, SO THE LOOP HAS TO RUN " + banner_width + " TIMES TO FILL THE FULL WIDTH")
+            
+            satellite.statement.while(solid_dash_index < banner_width)
+            {
+                solid_line_str = solid_line_str + "-"
+                
+                solid_dash_index = solid_dash_index + 1
+                
+                satellite.console.display("PASS " + solid_dash_index + " OF " + banner_width + ": \"solid_line_str\" IS NOW " + solid_line_str.length() + " CHARACTERS LONG")
+            }
+            
+            satellite.console.display("EXITED satellite.statement.while(solid_dash_index < banner_width)")
+            satellite.console.display("WHY: THE CONDITION WENT FALSE, BECAUSE \"solid_dash_index\" REACHED " + solid_dash_index + " AND THE LINE ONLY NEEDS " + banner_width + " DASHES")
+            
+            satellite.console.display("THE SOLID LINE IS FINISHED, " + solid_line_str.length() + " DASHES, NO BREAKS, DISPLAYED HERE ONCE SO IT CAN BE CHECKED BY EYE:")
+            satellite.console.display(solid_line_str)
+            
+            satellite.console.display("BUILDING THE VIEW LINE SECOND...")
+            
+            satellite.console.display("CHANGING THE VARIABLE \"view_line_str\"")
+            satellite.console.display("CHANGING IT FROM THE PLACEHOLDER \"UNSET\" TO THE DATA \"view \", THE WORD AND ITS ONE SPACE, 5 CHARACTERS FOR THE DASHES TO BE GLUED ONTO")
+            
+            view_line_str = "view "
+            
+            satellite.variable.number view_dash_index = 0
+            
+            satellite.console.display("ENTERING satellite.statement.while(view_dash_index < view_dash_width)")
+            satellite.console.display("WHY: ONE DASH IS GLUED ONTO \"view_line_str\" PER PASS, SO THE LOOP HAS TO RUN " + view_dash_width + " TIMES TO REACH THE FULL " + banner_width + " CHARACTER WIDTH")
+            
+            satellite.statement.while(view_dash_index < view_dash_width)
+            {
+                view_line_str = view_line_str + "-"
+                
+                view_dash_index = view_dash_index + 1
+                
+                satellite.console.display("PASS " + view_dash_index + " OF " + view_dash_width + ": \"view_line_str\" IS NOW " + view_line_str.length() + " CHARACTERS LONG")
+            }
+            
+            satellite.console.display("EXITED satellite.statement.while(view_dash_index < view_dash_width)")
+            satellite.console.display("WHY: THE CONDITION WENT FALSE, BECAUSE \"view_dash_index\" REACHED " + view_dash_index + " AND THE LINE ONLY NEEDS " + view_dash_width + " DASHES AFTER THE WORD")
+            
+            satellite.console.display("THE VIEW LINE IS FINISHED, " + view_line_str.length() + " CHARACTERS IN TOTAL, DISPLAYED HERE ONCE SO IT CAN BE CHECKED BY EYE:")
+            satellite.console.display(view_line_str)
+            
+            satellite.console.display("CHANGING THE VARIABLE \"banner_lines_built\"")
+            satellite.console.display("CHANGING IT FROM THE DATA FALSE TO THE DATA TRUE")
+            satellite.console.display("WHY: EVERY LATER BANNER CHECKS THIS FLAG, SEES TRUE, AND REUSES THE TWO FINISHED LINES INSTEAD OF BUILDING THEM AGAIN")
+            
+            banner_lines_built = TRUE
+            
+            satellite.console.display("VARIABLE \"banner_lines_built\" NOW SET TO DATA=TRUE")
+            
+            satellite.console.display("NOW LEAVING: satellite.spacesuit view_forge()::satellite.protected::satellite.capsule build_banner_lines()")
+            
+            satellite.console.display("NOTHING IS BEING HANDED BACK, SO THE CALL IS satellite.return() WITH NO DATA INSIDE IT")
+            
+            satellite.console.display("CALLING satellite.return()")
+            
+            satellite.return()
+        }
+        
+        satellite.capsule display_view_banner(satellite.variable.string banner_name)
+        {
+            satellite.console.display("\n>>> ENTERING satellite.spacesuit view_forge()::satellite.protected::satellite.capsule display_view_banner(" + banner_name + ")")
+            
+            satellite.console.display("PURPOSE: THIS CAPSULE DRAWS ONE FULL VIEW BANNER, SIX LINES TALL, WITH THE NAME \"" + banner_name + "\" HELD INSIDE IT")
+            
+            satellite.console.display("WHY: THE VIEW BANNER IS THE MARK OF THE FORGE, EVERY SECTION OF TARGET INFORMATION IS FENCED BETWEEN TWO OF THESE BANNERS, SO THE READER ALWAYS KNOWS WHICH TARGET THE LINES ON THE SCREEN BELONG TO")
+            
+            satellite.console.display("THIS CAPSULE IS satellite.protected, AND IT IS ONLY EVER CALLED BY forge_object() WHILE A TARGET IS BEING FORGED")
+            
+            satellite.console.display("VARIABLE \"banner_name\" (satellite.variable.string) INFO")
+            satellite.console.display("VARIABLE LENGTH=" + banner_name.length())
+            satellite.console.display("VARIABLE DATA=" + banner_name)
+            
+            satellite.console.display("CHECKING WHETHER THE TWO BANNER LINES HAVE BEEN BUILT YET...")
+            
+            satellite.console.display("ENTERING satellite.statement.if(banner_lines_built == FALSE)")
+            
+            satellite.statement.if(banner_lines_built == FALSE)
+            {
+                satellite.console.display("TAKING THE satellite.statement.if() BRANCH, BECAUSE \"banner_lines_built\" HOLDS FALSE AND BOTH LINES STILL HOLD THE PLACEHOLDER \"UNSET\"")
+                
+                satellite.console.display("CALLING satellite.spacesuit view_forge()::satellite.protected::satellite.capsule build_banner_lines()")
+                
+                build_banner_lines()
+                
+                satellite.console.display("RETURNED FROM satellite.spacesuit view_forge()::satellite.protected::satellite.capsule build_banner_lines()")
+                satellite.console.display("BACK INSIDE satellite.spacesuit view_forge()::satellite.protected::satellite.capsule display_view_banner()")
+                
+                satellite.console.display("LEAVING THE satellite.statement.if() BRANCH")
+            }
+            satellite.statement.else()
+            {
+                satellite.console.display("TAKING THE satellite.statement.else() BRANCH, BECAUSE \"banner_lines_built\" HOLDS TRUE")
+                
+                satellite.console.display("THE LINES WERE BUILT FOR AN EARLIER BANNER AND ARE BEING REUSED, UNCHANGED")
+                
+                satellite.console.display("LEAVING THE satellite.statement.else() BRANCH")
+            }
+            
+            satellite.console.display("THE BANNER IS SIX LINES TALL, AND EVERY DASH LINE IS EXACTLY " + banner_width + " CHARACTERS WIDE")
+            satellite.console.display("LINE 1 IS THE VIEW LINE, THE WORD \"view\", ONE SPACE, AND " + view_dash_width + " DASHES")
+            satellite.console.display("LINE 2 IS THE SOLID LINE, " + banner_width + " DASHES WITH NO BREAKS")
+            satellite.console.display("LINE 3 IS THE NAME \"" + banner_name + "\"")
+            satellite.console.display("LINE 4 IS THE WORDS \"VIEW FORGING\"")
+            satellite.console.display("LINE 5 IS THE SOLID LINE AGAIN")
+            satellite.console.display("LINE 6 IS THE VIEW LINE AGAIN")
+            
+            satellite.console.display("THE NEXT SIX LINES ARE THE BANNER ITSELF:\n")
+            
+            satellite.console.display(view_line_str)
+            satellite.console.display(solid_line_str)
+            satellite.console.display(banner_name)
+            satellite.console.display("VIEW FORGING")
+            satellite.console.display(solid_line_str)
+            satellite.console.display(view_line_str)
+            
+            satellite.console.display("\nTHE BANNER FOR \"" + banner_name + "\" IS DRAWN")
+            
+            satellite.console.display("NOW LEAVING: satellite.spacesuit view_forge()::satellite.protected::satellite.capsule display_view_banner()")
+            
+            satellite.console.display("NOTHING IS BEING HANDED BACK, SO THE CALL IS satellite.return() WITH NO DATA INSIDE IT")
+            
+            satellite.console.display("CALLING satellite.return()")
+            
+            satellite.return()
+        }
+        
+        satellite.capsule forge_object(forge_object forge_input)
+        {
+            satellite.console.display("\n>>> ENTERING satellite.spacesuit view_forge()::satellite.protected::satellite.capsule forge_object()")
+            
+            satellite.console.display("PURPOSE: THIS CAPSULE IS THE ENTIRE PURPOSE OF THE PROGRAM, IT RECEIVES ONE WHOLE forge_object AND FORGES THE FULL VIEW OF IT ONTO THE CONSOLE, SECTION BY SECTION, WITH A VIEW BANNER BETWEEN EVERY SECTION, AND IT DOES NOT STOP UNTIL EVERY PIECE OF INFORMATION THE OBJECT HANDED OVER HAS BEEN USED UP")
+            
+            satellite.console.display("WHY: EVERY OTHER CAPSULE IN THIS PROGRAM ONLY LOADS, STORES OR HANDS BACK DATA, THIS IS THE ONLY CAPSULE THAT TURNS A STORED OBJECT INTO SOMETHING A PERSON ACTUALLY READS")
+            
+            satellite.console.display("THIS CAPSULE IS satellite.protected, SO IT CAN ONLY BE REACHED THROUGH satellite.public::satellite.capsule call_forge_object()")
+            
+            satellite.console.display("STEP 0: PULLING EVERY PIECE OF DATA OUT OF THE RECEIVED OBJECT THROUGH ITS satellite.public GET DOORS")
+            satellite.console.display("WHY: THE VARIABLES OF A forge_object ARE satellite.protected INSIDE ITS OWN SPACESUIT, SO THE FORGE HAS TO ASK FOR EVERY PIECE THROUGH A DOOR, ONE CALL PER PIECE")
+            
+            satellite.console.display("ASKING THE OBJECT FOR ITS ID...")
+            
+            satellite.variable.number local_object_id = forge_input.call_get_object_id()
+            
+            satellite.console.display("RECEIVED THE ID " + local_object_id + " INTO THE VARIABLE \"local_object_id\"")
+            
+            satellite.console.display("ASKING THE OBJECT FOR ITS NAME...")
+            
+            satellite.variable.string local_name_str = forge_input.call_get_name_str()
+            
+            satellite.console.display("RECEIVED THE NAME \"" + local_name_str + "\" INTO THE VARIABLE \"local_name_str\"")
+            
+            satellite.console.display("ASKING THE OBJECT FOR ITS TYPE...")
+            
+            satellite.variable.string local_object_type = forge_input.call_get_object_type()
+            
+            satellite.console.display("RECEIVED THE TYPE \"" + local_object_type + "\" INTO THE VARIABLE \"local_object_type\"")
+            
+            satellite.console.display("ASKING THE OBJECT FOR ITS LOCATION CHAIN...")
+            
+            satellite.container.list<satellite.variable.string> local_location = forge_input.call_get_location()
+            
+            satellite.console.display("RECEIVED " + local_location.length() + " LOCATION STRINGS INTO THE LIBRARY \"local_location\"")
+            
+            satellite.console.display("ASKING THE OBJECT FOR ITS AFFILIATIONS...")
+            
+            satellite.container.list<satellite.variable.string> local_affiliations = forge_input.call_get_affiliations()
+            
+            satellite.console.display("RECEIVED " + local_affiliations.length() + " AFFILIATION STRINGS INTO THE LIBRARY \"local_affiliations\"")
+            
+            satellite.console.display("ASKING THE OBJECT FOR ITS WRITTEN INFORMATION...")
+            
+            satellite.container.list<satellite.variable.string> local_information = forge_input.call_get_info()
+            
+            satellite.console.display("RECEIVED " + local_information.length() + " SENTENCES INTO THE LIBRARY \"local_information\"")
+            
+            satellite.console.display("ASKING THE OBJECT FOR ITS LINKS...")
+            
+            satellite.container.list<satellite.variable.number> local_links = forge_input.call_get_links()
+            
+            satellite.console.display("RECEIVED " + local_links.length() + " LINKED OBJECT IDS INTO THE LIBRARY \"local_links\"")
+            
+            satellite.variable.number pieces_supplied = 2 + local_location.length() + local_affiliations.length() + local_information.length() + local_links.length()
+            satellite.variable.number pieces_spent = 0
+            
+            satellite.console.display("EVERY PIECE OF DATA IS NOW OUT OF THE OBJECT AND INSIDE THE FORGE")
+            satellite.console.display("COUNTING THE SUPPLY: 1 ID + 1 TYPE + " + local_location.length() + " LOCATIONS + " + local_affiliations.length() + " AFFILIATIONS + " + local_information.length() + " SENTENCES + " + local_links.length() + " LINKS")
+            satellite.console.display("VARIABLE \"pieces_supplied\" NOW SET TO DATA=" + pieces_supplied)
+            satellite.console.display("VARIABLE \"pieces_spent\" NOW SET TO DATA=" + pieces_spent)
+            satellite.console.display("WHY: THE FORGE REPEATS ITS SECTION-THEN-BANNER PROCESS UNTIL \"pieces_spent\" REACHES \"pieces_supplied\", AND THAT IS WHAT IT MEANS TO USE UP ALL OF THE INFORMATION")
+            satellite.console.display("THE NAME IS NOT COUNTED AS A PIECE, BECAUSE THE NAME IS NEVER USED UP, IT RIDES INSIDE EVERY BANNER")
+            
+            satellite.console.display("RECORDING THE TARGET IN THE TARGET HISTORY OF THE FORGE, CALLING set_forge_target(" + local_name_str + ")")
+            
+            set_forge_target(local_name_str)
+            
+            satellite.console.display("BACK INSIDE satellite.spacesuit view_forge()::satellite.protected::satellite.capsule forge_object()")
+            
+            satellite.console.display("CHANGING THE VARIABLE \"forge_id\"")
+            satellite.console.display("CHANGING IT FROM THE DATA " + forge_id + " TO THE DATA " + forge_id.plus(1))
+            satellite.console.display("WHY: \"forge_id\" COUNTS EVERY FORGE THIS view_forge HAS EVER PERFORMED")
+            
+            forge_id = forge_id + 1
+            
+            satellite.console.display("VARIABLE \"forge_id\" NOW SET TO DATA=" + forge_id)
+            satellite.console.display("THIS IS FORGE NUMBER " + forge_id)
+            
+            satellite.console.display("STEP 1: DISPLAYING THE NAME OF THE TARGET, BARE, ON ITS OWN LINE")
+            satellite.console.display("WHY: THE NAME LEADS THE WHOLE VIEW, EVERYTHING BELOW IT BELONGS TO THIS ONE TARGET\n")
+            
+            satellite.console.display(local_name_str)
+            
+            satellite.console.display("\nSTEP 2: DRAWING THE OPENING VIEW BANNER, WITH THE TARGET NAME INSIDE IT")
+            
+            display_view_banner(local_name_str)
+            
+            satellite.console.display("STEP 3: THE IDENTITY SECTION, SPENDING THE ID AND THE TYPE\n")
+            
+            satellite.console.display("OBJECT ID: " + local_object_id)
+            satellite.console.display("OBJECT TYPE: " + local_object_type)
+            
+            pieces_spent = pieces_spent + 2
+            
+            satellite.console.display("\nTHE ID AND THE TYPE ARE USED UP, VARIABLE \"pieces_spent\" NOW SET TO DATA=" + pieces_spent + " OF " + pieces_supplied)
+            satellite.console.display("INFORMATION REMAINS, SO THE VIEW BANNER IS DRAWN AGAIN, WITH THE TARGET NAME INSIDE IT")
+            
+            display_view_banner(local_name_str)
+            
+            satellite.console.display("STEP 4: THE LOCATION SECTION, SPENDING EVERY LOCATION STRING\n")
+            
+            satellite.console.display("LOCATION OF " + local_name_str + ":")
+            
+            satellite.variable.number location_index = 0
+            
+            satellite.statement.while(location_index < local_location.length())
+            {
+                satellite.console.display("LOCATION " + location_index + ": " + local_location[location_index])
+                
+                location_index = location_index + 1
+                pieces_spent = pieces_spent + 1
+            }
+            
+            satellite.console.display("\nALL " + location_index + " LOCATION STRINGS ARE USED UP, VARIABLE \"pieces_spent\" NOW SET TO DATA=" + pieces_spent + " OF " + pieces_supplied)
+            satellite.console.display("INFORMATION REMAINS, SO THE VIEW BANNER IS DRAWN AGAIN, WITH THE TARGET NAME INSIDE IT")
+            
+            display_view_banner(local_name_str)
+            
+            satellite.console.display("STEP 5: THE AFFILIATIONS SECTION, SPENDING EVERY AFFILIATION STRING\n")
+            
+            satellite.console.display("AFFILIATIONS OF " + local_name_str + ":")
+            
+            satellite.variable.number affiliation_index = 0
+            
+            satellite.statement.while(affiliation_index < local_affiliations.length())
+            {
+                satellite.console.display("AFFILIATION " + affiliation_index + ": " + local_affiliations[affiliation_index])
+                
+                affiliation_index = affiliation_index + 1
+                pieces_spent = pieces_spent + 1
+            }
+            
+            satellite.console.display("\nALL " + affiliation_index + " AFFILIATION STRINGS ARE USED UP, VARIABLE \"pieces_spent\" NOW SET TO DATA=" + pieces_spent + " OF " + pieces_supplied)
+            satellite.console.display("INFORMATION REMAINS, SO THE VIEW BANNER IS DRAWN AGAIN, WITH THE TARGET NAME INSIDE IT")
+            
+            display_view_banner(local_name_str)
+            
+            satellite.console.display("STEP 6: THE INFORMATION SECTION, SPENDING EVERY WRITTEN SENTENCE\n")
+            
+            satellite.console.display("INFORMATION ON " + local_name_str + ":")
+            
+            satellite.variable.number information_index = 0
+            
+            satellite.statement.while(information_index < local_information.length())
+            {
+                satellite.console.display("INFO " + information_index + ": " + local_information[information_index])
+                
+                information_index = information_index + 1
+                pieces_spent = pieces_spent + 1
+            }
+            
+            satellite.console.display("\nALL " + information_index + " SENTENCES ARE USED UP, VARIABLE \"pieces_spent\" NOW SET TO DATA=" + pieces_spent + " OF " + pieces_supplied)
+            satellite.console.display("INFORMATION REMAINS, SO THE VIEW BANNER IS DRAWN AGAIN, WITH THE TARGET NAME INSIDE IT")
+            
+            display_view_banner(local_name_str)
+            
+            satellite.console.display("STEP 7: THE LINKS SECTION, SPENDING EVERY LINKED OBJECT ID\n")
+            
+            satellite.console.display("LINKS OUT OF " + local_name_str + ":")
+            
+            satellite.variable.number link_index = 0
+            
+            satellite.statement.while(link_index < local_links.length())
+            {
+                satellite.console.display("LINK " + link_index + ": OBJECT ID " + local_links[link_index])
+                
+                link_index = link_index + 1
+                pieces_spent = pieces_spent + 1
+            }
+            
+            satellite.console.display("\nEVERY LINK IS THE GLOBAL ID OF ANOTHER OBJECT HELD IN THE FORGE, SO EVERY LINE ABOVE IS A TARGET THAT CAN BE FORGED NEXT")
+            
+            satellite.console.display("ALL " + link_index + " LINKED OBJECT IDS ARE USED UP, VARIABLE \"pieces_spent\" NOW SET TO DATA=" + pieces_spent + " OF " + pieces_supplied)
+            
+            satellite.console.display("STEP 8: EVERY PIECE OF INFORMATION IS NOW USED UP, \"pieces_spent\" HOLDS " + pieces_spent + " AND \"pieces_supplied\" HOLDS " + pieces_supplied + ", SO THE PROCESS STOPS REPEATING AND THE CLOSING BANNER IS DRAWN")
+            
+            display_view_banner(local_name_str)
+            
+            satellite.console.display("THE FORGING OF \"" + local_name_str + "\" IS COMPLETE")
+            satellite.console.display("THE FORGE WAS HANDED " + pieces_supplied + " PIECES OF INFORMATION AND SPENT ALL " + pieces_supplied + " OF THEM, ACROSS 5 SECTIONS FENCED BY 6 VIEW BANNERS")
+            
+            satellite.console.display("NOW LEAVING: satellite.spacesuit view_forge()::satellite.protected::satellite.capsule forge_object()")
+            
+            satellite.console.display("NOTHING IS BEING HANDED BACK, SO THE CALL IS satellite.return() WITH NO DATA INSIDE IT")
+            
+            satellite.console.display("CALLING satellite.return()")
+            
+            satellite.return()
+        }
+    }
+    
+    satellite.public
+    {
+        view_forge()
+        {
+            satellite.console.display("\n>>> ENTERING satellite.spacesuit view_forge()::satellite.public::view_forge()")
+            
+            satellite.console.display("PURPOSE: THIS IS THE CONSTRUCTOR, AND IT RUNS THE MOMENT satellite.main WRITES THE LINE \"view_forge local_view_forge\"")
+            
+            satellite.console.display("WHY: EVERY VARIABLE INSIDE satellite.protected IS BUILT HOLDING A PLACEHOLDER, SO NOTHING IN THE FORGE IS EVER READ BEFORE IT IS WRITTEN")
+            
+            satellite.console.display("BUILDING A NEW view_forge WITH THE FOLLOWING PLACEHOLDER DATA...")
+            
+            satellite.console.display("VARIABLE \"forge_id\" (satellite.variable.number) BUILT HOLDING THE DATA " + forge_id)
+            satellite.console.display("WHY: \"forge_id\" COUNTS FORGES PERFORMED, AND NO TARGET HAS BEEN FORGED YET")
+            
+            satellite.console.display("VARIABLE \"forge_target\" (satellite.variable.string) BUILT HOLDING THE DATA " + forge_target)
+            satellite.console.display("VARIABLE \"target_list_has_unset\" (satellite.variable.bool) BUILT HOLDING THE DATA TRUE")
+            satellite.console.display("LIBRARY \"target_list\" BUILT HOLDING " + target_list.length() + " PLACEHOLDER SLOTS")
+            
+            satellite.console.display("VARIABLE \"banner_width\" (satellite.variable.number) BUILT HOLDING THE DATA " + banner_width)
+            satellite.console.display("VARIABLE \"view_dash_width\" (satellite.variable.number) BUILT HOLDING THE DATA " + view_dash_width)
+            satellite.console.display("WHY: EVERY BANNER LINE IS DRAWN " + banner_width + " CHARACTERS WIDE, AND \"view \" PLUS " + view_dash_width + " DASHES LANDS ON EXACTLY THAT WIDTH")
+            
+            satellite.console.display("VARIABLE \"solid_line_str\" (satellite.variable.string) BUILT HOLDING THE DATA " + solid_line_str)
+            satellite.console.display("VARIABLE \"view_line_str\" (satellite.variable.string) BUILT HOLDING THE DATA " + view_line_str)
+            satellite.console.display("VARIABLE \"banner_lines_built\" (satellite.variable.bool) BUILT HOLDING THE DATA FALSE")
+            satellite.console.display("WHY: THE TWO BANNER LINES ARE ONLY BUILT THE FIRST TIME A BANNER IS ACTUALLY NEEDED, AND THE FLAG REMEMBERS WHETHER THAT HAS HAPPENED")
+            
+            satellite.console.display("THE NEW view_forge IS BUILT AND IS WAITING TO BE HANDED A TARGET")
+            
+            satellite.console.display("NOW LEAVING: satellite.spacesuit view_forge()::satellite.public::view_forge()")
+        }
+        
+        satellite.capsule call_set_forge_target(satellite.variable.string call_target_input)
+        {
+            satellite.console.display("\n>>> ENTERING satellite.spacesuit view_forge()::satellite.public::satellite.capsule call_set_forge_target(" + call_target_input + ")")
+            
+            satellite.console.display("PURPOSE: THIS IS THE satellite.public DOOR ONTO THE satellite.protected CAPSULE set_forge_target()")
+            
+            satellite.console.display("WHY: satellite.main CANNOT REACH INSIDE satellite.protected, SO EVERY WRITE HAS TO COME THROUGH A DOOR LIKE THIS ONE")
+            
+            satellite.console.display("VARIABLE \"call_target_input\" (satellite.variable.string) INFO")
+            satellite.console.display("VARIABLE LENGTH=" + call_target_input.length())
+            satellite.console.display("VARIABLE DATA=" + call_target_input)
+            
+            satellite.console.display("HANDING \"call_target_input\" STRAIGHT THROUGH, UNCHANGED, TO THE CAPSULE BELOW")
+            
+            satellite.console.display("CALLING satellite.spacesuit view_forge()::satellite.protected::satellite.capsule set_forge_target(" + call_target_input + ")")
+            
+            set_forge_target(call_target_input)
+            
+            satellite.console.display("RETURNED FROM satellite.spacesuit view_forge()::satellite.protected::satellite.capsule set_forge_target()")
+            satellite.console.display("BACK INSIDE satellite.spacesuit view_forge()::satellite.public::satellite.capsule call_set_forge_target()")
+            
+            satellite.console.display("NOW LEAVING: satellite.spacesuit view_forge()::satellite.public::satellite.capsule call_set_forge_target()")
+            
+            satellite.console.display("NOTHING IS BEING HANDED BACK, SO THE CALL IS satellite.return() WITH NO DATA INSIDE IT")
+            
+            satellite.console.display("CALLING satellite.return()")
+            
+            satellite.return()
+        }
+        
+        satellite.capsule call_forge_object(forge_object call_forge_input)
+        {
+            satellite.console.display("\n>>> ENTERING satellite.spacesuit view_forge()::satellite.public::satellite.capsule call_forge_object()")
+            
+            satellite.console.display("PURPOSE: THIS IS THE satellite.public DOOR ONTO THE satellite.protected CAPSULE forge_object(), THE CAPSULE THAT IS THE ENTIRE PURPOSE OF THE PROGRAM")
+            
+            satellite.console.display("WHY: satellite.main CANNOT REACH INSIDE satellite.protected, SO THE ONE forge_object IT WANTS FORGED HAS TO BE HANDED IN THROUGH THIS DOOR")
+            
+            satellite.console.display("RECEIVED ONE WHOLE forge_object INTO THE VARIABLE \"call_forge_input\"")
+            
+            satellite.console.display("HANDING \"call_forge_input\" STRAIGHT THROUGH, UNCHANGED, TO THE CAPSULE BELOW")
+            
+            satellite.console.display("CALLING satellite.spacesuit view_forge()::satellite.protected::satellite.capsule forge_object()")
+            
+            forge_object(call_forge_input)
+            
+            satellite.console.display("RETURNED FROM satellite.spacesuit view_forge()::satellite.protected::satellite.capsule forge_object()")
+            satellite.console.display("BACK INSIDE satellite.spacesuit view_forge()::satellite.public::satellite.capsule call_forge_object()")
+            
+            satellite.console.display("NOW LEAVING: satellite.spacesuit view_forge()::satellite.public::satellite.capsule call_forge_object()")
+            
+            satellite.console.display("NOTHING IS BEING HANDED BACK, SO THE CALL IS satellite.return() WITH NO DATA INSIDE IT")
+            
+            satellite.console.display("CALLING satellite.return()")
+            
+            satellite.return()
+        }
+    }
+}
+
+satellite.capsule satellite.main(satellite.container.list<satellite.variable.string> arguments)
+{
+    satellite.console.display("SATELLITE VIEW FORGE\n\nVERSION: 001\n\nBY: MADNESS\n\nBEGAN: AUGUST 23RD, 2026\nLAST UPDATE: AUGUST 23RD, 2026\n")
+    
+    satellite.console.display("A PRODUCT OF THE SATELLITE CORPORATION\n")
+    
+    satellite.console.display("\nNOTE: VARIABLE INFORMATION IS DISPLAYED IN PARENTHESES!\n\n")
+    
+    satellite.console.display("\nINFO: THIS APPLICATION PRINTS AT A READABLE SPEED BUT RUNS FASTER THAN IT DISPLAYS INFORMATION...\n\n")
+    
+    satellite.console.display("ADDITIONAL INFO: THIS PROGRAM HOLDS 32 GIGABYTES OF DISPLAY INFO IN MEMORY, AND THEN BEGINS TO STORE ON THE HARD DRIVE: \"purple10\"")
+    
+    satellite.console.display("[SATELLITE_VIEW_FORGE]>>", end="")
+    satellite.variable.string local_user_input = "UNSET"
+    satellite.console.input("", local_user_input)
+    
+    satellite.console.display("LOADING TARGET INFORMATION...")
+    
+    satellite.container.list<view_type> type_list
+    
+    
+    satellite.container.list<view_type> people_types = return_people_types()
+    
+    satellite.variable.number people_type_index = 0
+    
+    satellite.statement.while(people_type_index < people_types.length())
+    {
+        type_list.append(people_types[people_type_index])
+        
+        people_type_index = people_type_index + 1
+    }
+    
+    satellite.console.display("ADDED " + people_types.length() + " PEOPLE TYPES TO THE LIBRARY \"type_list\"")
+    
+    satellite.container.list<view_type> places_types = return_places_types()
+    
+    satellite.variable.number places_type_index = 0
+    
+    satellite.statement.while(places_type_index < places_types.length())
+    {
+        type_list.append(places_types[places_type_index])
+        
+        places_type_index = places_type_index + 1
+    }
+    
+    satellite.console.display("ADDED " + places_types.length() + " PLACE TYPES TO THE LIBRARY \"type_list\"")
+    
+    satellite.container.list<view_type> organizations_types = return_organizations_types()
+    
+    satellite.variable.number organizations_type_index = 0
+    
+    satellite.statement.while(organizations_type_index < organizations_types.length())
+    {
+        type_list.append(organizations_types[organizations_type_index])
+        
+        organizations_type_index = organizations_type_index + 1
+    }
+    
+    satellite.console.display("ADDED " + organizations_types.length() + " ORGANIZATION TYPES TO THE LIBRARY \"type_list\"")
+    
+    satellite.container.list<view_type> concepts_types = return_concepts_types()
+    
+    satellite.variable.number concepts_type_index = 0
+    
+    satellite.statement.while(concepts_type_index < concepts_types.length())
+    {
+        type_list.append(concepts_types[concepts_type_index])
+        
+        concepts_type_index = concepts_type_index + 1
+    }
+    
+    satellite.console.display("ADDED " + concepts_types.length() + " CONCEPT TYPES TO THE LIBRARY \"type_list\"")
+    
+    satellite.container.list<view_type> history_types = return_history_types()
+    
+    satellite.variable.number history_type_index = 0
+    
+    satellite.statement.while(history_type_index < history_types.length())
+    {
+        type_list.append(history_types[history_type_index])
+        
+        history_type_index = history_type_index + 1
+    }
+    
+    satellite.console.display("ADDED " + history_types.length() + " HISTORY TYPES TO THE LIBRARY \"type_list\"")
+    
+    satellite.container.list<view_type> space_types = return_space_types()
+    
+    satellite.variable.number space_type_index = 0
+    
+    satellite.statement.while(space_type_index < space_types.length())
+    {
+        type_list.append(space_types[space_type_index])
+        
+        space_type_index = space_type_index + 1
+    }
+    
+    satellite.console.display("ADDED " + space_types.length() + " SPACE TYPES TO THE LIBRARY \"type_list\"")
+    
+    satellite.container.list<view_type> fiction_types = return_fiction_types()
+    
+    satellite.variable.number fiction_type_index = 0
+    
+    satellite.statement.while(fiction_type_index < fiction_types.length())
+    {
+        type_list.append(fiction_types[fiction_type_index])
+        
+        fiction_type_index = fiction_type_index + 1
+    }
+    
+    satellite.console.display("ADDED " + fiction_types.length() + " FICTION TYPES TO THE LIBRARY \"type_list\"")
+    
+    satellite.container.list<forge_object> object_list
+    
+    satellite.console.display("LOADING OBJECT LIBRARIES FROM THE \"./declarations/\" DIRECTORY...")
+    
+    satellite.container.list<forge_object> concept_objects = return_concepts()
+    
+    satellite.variable.number concept_index = 0
+    
+    satellite.statement.while(concept_index < concept_objects.length())
+    {
+        object_list.append(concept_objects[concept_index])
+        
+        concept_index = concept_index + 1
+    }
+    
+    satellite.console.display("ADDED " + concept_objects.length() + " CONCEPT OBJECTS TO THE LIBRARY \"object_list\"")
+    
+    satellite.container.list<forge_object> china_objects = return_china()
+    
+    satellite.variable.number china_index = 0
+    
+    satellite.statement.while(china_index < china_objects.length())
+    {
+        object_list.append(china_objects[china_index])
+        
+        china_index = china_index + 1
+    }
+    
+    satellite.console.display("ADDED " + china_objects.length() + " CHINA OBJECTS TO THE LIBRARY \"object_list\"")
+    
+    satellite.container.list<forge_object> russia_objects = return_russia()
+    
+    satellite.variable.number russia_index = 0
+    
+    satellite.statement.while(russia_index < russia_objects.length())
+    {
+        object_list.append(russia_objects[russia_index])
+        
+        russia_index = russia_index + 1
+    }
+    
+    satellite.console.display("ADDED " + russia_objects.length() + " RUSSIA OBJECTS TO THE LIBRARY \"object_list\"")
+    
+    satellite.container.list<forge_object> people_objects = return_people()
+    
+    satellite.variable.number people_index = 0
+    
+    satellite.statement.while(people_index < people_objects.length())
+    {
+        object_list.append(people_objects[people_index])
+        
+        people_index = people_index + 1
+    }
+    
+    satellite.console.display("ADDED " + people_objects.length() + " PEOPLE OBJECTS TO THE LIBRARY \"object_list\"")
+    
+    satellite.container.list<forge_object> continents_objects = return_continents()
+    
+    satellite.variable.number continents_index = 0
+    
+    satellite.statement.while(continents_index < continents_objects.length())
+    {
+        object_list.append(continents_objects[continents_index])
+        
+        continents_index = continents_index + 1
+    }
+    
+    satellite.console.display("ADDED " + continents_objects.length() + " CONTINENT OBJECTS TO THE LIBRARY \"object_list\"")
+    
+    satellite.container.list<forge_object> space_objects = return_space()
+    
+    satellite.variable.number space_index = 0
+    
+    satellite.statement.while(space_index < space_objects.length())
+    {
+        object_list.append(space_objects[space_index])
+        
+        space_index = space_index + 1
+    }
+    
+    satellite.console.display("ADDED " + space_objects.length() + " SPACE OBJECTS TO THE LIBRARY \"object_list\"")
+    
+    satellite.container.list<forge_object> germany_objects = return_germany()
+    
+    satellite.variable.number germany_index = 0
+    
+    satellite.statement.while(germany_index < germany_objects.length())
+    {
+        object_list.append(germany_objects[germany_index])
+        
+        germany_index = germany_index + 1
+    }
+    
+    satellite.console.display("ADDED " + germany_objects.length() + " GERMANY OBJECTS TO THE LIBRARY \"object_list\"")
+    
+    satellite.container.list<forge_object> ukraine_objects = return_ukraine()
+    
+    satellite.variable.number ukraine_index = 0
+    
+    satellite.statement.while(ukraine_index < ukraine_objects.length())
+    {
+        object_list.append(ukraine_objects[ukraine_index])
+        
+        ukraine_index = ukraine_index + 1
+    }
+    
+    satellite.console.display("ADDED " + ukraine_objects.length() + " UKRAINE OBJECTS TO THE LIBRARY \"object_list\"")
+    
+    satellite.container.list<forge_object> north_korea_objects = return_north_korea()
+    
+    satellite.variable.number north_korea_index = 0
+    
+    satellite.statement.while(north_korea_index < north_korea_objects.length())
+    {
+        object_list.append(north_korea_objects[north_korea_index])
+        
+        north_korea_index = north_korea_index + 1
+    }
+    
+    satellite.console.display("ADDED " + north_korea_objects.length() + " NORTH KOREA OBJECTS TO THE LIBRARY \"object_list\"")
+    
+    satellite.container.list<forge_object> united_states_objects = return_united_states()
+    
+    satellite.variable.number united_states_index = 0
+    
+    satellite.statement.while(united_states_index < united_states_objects.length())
+    {
+        object_list.append(united_states_objects[united_states_index])
+        
+        united_states_index = united_states_index + 1
+    }
+    
+    satellite.console.display("ADDED " + united_states_objects.length() + " UNITED STATES OBJECTS TO THE LIBRARY \"object_list\"")
+    
+    satellite.container.list<forge_object> britain_objects = return_britain()
+    
+    satellite.variable.number britain_index = 0
+    
+    satellite.statement.while(britain_index < britain_objects.length())
+    {
+        object_list.append(britain_objects[britain_index])
+        
+        britain_index = britain_index + 1
+    }
+    
+    satellite.console.display("ADDED " + britain_objects.length() + " BRITAIN OBJECTS TO THE LIBRARY \"object_list\"")
+    
+    satellite.container.list<forge_object> canada_objects = return_canada()
+    
+    satellite.variable.number canada_index = 0
+    
+    satellite.statement.while(canada_index < canada_objects.length())
+    {
+        object_list.append(canada_objects[canada_index])
+        
+        canada_index = canada_index + 1
+    }
+    
+    satellite.console.display("ADDED " + canada_objects.length() + " CANADA OBJECTS TO THE LIBRARY \"object_list\"")
+    
+    satellite.container.list<forge_object> mexico_objects = return_mexico()
+    
+    satellite.variable.number mexico_index = 0
+    
+    satellite.statement.while(mexico_index < mexico_objects.length())
+    {
+        object_list.append(mexico_objects[mexico_index])
+        
+        mexico_index = mexico_index + 1
+    }
+    
+    satellite.console.display("ADDED " + mexico_objects.length() + " MEXICO OBJECTS TO THE LIBRARY \"object_list\"")
+    
+    satellite.container.list<forge_object> organization_objects = return_organizations()
+    
+    satellite.variable.number organization_index = 0
+    
+    satellite.statement.while(organization_index < organization_objects.length())
+    {
+        object_list.append(organization_objects[organization_index])
+        
+        organization_index = organization_index + 1
+    }
+    
+    satellite.console.display("ADDED " + organization_objects.length() + " ORGANIZATION OBJECTS TO THE LIBRARY \"object_list\"")
+    
+    satellite.container.list<forge_object> history_objects = return_history()
+    
+    satellite.variable.number history_index = 0
+    
+    satellite.statement.while(history_index < history_objects.length())
+    {
+        object_list.append(history_objects[history_index])
+        
+        history_index = history_index + 1
+    }
+    
+    satellite.console.display("ADDED " + history_objects.length() + " HISTORY OBJECTS TO THE LIBRARY \"object_list\"")
+    
+    satellite.container.list<forge_object> japan_objects = return_japan()
+    
+    satellite.variable.number japan_index = 0
+    
+    satellite.statement.while(japan_index < japan_objects.length())
+    {
+        object_list.append(japan_objects[japan_index])
+        
+        japan_index = japan_index + 1
+    }
+    
+    satellite.console.display("ADDED " + japan_objects.length() + " JAPAN OBJECTS TO THE LIBRARY \"object_list\"")
+
+    satellite.container.list<forge_object> places_objects = return_places()
+    
+    satellite.variable.number places_index = 0
+    
+    satellite.statement.while(places_index < places_objects.length())
+    {
+        object_list.append(places_objects[places_index])
+        
+        places_index = places_index + 1
+    }
+    
+    satellite.console.display("ADDED " + places_objects.length() + " PLACE OBJECTS TO THE LIBRARY \"object_list\"")
+    
+    satellite.container.list<forge_object> union_objects = return_historic_union()
+    
+    satellite.variable.number union_index = 0
+    
+    satellite.statement.while(union_index < union_objects.length())
+    {
+        object_list.append(union_objects[union_index])
+        
+        union_index = union_index + 1
+    }
+    
+    satellite.console.display("ADDED " + union_objects.length() + " UNION OBJECTS TO THE LIBRARY \"object_list\"")
+
+    satellite.container.list<forge_object> south_objects = return_historic_south()
+    
+    satellite.variable.number south_index = 0
+    
+    satellite.statement.while(south_index < south_objects.length())
+    {
+        object_list.append(south_objects[south_index])
+        
+        south_index = south_index + 1
+    }
+    
+    satellite.console.display("ADDED " + south_objects.length() + " SOUTH OBJECTS TO THE LIBRARY \"object_list\"")
+    
+    satellite.console.display("LOADING THE FICTION LIBRARIES FROM THE \"./declarations/fiction/\" DIRECTORY...")
+    satellite.console.display("WHY: EVERY OBJECT BELOW THIS POINT IS INVENTED, AND THE FORGE KEEPS THEM IN THE SAME LIBRARY AS THE REAL ONES ONLY BECAUSE EACH ONE CARRIES ITS OWN UNIVERSE IN ITS LOCATION DATA")
+    
+    satellite.container.list<forge_object> warhammer_imperium_objects = return_warhammer_imperium()
+    
+    satellite.variable.number warhammer_imperium_index = 0
+    
+    satellite.statement.while(warhammer_imperium_index < warhammer_imperium_objects.length())
+    {
+        object_list.append(warhammer_imperium_objects[warhammer_imperium_index])
+        
+        warhammer_imperium_index = warhammer_imperium_index + 1
+    }
+    
+    satellite.console.display("ADDED " + warhammer_imperium_objects.length() + " WARHAMMER IMPERIUM OBJECTS TO THE LIBRARY \"object_list\"")
+    
+    satellite.container.list<forge_object> warhammer_imperium_figures_objects = return_warhammer_imperium_figures()
+    
+    satellite.variable.number warhammer_imperium_figures_index = 0
+    
+    satellite.statement.while(warhammer_imperium_figures_index < warhammer_imperium_figures_objects.length())
+    {
+        object_list.append(warhammer_imperium_figures_objects[warhammer_imperium_figures_index])
+        
+        warhammer_imperium_figures_index = warhammer_imperium_figures_index + 1
+    }
+    
+    satellite.console.display("ADDED " + warhammer_imperium_figures_objects.length() + " WARHAMMER IMPERIAL FIGURE OBJECTS TO THE LIBRARY \"object_list\"")
+    
+    satellite.container.list<forge_object> warhammer_krieg_objects = return_warhammer_krieg()
+    
+    satellite.variable.number warhammer_krieg_index = 0
+    
+    satellite.statement.while(warhammer_krieg_index < warhammer_krieg_objects.length())
+    {
+        object_list.append(warhammer_krieg_objects[warhammer_krieg_index])
+        
+        warhammer_krieg_index = warhammer_krieg_index + 1
+    }
+    
+    satellite.console.display("ADDED " + warhammer_krieg_objects.length() + " WARHAMMER KRIEG OBJECTS TO THE LIBRARY \"object_list\"")
+    
+    satellite.container.list<forge_object> warhammer_chaos_objects = return_warhammer_chaos()
+    
+    satellite.variable.number warhammer_chaos_index = 0
+    
+    satellite.statement.while(warhammer_chaos_index < warhammer_chaos_objects.length())
+    {
+        object_list.append(warhammer_chaos_objects[warhammer_chaos_index])
+        
+        warhammer_chaos_index = warhammer_chaos_index + 1
+    }
+    
+    satellite.console.display("ADDED " + warhammer_chaos_objects.length() + " WARHAMMER CHAOS OBJECTS TO THE LIBRARY \"object_list\"")
+    
+    satellite.container.list<forge_object> warhammer_xenos_objects = return_warhammer_xenos()
+    
+    satellite.variable.number warhammer_xenos_index = 0
+    
+    satellite.statement.while(warhammer_xenos_index < warhammer_xenos_objects.length())
+    {
+        object_list.append(warhammer_xenos_objects[warhammer_xenos_index])
+        
+        warhammer_xenos_index = warhammer_xenos_index + 1
+    }
+    
+    satellite.console.display("ADDED " + warhammer_xenos_objects.length() + " WARHAMMER XENOS OBJECTS TO THE LIBRARY \"object_list\"")
+    
+    satellite.container.list<forge_object> warhammer_necrons_objects = return_warhammer_necrons()
+    
+    satellite.variable.number warhammer_necrons_index = 0
+    
+    satellite.statement.while(warhammer_necrons_index < warhammer_necrons_objects.length())
+    {
+        object_list.append(warhammer_necrons_objects[warhammer_necrons_index])
+        
+        warhammer_necrons_index = warhammer_necrons_index + 1
+    }
+    
+    satellite.console.display("ADDED " + warhammer_necrons_objects.length() + " WARHAMMER NECRON OBJECTS TO THE LIBRARY \"object_list\"")
+    
+    satellite.container.list<forge_object> warhammer_events_objects = return_warhammer_events()
+    
+    satellite.variable.number warhammer_events_index = 0
+    
+    satellite.statement.while(warhammer_events_index < warhammer_events_objects.length())
+    {
+        object_list.append(warhammer_events_objects[warhammer_events_index])
+        
+        warhammer_events_index = warhammer_events_index + 1
+    }
+    
+    satellite.console.display("ADDED " + warhammer_events_objects.length() + " WARHAMMER EVENT OBJECTS TO THE LIBRARY \"object_list\"")
+    
+    satellite.console.display("EVERY DECLARATION LIBRARY IS NOW LOADED")
+    satellite.console.display("THE LIBRARY \"object_list\" NOW HOLDS " + object_list.length() + " OBJECTS")
+    satellite.console.display("THE LIBRARY \"type_list\" NOW HOLDS " + type_list.length() + " TYPES")
+    
+    satellite.console.display("BUILDING THE FORGE ITSELF...")
+    satellite.console.display("WHY: THE OBJECTS ARE ONLY STORAGE, AND ONLY A view_forge CAN TURN ONE OF THEM INTO A VIEW ON THE CONSOLE")
+    
+    view_forge local_view_forge
+    
+    satellite.console.display("HANDING THE FORGE ITS TARGET, THE DATA \"" + local_user_input + "\" TYPED IN AT THE PROMPT ABOVE")
+    
+    local_view_forge.call_set_forge_target(local_user_input)
+    
+    satellite.console.display("SEARCHING THE LIBRARY \"object_list\" FOR AN OBJECT WHOSE NAME MATCHES THE TARGET \"" + local_user_input + "\"")
+    satellite.console.display("WHY: THE FORGE RECEIVES A WHOLE forge_object, NOT A NAME, SO satellite.main HAS TO FIND THE OBJECT BEFORE THE FORGE CAN FORGE IT")
+    satellite.console.display("MATCHING IS EXACT, CHARACTER FOR CHARACTER, AGAINST THE VARIABLE \"name_str\" OF EVERY OBJECT")
+    
+    satellite.variable.number search_index = 0
+    satellite.variable.number target_index = 0
+    satellite.variable.bool target_found = FALSE
+    
+    satellite.console.display("ENTERING satellite.statement.while(search_index < object_list.length())")
+    satellite.console.display("THE LOOP WILL KEEP RUNNING UNTIL \"search_index\" REACHES " + object_list.length())
+    
+    satellite.statement.while(search_index < object_list.length())
+    {
+        satellite.variable.string search_name = object_list[search_index].call_get_name_str()
+        
+        satellite.console.display("SEARCH PASS " + search_index + ": COMPARING THE NAME \"" + search_name + "\" AGAINST THE TARGET \"" + local_user_input + "\"")
+        
+        satellite.statement.if(search_name == local_user_input)
+        {
+            satellite.console.display("MATCH! THE OBJECT AT \"object_list[" + search_index + "]\" IS THE TARGET")
+            
+            target_found = TRUE
+            target_index = search_index
+            
+            satellite.console.display("VARIABLE \"target_found\" NOW SET TO DATA=TRUE")
+            satellite.console.display("VARIABLE \"target_index\" NOW SET TO DATA=" + target_index)
+        }
+        satellite.statement.else()
+        {
+            satellite.console.display("NO MATCH, MOVING ON")
+        }
+        
+        search_index = search_index + 1
+    }
+    
+    satellite.console.display("EXITED satellite.statement.while(search_index < object_list.length())")
+    satellite.console.display("SEARCHED " + search_index + " OBJECTS")
+    
+    satellite.statement.if(target_found == TRUE)
+    {
+        satellite.console.display("THE TARGET \"" + local_user_input + "\" WAS LOCATED AT \"object_list[" + target_index + "]\"")
+        
+        satellite.console.display("SENDING THE forge_object AT \"object_list[" + target_index + "]\" INTO THE FORGE...")
+        
+        local_view_forge.call_forge_object(object_list[target_index])
+        
+        satellite.console.display("THE FORGE HAS RETURNED, THE TARGET HAS BEEN FULLY FORGED AND DISPLAYED")
+    }
+    satellite.statement.else()
+    {
+        satellite.console.display("THE TARGET \"" + local_user_input + "\" DOES NOT MATCH ANY OF THE " + object_list.length() + " OBJECTS LOADED")
+        satellite.console.display("NOTHING CAN BE FORGED, BECAUSE THE FORGE CAN ONLY RECEIVE AN OBJECT THAT EXISTS")
+        satellite.console.display("TIP: OBJECT NAMES ARE WRITTEN IN FULL UPPERCASE, FOR EXAMPLE \"CHINA\" OR \"CHINESE\"")
+    }
+    
+    satellite.console.display("\nSATELLITE VIEW FORGE COMPLETE")
+        satellite.return(satellite)
+}

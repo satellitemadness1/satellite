@@ -1,0 +1,369 @@
+satellite orbit — the result type, its weight, and its attention
+================================================================
+Written 2026-08-24, straight after the engine landed, as the spec for the next
+piece of work. BUILT 2026-08-25 -- the half below the line is the record, and
+`make test` is green with all nineteen binaries, orbit_test included.
+
+Read orbit.txt first (the intent), then orbit_plan.txt (what the five phases
+are and what landed). This file is only about what a RESULT is.
+
+
+WHAT WAS ASKED FOR
+------------------
+Verbatim, because the two new words are the whole point and paraphrasing them
+would lose it:
+
+    "build the result type; so it has to be iterable; it has to be ranked,
+     it's results have to have weight or something, and they have to have
+     another property attention, so we are kinda making an ai, and the
+     attention needs to be like, based on concrete things, and the weight
+     based on what the phases think that that result is; so each real
+     'result' will have a weight and it will have an attention -- the
+     attention is specifically the concrete stuff, and the weight is what
+     orbit 'thinks' of the results"
+
+And the purpose, from the same message: "We are doing this for the purpose of
+trying to get a type of AI working."
+
+
+THE SPLIT, AND WHY IT IS THE GOOD IDEA IN THIS DESIGN
+-----------------------------------------------------
+    DECISION 1. ATTENTION IS COUNTED. WEIGHT IS JUDGED.
+
+    attention   what is literally, checkably true about this result in the
+                data in front of us. Countable. If every phase's opinion were
+                deleted, attention would still be computable from the corpus
+                alone.
+
+    weight      what orbit THINKS this result is. The phases' judgement:
+                tightness, how many of them agreed, what memory says, and
+                whether the engine proposed it rather than found it.
+
+The reason to carry BOTH rather than one blended number is that THE TWO
+DISAGREEING IS THE USEFUL SIGNAL, and it is the signal an AI most needs to be
+able to emit about itself:
+
+    high attention, low weight    it is definitely in there, a lot, and orbit
+                                  does not think it is what you meant
+    high weight, low attention    orbit thinks this is the answer and there is
+                                  almost nothing concrete under it
+
+The second line is the dangerous one, and today's single `confidence` number
+CANNOT EXPRESS IT. A constructed neighbour that three phases like and that
+occurs twice, and a direct hit that occurs twice, can land on the same
+confidence by different routes, and nothing in the answer says which happened.
+Splitting the number is what makes "orbit is speculating" a thing a program can
+test for rather than a thing a person has to infer from `why`.
+
+That is also the honest reading of "we are kinda making an ai": the interesting
+property of one is not that it answers, it is that it can say how much of the
+answer is grounded.
+
+    DECISION 2. ATTENTION MAY NEVER READ A PHASE'S OPINION.
+
+Not a style rule. If attention were allowed to include agreement or memory, the
+two numbers would share inputs and could no longer disagree in the way DECISION
+1 needs them to -- and the pair would be two spellings of one judgement rather
+than a judgement and its evidence. Attention is computed from the corpus and
+the walk. Nothing else.
+
+
+WHAT THE FIELDS BECOME
+----------------------
+The engine already computes eleven fields per finding (orbit.hpp, struct
+Finding). They sort cleanly, which is the sign the split is real rather than
+imposed:
+
+    ATTENTION, the concrete    occurrence  how many times it literally occurs
+                               path        where it literally is
+                               key         what it is literally stored under
+                               constructed whether it is in the corpus AT ALL
+
+    WEIGHT, the judged         score       the ladder rung it matched at
+                               agreement   how many phases concluded it
+                               prior       what memory says it has meant
+                               phase       which phase's judgement this is
+                               why         the sentence
+
+`confidence` as it exists today is a blend of all of both and becomes WEIGHT.
+`occurrence` stops feeding weight and becomes the spine of attention -- which
+is a real behaviour change and is the point, not a side effect.
+
+    DECISION 2a. ATTENTION IS A RAW COUNT. WEIGHT IS 0..100. DECIDED.
+
+Asked and answered: attention is a count. "It is in there 4 times" is a FACT,
+and "attention 62" is a rescaling of that fact which has thrown away the number
+it came from. A count also cannot be quietly reweighted later without somebody
+noticing, which a percentage can.
+
+They are DELIBERATELY not the same kind of number, and that is a feature rather
+than an inconsistency to tidy up: it means nobody can add them together, average
+them, or sort on their sum. DECISION 1 says the pair disagreeing is the product,
+and two numbers on the same scale are an invitation to blend them.
+
+The cost, stated: attention does not compare across corpora. Four occurrences in
+a list of seven and four in a list of seven thousand are the same attention and
+are not the same fact. A program that needs the ratio has .length() and can
+divide; the engine will not do it silently.
+
+
+ITERABLE, AND RANKED
+--------------------
+    DECISION 3. BOTH, AND THE QUESTION DISSOLVES. DECIDED.
+
+Asked as "fields or both or alternatives, I don't know" -- and the answer is
+that it is not a choice, because the two are reached by different spellings and
+one of them is already free.
+
+**Verified** in the tree: the language has NO foreach. Iteration is an indexed
+`satellite.statement.for` over anything answering .length() and [i]. And a map
+already answers .keys(), .values() and .length() (src/evaluator/maps.cpp).
+
+So, because a result IS a map underneath:
+
+    FIELDS        already iterable. r.keys(), r.values(), r.length(), r["why"].
+                  Inherited from the map substrate. NOTHING TO BUILD.
+    ALTERNATIVES  r.alternatives(), answering a ranked list of results, which
+                  the same indexed loop walks.
+
+Spending the type's own spelling on fields would buy nothing that the map
+substrate does not already give away. Spending it on alternatives buys the one
+thing that cannot otherwise be reached. That is the whole argument.
+
+    DECISION 3a. r.length() COUNTS FIELDS, NOT ALTERNATIVES.
+
+It is the map's answer and a result is a map, so consistency decides it. The
+surprise is real and is worth naming: `found.length()` is how many results came
+back, and `r.length()` is how many fields one result has. The alternative
+reading -- length means alternatives -- would make a result a map that lies
+about its own size, and every other map method would still be counting fields.
+A program that wants the other number writes r.alternatives().length(), which
+says which number it wants.
+
+    DECISION 3b. r[0] STAYS A KEY LOOKUP. IT IS NOT ALTERNATIVE ZERO.
+
+The search power's DECISION 6a spends its whole argument refusing to let a
+whole-number subscript change meaning with context, and this is the same rule:
+a result is a map, a map's subscript is by key, and `r[0]` is the key 0. Making
+it mean "the first alternative" would be exactly the action at a distance that
+decision exists to prevent.
+
+
+WHY THIS IS A TYPE AND NOT MORE MAP KEYS
+----------------------------------------
+Measured, not argued. **Verified** against ./satl on 2026-08-24: a result
+cannot be BOUND TO A TYPED VARIABLE AT ALL today.
+
+    satellite.container.list<satellite.container.map<
+        satellite.variable.string, satellite.variable.string>> found
+        = flags.orbit(want)
+
+    satellite: cannot initialise ... with [{value: [true, true], key: nil, ...}]
+
+The values are heterogeneous -- a list, a nil, a number, a bool, a string -- and
+the type system has no way to say so. Results are reachable ONLY by chaining:
+`flags.orbit(want)[0]["why"]`. Note that `.search()`'s rich form has had exactly
+this limitation since it landed; search_test never binds one either. A named
+type fixes both at once, and it is the reason the type is worth its cost.
+
+The second reason: `.why()` and `.weight()` as METHODS cannot collide with a
+user's own map keys, and as keys they can.
+
+
+THE MECHANICS, ALREADY CHECKED
+------------------------------
+All **verified** in the tree on 2026-08-24, so the next session does not have to
+re-derive them:
+
+ 1. src/satellite_value/value_variant.hpp is marked APPEND ONLY and says why:
+    help_for() and module_of() switch on RAW variant indices, so appending is
+    free and inserting renumbers everything after it. ResultRef is index 11.
+
+ 2. EXACTLY TWO places in the whole tree read a raw variant index --
+    module_of() in src/evaluator/types.cpp and help_for() in
+    src/evaluator/help.cpp. Both get a `case 11:`.
+
+ 3. A shared_ptr is 16 bytes and the variant already holds five, so
+    sizeof(Value) STAYS 40 and ast_test's static_assert keeps holding. An
+    alternative that grew it would be refused on that ground alone -- §8.1's
+    Number migration and §10's Expr/Value split both rest on 40.
+
+ 4. THE PRECEDENT IS `arguments`, and it should be followed exactly. ArgsRef is
+    index 10: a list<string> to matches(), `satellite.container.arguments` to
+    anyone reading an error, with a method table a list does not have. A result
+    is the same shape one level over: a MAP to matches(), so it type-checks,
+    prints and is searchable as one; `satellite.container.result` to a reader;
+    with .weight(), .attention(), .why(), .alternatives() that a map lacks.
+
+ 5. THIS BREAKS THE ONE-FOLDER RULE, and deliberately. orbit was asked to be new
+    work in satellite_orbit_search/ and the engine is. A variant alternative
+    cannot be: it must edit src/satellite_value/, src/evaluator/types.cpp and
+    src/evaluator/help.cpp. Those three edits are the price of the type and
+    there is no version of it that avoids them. Confirm before spending them.
+
+
+WHAT NOT TO DO
+--------------
+**Do not blend weight and attention into one number for ranking.** Phase 5 has
+to rank on something, and the temptation will be to add them. DECISION 1 exists
+because the pair disagreeing is the product; a ranking that averages them
+destroys exactly the case the split was built to expose. Rank on weight, and let
+attention be read beside it.
+
+**Do not let attention count a constructed result as present.** A constructed
+neighbour occurs as a WINDOW the perturbed query matched, which is a real count
+about a value that is not in the corpus as a unit. It is already stored in
+`occurrence` by phase 3 and must stay distinguishable from a value that is
+literally there -- `constructed` is that flag and it belongs to attention.
+
+**Do not renumber the variant.** See mechanic 1. It is silent and it breaks
+help and error messages rather than the build.
+
+
+WHAT LANDED
+-----------
+Written as a spec; this half is the record. Everything below is in the tree.
+
+ 1. value_result.hpp   NEW, in src/satellite_value/. ResultBody and ResultRef,
+                       and the attention/weight argument stated where the type
+                       is defined rather than in a plan file nobody opens.
+ 2. value_variant.hpp  ResultRef appended as index 11, on the APPEND ONLY rule.
+                       sizeof(Value) is still 40 and ast_test still asserts it.
+ 3. types.cpp          matches() for satellite.container.result, for a BARE map
+                       and for nil; module_of()'s `case 11:`.
+ 4. help.cpp           help_for()'s `case 11:` -- the type is discoverable from
+                       inside the language on the day it lands, which is what
+                       search_power.txt's item 9 is still owed for the ladder.
+ 5. scopes.cpp         `result` is a container type the resolver knows, and it
+                       is NOT generic. Without this the declaration that is the
+                       whole reason for the type would fail at resolve.
+ 6. methods_result.cpp NEW. .alternatives(), .lines(), and every field by name.
+                       A free function, so eval_evaluator.hpp -- at the 325-line
+                       ceiling -- was not touched by this feature at all.
+ 7. maps.cpp           is_map_read_method(), beside the table it describes, so a
+                       result borrows the map's read surface over its own fields
+                       rather than carrying a second copy of it.
+ 8. subscripts.cpp     r["why"], and a non-key subscript falling through to the
+                       search the same way a map root's does.
+ 9. search.cpp,        map_view() in place of as_map() in the comparator and the
+    search_walk.cpp    walker: ONE WORD each, and the result of a search became
+                       searchable by the power that produced it.
+10. orbit.hpp          Finding gained said[], attention and weight; occurrence
+                       and confidence are gone. The memory file moved to
+                       orbit_memory.hpp, which orbit.hpp includes -- no call
+                       site changed and the header came back under the ceiling.
+11. orbit_engine.cpp   orbit_sightings(): nodes plus PROPER windows, at level 1.
+12. orbit_frequency.cpp  the split. Three weights renormalised to 100, the merge
+                       filling said[] for all five, attention counted separately
+                       and never read by the weight, and phase 5 writing its own
+                       sentence after the rank.
+13. orbit_result.cpp   NEW. The sixteen fields, the phases map with all five
+                       present, and the bare/full pair that gives every result
+                       the others without closing a cycle.
+14. 120-tests.mk       TESTBINS DERIVED FROM TESTNAMES -- see DECISION 8 below.
+15. reg_test           the twelfth alternative, and the count asserted at 12.
+16. orbit_test         three new sections: the type binds, the alternatives are
+                       one level deep, and a result is searchable. Plus memory
+                       split into orbit_test_memory.cpp.
+
+    DECISION 4a. THE FIELDS MAP IS THE ONLY STORAGE. DECIDED WHILE BUILDING.
+
+A ResultBody holds a map Value and not sixteen typed members. `r.why()` and
+`r["why"]` are one lookup in one place, so they cannot come to disagree, and a
+field added to the builder is a method the same day -- the method table IS the
+fields map, walked by name. Sixteen typed members beside a map that repeated
+them would have been two sources of truth for one answer.
+
+    DECISION 4b. SIXTEEN FIELDS, AND TWO OF THEM ARE THE QUESTION.
+
+    value key path | attention constructed | weight score phase agreement
+    prior why phases | pattern threshold | rank candidates
+
+`pattern` and `threshold` are new here and are not in the spec above. A result
+handed to a capsule ON ITS OWN is otherwise an answer with no question, and
+"carries the whole state of the search" cannot mean anything less than knowing
+what was asked and at what dial.
+
+`phases` is the other addition, and it is the request's "it must encompass the
+5 phases" taken literally: a map of all five names to what each concluded, nil
+where that phase never reached this answer. ALL FIVE ARE PRESENT, because §8.6
+makes a missing key an error and "predict had nothing to say about this" is an
+answer a program has to be able to ask for without risking one.
+
+    DECISION 4c. ATTENTION COUNTS WINDOWS, AND THAT FIXED A REAL BACKWARDS.
+
+    FOUND BY BUILDING IT, not by reading the spec.
+
+occurrence was looked up in the corpus ALPHABET, which holds nodes. A run is a
+window over a list and never a node, so [true, true] -- the thing orbit.txt's
+own example asks for -- scored occurrence 0 while the constructed [true, false]
+scored 2, because phase 3 counted its own windows on the way past. The invented
+answer looked more present than the found one, in the number whose whole job is
+to say what is really there.
+
+orbit_sightings counts both kinds, at level 1, for every finding alike, and
+phase 3 no longer writes a count at all. Both now read attention 2, which is
+the truth about that corpus -- and orbit_test pins it.
+
+    DECISION 4d. THE WEIGHTS RENORMALISE TO 100 RATHER THAN SUMMING TO 85.
+
+Occurrence's 15 left with it. Tightness stays at 50 -- half of everything,
+because the ladder is the one signal that says the two values are alike -- and
+the 15 went to agreement (step 10 -> 15, cap unchanged at two extra phases,
+which is where its own argument put it) and to prior (15 -> 20). A maximum
+nobody can reach is not a scale.
+
+    DECISION 4e. ALTERNATIVES ARE ONE LEVEL DEEP, BY CONSTRUCTION.
+
+Every result carries every other, so a result alone can still say what else the
+search considered -- which the spec calls the one thing that cannot otherwise be
+reached. If the ones it carried also carried it, the handles would point in a
+ring and the resolution would leak: the same shared_ptr cycle value.hpp calls
+the honest cost of an Object, arrived at from a different direction.
+
+So there are two results per finding sharing one fields map: a BARE one, which
+is what an alternative is, and the one in the returned list, which holds a
+shared handle to the ranked list of bare ones plus its own rank. Storage is
+linear in the finding count rather than square in it, `.alternatives()` is that
+list with `rank` left out, and an alternative's own .alternatives() is empty.
+
+`candidates` is a count of what the RESOLUTION produced and not of what this
+result can hand back, which is what lets the twins share one fields map and
+makes them compare equal -- they are the same answer to the same question.
+
+    DECISION 8. `make test` WAS RUNNING A STALE BINARY.
+
+    FOUND BY RUNNING IT. Recorded because the symptom was a GREEN line.
+
+TESTBINS in 120-tests.mk was spelled out by hand and had never gained
+search_test or orbit_test, both of which the `test` recipe RUNS. So those two
+were run and never built: this session renamed Finding::confidence, orbit_test
+should have failed to COMPILE, and the suite went on printing PASS from a binary
+compiled the previous day.
+
+TESTBINS is derived from TESTNAMES now, which is what 070-directories.mk always
+claimed to be "the single place a test is declared to exist". The run ORDER
+below it stays written out, because it is an order and not a set -- library_test
+first and its sanitized twin second -- but it can no longer run something nobody
+built.
+
+The file's own comment warned about exactly this: ".gitignore's own note records
+what a second hand-copied list costs". It was right, and it was describing
+itself.
+
+
+WHAT THIS DOES NOT DO
+---------------------
+**`.search()`'s rich form still answers maps.** The spec says a named type fixes
+that limitation too, and it is not fixed. A search hit knows a value, a key, a
+path and a score; nine of a result's sixteen fields would be nil, and attention
+would need the corpus walk that `.search()` exists to avoid. A type most of
+whose fields are empty for one of its two producers is a type stretched over two
+things. The binding gap for `.search()` is real and is still open.
+
+**Writing through a result.** A result carries a path, which is what a
+write-through needs. Still not built, here or in the search power.
+
+**A help topic for the ladder and the phases.** help_for() knows the result type
+now, so `satellite.help(found[0])` answers. Nothing yet explains the ten levels
+or the five phases as a TOPIC -- search_power.txt's item 9, still owed.

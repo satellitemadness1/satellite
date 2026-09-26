@@ -1,0 +1,188 @@
+satellite orbit — layer five, where the answer becomes the question
+==================================================================
+Written and built 2026-08-25, straight after the result type landed. This half
+is the plan and the record together, because the whole thing was small enough
+to land in one sitting. `make test` is green, nineteen binaries.
+
+Read orbit.txt first (the intent), then orbit_plan.txt (the five phases) and
+result_type.txt (what a result is). This file is only about ASKING AGAIN.
+
+
+WHAT WAS ASKED FOR
+------------------
+    "yes to recursion"
+
+against this description of it: feed a resolution back in, resolve again, and
+see what survives. And, from the message before it, the reason -- the user's own
+model was "run the data, the prompt, and the indexing through phases and build
+them into something", and the piece that never worked was the BUILDING INTO.
+
+
+THE SEVENTIES ALREADY BUILT THE FIRST HALF
+------------------------------------------
+Worth writing down because it decides what is worth building now.
+
+A shared workspace, independent knowledge sources each adding hypotheses to it,
+and a scheduler deciding what to believe is a BLACKBOARD SYSTEM -- HEARSAY-II,
+1975, speech recognition. Orbit's five phases over one accumulating vector is
+that architecture almost exactly, and DECISION 2's refusal to short-circuit is
+the same reason HEARSAY ran every knowledge source: a scheduler handed one
+unopposed hypothesis is not choosing.
+
+What stalled that line was not the architecture. It was that every knowledge
+source was written by hand, so a system could never get better than the person
+writing rules for it. The architecture survived; the hand-written rules did not.
+
+    DECISION 1. SO THE RECURSION IS THE PIECE WORTH BUILDING.
+
+It is the one place in this design where an answer improves without anybody
+adding a rule. Every layer below improves an answer by looking harder at the
+corpus; this one improves it by ASKING A BETTER QUESTION, and those are
+different things.
+
+A one-typo or prefix hit is a WEAK answer -- the ladder says so, and the weight
+says so -- but the value it found is a REAL string that is really in the corpus.
+Asking for that instead is an exact question with an exact answer. Nothing
+learned anything; the second question was simply better than the first.
+
+**Verified**, running ./satl over ["boltzmann", "planck", "maxwell"] with the
+dial at 8:
+
+    round 0: asked boltzman  -> boltzmann   weight 30   attention 1
+    round 1: asked boltzmann -> boltzmann   weight 50   attention 1
+
+The weight rises by 20 and attention does not move, which is exactly right: the
+corpus never changed, so the count of what is really in it cannot have.
+
+
+    DECISION 2. IT IS ALSO HOW ORBIT REACHES PAST ITS OWN ONE-HOP BOUND.
+
+Phase 3's link rule stops at a single hop, because an unbounded chase inside the
+walker is a hang on a structure the language permits (search_power.txt,
+DECISION 4). A hop per ROUND is that same chase made safe: bounded by a count,
+stopped by a repeated question, and with every step standing in the answer as a
+result of its own rather than collapsed into one.
+
+**Verified** over {bolt: fastener, fastener: hardware}:
+
+    round 0: bolt     -> fastener (direct, weight 50, 2 candidates)
+    round 1: fastener -> fastener (direct, weight 50, 2 candidates)
+
+
+THE STOPPING RULE
+-----------------
+    DECISION 3. A REPEATED QUESTION ENDS IT -- ANY of them, not the last one.
+
+Against the previous question alone, two values that point at each other would
+run to the round cap and report a chain where the structure really answered in
+two. Cross-references are an ordinary shape in a map, so this is not a corner.
+
+**Verified** over {ping: pong, pong: ping}: two rounds, cap eight.
+
+Both endings are read OFF THE TRAJECTORY rather than announced. When the last
+result's `value` equals its own `pattern` it is a fixpoint -- this corpus thinks
+that is what you meant. When it equals an EARLIER pattern, the chain closed a
+loop. No field was added for it, because the fields already say it.
+
+    DECISION 3a. A ROUND THAT FINDS NOTHING ENDS IT AND IS NOT RECORDED.
+
+There is no next question -- the answer that would have become one does not
+exist -- and a trajectory whose last element concluded nothing would read as
+though the run had settled on nothing. "It stopped here" is a different claim.
+
+    DECISION 3b. EIGHT ROUNDS BY DEFAULT, SIXTY-FOUR AT MOST, REFUSED BY NAME.
+
+Each round is a WHOLE resolution: five phases and several walks of the corpus.
+Eight is more than any settle that terminates has needed -- both examples above
+stop at two -- and it bounds the cost of one that does not. `.settle(p, n)`
+names the number, and n out of range is an ERROR rather than a clamp, on the
+dial's DECISION 5b: a clamp would make .settle(p, 5000) silently mean 64 and the
+program would never learn it asked for something the language does not have.
+
+
+WHAT COMES BACK
+---------------
+    DECISION 4. ONE RESULT PER ROUND, AND NOTHING IS REINTERPRETED.
+
+Each element of the trajectory is EXACTLY the result `.orbit()` would have
+answered that round. `pattern` says what the round asked, so the trajectory
+reads as the conversation the engine had with itself; `rank` and `candidates` go
+on meaning where a result stood among the candidates of its OWN round.
+
+Taking element zero of each round is LOSSLESS, not a summary: the round's other
+candidates are that winner's own .alternatives(). The result type built the day
+before is what makes this true, and it is the second thing it has paid for.
+
+    DECISION 5. A SETTLE RECORDS EXACTLY ONE THING.
+
+The pairing is the question the USER asked with what the whole run settled on --
+so what phase 4 learns from a settle is the CORRECTION: ask for "boltzman"
+tomorrow and memory says this has meant "boltzmann" before.
+
+Every round is handed `remember = false`, which is a new field on OrbitQuery,
+and the single record is made by the settle itself at the end. Recording each
+round would teach memory seven questions the engine invented and nobody asked --
+and orbit_engine.cpp's record site already carries the argument for why that is
+fatal: an engine fed its own guesses returns them as evidence, and weight
+compounds on nothing.
+
+**Verified**: a settle from "bolt" leaves exactly one line in the memory file,
+`1  bolt  fastener`, and orbit_test pins the count at one.
+
+
+WHAT THIS IS NOT
+----------------
+**It does not learn.** Between two settles over the same corpus nothing in
+orbit_settle.cpp changes. The only thing in the whole engine that carries
+anything from one run to the next is phase 4's file, and DECISION 5 is careful
+about what it is allowed to carry. This is a fixpoint iteration, not a training
+loop, and the file says so at the top because it is the piece most likely to be
+mistaken for one.
+
+**It is not layers of understanding.** Stacking rounds is not what makes a deep
+network work -- the mapping between the layers being LEARNED is. What this has
+instead is that every round is legible: what was asked, what came back, how much
+was really in there, and what else it could have been. That is a different
+property and a real one, and it is not the same property.
+
+**It does not widen the dial as it goes.** A settle at threshold 1 asks every
+round at threshold 1. Widening per round was considered and left out: phase 2
+already goes past the dial on the query's behalf inside every round, so a
+trajectory that also widened would be two knobs turning at once and no way to
+tell which produced a hit.
+
+
+WHAT LANDED
+-----------
+ 1. orbit.hpp          OrbitQuery::remember, OrbitRound, the two constants, and
+                       orbit_settle / orbit_settle_collect.
+ 2. orbit_engine.cpp   honours `remember` at the one record site.
+ 3. orbit_settle.cpp   NEW. The loop, the stopping rule, and the one record.
+ 4. methods_containers.cpp  `.settle(p)` and `.settle(p, n)`, over either
+                       container and over a result, beside `.orbit()`.
+ 5. help.cpp           .search / .orbit / .settle listed on the list and the map
+                       at last -- all three were undiscoverable from inside the
+                       language until now, which search_power.txt's item 9 has
+                       been owed since the ladder landed.
+ 6. orbit_test         three sections: the chase and its two endings, the weight
+                       rising while attention holds still, and memory taught
+                       exactly one thing.
+
+
+STILL TO DO
+-----------
+**FIRST: phase 4 writes a file nobody can read or delete.** Not a gap -- a
+stated condition that has never been met, and two source files claimed it was.
+orbit_plan.txt, DECISION 9, carries it. A settle makes it worse in one respect
+and better in another: it records once rather than once per round, but it is a
+second spelling that touches the disk without saying so.
+
+**Make satellite.help() the corpus.** orbit.txt asks for it, it is the right
+first field of information, and a settle over it is the demo that would show
+whether any of this is worth its cost.
+
+**A help topic.** The ten rungs, the five phases and now the rounds are three
+things a person cannot read about from inside the language.
+
+**`.search()`'s rich form still answers maps.** Unchanged, and result_type.txt
+carries the reason.

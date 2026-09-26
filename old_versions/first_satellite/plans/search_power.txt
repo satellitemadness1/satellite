@@ -1,0 +1,372 @@
+satellite — the search power, and the threshold
+===============================================
+Written 2026-08-24. Subject: a general matching engine with a tunable
+strictness, and its first application to lists, maps and keys.
+
+This is a plan, not a design section. When the work lands, §7 gets the search
+subscript, §8.6 gets what a pattern is, and a new section gets the ladder;
+this file becomes history. References are by section number, never by line.
+
+Every claim marked **verified** was checked by running ./satl in this tree
+today. Everything else is a decision, and the reason is written beside it so
+that changing it later means arguing with the reason rather than guessing.
+
+
+WHAT WAS ASKED FOR
+------------------
+A search power, built as its own thing first, then applied to the domain of
+lists and maps and keys. Not the other way round.
+
+    my_list_of_maps["some_string"]        traverses everything looking for it
+    my_list_of_maps[{"some_string", 99}]  finds the pair together
+
+and "we accept all sorts of crazy combinations of lists and maps and we search
+it all with whatever the user gives us". Multiple hits return MORE, not less --
+"the user is left with trying to figure out how to return what they want".
+
+The strictness is a dial: satellite.system.threshold(1-10). 1 is an exact
+match only. 10 is everything remotely like the string or the number or the
+object or whatever.
+
+
+WHAT IS ALREADY TRUE
+--------------------
+**The syntax already parses.** `lm[{"k", 7}]` lexes and parses today and
+arrives at the evaluator as Index{ target, subscript=ListLit }. It dies at one
+runtime line in src/evaluator/operators.cpp, in eval_index:
+
+    index must be a whole satellite.variable.number, got [k, 7]
+
+**Verified.** This is the single most important fact in this file: the feature
+needs no grammar change, no new token, and no change to §4's reservation rule.
+It needs a branch in eval_index placed before the whole-number demand, exactly
+as the map branch and the arguments branch are already placed before it.
+
+**Arbitrary nesting is already representable.** List is vector<ValuePtr> and
+MapEntry holds a ValuePtr key and a ValuePtr value (value.hpp). A map of lists
+of maps needs no new type. **Verified**: list<list<string>> built with brace
+literals, printed as [[a, b], [c]], and read back with ll[0][1].
+
+**matches() already recurses** (src/evaluator/types.cpp) over both a list's
+element type and both of a map's argument positions. Nesting already
+type-checks; nothing there has to change for the search.
+
+**The code table makes case folding arithmetic.** satellite_string.hpp assigns
+1..26 to a..z and 27..52 to A..Z, contiguous and in order. Folding a SatChar is
+`if (c >= SAT_UPPER_A && c <= SAT_UPPER_A + 25) c -= 26`. No Unicode table has
+to be invented, and none should be: the code table is the language's alphabet
+and the fold is a fact about it.
+
+**Digits are contiguous too**, 53..62 for 0..9, which is what makes level 3's
+cross-type comparison a rendering and not a parse.
+
+**The write protocol is already centralised.** Every mutation in the language
+funnels through Evaluator::update_through_slot taking a pure transform. A
+search that writes is a new transform, not a new mechanism. This plan does not
+write; it is recorded here because the read side is designed to make it cheap.
+
+
+THE POWER IS NOT THE DOMAIN
+---------------------------
+    DECISION 1. THREE LAYERS, AND NO LAYER KNOWS THE ONE ABOVE IT.
+
+        the comparator   two leaf values -> how alike are they
+        the walker       a value -> every (path, key, value) inside it
+        the application  what [ ... ] and .search() do with the two
+
+The comparator never learns what a container is. The walker never learns what
+a match is. That is what "moddable to accept any crazy combination" means in
+code: a new match rule is one case in the comparator, and a new container --
+should the language ever grow one -- is one case in the walker. Neither edit
+touches the other file, and neither can break the other's tests.
+
+Written the obvious way instead -- one function that walks and compares as it
+goes -- every new level would have to be threaded through the recursion, and
+the ten levels would become ten reasons the walker is hard to read.
+
+
+    DECISION 2. THE COMPARATOR SCORES; IT DOES NOT TEST.
+
+    int search_score(const Value &needle, const Value &hay);
+
+It answers the TIGHTEST level at which the two match: 1 for an exact match, 6
+for two values that are alike only as substrings, 0 for no match at any level.
+A search at threshold T then accepts every hit whose score is non-zero and
+<= T.
+
+The alternative -- `bool matches_at(needle, hay, level)` -- was rejected
+because the superset property would then be something ten branches have to
+maintain by hand, and the first level that forgot to include the one below it
+would be a bug nobody could see. Scoring makes "raising the threshold can only
+ever add hits" true by construction: the score does not depend on T at all.
+
+It also gives the ranking away for free. Results come back ordered by score,
+so the exact hit is first even when the dial is at 10, and .first() is a
+meaningful answer rather than an accident of walk order.
+
+
+THE LADDER
+----------
+    DECISION 3. TEN LEVELS, EACH A STRICT SUPERSET OF THE ONE BELOW.
+
+  1  exact           map_key_of equality: same type tag, same bytes.
+                     "Bolt" != "bolt". 12 != "12". 1 == 1.0, because
+                     to_string() renders from normalized() and always has.
+  2  case            ASCII fold, by the subtraction above. "Bolt" == "bolt".
+                     Numbers unaffected -- there is no case in a digit.
+  3  cross-type      Drop the type tag: 12 matches "12". This is the level
+                     that undoes §8.6's deliberate separation, so it is opt-in
+                     and it is not the default.
+  4  trimmed         Leading and trailing whitespace off both sides.
+  5  prefix          Either direction: "bolt" finds "boltzmann", and
+                     "boltzmann" finds "bolt". .starts_with() already exists.
+  6  substring       Either direction. .contains() already exists.
+  7  decoded         decode() both sides, then compare.
+  8  one typo        Levenshtein <= 1 over SatChars.
+  9  two typos       Levenshtein <= 2. NUMBERS TOO, over their rendered
+                     digits, so 85845 finds 85846 -- one machine, no epsilon,
+                     and no argument about what "close" means for an exact
+                     decimal.
+ 10  subsequence     Every SatChar of the needle appears in the hay in order.
+                     The fuzzy-finder rule, and the honest reading of
+                     "everything remotely like it".
+
+    DECISION 3a. LEVEL 7 SITS ABOVE THE CHEAP LEVELS ON PURPOSE.
+
+src/evaluator/maps.cpp calls decoding a key "the sharpest trap in the whole
+feature", and it is right: §8.5's \home, \user and \cwd are LIVE codes that
+expand at decode() time, so a decoded comparison makes a match depend on the
+machine, on the user, and on the current directory -- and a key that matched
+before a satellite.directory.change() stops matching after it. That is a
+legitimate thing to ask for and a disastrous default. It is reachable at 7 and
+unreachable below it.
+
+    DECISION 3b. THE FOLD IS ASCII AND SAYS SO.
+
+Codes 1..52 fold; everything else compares as itself. The raw area above
+SAT_RAW_BASE holds bytes whose case the language does not know, and inventing
+a fold for them would be inventing a character set. When the code table grows,
+the fold grows with it -- one line, in one function.
+
+    DECISION 3c. LEVELS 8 AND 9 ARE BOUNDED BEFORE THEY ARE COMPUTED.
+
+Levenshtein is O(n*m). Two strings whose lengths differ by more than the
+distance allowed cannot match, and that check is O(1) -- so it runs first, and
+the matrix is only ever built for candidates that could win. Without it, a
+threshold of 9 over a corpus of long strings is quadratic work per element for
+an answer that was always going to be 0.
+
+
+    DECISION 4. THE WALKER NEVER ENTERS A SPACESUIT.
+
+Lists and maps cannot form a cycle: they are built, then frozen, so a
+container can only ever hold values that existed before it did. An OBJECT can
+close one -- value.hpp says so plainly, and calls the leak the honest cost of
+reference semantics. A walker that followed an ObjectPtr would therefore hang
+on a structure the language permits.
+
+So an object is a LEAF. It is compared as a whole and never descended into.
+Deferring this instead -- "add a visited set later" -- would mean the first
+program to build a cycle discovers the decision by hanging, and this is
+cheaper to decide now than to debug then.
+
+Depth is bounded by max_depth on the same argument every other recursion in
+the evaluator uses, so a merely very deep structure fails the way a very deep
+expression already does, with a sentence naming the knob.
+
+
+THE DIAL
+--------
+    DECISION 5. satellite.system.threshold(n) SETS IT; NO ARGUMENT READS IT.
+
+    satellite.system.threshold(3)    sets, answers nothing
+    satellite.system.threshold()     answers the current level
+
+A module function and not a satellite.library variable, because the user asked
+for it in that spelling and because it is a SESSION knob rather than a datum:
+system.max_depth is a variable that is read once at construction, and this one
+has to be re-read every time it changes, which a program will do mid-run to
+widen a search and then narrow it again.
+
+    DECISION 5a. IT IS A thread_local, NOT AN EVALUATOR MEMBER.
+
+    AMENDED WHEN THE WORK LANDED. This said "an int member, beside max_depth_"
+    and that is not what was built. Two things pushed back, and the second is
+    the one that matters.
+
+The shallow reason: eval_evaluator.hpp was at 323 lines against the 325 ceiling
+before any of this started, so the class had room for no new member at all.
+
+The real reason: search.hpp opens by saying the power is deliberately free of
+the Evaluator class, and a threshold_ member would have made that first
+paragraph a lie. The dial belongs to the power, not to the walker's caller. So
+it is a thread_local behind search_threshold() / set_search_threshold(), and
+eval_search became the free function search_collect() for the same reason --
+which left eval_evaluator.hpp untouched by this feature entirely.
+
+The SEMANTICS are exactly what this decision always specified: per-thread by
+construction, which is the same answer §6 gives for a Frame, and no Library
+lock on the one operation that will run in a loop.
+
+The cost is honest and belongs here: a threshold set on one thread does not
+move another thread's. That is correct for a dial that means "how should MY
+next search behave", and it is the reading a per-thread frame already has.
+
+    DECISION 5b. OUT OF RANGE IS AN ERROR, NOT A CLAMP.
+
+threshold(0) and threshold(11) are refused by name. A clamp would make
+threshold(11) silently mean 10 and the program would never learn that it asked
+for something the language does not have. The default is 1: exact, which is
+what every program that never touches the dial already assumes.
+
+
+WHAT A PATTERN IS
+-----------------
+    DECISION 6. A BARE VALUE MATCHES ANYWHERE. A 2-BRACE MATCHES AN ENTRY.
+
+    lm["bolt"]          scores "bolt" against every key, every value, and
+                        every list element in the whole structure
+    lm[{"bolt", 7}]     scores "bolt" against a key AND 7 against that same
+                        entry's value; both must pass the threshold
+
+Two is the shape a map entry has, and it is the shape that was asked for. A
+pattern of any other length is a CONJUNCTION over one container: {a, b, c}
+matches a container in which a, b and c each match something. That is one rule
+with one special case, and the special case is the shape the domain is made of.
+
+A pattern nests, because the comparator recurses the same way the walker does:
+an element of a pattern that is itself a brace is scored against a container
+the same way the top-level pattern was. Nothing special is required for
+`lm[{"outer", {"inner", 4}}]` -- it falls out.
+
+    DECISION 6a. A WHOLE NUMBER SUBSCRIPT STAYS POSITIONAL. ALWAYS.
+
+`lm[0]` is the first element and never a search for the key 0. Every program
+ever written in this language depends on it, and a subscript that changed
+meaning with the dial would be the worst kind of action at a distance. A
+search on a numeric key is spelled `lm[{0, x}]` or reached through .search().
+
+
+WHAT COMES BACK
+---------------
+    DECISION 7. ALWAYS A LIST. ONE HIT IS A LIST OF ONE.
+
+Ordered by score, so the tightest match is first. The user asked for more and
+not less, and a subscript that sometimes answered a value and sometimes a list
+would make every caller test which it got.
+
+The cost, stated where it is imposed: `lm["k"] + 1` no longer works. It is
+`lm["k"].first() + 1`. That is the price of the request and it is not hidden.
+
+    DECISION 7a. TWO SPELLINGS, AND THE LONG ONE CARRIES THE PATH.
+
+    lm[{"bolt", 7}]              a list of the VALUES that matched
+    lm.search({"bolt", 7})       a list of maps: value, key, path, score
+
+`path` is the list of indices and keys to walk from the root to the hit. It is
+in the long form for two reasons. It is what a program needs to explain WHERE
+it found something, which is the question a search over a nested structure
+actually raises; and it is precisely the input a write-through needs, so
+building the read side this way is what makes the write side cheap later
+rather than a second traversal.
+
+Note what .search() returns: a list of maps with string keys. It is the domain
+this power was built for, which means the result of a search can itself be
+searched, with no new code.
+
+
+WHAT LANDED
+-----------
+Written as a plan; this half is the record. Everything below is in the tree and
+`make test` is green, search_test included.
+
+ 1. search.hpp       the ladder as an enum, search_score, SearchHit,
+                     search_walk, and -- after DECISION 5a was amended -- the
+                     dial and search_collect as free functions.
+ 2. search.cpp       the comparator. Ten levels, the arithmetic fold, the
+                     bounded Levenshtein, and the container-to-container arm
+                     that makes a nested pattern fall out of the recursion.
+ 3. search_walk.cpp  the walker. Lists, maps, spacesuits as leaves, depth
+                     bound, stable_sort by score.
+ 4. search_apply.cpp the thread_local dial, search_collect's two spellings, and
+                     satellite.system.threshold's arm.
+ 5. modules.cpp      dispatches the dial. NOT modules_system.cpp, which was at
+                     321 lines -- and which was the better answer anyway: a
+                     dial is not a system fact.
+ 6. subscripts.cpp   NEW. operators.cpp did four jobs at 324 lines, and its own
+                     banner comment already drew the seam. eval_index and
+                     eval_slice moved verbatim; the search branch is the one
+                     thing the new file has that the old one did not.
+ 7. methods_containers.cpp   .search(pattern), ONE arm for both containers,
+                     before either one's own table: .search is not a list
+                     method a map happens to share, it is the power reaching
+                     the domain, and the walker does not care which it got.
+ 8. search_test      the ten levels each scoring what they claim; the superset
+                     property COUNTED over a corpus at all ten settings; the
+                     scalar/container boundary; the walk by key, by pair and by
+                     path; a miss as an empty list; l[0] still positional; best
+                     score first; the dial set, read and refused.
+
+Every file in src/ is still under 325 lines.
+
+    DECISION 6b. A MAP ROOT'S SUBSCRIPT DOES NOT SEARCH ON A MISS.
+
+    ADDED WHEN THE WORK LANDED, after it was built the other way and reverted.
+
+Making m["nope"] search instead of erroring was tried. eval_test pins the rule
+(eval_test_maps.cpp: "subscript on a missing key errors"), and the test is
+right: §8.6 makes a missing key an error because nil is a legitimate STORED
+value, so "absent" and "present but nil" must not be one answer. A lookup that
+quietly became a search would change what m["k"] means for every program that
+has ever read a map -- and it would make the SHAPE of the answer depend on
+whether the key happened to be there, a value on a hit and a list on a miss.
+
+What does fall through is a subscript that could never have been a key at all:
+m[{"bolt", 7}]. §8.6 says what may BE a key and says nothing about what a
+non-key subscript should do, so that path was a dead end with no rule attached.
+The pair form therefore reaches a map root and no existing spelling moves.
+
+A map root is searched in full with .search(), which asserts nothing and has
+always answered a list. The request's own example -- my_list_of_maps["str"] --
+has a LIST root, and that traverses everything at every threshold.
+
+    OPEN. Whether a map subscript should ALSO search on a miss is a language
+    decision, not a build one, and it is the user's. Three readings: leave it
+    (this), search on a miss and re-pin the test, or search on a miss only when
+    the dial is above 1. The third keeps every existing program exact and makes
+    the behaviour depend on the dial, which DECISION 6a spends its whole
+    argument refusing for l[0].
+
+
+STILL TO DO
+-----------
+ 9. help/design      a topic for the ladder, §7's subscript, §8.6's pattern.
+                     Nothing is discoverable from inside the language yet --
+                     satellite.help knows none of this.
+10. DONE, same session. The brace literal becoming a map -- see
+    plans/brace_literals.txt. power_words.satl runs.
+
+
+WHAT THIS PLAN DOES NOT DO
+--------------------------
+**Writing through a search.** `lm[{"k",7}] = 8` is not here. It needs a
+transform that rebuilds every container along a matched path, and the path is
+the only part of it this plan builds. Today's spelling stays: read the element
+into a variable, mutate that, assign it back -- three statements, and
+**verified** to work.
+
+**The brace literal becoming a map.** `.append({"str1", 99})` into a
+list<map<...>> is a separate feature with a separate reason -- it is about
+what a literal MEANS in a typed position, not about matching -- and it is
+planned on its own. It is what power_words.satl is actually blocked on.
+
+**Regular expressions.** The ladder is ten fixed levels, not a pattern
+language. A program that needs anchoring, alternation or capture needs a
+different feature, and calling this one a step toward it would be a promise
+this design cannot keep.
+
+**Indexing for speed.** Every search is a full walk. A map's O(1) index
+answers exact lookup at level 1 only, and above level 1 no index can help
+because the match is no longer equality. Programs that search a large corpus
+in a loop will feel it; that is a true cost of a dial that goes to 10, and the
+answer is to search once and keep the result, not to pretend the walk is free.

@@ -1,0 +1,49 @@
+
+satellite.include(satellite)
+
+satellite.spacesuit my_suit()
+{
+    satellite.protected
+    {
+        satellite.variable.string the_name = "void"
+    }
+
+    satellite.public
+    {
+        // The constructor has to be public to be reachable from
+        // create_and_display below, exactly as it would in C++: a protected
+        // constructor means "only this spacesuit and its subclasses may build
+        // one", which is how an abstract base is spelled. The FIELD stays
+        // protected, which is the part that was doing the encapsulating.
+        my_suit(satellite.variable.string input_str)
+        {
+            the_name = input_str
+        }
+
+        satellite.capsule name() satellite.returns(satellite.variable.string)
+        {
+            satellite.return(the_name)
+        }
+    }
+}
+
+satellite.capsule satellite.main(satellite.container.list<satellite.variable.string> arguments)
+{
+    satellite.variable.number my_counter = 0
+
+    satellite.statement.while(my_counter < 99999)
+    {
+        create_and_display(my_counter)
+
+        my_counter = my_counter + 1
+    }
+
+    satellite.return(satellite)
+}
+
+satellite.capsule create_and_display(satellite.variable.number input_number)
+{
+    my_suit my_class("some_data")
+
+    satellite.console.display(input_number)
+}

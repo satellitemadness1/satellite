@@ -1,0 +1,391 @@
+satellite orbit — the five phases, and what a result knows about itself
+=======================================================================
+Written 2026-08-24. Subject: a resolution pipeline over the search power, and
+the result type it settles into.
+
+This is a plan, not a design section. orbit.txt is the intent and stays as it
+was written; this file is what the intent turns into in code, with the reason
+beside every decision so that changing one later means arguing with the reason
+rather than guessing. References are by section number, never by line.
+
+Every claim marked **verified** was checked by running against this tree today.
+Everything else is a decision.
+
+
+WHAT ORBIT IS
+-------------
+orbit.txt: "Satellite Orbit is the search power built into the satellite
+programming language." It works in phases -- direct, guess, predict, index,
+frequency -- and the result of a search is a STATE that has passed through all
+five, carrying what each of them concluded.
+
+The search power already exists. plans/search_power.txt built it in three
+layers, and search.hpp opens by saying what they are:
+
+    the comparator   two values -> how alike are they      (search.cpp)
+    the walker       a value -> every hit inside it        (search_walk.cpp)
+    the application  what [ ... ] and .search() do with it (search_apply.cpp)
+
+    DECISION 1. ORBIT IS LAYER FOUR, AND IT ADDS NO FIFTH.
+
+Every phase scores through search_score and finds through search_walk. Not one
+of them opens a Value and compares it itself. The ladder is already the
+language's answer to "how alike are two things", and a phase that invented a
+second answer would make the dial mean two things at once.
+
+What orbit adds is above the application layer, not beside it: the existing
+`lm["bolt"]` and `.search()` spellings do not move, do not slow down, and are
+not routed through a phase. A program that wants one walk still gets one walk.
+
+    DECISION 1a. IT LIVES OUTSIDE src/, IN satellite_orbit_search/.
+
+Asked for directly, and it is also the right place. src/evaluator/ is the tree
+walker; orbit is a consumer of the search power and not part of evaluating an
+expression. The directory holds the engine and nothing else, and the build
+reaches it with one pattern rule -- see WIRING below.
+
+
+THE CORRECTION THAT COST THE MOST
+---------------------------------
+    DECISION 2. THE PHASES ACCUMULATE. THEY DO NOT SHORT-CIRCUIT.
+
+An earlier draft of this design had the pipeline stop at the first phase that
+found anything, on the argument that a successful direct search should not pay
+for four more phases. orbit.txt says otherwise and orbit.txt is right:
+
+    "Then it tries to guess the result, BUILDING UP on the direct search,
+     and ADDING TO the end result."
+
+The reason short-circuiting is wrong is not preference, it is that it destroys
+phase 5. Frequency weighs "the likelihood of what we have made from the
+previous phases" -- and a pipeline that exits at phase 1 hands frequency a
+single unopposed candidate, which it can only ever rate 100%. Confidence means
+nothing without a second opinion, so every phase runs and every phase votes.
+
+The cost is real and is stated here rather than hidden: an orbit resolution is
+strictly more work than a search. That is why it is a SEPARATE SPELLING and not
+a replacement -- `.search()` stays the one-walk answer, `.orbit()` is the one
+that thinks about it. The user picks which question they are asking.
+
+
+THE PHASES
+----------
+Each phase has the same shape: it is handed the query and everything found so
+far, and it appends findings. A finding carries WHICH PHASE MADE IT and WHY, and
+DECISION 6 is why that is not optional.
+
+  1  DIRECT      what you think of when you think of searching.
+                 search_walk at the current threshold, unchanged.
+
+                 PLUS the run scan, which is new. orbit.txt's own example is
+                 a list {T,T,F,T,F,T,T} searched for {T,T}, and nothing in the
+                 language finds that today: a two-element brace is an ENTRY
+                 pattern for a map, or a nested two-element list, and no code
+                 anywhere slides a window along a flat list looking for
+                 adjacent runs. **Verified** against the tree. So a LIST
+                 pattern of length k over a list root scores every window of
+                 length k, elementwise, through the same ladder.
+
+                 It is in DIRECT and not in GUESS because a run that is
+                 literally present is found, not guessed.
+
+  2  GUESS       the dial, run upward, on the query's behalf.
+
+                 The ladder already contains everything "guess without brute
+                 force" can honestly mean -- prefix, substring, one typo, two
+                 typos, subsequence are levels 5 through 10 and they exist.
+                 What is missing is that the USER has to pick the level, so a
+                 needle that would have matched at 8 returns nothing at 1 and
+                 says nothing about how close it came.
+
+                 So: widen to SEARCH_LOOSEST, keep what appears that phase 1
+                 did not have, and record the level it took. "Nothing at 1; at
+                 8 this matched, one typo away."
+
+  3  PREDICT     logic and force, which orbit.txt names as two things because
+                 they are two things.
+
+                 LOGIC is the one-hop link. A value found at one path whose
+                 text is also a KEY at another path resolves to what that key
+                 points at. That is transitivity, it is the one inference a
+                 flat search structurally cannot make, and it is bounded to a
+                 single hop for the reason DECISION 4 of the search plan bounds
+                 the walker: an unbounded one is a hang on a structure the
+                 language permits.
+
+                 FORCE is neighbour construction. Perturb the query by ONE
+                 element and ask whether the perturbed query occurs. This is
+                 what makes orbit.txt's own answer expressible: searching
+                 {T,T} and being told the answer may be {T,F} is a constructed
+                 candidate, not a found one, and no amount of searching
+                 produces it because it is not what was asked for.
+
+                 ONE ELEMENT, and the bound is the whole reason this is not a
+                 brute force. k elements changed over an alphabet of n is n^k;
+                 one element changed is n*k, and the phase stays linear in the
+                 thing it is perturbing.
+
+  4  INDEX       what do we already know.
+
+                 On disk, at $HOME/.satl_orbit, one record per line: the
+                 pattern as text, what it resolved to, how many times, when it
+                 was last seen. $HOME/.satl_history is the precedent and §9 is
+                 explicit about the terms -- the file is real, it is readable,
+                 and there is a way to see it and clear it from inside the
+                 language, because keeping a record of what a user did is "the
+                 kind of thing this language does not do quietly".
+
+                 THE LAST OF THOSE TERMS HAS NEVER BEEN TRUE. No satellite
+                 program can see or clear the file. DECISION 9, at the foot of
+                 this file, carries it.
+
+                 A remembered answer is offered ONLY IF IT IS PRESENT IN THE
+                 CURRENT CORPUS. Memory proposes; it never invents. Without
+                 that rule a stale record would put a value into a result that
+                 the searched structure does not contain, and a result whose
+                 `value` is not in the thing searched is a lie whatever its
+                 confidence says.
+
+  5  FREQUENCY   the likelihood of what the other four made, and the
+                 likelihood of the answer being something else.
+
+                 It produces no candidates. It RANKS them, on four numbers
+                 that all four phases have already paid for:
+
+                   tightness   the ladder score, 1..10
+                   agreement   how many phases independently produced it
+                   occurrence  how many times it appears in the corpus
+                   prior       how many times memory has seen it resolve so
+
+                 and it fills `alternatives`, which is the "could be something
+                 else" half stated as data rather than as a caveat.
+
+
+WHAT COMES BACK
+---------------
+    DECISION 3. A RESULT IS A STATE, AND THE STATE IS THE POINT.
+
+    value          what it settled on
+    key            the map key it sat under, or nil
+    path           indices and keys from the root
+    score          the ladder level it matched at
+    phase          which of the five produced it
+    confidence     0 to 100
+    alternatives   the runners-up, each one a result itself
+    why            one sentence, in words
+
+`alternatives` holding results means a result nests, so "what else could it
+have been" is answered to whatever depth was reached rather than flattened into
+a note. And because a result is a map underneath, a result can be SEARCHED --
+with the same power that produced it, and with no new code.
+
+    DECISION 4. IT IS ITS OWN TYPE, ON THE arguments PRECEDENT.
+
+value_variant.hpp is marked APPEND ONLY and says why: help_for() and module_of()
+switch on raw variant indices, so appending is free and inserting renumbers
+everything after it. **Verified**: exactly two switches in the tree read a raw
+index. ArgsRef is index 10 and was appended on that rule; ResultRef is 11.
+
+A shared_ptr is 16 bytes and the variant already holds five, so sizeof(Value)
+stays 40 and ast_test's static_assert keeps holding. An alternative that grew
+it would be refused on that ground alone.
+
+The type is a MAP underneath and its own thing to a reader, which is exactly
+what `arguments` is: a list<string> to matches(), `satellite.container.arguments`
+to anyone reading an error, with a method table a list does not have. A result
+type-checks as a map, prints as a map, is searched as a map -- and answers
+.why(), .confidence() and .alternatives(), which a map does not have.
+
+    DECISION 5. `.orbit(pattern)` IS THE SPELLING. `.search()` DOES NOT MOVE.
+
+One new method on list and map, one arm, beside .search()'s in
+methods_containers.cpp. Nothing existing changes behaviour, no existing test
+moves, and the two questions stay two spellings: .search() is "what is in
+there", .orbit() is "what do you think it is".
+
+
+THE RULE THAT KEEPS THIS HONEST
+-------------------------------
+    DECISION 6. EVERY FINDING CARRIES ITS PHASE AND ITS REASON, ALWAYS.
+
+Not a debugging aid. It is the condition under which this feature is allowed to
+exist in this language at all.
+
+A result from phase 1 is a fact: it was in there, at that path. A result from
+phase 3 FORCE is a construction: nothing in the corpus said it, the engine
+proposed it. Those two must never be indistinguishable in the answer, because a
+user who cannot tell them apart has an engine acting on them without saying so
+-- and doing things behind the user's back is the one thing this language has
+never done.
+
+So `phase` and `why` are not optional fields to be filled when convenient. A
+finding is constructed with them or it does not compile.
+
+
+WIRING
+------
+ 1. 070-directories.mk   ORBIT = satellite_orbit_search
+ 2. 080-sources.mk       ORBIT_SRCS as a wildcard, into LEAF_OBJS -- the same
+                         argument every other module's wildcard already makes:
+                         at this file count a spelled-out list is the thing
+                         that gets forgotten.
+ 3. 110-compile.mk       one pattern rule, -I$(SRC) -I. because orbit is not
+                         under src/ and its own headers are reached from the
+                         repo root the same way every other header is reached
+                         from src/.
+ 4. 070-directories.mk   orbit_test in TESTNAMES.
+
+
+WHAT LANDED
+-----------
+Written as a plan; this half is the record. Everything below is in the tree and
+`make test` is green, orbit_test included -- seventeen PASS lines, no failures,
+and every file in the tree still under 325 lines.
+
+ 1. orbit.hpp        the five phases as an enum, Finding with its provenance
+                     constructor, Resolution, OrbitQuery, the shared machinery
+                     and the memory file's four functions.
+ 2. orbit_engine.cpp orbit_resolve -- five phases, one vector, no early exit --
+                     plus finding_key, the run scanner, the alphabet, the two
+                     name tables, and the record-the-winner call.
+ 3. orbit_direct.cpp phase 1: search_walk unchanged, plus the run scan.
+ 4. orbit_guess.cpp  phase 2: the dial widened to SEARCH_LOOSEST, reporting the
+                     level it took.
+ 5. orbit_predict.cpp phase 3: the one-hop link, and neighbour construction
+                     capped at the 32 most frequent terms.
+ 6. orbit_index.cpp  phase 4: $HOME/.satl_orbit, read/record/forget, and the
+                     phase that confirms or proposes from it.
+ 7. orbit_frequency.cpp phase 5: merge, the four weights, and the ranking.
+ 8. orbit_apply.cpp  orbit_collect -- what a satellite program gets back.
+ 9. methods_containers.cpp  `.orbit(pattern)`, ONE arm for both containers,
+                     beside .search()'s. The ONLY file under src/ this work
+                     touched, and it gained nineteen lines.
+10. orbit_test       the run scan, accumulation, provenance on every finding,
+                     orbit.txt's own example end to end, the one-hop link, and
+                     memory round-tripping, counting, confirming and refusing
+                     to invent.
+11. the build        ORBIT in 070-directories.mk, a wildcard into LEAF_SRCS, a
+                     pattern rule with -I. in 110-compile.mk, and -I. added to
+                     the src rule and the tsan rule for the same reason.
+
+    DECISION 7. RUNNING orbit.txt's OWN EXAMPLE, THROUGH ./satl.
+
+        corpus:      [true, true, false, true, false, true, true]
+        looking for: [true, true]
+
+        [true, true]    confidence 50   phase direct
+              a run of 2 starting at 0, at level 1
+        [true, true]    confidence 50   phase direct
+              a run of 2 starting at 5, at level 1
+        [false, true]   confidence 30   phase predict
+              you asked for [true, true]; changing element 0 to false gives
+              [false, true], which occurs 2 times
+        [true, false]   confidence 30   phase predict
+              you asked for [true, true]; changing element 1 to false gives
+              [true, false], which occurs 2 times
+
+orbit.txt asked that searching {T,T} be able to answer "the correct answer is
+{T,F}", and that is the fourth line. It is PROPOSED and not found, it says which
+element it changed and how often the result occurs, and it ranks below the two
+things that were actually asked for. Which of those four is right is the user's
+call -- the engine's job was to put all four on the table and say where each
+came from.
+
+    DECISION 8. A REMEMBERED RUN HAD TO BE CONFIRMABLE, AND WAS NOT.
+
+    FOUND BY RUNNING IT, not by reading it, and recorded because the symptom was
+    invisible from inside the code.
+
+Phase 4 was built to check a remembered answer against the corpus's ALPHABET --
+every value that appears as a node. A run is not a node: it is a window over a
+list, so [true, true] never appears in the alphabet of [true, true, false, ...].
+The winner of orbit.txt's own example was therefore recorded on every single
+resolve and re-found on none of them. The count in $HOME/.satl_orbit reached 22
+with `prior` still 0 in every result -- a memory that was writing perfectly and
+reading nothing.
+
+The fix is that memory CONFIRMS before it proposes: a record whose value matches
+something the earlier phases already found sets that finding's prior, and only a
+record matching nothing goes to the alphabet. That is the better shape anyway --
+memory's most useful sentence is "the thing you just found is what this pattern
+has always meant", not "here is something new" -- and orbit_test pins it.
+
+
+WHAT THIS PLAN DOES NOT DO
+--------------------------
+**Threading.** Asked for and declined in the same sentence: "it doesn't have to
+be threaded -- we are sacrificing the entire threading idea to just perform a
+single phase at a time." Correct, and not only for simplicity: phase 2 reads
+phase 1's findings and phase 5 reads all four, so three of the five are
+serially dependent by construction. There is no parallelism here being given up.
+
+**Writing through a result.** A result carries a path, which is what a
+write-through needs, for the same reason search_power.txt built the read side
+that way. Still not built, in either place.
+
+**Regular expressions.** The ladder is ten fixed levels. Orbit adds phases over
+it, not a pattern language under it.
+
+**The result as its own TYPE.** DECISION 4 stands and is not built. A result is
+a MAP today, carrying every field the type would -- value, key, path, score,
+phase, why, constructed, confidence, agreement, occurrence, prior -- so the
+promotion is a method table over the same data rather than a rebuild. It was not
+built here because it cannot be built here: appending a variant alternative
+means editing src/satellite_value/, src/evaluator/types.cpp and
+src/evaluator/help.cpp, and this module was asked to be new work in one folder.
+
+What it costs today is real and was measured, not guessed: `r.why()` is
+`r["why"]`, and a result cannot be BOUND to a typed variable at all --
+`satellite.container.list<satellite.container.map<...>>` is refused, because the
+values are heterogeneous and the type system has no way to say so. Results are
+reachable only by chaining, `flags.orbit(want)[0]["why"]`. **Verified** against
+./satl, and note that `.search()`'s rich form has had exactly this limitation
+since the day it landed -- search_test never binds one either. A named type is
+the fix for both.
+
+**Making satellite.help() searchable.** orbit.txt asks for it and it is the
+right first corpus -- a real field of information, already in the tree, that a
+user would genuinely want to search badly. It needs help's topics exposed as a
+value the walker can walk, which is its own piece of work in src/evaluator/, and
+it belongs after the engine can be trusted rather than as the thing that proves
+it.
+
+
+    DECISION 9. PHASE 4 WRITES A FILE NOBODY CAN READ OR DELETE. UNFIXED.
+
+    FOUND 2026-08-25, by grepping for the callers and finding none. Written
+    down before a /clear, because it existed only in a conversation.
+
+orbit_index.cpp and orbit_memory.hpp both state §9's terms for a dotfile: the
+file is real, it is readable, and THERE IS A WAY TO SEE IT AND CLEAR IT FROM
+INSIDE THE LANGUAGE, "because keeping a record of what a user did is the kind of
+thing this language does not do quietly".
+
+The third term has never been true. Nothing under src/ calls orbit_memory_read,
+orbit_memory_forget or orbit_memory_path -- the four functions are reached by
+orbit_test and by nothing else. So every .orbit() and every .settle() appends to
+$HOME/.satl_orbit, that record feeds `prior` and therefore `weight` on the next
+run, and no satellite program can look at the file or empty it.
+
+THIS IS A DEFECT AND NOT A GAP, and the difference is worth keeping: a gap is
+something the design has not reached yet, and this is the design stating a
+condition and not meeting it. Two source files claim the terms are met. They now
+say they are not, which is the smallest honest fix and is not the fix.
+
+WHAT IT NEEDS. Two module functions -- one that answers the records, one that
+clears them -- and a NAMING DECISION that is the user's, because
+satellite.system.memory is already RAM (§8.4). The two readings:
+
+    satellite.orbit.memory()      a module of orbit's own, beside .system
+    satellite.orbit.forget()      and the clearing half beside it
+
+    satellite.system.orbit.*      a sub-path of system, as .memory.swap is
+
+The first is the better fit for what the thing IS -- orbit is not a system fact
+-- and it costs a new module segment, which §5's segment-1 dispatch makes cheap.
+The second costs nothing new and buries a user-facing record two segments deep.
+
+UNTIL IT IS FIXED, the honest description of this module is that it keeps a
+record of what the user searched for, uses that record to weigh future answers,
+and offers no way to see or erase it. Anyone reading orbit_plan.txt to decide
+whether to ship this should read that sentence first.

@@ -1,0 +1,57 @@
+# Desktop entry for satl-term, the GTK4/VTE window.
+#
+# The file name is the GApplication id that window.cpp registers, and it has to
+# be: GTK puts that id on the toplevel -- as the Wayland app_id, and as the
+# X11 WM_CLASS instance because window.cpp sets prgname to it -- and a desktop
+# shell then looks for <that id>.desktop. Named satl-term.desktop the window
+# arrives associated with no launcher at all: no icon in the switcher, nothing
+# to pin. StartupWMClass says the same thing a second time for shells that
+# match on WM_CLASS rather than on the file name.
+#
+# Only satl-term gets an entry. The interpreter is a command-line program with
+# no window of its own, and a launcher entry for it would open something the
+# user cannot see.
+#
+# Exec is the bare command name rather than an absolute path, because the prefix
+# is not known when this file is written and a hard-coded /usr/local would be
+# wrong in every distribution package. TryExec makes the entry hide itself if
+# the binary is not on PATH, which is the correct behaviour for a menu.
+#
+# %f is honest only because window.cpp passes G_APPLICATION_NON_UNIQUE: under
+# the single-instance default a second launch handed its argument to the
+# already-running process, which read its own empty copy of the variable and
+# opened a plain REPL, so the file the user asked for was dropped.
+#
+# Icon is the application id rather than a file path, because that is how the
+# icon theme spec is looked up: the shell searches every theme directory for
+# <name> with any extension it understands, so the id names the artwork we
+# install under share/icons/hicolor/. It matches the file name and
+# StartupWMClass for the same reason all three agree -- a shell that finds the
+# launcher by any one of them finds the icon too.
+#
+# MimeType is what makes this entry the handler for a .satl file: the type is
+# declared in dist/application-x-satellite.xml, and a file manager offers the
+# programs whose entries name it here. Without this line the type is still
+# recognised and still gets its own icon, but opening a file has nothing to
+# open it with.
+#
+# %f in Exec above is what carries the file through, and is already correct for
+# this: it is a single-file placeholder, which matches a handler launched once
+# per file. It is NOT upgraded to %F -- window.cpp opens one window on one
+# path, so a multi-file selection has to arrive as several launches rather than
+# as one launch that would silently drop every path but the first.
+[Desktop Entry]
+Type=Application
+Version=1.0
+Name=Satellite
+GenericName=Satellite Terminal
+Comment=Interactive terminal for the satellite programming language
+Exec=satl-term %f
+TryExec=satl-term
+Icon=org.satellite.terminal
+Terminal=false
+Categories=Development;IDE;
+Keywords=satellite;interpreter;repl;language;programming;
+MimeType=application/x-satellite;
+StartupNotify=true
+StartupWMClass=org.satellite.terminal

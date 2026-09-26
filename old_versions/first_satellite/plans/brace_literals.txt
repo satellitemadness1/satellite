@@ -1,0 +1,153 @@
+satellite — what a brace literal means in a typed position
+==========================================================
+Written 2026-08-24. Subject: `{a, b}`, and the type it is handed to.
+
+Companion to plans/search_power.txt, which deferred this deliberately: the
+search is about MATCHING and this is about what a literal MEANS, and folding
+them together would have made one feature that did two things.
+
+This is a plan, not a design section. When it lands, §8.6 gets the map literal
+and §19.1's list literal gains a sentence. Every claim marked **verified** was
+checked by running ./satl in this tree.
+
+
+WHAT WAS ASKED FOR
+------------------
+    my_list_of_maps.append({"str1", 99})
+
+with `my_list_of_maps` declared satellite.container.list<satellite.container.
+map<satellite.variable.string, satellite.variable.number>>. And then: "we have
+to accept maps and lists within that .append that additionally have .appends in
+them; we need to accept like any sort of crazy combination of things".
+
+
+WHAT WAS ALREADY TRUE
+---------------------
+**The literal already parsed.** `{current_word, 0}` lexes and parses today and
+evaluates to a two-element LIST. It failed one line later, in call_mutator:
+
+    cannot append [Fortitude, 0] to satellite.container.list<
+      satellite.container.map<...>> tracker_list
+
+**Verified.** So this needed no grammar change either -- the second feature in
+a row where the syntax was already there and one runtime rule refused it.
+
+**matches() already recurses**, so nothing about type-checking the RESULT had
+to change. Only the shape arriving at the check did.
+
+**The design already argued for it and did not build it.** ast_expr.hpp, on
+ListLit:
+
+    the ELEMENT TYPE is not here, because the type belongs to the variable or
+    parameter the literal is being handed to, not to the literal.
+
+That sentence is the whole feature. It was written when the literal was added
+and nothing acted on it; this makes it true.
+
+
+THE RULE
+--------
+    DECISION 1. THE LITERAL IS SHAPE-NEUTRAL. THE POSITION DECIDES.
+
+`{a, b}` handed to a list<list<string>> is a list. The identical literal handed
+to a list<map<string, number>> is a map. Handed to nothing in particular it is
+the list it has always been.
+
+Nothing about the literal changes. What changed is that the position it lands
+in is now allowed to say what it wanted -- which is the reading ast_expr.hpp
+already committed to, and the reason no existing program moves.
+
+    DECISION 2. ONLY WHAT WAS WRITTEN AS BRACES IS RESHAPED.
+
+The check is on the ARGUMENT EXPRESSION, not on the value. A variable that
+happens to hold a list keeps being a list:
+
+    satellite.container.list<satellite.variable.number> pair
+    lm.append(pair)          -- still refused, and should be
+
+**Verified** as a test. A value that changed type on the way into a call the
+program can read and see it did not is exactly the magic §1 spends the whole
+language avoiding. The cost is that call_mutator now takes the argument
+expressions beside the argument values; that is four call sites and one
+defaulted parameter.
+
+    DECISION 3. THE SHAPE IS OFFERED, NOT IMPOSED. matches() STILL DECIDES.
+
+shape_literal runs BEFORE the existing type check and never replaces it. A
+literal whose values are the wrong type is still refused, by the same code and
+with the same authority as before. This is what keeps the feature from being a
+hole in the type system: it changes what a literal CAN mean, never what a
+declaration will accept.
+
+    DECISION 4. TWO SPELLINGS, FLAT TRIED FIRST.
+
+    {"a", 1, "b", 2}          key and value in turn
+    {{"a", 1}, {"b", 2}}      a pair per entry
+
+Flat is tried first because it is the spelling that was asked for. The two
+cannot be confused, and they resolve each other with no lookahead and no flag:
+{{"a",1},{"b",2}} is even-length, so the flat reading runs, produces the key
+{"a",1} -- a LIST, which §8.6 refuses as a key -- and that refusal is the
+signal to try the other reading. The key contract does the disambiguation for
+free, which is why shape_entry checks the key itself rather than leaving it to
+the caller's matches().
+
+    DECISION 4a. `{}` IS AN EMPTY MAP WHERE A MAP IS DECLARED.
+
+It is the one literal whose shape cannot be read off its contents, which is
+precisely why the declaration is allowed to say. ast_expr.hpp says the same
+thing about why the element type lives on the declaration.
+
+    DECISION 5. RECURSIVE, WHICH IS THE WHOLE "CRAZY COMBINATIONS" ANSWER.
+
+Shaping an element of a list<map<...>> asks the same function about the map;
+shaping that map's values asks it again about whatever they are. There is no
+depth at which a new case has to be written, and **verified**:
+
+    map<string, list<map<string, number>>> d
+    d.set("wave", {{"Tenacity", 85845}})   ->  {wave: [{Tenacity: 85845}]}
+
+
+WHERE IT APPLIES
+----------------
+Four positions, because those are the four places a value meets a declared
+type:
+
+    .append(x) / .set(k, v)      mutators.cpp, against the container's args
+    T x = { ... }                stmt.cpp, against the declaration
+    x = { ... }                  stmt.cpp, against the recorded type
+    (capsule parameters)         NOT DONE -- see below
+
+Each is a shape_literal call placed immediately before an existing matches().
+
+
+WHAT LANDED
+-----------
+ 1. literals.cpp     is_brace_literal, shape_literal, shape_entry. 155 lines.
+ 2. eval_internal.hpp   the two declarations.
+ 3. mutators.cpp     call_mutator takes the argument expressions; the shaping
+                     loop runs before the existing type check.
+ 4. expr_call.cpp    both dispatch sites hand over node.args.
+ 5. stmt.cpp         the declaration and the assignment.
+ 6. eval_test_literals.cpp   twelve cases, and half of them pin the NON-change:
+                     a pair into a list<list<string>> is still a list, a bare
+                     literal is still a list, a variable is not reshaped.
+
+`make test` green, 18 binaries. Every file under 325 except eval_evaluator.hpp
+at 328, which is noted below.
+
+
+WHAT THIS PLAN DOES NOT DO
+--------------------------
+**Capsule parameters.** `my_capsule({"a", 1})` where the parameter is declared
+a map is NOT shaped. The same three lines would do it in calls.cpp; it is left
+out because binding is a different code path with its own arity and type
+reporting, and folding it in without a test for each of those would be widening
+the feature by guess. It is the obvious next increment.
+
+**Spacesuit fields.** Same reason.
+
+**A map literal with a non-scalar key.** map<list<T>, V> cannot be written as a
+literal, because §8.6 refuses a list as a key at all -- so there is nothing to
+spell. If keys ever widen, DECISION 4's disambiguation is what has to be
+revisited first: it depends on a list-shaped key being refused.

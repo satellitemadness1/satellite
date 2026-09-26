@@ -1,0 +1,12 @@
+satellite (0.1.0-1) resolute; urgency=medium
+
+  * Initial Debian packaging.
+  * Split into two binary packages along the line DESIGN.md section 9 already
+    drew through the build: satellite is the interpreter and depends on the C
+    and C++ runtimes alone, satellite-term is the GTK 4 window and is the only
+    package that pulls gtk4 and vte.
+  * Build with prefix=/usr so that -DSATELLITE_LIB_DIR names
+    /usr/share/satellite/lib, which makes an installed interpreter find its
+    library with no environment variable set.
+
+ -- Terran Satellite <terransatellite@gmail.com>  Fri, 07 Aug 2026 12:00:00 +0000

@@ -1,0 +1,22 @@
+
+the satl program should take a .satl file as input and run that file, if one is entered. Right now it gives some error on punctuation...
+
+the satl program should be able to run files in other directories such as ../../satl/view_forge/view_forge_main.satl but right now it can't go into previous directories...
+
+the satellite.include() should take variables, such as an asterisk to include all files in a certain folder, or include everything if the directory structure is this:
+
+/dir/dir/file.satl
+/dir/dir2/file.satl
+/dir/dir3/file.satl
+
+and the user enters "satellite.include("/dir/*") it should pick up on all of those directories, because there are no asterisks in names, so we can do this...
+
+nothing over 400 lines;
+
+src/satellite_value/value.hpp is too long
+src/register_file/reg.hpp is too long at 350
+src/evaluator/methods.cpp is too long 391
+src/bytecode/format.hpp is too long at 431
+src/abstract_syntax_tree/ast.cpp and ast.hpp are both too long
+
+compression/decompression options

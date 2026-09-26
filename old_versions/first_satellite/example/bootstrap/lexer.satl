@@ -1,0 +1,258 @@
+// A satellite lexer, written in satellite.
+//
+// Stage 0 of bootstrapping, and it needs NO language feature that does not
+// already exist — which is the point of writing it before planning the rest.
+// Source arrives through argz, which was forced when this was written because
+// nothing in the language could read a file. File I/O has since landed (§8.3.1,
+// M6 done), so that constraint is gone; what keeps argz here is that a smoke
+// test naming its source on the command line needs no fixture file on disk.
+//
+//   satl --run lexer.satl 'satellite.variable.number x = 3'
+//
+// What it cost, feature by feature, is recorded at each site it hurt. Those
+// notes are the actual answer to "what is missing before we can bootstrap".
+
+satellite.include(satellite)
+
+satellite.spacesuit token()
+{
+    satellite.protected
+    {
+        satellite.variable.string kind = "end"
+        satellite.variable.string text = ""
+        satellite.variable.number line = 1
+    }
+
+    satellite.public
+    {
+        token(satellite.variable.string k, satellite.variable.string t, satellite.variable.number l)
+        {
+            kind = k
+            text = t
+            line = l
+        }
+
+        satellite.capsule describe() satellite.returns(satellite.variable.string)
+        {
+            satellite.return(kind + "(" + text + ")")
+        }
+    }
+}
+
+// Character classification. Every one of these is a chain of comparisons
+// because a satellite.variable.string has no code point to switch on, and
+// because there is no `&&` — a compound test is written .and(), which reads
+// backwards from how it is thought.
+satellite.capsule is_space(satellite.variable.string c) satellite.returns(satellite.variable.bool)
+{
+    satellite.statement.if(c == " ")
+    {
+        satellite.return(satellite.bool.true)
+    }
+    satellite.statement.if(c == "\t")
+    {
+        satellite.return(satellite.bool.true)
+    }
+    satellite.statement.if(c == "\n")
+    {
+        satellite.return(satellite.bool.true)
+    }
+
+    satellite.return(satellite.bool.false)
+}
+
+satellite.capsule is_digit(satellite.variable.string c) satellite.returns(satellite.variable.bool)
+{
+    satellite.return((c >= "0").and(c <= "9"))
+}
+
+satellite.capsule is_word_char(satellite.variable.string c) satellite.returns(satellite.variable.bool)
+{
+    satellite.statement.if(c == "_")
+    {
+        satellite.return(satellite.bool.true)
+    }
+
+    satellite.return((c >= "a").and(c <= "z").or((c >= "A").and(c <= "Z")).or(is_digit(c)))
+}
+
+// The lexer proper.
+//
+// Every loop below carries a `going` flag instead of breaking, because the
+// language has no break and no continue. That is the single biggest thing this
+// program is missing: five loops, five flags, and each one is a place a reader
+// has to reconstruct the exit condition rather than read it.
+satellite.capsule lex(satellite.variable.string src) satellite.returns(satellite.container.list<token>)
+{
+    satellite.container.list<token> out
+    satellite.variable.number i = 0
+    satellite.variable.number line = 1
+    satellite.variable.number n = src.length()
+
+    satellite.statement.while(i < n)
+    {
+        satellite.variable.string c = src[i]
+
+        satellite.statement.if(is_space(c))
+        {
+            satellite.statement.if(c == "\n")
+            {
+                line = line + 1
+            }
+            i = i + 1
+        }
+        satellite.statement.else satellite.statement.if(is_word_char(c).and(is_digit(c).negate()))
+        {
+            satellite.variable.number start = i
+            satellite.variable.bool going = satellite.bool.true
+
+            satellite.statement.while(going)
+            {
+                satellite.statement.if(i < n)
+                {
+                    going = is_word_char(src[i])
+                }
+                satellite.statement.else
+                {
+                    going = satellite.bool.false
+                }
+                satellite.statement.if(going)
+                {
+                    i = i + 1
+                }
+            }
+
+            out.append(token("Word", src[start:i], line))
+        }
+        satellite.statement.else satellite.statement.if(is_digit(c))
+        {
+            satellite.variable.number start = i
+            satellite.variable.bool going = satellite.bool.true
+
+            satellite.statement.while(going)
+            {
+                satellite.statement.if(i < n)
+                {
+                    going = is_digit(src[i])
+                }
+                satellite.statement.else
+                {
+                    going = satellite.bool.false
+                }
+                satellite.statement.if(going)
+                {
+                    i = i + 1
+                }
+            }
+
+            // A '.' continues the number only when a digit follows it, so 3.14
+            // is one token but main.x is three.
+            satellite.statement.if(i + 1 < n)
+            {
+                satellite.statement.if((src[i] == ".").and(is_digit(src[i + 1])))
+                {
+                    i = i + 1
+                    going = satellite.bool.true
+
+                    satellite.statement.while(going)
+                    {
+                        satellite.statement.if(i < n)
+                        {
+                            going = is_digit(src[i])
+                        }
+                        satellite.statement.else
+                        {
+                            going = satellite.bool.false
+                        }
+                        satellite.statement.if(going)
+                        {
+                            i = i + 1
+                        }
+                    }
+                }
+            }
+
+            out.append(token("Number", src[start:i], line))
+        }
+        satellite.statement.else satellite.statement.if(c == "\"")
+        {
+            satellite.variable.number start = i
+            satellite.variable.bool going = satellite.bool.true
+
+            i = i + 1
+            satellite.statement.while(going)
+            {
+                satellite.statement.if(i < n)
+                {
+                    going = src[i] != "\""
+                }
+                satellite.statement.else
+                {
+                    going = satellite.bool.false
+                }
+                satellite.statement.if(going)
+                {
+                    i = i + 1
+                }
+            }
+            i = i + 1
+
+            out.append(token("String", src[start + 1:i - 1], line))
+        }
+        satellite.statement.else
+        {
+            // The two-character operators, longest first.
+            satellite.variable.string two = ""
+
+            satellite.statement.if(i + 1 < n)
+            {
+                two = src[i:i + 2]
+            }
+
+            satellite.statement.if((two == "==").or(two == "!=").or(two == "<=").or(two == ">="))
+            {
+                out.append(token("Punct", two, line))
+                i = i + 2
+            }
+            satellite.statement.else
+            {
+                out.append(token("Punct", c, line))
+                i = i + 1
+            }
+        }
+    }
+
+    out.append(token("End", "", line))
+
+    satellite.return(out)
+}
+
+satellite.capsule satellite.main(satellite.container.list<satellite.variable.string> argz)
+{
+    // argz[0] is the script, so the source is argz[1]. A satellite.file.open
+    // belongs here and would work today (§8.3.1); it stays a command-line
+    // argument so that running this test costs one file rather than two.
+    satellite.statement.if(argz.length() < 2)
+    {
+        satellite.console.display("usage: lexer.satl <satellite source>")
+        satellite.return(2)
+    }
+
+    satellite.container.list<token> tokens = lex(argz[1])
+    satellite.variable.string out = ""
+    satellite.variable.number i = 0
+
+    satellite.statement.while(i < tokens.length())
+    {
+        satellite.statement.if(i > 0)
+        {
+            out = out + " "
+        }
+        out = out + tokens[i].describe()
+        i = i + 1
+    }
+
+    satellite.console.display(out)
+
+    satellite.return(satellite)
+}

@@ -1,0 +1,401 @@
+RESTRUCTURE — the line-count operation
+======================================
+Started 2026-08-24. Owner: the user. Driver: Claude.
+
+THE RULE
+--------
+No file over 400 lines. That is the ceiling, not the target.
+The target is 325. The reasoning, in the user's words:
+
+  "350 lines of C++ is too much to be under a single file name, C++ is too
+   dense to keep at 350 lines, you're almost doing two different things with
+   a single file."
+
+  "this is mostly for AI's, they want to quickly zip around the project"
+
+So: 325 is the number to hit. 350 is tolerated only where splitting further
+would cut something that genuinely belongs together. 400 is a hard fail.
+
+SCOPE — decided by the user 2026-08-24
+--------------------------------------
+IN:   src/**, design/**, install.sh, Makefile (via make_support/)
+OUT:  plans/**, example/*.satl, debian/**, icon/**
+      (not exempt forever — just not this operation)
+
+Tests root is `satellite_system/tests/` AT REPO ROOT, not under src/.
+Layout: satellite_system/tests/<test_name>/<file_name>.cpp
+
+BASELINE — recorded before any change
+-------------------------------------
+`make test` exit 0, 16 test binaries green:
+  library_test, library_test_tsan, satellite_string_test, bignum_test,
+  random_test, format_test, reg_test, console_test, lexer_test, ast_test,
+  parser_test, env_test, eval_test, interp_test, loader_test, spacesuit_test
+
+NOTE: spacesuit_test prints "spacesuit_test: PASS" and every other test prints
+"PASS: <name> (...)". Two formats. Do not write a green-check that only
+knows one of them.
+
+THE RULE FOR EVERY PHASE: `make test` is green at the END of each phase.
+Not at the end of the operation. If it is red, the phase is not done.
+
+PHASES
+------
+P1  Move 15 tests to satellite_system/tests/<test_name>/
+P2  Split the 10 oversized tests into per-topic files
+P3  Split the 17 oversized src files
+P4  Makefile -> make_support/ fragments
+P5  install.sh
+P6  design/ documents
+
+P1 — MOVE THE TESTS                                             [X] DONE
+---------------------------------------------------------------------------
+15 files move. Touches: Makefile (16 recipes + TESTBINS + test: + clean),
+.gitignore (16 paths, and its own comment explains why that list exists).
+
+  src/satellite_library/library_test.cpp        157  -> library_test/
+  src/satellite_string/satellite_string_test.cpp 61  -> satellite_string_test/
+  src/lexical_analyzer/lexer_test.cpp           299  -> lexer_test/
+  src/satellite_number/bignum_test.cpp          310  -> bignum_test/
+  src/console_output/console_test.cpp           315  -> console_test/
+  src/random_numbers/random_test.cpp            375  -> random_test/
+  src/register_file/reg_test.cpp                388  -> reg_test/
+  src/abstract_syntax_tree/ast_test.cpp         413  -> ast_test/
+  src/spaceship_loader/loader_test.cpp          441  -> loader_test/
+  src/syntax_parser/parser_test.cpp             442  -> parser_test/
+  src/bytecode_format/format_test.cpp           465  -> format_test/
+  src/interpreter/interp_test.cpp               516  -> interp_test/
+  src/environment/env_test.cpp                  546  -> env_test/
+  src/environment/spacesuit_test.cpp           1046  -> spacesuit_test/
+  src/evaluator/eval_test.cpp                  1711  -> eval_test/
+
+WATCH OUT:
+- library_test_tsan builds from library_test.cpp with -fsanitize=thread and is
+  NOT a converted-object build. Its recipe names TESTSRCS, not LIBOBJS.
+- format_test does NOT link LIBOBJS. It compiles alone against format.hpp
+  and format.def. Keep that.
+- reg_test and console_test are named in .gitignore's comment as the two that
+  already leaked binaries into commits. The ignore paths MUST move with them.
+
+P2 — SPLIT THE TESTS                                            [X] DONE
+---------------------------------------------------------------------------
+Every test is one TU: `static int failures`, a check() family, and one very
+long main() built out of `{ }` blocks with a comment header on each.
+
+The split shape, per test <name>:
+  <name>/<name>.hpp          harness decls + one decl per section function
+  <name>/<name>.cpp          the check() family, and main() calling sections
+  <name>/<name>_<topic>.cpp  one section, one file
+
+`failures` stops being `static` and becomes one definition in <name>.cpp
+declared extern in the header. That is the only semantic change; the section
+bodies move verbatim.
+
+Only these 10 are over the cap. The other 5 move in P1 and are already legal.
+
+P3 — SPLIT THE SRC FILES                                  [~] IN PROGRESS
+---------------------------------------------------------------------------
+17 files. Ordered biggest first; the two marked (!) need care.
+
+  1127  src/evaluator/modules.cpp
+   779  src/evaluator/helpers.cpp
+   739  src/evaluator/methods.cpp
+   653  src/system_facts/system.cpp
+   652  src/bytecode_format/format.def        (!) X-macro registry
+   641  src/satellite_value/value.hpp         (!) included everywhere
+   565  src/programs/main.cpp
+   527  src/abstract_syntax_tree/ast.hpp
+   492  src/evaluator/help.cpp
+   469  src/evaluator/expr.cpp
+   433  src/interpreter/interp.cpp
+   432  src/bytecode_format/format.hpp
+   412  src/spaceship_loader/loader.cpp
+   369  src/abstract_syntax_tree/ast.cpp
+   356  src/evaluator/eval.hpp
+   346  src/register_file/reg.hpp
+   337  src/satellite_number/bignum.hpp
+
+(!) format.def is the id registry and format_test has three tripwires on it
+    (last-id assert, selector count, selector-range check). It is ONE table
+    on purpose — "format.def is the truth". Splitting it may be the wrong
+    answer even at 652 lines. RAISE THIS WITH THE USER before cutting it.
+
+(!) value.hpp declares ValueBase, whose alternative ORDER is load-bearing:
+    help_for() and module_of() switch on raw variant indices. The variant
+    declaration does not move away from the comment that explains it.
+
+P4 — MAKEFILE -> make_support/                                  [X] DONE
+---------------------------------------------------------------------------
+GROUNDWORK ALREADY DONE (2026-08-24): every source list is now a wildcard, so
+splitting any file under src/ needs NO Makefile edit at all.
+
+    EVAL_SRCS / ENV_SRCS / BIGNUM_SRCS / PARSER_SRCS  = $(sort $(wildcard .../*.cpp))
+    LEAF_SRCS = the ten wholly-interpreter modules, likewise
+    <test>_SRCS / <test>_HDRS = per-test wildcards driven by TESTNAMES
+
+$(PROGRAMS) IS DELIBERATELY NOT A WILDCARD and must never become one: it holds
+main.cpp AND window.cpp, and window.cpp is satl-term's GTK/VTE binary. §9 kept
+them two binaries after measuring 23.4 ms of GTK startup, and M7's done-when
+asserts "ldd satl still lists six objects". A wildcard there would link GTK into
+satl silently. VERIFIED after the change: ldd ./satl lists exactly six.
+
+User's words: "Makefile needs a folder called make_support and it can
+reference files in that folder, and everything can exist in that folder".
+
+RESULT: 1232 lines -> a 79-line index Makefile + sixteen fragments, the
+largest 170 lines.
+
+  010-packages.mk           56   gtk/vte detection, DEPS_CMD, DEPS_ADVICE
+  020-compiler.mk           64   CXX, OPT, CXXFLAGS
+  030-version.mk            60   VERSION/REVISION, BUILD_STAMP, VERSION_DEFS
+  040-flags.mk              31   GTKFLAGS, LDLIBS, PCGFLAGS, LDFLAGS
+  050-thread-sanitizer.mk   68   TSAN, and finding a compiler that can link it
+  060-prefix.mk             47   prefix, DESTDIR, bindir/datadir/mandir/docdir
+  070-directories.mk        49   one variable per module dir, TESTS, TESTNAMES
+  080-sources.mk           125   the wildcards, OBJS, HDRS, LIBOBJS, GUI_TARGET
+  090-autoinstall.mk       124   why `make` at the top also installs
+  100-build.mk             118   .DEFAULT_GOAL, all, bundle, deps, satl, satl-term
+  110-compile.mk            99   the pattern rule and the four objects that
+                                 need more than it
+  120-tests.mk             156   sixteen test recipes, TESTBINS, test, aliases
+  130-examples-and-man.mk   25   compare, python, dist/%.1.gz
+  140-install.mk           170   the install tree, declared exactly once
+  150-install-report.mk     88   what the install says when it is done
+  160-uninstall-clean.mk    64   uninstall, clean, .PHONY
+
+NAMED ONE BY ONE, NOT $(wildcard make_support/*.mk). Two reasons, and the
+first is fatal: a wildcard sorts asciibetically, so 100- lands between 010-
+and 020- and the order constraints below break on a filename. Second, a
+wildcard silently swallows an editor backup or a half-written fragment.
+
+ORDER IS LOAD-BEARING IN EXACTLY THREE PLACES, each stated at the top of the
+fragment that depends on it:
+  - 020 before 030: VERSION_DEFS bakes $(CXX) and $(CXXFLAGS) in as strings.
+  - 100 is the first fragment declaring a target, which makes `all` the first
+    target make sees. .DEFAULT_GOAL := all says it outright as well.
+  - 120 before 160: .PHONY reads $(TESTALIASES), and a prerequisite list is
+    expanded where it is read.
+Everywhere else the fragments are recursive variables and rules, which make
+resolves after the whole file is read, so the references cross freely.
+
+THE ONE LINE THAT CHANGED — and it would have failed SILENTLY.
+    HERE := $(realpath $(dir $(lastword $(MAKEFILE_LIST))))
+090-autoinstall.mk compares HERE against $(CURDIR) to decide whether `make`
+should end in an install. MAKEFILE_LIST GROWS WITH EVERY INCLUDE, so read from
+inside a fragment its lastword is that fragment and $(dir ...) is make_support/
+-- the comparison would answer no on every machine and the auto-install would
+switch itself off with no error, no warning and no failing test. The root
+Makefile is the only file whose own position answers the question, so it takes
+the measurement as SATELLITE_TREE above the includes and the fragment reads
+    HERE := $(SATELLITE_TREE)
+Verified: HERE is the same absolute path before and after, and AUTOINSTALL is
+still `yes` at the top of the tree and empty under `make -C` from elsewhere.
+
+HOW IT WAS PROVEN — three checks, not one.
+1. REASSEMBLY. Stripping each fragment's new header and concatenating them in
+   include order reproduces every non-blank line of the 1232-line original, in
+   order: `diff` reports IDENTICAL. Nothing was rewritten.
+2. DRY RUNS. `make -n` for satl, test, install, uninstall, clean, the default
+   goal, bundle, compare and deps, before and against after: ZERO lines of
+   difference. Same commands, same order.
+3. THE WHOLE DATABASE. `make -p -n` dumped and diffed, with SOURCE_DATE_EPOCH
+   pinned so BUILD_STAMP does not move. The only differences are MAKEFILE_LIST
+   itself, the new SATELLITE_TREE, and the sixteen fragments appearing as files
+   make considered. Every variable and every rule is otherwise identical.
+   (That dump is three concatenated dumps -- the top-level make plus the two
+   recursive sub-makes -- so the sub-makes were compared too.)
+
+Then the ordinary gate: clean rebuild, 0 errors and 0 warnings, `ldd satl`
+still SIX shared objects, `make test` 16/16 exit 0, hello world runs.
+
+Also: BUILDING.md now says where the knobs went, under "Choosing a compiler".
+
+P5 — install.sh                                                 [X] DONE
+---------------------------------------------------------------------------
+634 lines -> a 119-line index install.sh + nine fragments under
+install_support/, the largest 92.
+
+THE WORRY WRITTEN ABOVE WAS BASED ON A FALSE PREMISE, and finding that out is
+what settled the question without needing a build step. install.sh has NEVER
+been a file that works on its own: it installs either a source tree, which
+needs the Makefile beside it, or the download folder, which needs install_tree/
+beside it, and it already dies with exactly those words when neither is there
+("no Makefile and no install_tree beside $self"). Both of the ways anybody
+actually receives it are DIRECTORIES. So install_support/ travelling with it
+costs nothing that was not already being paid, and the concatenate-at-build
+option -- which would have made the committed install.sh a generated file, with
+a chicken-and-egg problem since install.sh is what calls make -- was not needed.
+
+  010-defaults.sh          38   the default prefix, and what a run can be told
+  020-saying-things.sh     89   die, usage, show, run, quoted
+  030-arguments.sh         69   the command line, and what a prefix must be
+  040-mode.sh              82   source tree vs download folder; writability
+  050-building.sh          66   source mode: build before installing
+  060-bundle-tree.sh       74   bundle mode: copy install_tree/, no Makefile
+  070-desktop-indexes.sh   71   the four things a staged tree cannot carry
+  080-report.sh            92   what happened, and whether satl will be found
+  090-desktop-advice.sh    62   the launcher, the app icon, the .satl icon
+
+A SOURCED FRAGMENT RUNS AS IT IS READ, which is the one way this differs from
+P4: an included makefile is declarative and its order matters in three places,
+where here the order IS the script. Named one by one, not globbed, for that
+reason and for P4's two.
+
+WHAT MOVED INTO THE DRIVER, and why: `self=$0` and the paragraph that turns it
+into $repo, because $repo is also where install_support/ was found. Same shape
+as SATELLITE_TREE in the Makefile, and for the same cause -- a file about to
+read others has to know where it is itself.
+
+THE ONE DUPLICATED LINE: the "install_support/ is not beside you" message is
+spelled out with printf instead of die(), because die() arrives in
+020-saying-things.sh and this check has to run before it. It is duplicated so
+that the failure it reports can be reported at all.
+
+FOUR LINE-NUMBER CITATIONS FIXED IN PASSING. The build cited install.sh:40-58,
+install.sh:4-8, install.sh:263-273 and install.sh:332 -- exactly the fragility
+DESIGN.md warns about and plans/todo.txt has a rule against. All four now name
+a fragment. (The ones in plans/session_*.md are history and were left alone.)
+
+HOW IT WAS PROVEN:
+1. ACCOUNTING. Every non-blank line of the 634-line original is in the driver
+   or in exactly one fragment: computed, answer NONE missing. And each
+   fragment's body is byte-identical to its source range.
+2. TWELVE TRANSCRIPTS, BYTE-IDENTICAL. Both modes x --help, --dry-run,
+   --uninstall, --destdir, a bad option, a missing option argument, an
+   unwritable prefix, and the neither-mode error. diff: no output.
+3. THE REAL PATH, not a dry run. `make bundle` -> enterprise_download/ now
+   carries install_support/ -> ran the shipped installer from inside it for
+   real into /tmp -> `satl --where` answers "alongside the binary (relocatable
+   install)" and hello world runs. The tarball carries the folder too.
+4. The lone-file case: install.sh copied out by itself exits 1 with a sentence
+   that says to copy the directory.
+
+Makefile change: `bundle` installs install_support/*.sh at 644 (sourced, never
+executed), by glob so a new fragment ships without an edit.
+
+P6 — design/                                                    [X] DONE
+---------------------------------------------------------------------------
+   753  design/17-the-abstract-machine.md
+   689  design/20-networking.md
+   680  design/08-types.md
+   347  design/09-runtime-architecture.md
+   326  design/19-nine-additions.md
+
+THE ONE FACT THAT MAKES THIS SAFE: DESIGN.md says citations are
+"By section number, never by file and never by line." So §8.3.1 keeps
+resolving no matter which file §8.3.1 lands in. The previous split of this
+document "renumbered nothing" and that property must hold again.
+
+What must be updated when a section moves: DESIGN.md's index table, and the
+`*Back:* / *Next:*` navigation lines at the top of each file.
+
+THE COVERAGE INVARIANT — how a bad split is caught
+--------------------------------------------------
+A test binary prints ONE line: its PASS line. So output alone cannot prove a
+split kept its coverage -- a split that drops half a section still prints PASS.
+The invariant used instead is the count of assertion CALL SITES, which must be
+identical before and after:
+
+  count with: grep -ohE '\bcheck[a-z_]*\(' <folder>/*.cpp | wc -l
+
+  library_test              0     satellite_string_test    21
+  lexer_test               83     ast_test                 60
+  parser_test              67     eval_test               276
+  interp_test              80     loader_test              44
+  env_test                 52     spacesuit_test           75
+  bignum_test              91     random_test              47
+  format_test             100     console_test             23
+  reg_test                 61
+
+P6 RESULT — design/ is 30 files, none over 320
+----------------------------------------------
+  08-types.md            680 -> 08-a-numbers                        145
+                                08-b-time-file-and-window           193
+                                08-c-bool-characters-and-maps       133
+                                08-d-size-length-and-arguments      229
+  09-runtime-architecture 347 -> 09-a-runtime-architecture          161
+                                09-b-the-console-and-windows        192
+  17-the-abstract-machine 753 -> 17-a-the-abstract-machine          266
+                                17-b-the-container-and-value-model  182
+                                17-c-strings-frames-and-operators   320
+  19-nine-additions       326 -> 19-a-includes-literals-rebinding   181
+                                19-b-input-arguments-and-booleans   151
+  20-networking           689 -> 20-a-networking                    165
+                                20-b-the-wire-format                304
+                                20-c-the-frame-and-what-is-refused  234
+
+THE NAMING RULE, AND WHY IT IS `08-a-` AND NOT `08a-`:
+DESIGN.md fixes the rule "A file is numbered by its section, so §14 is
+`design/14-*.md`". `08a-numbers.md` does NOT match `design/08-*.md`;
+`08-a-numbers.md` does. The rule survives the split untouched, which is the
+whole reason for the extra dash.
+
+NO SECTION WAS RENUMBERED. Every §8.3.1 cited from src/, the man page,
+install.sh, debian/ and plans/ resolves exactly as before. Verified: 0 broken
+links across DESIGN.md and all 30 files.
+
+THE TWO SINGLE-FUNCTION FILES — the pattern that worked
+-------------------------------------------------------
+call_module was 771 lines in ONE function; call_method was 715. Neither could
+be split by moving text, because the branches all `return` out of the middle
+of a function. The transformation that made the bodies move BYTE FOR BYTE:
+
+  each arm returns std::optional<ValuePtr>
+
+  std::nullopt          = "not mine, keep looking"
+  engaged optional      = this arm answered
+  engaged, holding null = it answered by FAILING (§8.3.1: a failure is a
+                          value, and fail() has already run)
+
+Because ValuePtr converts implicitly to an engaged optional, every single
+`return <expr>;` inside a moved branch needed NO EDIT. That is the whole
+trick, and it is the reason to reach for optional here rather than a
+bool-plus-out-parameter.
+
+For call_method the same problem appeared one level down: the branches used
+two lambdas, `arity` and `number_arg`, from a shared prologue. Rather than
+rewrite ~50 call sites, the lambdas were promoted to Evaluator methods and
+each arm declares a two-line lambda OF THE SAME NAME that forwards to them.
+Call sites unchanged.
+
+Three real things fell out of doing this, none of them planned:
+- a comment block describing satellite.directory.* was sitting above the
+  `satellite.help` branch, ~340 lines from the code it documents. Moved to
+  the directory arm.
+- the `unit_divisor` lambda (b/kb/mb/gb/tb) sat between the analyze branch and
+  the memory branches and belonged to neither by position. Its only caller is
+  satellite.system.memory.*, so it moved there.
+- reg.hpp's "not linked into satl" comment sat over console_test's recipe.
+
+LOG
+---
+2026-08-24  Baseline recorded, green. Plan written.
+2026-08-24  P6 DONE (done early, out of order: design/ is independent of the
+            C++ work and P2's agents were occupying the build).
+            5 docs -> 14 files. All 30 design files now <= 320 lines.
+            Navigation regenerated across all 30 (the old headers said
+            "of 19" and there have been 21 sections for a while).
+            DESIGN.md index rebuilt: 21 rows -> 30.
+2026-08-24  P1 DONE. 15 tests moved to satellite_system/tests/<name>/.
+            Makefile: added TESTS + TESTNAMES, rewrote 16 recipes, TESTBINS,
+            `test`, the aliases and `clean`. .gitignore's 16 paths rewritten.
+            Also: every test recipe now builds from $(wildcard <folder>/*.cpp)
+            via a TESTNAMES foreach, so SPLITTING A TEST NEEDS NO MAKEFILE EDIT
+            and a new piece cannot be forgotten. `make test` green, 16/16.
+            One fix in passing: the "reg.hpp is not linked into satl" comment
+            sat above console_test's recipe and always described reg_test's.
+2026-08-24  P4 DONE. Makefile 1232 -> 79-line index + 16 fragments under
+            make_support/, largest 170. Proven by reassembly diff, nine
+            identical dry runs, and a full `make -p` database diff.
+            One line changed on purpose: HERE, which lastword would have
+            broken silently once includes existed.
+2026-08-24  P5 DONE. install.sh 634 -> 119-line index + 9 fragments under
+            install_support/. The plan's worry was a false premise: install.sh
+            already required siblings and already died without them. Twelve
+            transcripts byte-identical; proven through a real bundle install.
+            OPERATION COMPLETE: every file in src/, design/, satellite_system/,
+            make_support/ and install_support/ is at or under 325 lines, and so
+            are the Makefile and install.sh. The single exception is
+            src/bytecode_format/format.def at 652, which the user declared
+            permanent: "let's leave format.def entirely alone, and it will
+            remain the exception".

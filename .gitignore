@@ -15,11 +15,27 @@ __pycache__/
 
 # old_versions/second_satellite/ keeps its own .gitignore for 003's build output.
 
-# The first satellite is kept on disk to read and DELIBERATELY NOT IN THIS
-# REPOSITORY'S HISTORY -- the second satellite's .gitignore said why: a whole tree
-# with its own history elsewhere, 85 MB. old_versions/second_satellite/ IS
-# tracked: it was this repository until 2026-09-15.
-/old_versions/first_satellite/
+# THE FIRST SATELLITE IS TRACKED FROM 2026-09-26 (the author: "first satellite is
+# the only record of the first satellite"). It was kept out as "a whole tree with its
+# own history elsewhere, 85 MB", and that did not hold, as it had not for the
+# prototype below: it has no .git, archive/001-llvm is a different tree (2 of its
+# 100 names match), and none of the author's GitHub repositories holds it.
+#
+# ONLY ITS SOURCE IS TRACKED. Its own .gitignore (old_versions/first_satellite/
+# .gitignore) takes its binaries, as it did when it was a repository: 129 files,
+# 54 MB, of the 84. What that also leaves out has a copy in the tree -- all 92
+# files of enterprise_download/ do, checked by sha256 -- except satellite-icon.xcf,
+# which was added with -f past that file's *.xcf rule: it is byte for byte the one
+# satellite_enterprise/icon_artwork/ already tracks, so git stores it once and it
+# costs nothing.
+# Three test binaries its .gitignore never listed:
+/old_versions/first_satellite/satellite_system/tests/console_input_test/console_input_test
+/old_versions/first_satellite/satellite_system/tests/orbit_test/orbit_test
+/old_versions/first_satellite/satellite_system/tests/search_test/search_test
+
+# A satl built for one CPU level to race another (haswell_test/). 57 MB each,
+# unstripped, and unable to run without the ignored .so words beside it.
+/haswell_test/*/satl
 
 # THE PROTOTYPE IS TRACKED FROM 2026-09-16 (the author: "we can add prototype to
 # the git now, i've added a readme file with it that explains what prototype is").

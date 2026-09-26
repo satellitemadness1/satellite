@@ -1,0 +1,154 @@
+satellite.statement.while (condition) -- repeat a block while a bool holds
+
+  satellite.statement.while (going)
+  {
+      ...
+  }
+
+  The condition is tested BEFORE the first pass, so a condition that starts
+  false runs the body zero times, and it is re-read at the top of every pass
+  after that. There is no do-while, and which refusal you get depends on
+  where you put the brace: satellite.statement.do with the brace on the next
+  line is "satellite.statement.do is a module path, not a value", while the
+  C spelling satellite.statement.do { ... } is "unexpected Punct({) after
+  the end of a statement".
+
+  The parentheses and the braces are both required -- design 5 spells the
+  form while_stmt := stmt_kw "while" "(" expression ")" block. Dropping the
+  parentheses is "expected '(' after satellite.statement.while". A body of
+  one statement still gets braces; without them the error is "expected '{'
+  to open a block". An empty body is legal. The body's statements are
+  newline terminated like every other statement, so two on one line is
+  "unexpected Word(satellite) after the end of a statement" and a ';'
+  between them is "unexpected Punct(;) after the end of a statement". Spaces
+  around the dots are free -- satellite . statement . while parses the same
+  -- and the '{' may sit on the header's line or on the next one.
+
+  THE CONDITION MUST BE A satellite.variable.bool. There is no truthiness.
+  A number is refused with "condition must be a satellite.variable.bool,
+  got satellite.variable.number", a string with "got
+  satellite.variable.string", and the runtime value satellite with "got
+  nil". Empty parentheses are refused with "expected an expression, found
+  Punct())": satellite.statement.else accepts both () and no parentheses at
+  all, but a while has something to say inside them. The condition is an
+  EXPRESSION and not a statement, so C's while ((line = next()) != nil)
+  does not parse -- "expected ')' to close the group" -- and there is no
+  way to assign inside a condition.
+
+  THE BODY IS ITS OWN SCOPE, which is what the flag idiom below is usually
+  got wrong on. A satellite.variable declared in the body is FRESH ON EVERY
+  PASS, so a counter declared there reads 1 forever, and it does not exist
+  after the loop ("unknown variable in capsule"). The condition is read in
+  the ENCLOSING scope, so a flag declared inside the body it controls is
+  "unknown variable in capsule" at the header. Every flag a loop tests has
+  to be declared BEFORE the loop.
+
+  THERE IS NO break AND NO continue. Not under any spelling:
+
+      satellite.statement.break     -> is a module path, not a value
+      satellite.statement.break()   -> no such module function
+      break                         -> unknown variable in capsule
+
+  continue answers the same three ways. That is the largest gap the language
+  still has rather than an oversight. Design 15 lists what writing the
+  stage-0 lexer in satellite found missing, in order of how much it hurt:
+  break and continue are item 2, behind file I/O, which has since been
+  built -- so they are first among what is still missing, which is the sense
+  in which design 17 cites them when it holds bytecode ids 18-20 open
+  against the day they exist. Today a loop is left by making its condition
+  false, which in real code means a flag:
+
+      satellite.container.list<satellite.variable.number> l
+      l.append(4)
+      l.append(8)
+      l.append(15)
+      l.append(16)
+      satellite.variable.bool searching = satellite.bool.true
+      satellite.variable.number i = 0
+      satellite.variable.number found = -1
+      satellite.statement.while (searching)
+      {
+          satellite.statement.if (i >= l.length())
+          {
+              searching = satellite.bool.false
+          }
+          satellite.statement.else
+          {
+              satellite.statement.if (l[i] == 15)
+              {
+                  found = i
+                  searching = satellite.bool.false
+              }
+              satellite.statement.else
+              {
+                  i = i + 1
+              }
+          }
+      }
+
+  found is 2. Read what the flag costs, because that is the honest part. The
+  increment moved into an else, since there is no continue to skip past it.
+  The two ways out became two branches of one if, since there is no break to
+  take either. All three of searching, i and found had to be declared
+  outside the loop, because the body's scope does not survive a pass. A
+  nested loop needs a flag EACH: the inner one clears both, and the outer
+  one re-checks its own before it steps, or it steps once too often. Design
+  15's own phrasing is "five loops, five going flags".
+
+  satellite.return inside the body does leave the loop -- and the capsule
+  with it. It is the one early exit the language has and it is not a break:
+  it ends the call. In a TOP-LEVEL while there is no call to end, so it ends
+  the whole run instead: satellite.main is never entered, nothing is
+  printed about it, and the exit status is 0. A runtime error in the body
+  also stops the loop, and the program, with exit status 1.
+
+  THERE IS NO ITERATION GUARD. satellite.library.system.max_depth counts
+  NESTING, not passes: the counter rises when a statement or a call is
+  entered and falls when it finishes, so one pass of a loop leaves it where
+  it started. 100000 passes of a while loop finish in about 0.05 s, while
+  runaway recursion stops with "expression nests deeper than
+  satellite.library.system.max_depth (2000)". The guard is for recursion,
+  and it will not fire for a loop however long the loop runs.
+
+  That 2000 is a default and not a constant. It is clamped to a ceiling
+  derived from the stack the process actually has, so the same recursion
+  under ulimit -s 1024 stops at "(375)". The knob is not readable as a
+  variable -- displaying satellite.library.system.max_depth is "no such
+  variable" -- and assigning it from inside a program is accepted silently
+  and changes nothing, because the evaluator reads it once before the first
+  statement runs.
+
+  So a while whose condition never goes false runs until something outside
+  the program stops it. Nothing times out, no message is issued, and no
+  limit is reached. Output already displayed is flushed as it goes, so a
+  spinning loop that displays keeps printing. Ctrl-C ends it: there is no
+  signal handler, the process dies the default way, and the shell reports
+  130.
+
+  Nesting IS bounded, by the resolver rather than by the run, and the
+  resolver's 2000 is a fixed constant. Each while costs two of those levels
+  and the enclosing capsule body costs one, so 999 nested while statements
+  around an EMPTY body run and 1000 is refused. Anything real innermost
+  costs more and lowers the ceiling: with one satellite.console.display
+  call inside, 997 run and 998 is refused. The refusal comes before anything
+  executes, and it comes twice -- "expression nests deeper than the resolver
+  can walk (2000)" first, for the innermost condition, then "statements nest
+  deeper than the resolver can walk (2000)" for its block.
+
+  .and() IS NOT SHORT-CIRCUIT, and while conditions are where that bites.
+  There is no && and no || in the language -- (i < 10 && i != 3) is
+  "expected ')' after the condition" -- so a compound test is written
+  (a).and(b), and .and is an ordinary method call whose argument is
+  evaluated before the call happens. The C idiom
+  (i < l.length()).and(l[i] != 15) therefore indexes at i FIRST and dies
+  with "index 2 is outside a list of length 2" on the very pass that should
+  have ended the loop. Nest an if inside the body instead, as the search
+  above does.
+
+  A while at the top level of a file, outside any capsule, is legal, and it
+  runs before satellite.main does -- with the satellite.return trap above.
+
+  A loop with a counter is usually satellite.statement.for, which carries
+  the init, the test and the step in one header and so cannot lose the step
+  in an else the way the flag idiom can. satellite.statement.for (;;) is the
+  infinite loop, and it has no break either.

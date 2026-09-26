@@ -1,0 +1,41 @@
+
+Satellite Orbit is the search power built into the satellite programming language.
+
+Satellite Orbit works in phases, it begins by directly attempting to find the 
+result of the search. Then it tries to guess the result, building up on the direct search,
+and adding to the end result. Then it tries to predict the result, by logic and force,
+to attempt to render a correct result. Then it tries to index, does it already know
+the result? Has this search already exhausted everything? What do we know about this
+user/this machine/the code it runs. Indexing. lastly the search result contains the
+results of the frequency phase, where we look at the likelihood of what we have made
+from the previous phases, and the likelihood of the result being just something else.
+
+At the end of the day. I have a list. the list is {TRUE, TRUE, FASLSE, TRUE, FALSE, TRUE, TRUE}
+and I am looking for {TRUE, TRUE} the result could return that the correct answer is {TRUE, FALSE}
+after all of these phases have been processed through. 
+
+So we have to build this orbit engine and the search power.
+
+So right away, we have the satellite.help() command, and it needs to be searchable.
+So we have a field of information that we can use to determine how effective our 
+search power will be... See how valuable those phases would be when applied just 
+over the help system? Now if that power were in the hands of the user of satellite,
+which is just me right now, and that user could build the ai with the search power,
+because all I ever do when I build AI is search for stuff, search for this word,
+search for these two words, search for this, if I had a comprehensive search system,
+modeled after the same AI, then it would be like in the bag, dude.
+
+So again it is: Direct, Guessing, Predicting (logic/force) we try to force the result,
+then it is indexing, looking through memory, then it is finally frequency and that is
+the seaRCH pipeline built for the AI.
+
+So we are building an AI to build an AI.
+
+This is about all I have mapped out on "orbit", and somehow we have to build all of
+this... it's daunting! But i'll try my hardest...
+
+we are building the "ego" of the AI, the very core of it.
+
+So you can constrast this with the old search plan that built a search tool that
+just had like a single path, I don't like that plan.
+

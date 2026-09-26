@@ -1,0 +1,712 @@
+// full_test.satl — every feature the interpreter implements today, in one
+// program. Run it from the satellite prompt with
+//
+//     run example/full_test.satl
+//
+// or from a shell with `./satl --run example/full_test.satl`. Every line
+// it prints is a feature that works; it ends with satellite.return(satellite),
+// so an exit status of 0 means the whole language came through intact.
+//
+// It is two files, not one, and that is deliberate: full_test_helper.satl is a
+// spaceship, and a program spanning two of them is the one feature a single
+// file cannot demonstrate about itself (§16). Keep them beside each other.
+//
+// A handful of lines DO vary between runs, and they are the ones that should:
+// the random numbers, the clock, the memory figures, and the directory listing.
+// Everything else prints the same text every time, so the output diffs cleanly
+// against a previous run. Where a varying feature has a checkable property --
+// how many digits a random number has, whether a range landed inside its
+// bounds -- the property is printed beside the value rather than instead of it.
+//
+// Nothing is left behind: the file section writes its scratch file under
+// satellite.system.home() and deletes it before the section ends.
+
+satellite.include(satellite)
+
+// The companion spaceship, by bare name. Resolved relative to THIS file rather
+// than to the directory satl was started in, so the program runs the same from
+// anywhere (§16). `satellite.include("full_test_helper.satl")` is the same
+// include written the other legal way -- a quoted path (§19.1).
+satellite.include(full_test_helper)
+
+// ---------------------------------------------------------------------------
+// Globals
+//
+// Top-level statements run before satellite.main, so these are already set by
+// the time main starts. A capsule cannot see them by bare name — it is
+// lexically closed (§6) — only through satellite.library.main.<name>.
+// ---------------------------------------------------------------------------
+
+satellite.variable.number calls = 0
+satellite.variable.string greeting = "hello"
+satellite.variable.bool ready = 1 == 1
+
+// ---------------------------------------------------------------------------
+// Capsules
+// ---------------------------------------------------------------------------
+
+// Two parameters and a declared return type.
+satellite.capsule show(satellite.variable.string label,
+                       satellite.variable.string value)
+    satellite.returns(satellite.variable.string)
+{
+    satellite.console.display(label + ": " + value)
+    satellite.return(value)
+}
+
+// Recursion. One frame per activation is what makes this 3628800 rather than 1.
+satellite.capsule fact(satellite.variable.number n)
+{
+    satellite.statement.if (n <= 1) {
+        satellite.return(1)
+    }
+    satellite.return(n * fact(n - 1))
+}
+
+// Mutual recursion: is_even calls is_odd, which is defined after it. Legal
+// because resolution is a whole pass over the program before anything runs.
+satellite.capsule is_even(satellite.variable.number n)
+{
+    satellite.statement.if (n == 0) {
+        satellite.return(1 == 1)
+    }
+    satellite.return(is_odd(n - 1))
+}
+
+satellite.capsule is_odd(satellite.variable.number n)
+{
+    satellite.statement.if (n == 0) {
+        satellite.return(1 != 1)
+    }
+    satellite.return(is_even(n - 1))
+}
+
+// A local belongs to the activation, not to the capsule: the inner call's
+// `doubled` must not overwrite the outer call's.
+satellite.capsule twice(satellite.variable.number n)
+{
+    satellite.variable.number doubled = n + n
+    satellite.statement.if (n > 1) {
+        satellite.return(doubled + twice(n - 1))
+    }
+    satellite.return(doubled)
+}
+
+// A local list lives in the frame too, so the second call starts from an empty
+// list instead of the first call's.
+satellite.capsule build(satellite.variable.number n)
+{
+    satellite.container.list<satellite.variable.number> made
+    made.append(n)
+    made.append(n + 1)
+    satellite.return(made)
+}
+
+// The four-segment path is the only way into a global from inside a capsule,
+// and the write lands in the real satellite.library.
+satellite.capsule bump()
+{
+    satellite.library.main.calls = satellite.library.main.calls + 1
+    satellite.return(satellite)
+}
+
+// ---------------------------------------------------------------------------
+// Spacesuits (classes)
+//
+// Fields go in satellite.protected, methods and the constructor in
+// satellite.public (§14). A spacesuit is a REFERENCE: two names for one
+// object are two names for one object, which the main capsule below shows.
+// ---------------------------------------------------------------------------
+
+satellite.spacesuit animal()
+{
+    // Protected, so `a.name` from outside is refused. The subclass below still
+    // reaches it, which is what protected means and what private would not.
+    satellite.protected { satellite.variable.string name }
+
+    satellite.public {
+        // The constructor is the capsule named after the spacesuit. This one
+        // takes no arguments on purpose: a superclass constructor that takes
+        // them cannot be reached from a subclass yet -- there is no syntax for
+        // passing them up -- so `dog` below would not be declarable at all.
+        // rename() is how the field gets set instead.
+        animal() { name = "unnamed" }
+
+        satellite.capsule rename(satellite.variable.string n) { name = n }
+
+        satellite.capsule speak() satellite.returns(satellite.variable.string)
+        {
+            satellite.return("...")
+        }
+
+        // The line that makes dispatch visible. who() is defined ONCE, here,
+        // and it calls speak() -- so what a dog says comes from dog's speak()
+        // even though the call is written in animal's body.
+        satellite.capsule who() satellite.returns(satellite.variable.string)
+        {
+            satellite.return(name + " says " + speak())
+        }
+    }
+}
+
+// Single inheritance. dog declares no field and no constructor: it gets
+// animal's, and overrides one method.
+satellite.spacesuit dog(animal)
+{
+    satellite.public {
+        satellite.capsule speak() satellite.returns(satellite.variable.string)
+        {
+            satellite.return("woof")
+        }
+    }
+}
+
+// ---------------------------------------------------------------------------
+
+satellite.capsule satellite.main(
+    satellite.container.list<satellite.variable.string> argz)
+{
+    // --- arguments ---------------------------------------------------------
+    // argz[0] is the script itself, mirroring argv[0] in C.
+    satellite.console.display("== arguments ==")
+    show("script", argz[0])
+    show("count", argz.length().to_string())
+
+    // Anything after the file name on the command line lands here, one
+    // satellite.variable.string per argument, in order. Indexing with a
+    // variable rather than a literal is the point of this loop.
+    satellite.statement.for (satellite.variable.number a = 1;
+                             a < argz.length(); a = a + 1) {
+        show("argz[" + a.to_string() + "]", argz[a])
+    }
+
+    // --- variables ---------------------------------------------------------
+    // Declaration, assignment, and reassignment of every scalar type. These are
+    // locals: they live in main's frame, not in satellite.library.
+    satellite.console.display("== variables ==")
+
+    satellite.variable.number count = 41
+    count = count + 1
+    show("number", count.to_string())
+
+    satellite.variable.string name = "satellite"
+    name = name + " language"
+    show("string", name)
+
+    satellite.variable.bool done = 1 < 2
+    done = !done
+    show("bool", done.to_string())
+
+    // An uninitialised declaration is a value of its declared type, so a number
+    // starts at 0 and a list starts empty rather than nil.
+    satellite.variable.number blank
+    show("uninitialised number", blank.to_string())
+
+    // The globals declared above, reached the only way a capsule can.
+    show("global greeting", satellite.library.main.greeting)
+    show("global ready", satellite.library.main.ready.to_string())
+    satellite.library.main.greeting = "hello again"
+    show("global reassigned", satellite.library.main.greeting)
+
+    // --- arithmetic --------------------------------------------------------
+    satellite.console.display("== arithmetic ==")
+    show("1 + 2 * 3", (1 + 2 * 3).to_string())
+    show("(1 + 2) * 3", ((1 + 2) * 3).to_string())
+    show("7 / 2", (7 / 2).to_string())
+    show("7 % 2", (7 % 2).to_string())
+    show("2 - -3", (2 - -3).to_string())
+    show("-3 + 1", (-3 + 1).to_string())
+
+    // Numbers print as their value, not as six significant digits, and float
+    // reality is shown rather than hidden.
+    show("1000000 * 1000000", (1000000 * 1000000).to_string())
+    show("2000000 + 1", (2000000 + 1).to_string())
+    show("3.14", 3.14.to_string())
+    show("0.1 + 0.2", (0.1 + 0.2).to_string())
+    show("1 / 3", (1 / 3).to_string())
+
+    // --- number methods ----------------------------------------------------
+    satellite.console.display("== number methods ==")
+    show("3.5.floor()", 3.5.floor().to_string())
+    show("3.5.ceil()", 3.5.ceil().to_string())
+    show("3.5.round()", 3.5.round().to_string())
+    show("(0 - 4).abs()", (0 - 4).abs().to_string())
+    show("10.plus(5)", 10.plus(5).to_string())
+    show("10.minus(5)", 10.minus(5).to_string())
+    show("10.times(5)", 10.times(5).to_string())
+    show("10.divided_by(4)", 10.divided_by(4).to_string())
+    show("10.modulo(3)", 10.modulo(3).to_string())
+
+    // --- exact numbers -----------------------------------------------------
+    // There is one number type and it is an exact arbitrary-precision decimal:
+    // a bignum significand times a power of ten (§8.1). No float, no rounding
+    // mode, and so no precision question to answer. These are the four lines
+    // that would betray a double, and none of them does.
+    satellite.console.display("== exact numbers ==")
+
+    // 0.30000000000000004 in every language with a binary float. Here the
+    // significand is decimal, so 0.1 and 0.2 are exact and so is their sum.
+    show("0.1 + 0.2", (0.1 + 0.2).to_string())
+    show("0.1 + 0.2 == 0.3", (0.1 + 0.2 == 0.3).to_string())
+
+    // A division that terminates is carried out in full, however long it
+    // takes. 1/8 is exact in binary too; 1/3 does not terminate and is where
+    // the language stops rather than pretending.
+    show("1 / 8", (1 / 8).to_string())
+    show("1 / 3", (1 / 3).to_string())
+
+    // 30! has 33 digits, which is nine more than a 64-bit integer holds and
+    // eighteen more than a double keeps exactly. It is printed in full.
+    satellite.variable.number factorial = 1
+    satellite.statement.for (satellite.variable.number f = 1; f <= 30; f = f + 1) {
+        factorial = factorial * f
+    }
+    show("30!", factorial.to_string())
+    show("30! digits", factorial.digits().to_string())
+
+    // .digits() counts decimal digits; .size() is the value's footprint in
+    // bytes. They are different questions and a number answers both.
+    show("12345.digits()", 12345.digits().to_string())
+    show("12345.size()", 12345.size().to_string())
+
+    // --- binary and hexadecimal ----------------------------------------------
+    // Two more types, not two more ways to write a number (§21). x0009 and x9
+    // are the same quantity and DIFFERENT VALUES, because the width is part of
+    // the value -- which is the whole reason these are not number literals in
+    // another base.
+    satellite.console.display("== binary and hexadecimal ==")
+
+    satellite.variable.hex h = x00FF
+    satellite.variable.binary bits = b1010
+    show("hex literal", h.to_string())
+    show("binary literal", bits.to_string())
+
+    show("x0009 == x9", (x0009 == x9).to_string())
+    show("x0009 digits", x0009.digits().to_string())
+    show("x9 digits", x9.digits().to_string())
+
+    // .bytes() rounds the width up to whole bytes; .digits() does not round.
+    show("x00FF.digits()", h.digits().to_string())
+    show("x00FF.bytes()", h.bytes().to_string())
+    show("b1010.digits()", bits.digits().to_string())
+    show("b1010.bytes()", bits.bytes().to_string())
+
+    // Conversion keeps the width rather than discarding it: eight hex digits
+    // of zero-padding become sixteen binary ones, not four.
+    show("x00FF.to_number()", h.to_number().to_string())
+    show("x00FF.to_binary()", h.to_binary().to_string())
+    show("b1010.to_hex()", bits.to_hex().to_string())
+    show("x00.concat(xFF)", x00.concat(xFF).to_string())
+
+    // `hexadecimal` is the language's one alias, and it is the same type.
+    satellite.variable.hexadecimal spelled_out = xBEEF
+    show("hexadecimal alias", spelled_out.to_string())
+
+    // --- strings -----------------------------------------------------------
+    satellite.console.display("== strings ==")
+    satellite.variable.string word = "satellite"
+    show("length", word.length().to_string())
+    show("concat", "ab".concat("cd"))
+    show("+", "ab" + "cd")
+    show("contains", word.contains("tell").to_string())
+    show("starts_with", word.starts_with("sat").to_string())
+    show("ends_with", word.ends_with("ite").to_string())
+    show("index [0]", word[0])
+    show("index [-1]", word[-1])
+
+    // Slicing is half-open everywhere: the length of s[a:b] is b - a, with no
+    // +1 anywhere in the language.
+    show("slice [1:4]", word[1:4])
+    show("slice [:3]", word[:3])
+    show("slice [4:]", word[4:])
+    show("slice [:]", word[:])
+
+    // --- satellite characters ----------------------------------------------
+    // A backslash name is ONE satellite character that displays as a whole
+    // value (§7). That is why "hi\home!" has a length of 4 and not the length
+    // of the path it prints as.
+    satellite.console.display("== satellite characters ==")
+    show("\\user", "\user")
+    show("\\home", "\home")
+    show("\\cwd", "\cwd")
+    show("\\threads", "\threads")
+    show("length of \"hi\\home!\"", "hi\home!".length().to_string())
+    show("\"hi\\home!\"[2]", "hi\home!"[2])
+
+    // --- booleans ----------------------------------------------------------
+    satellite.console.display("== booleans ==")
+    show("1 < 2", (1 < 2).to_string())
+    show("2 <= 2", (2 <= 2).to_string())
+    show("1 == 1", (1 == 1).to_string())
+    show("1 != 1", (1 != 1).to_string())
+    show("1 == \"1\"", (1 == "1").to_string())
+    show("!(1 < 2)", (!(1 < 2)).to_string())
+    show("and", (1 < 2).and(2 < 3).to_string())
+    show("or", (1 < 2).or(3 < 2).to_string())
+    show("negate", (1 < 2).negate().to_string())
+
+    // --- lists -------------------------------------------------------------
+    satellite.console.display("== lists ==")
+    satellite.container.list<satellite.variable.number> numbers
+    show("empty length", numbers.length().to_string())
+    numbers.append(1)
+    numbers.append(2)
+    numbers.append(3)
+    show("appended", numbers.to_string())
+    show("length", numbers.length().to_string())
+    show("index [0]", numbers[0].to_string())
+    show("index [-1]", numbers[-1].to_string())
+    show("first", numbers.first().to_string())
+    show("last", numbers.last().to_string())
+    show("contains 2", numbers.contains(2).to_string())
+    show("slice [1:3]", numbers[1:3].to_string())
+    show("slice [:2]", numbers[:2].to_string())
+    show("slice [2:]", numbers[2:].to_string())
+    show("slice clamps [0:99]", numbers[0:99].to_string())
+
+    // A list of strings, so the generic argument is not always a number.
+    satellite.container.list<satellite.variable.string> words
+    words.append("one")
+    words.append("two")
+    show("list of strings", words.to_string())
+
+    // --- list literals -----------------------------------------------------
+    // A list can be written down, not only built (§19.2). The element type
+    // belongs to the variable and not to the literal, which is the rule every
+    // other expression already follows -- so the same {1, 2, 3} would be a
+    // list of numbers here and be refused by a list of strings.
+    satellite.console.display("== list literals ==")
+
+    satellite.container.list<satellite.variable.string> location = {"BERLIN", "GERMANY"}
+    show("written down", location.to_string())
+
+    satellite.container.list<satellite.variable.number> ids = {86, 87, 123, 134}
+    show("four numbers", ids.to_string())
+    show("length", ids.length().to_string())
+
+    // Empty is spelled {}, and it is the one literal whose element type cannot
+    // be read off its contents -- which is the argument for the rule above
+    // rather than an exception to it.
+    satellite.container.list<satellite.variable.number> nothing = {}
+    show("empty literal", nothing.length().to_string())
+
+    // --- maps ----------------------------------------------------------------
+    // The second container (§8.6). A key is a string or a number; a missing
+    // key is an error rather than a silent default, so .has() is how you ask.
+    satellite.console.display("== maps ==")
+
+    satellite.container.map<satellite.variable.string, satellite.variable.number> ages
+    ages.set("ada", 36)
+    ages.set("alan", 41)
+    show("length", ages.length().to_string())
+    show("get", ages.get("ada").to_string())
+    show("index", ages["alan"].to_string())
+    show("has present", ages.has("ada").to_string())
+    show("has absent", ages.has("nobody").to_string())
+
+    // .set() on a key that is already there replaces the value; it does not
+    // add a second entry.
+    ages.set("ada", 37)
+    show("set replaces", ages.get("ada").to_string())
+    show("length unchanged", ages.length().to_string())
+
+    show("keys", ages.keys().to_string())
+    show("values", ages.values().to_string())
+    show("to_string", ages.to_string())
+
+    ages.remove("alan")
+    show("after remove", ages.to_string())
+
+    // A number key, so the key type is not always a string either.
+    satellite.container.map<satellite.variable.number, satellite.variable.string> by_id
+    by_id.set(1, "one")
+    by_id.set(2, "two")
+    show("number keys", by_id.to_string())
+
+    // --- control flow ------------------------------------------------------
+    satellite.console.display("== control flow ==")
+
+    satellite.statement.if (count > 40) {
+        show("if", "taken")
+    } satellite.statement.else {
+        show("if", "not taken")
+    }
+
+    satellite.statement.if (count > 100) {
+        show("else", "not taken")
+    } satellite.statement.else {
+        show("else", "taken")
+    }
+
+    // 0 + 1 + 2 + 3
+    satellite.variable.number i = 0
+    satellite.variable.number total = 0
+    satellite.statement.while (i < 4) {
+        total = total + i
+        i = i + 1
+    }
+    show("while sum", total.to_string())
+
+    // 1 + 2 + 3 + 4, with the loop variable declared in the header.
+    total = 0
+    satellite.statement.for (satellite.variable.number k = 1; k <= 4; k = k + 1) {
+        total = total + k
+    }
+    show("for sum", total.to_string())
+
+    // Nested, so a block inside a block is a scope inside a scope.
+    satellite.variable.number evens = 0
+    satellite.statement.for (satellite.variable.number k = 0; k < 10; k = k + 1) {
+        satellite.statement.if (k % 2 == 0) {
+            evens = evens + 1
+        }
+    }
+    show("evens under 10", evens.to_string())
+
+    // --- capsules ----------------------------------------------------------
+    satellite.console.display("== capsules ==")
+    show("fact(10)", fact(10).to_string())
+    show("fact(5)", fact(5).to_string())
+    show("is_even(10)", is_even(10).to_string())
+    show("is_odd(7)", is_odd(7).to_string())
+    show("twice(3)", twice(3).to_string())
+
+    // Each call gets its own list, so the second is [5, 6] and not [1, 2, 5, 6].
+    show("build(1)", build(1).to_string())
+    show("build(5)", build(5).to_string())
+
+    // Three writes to a global, from inside a capsule, through its path.
+    bump()
+    bump()
+    bump()
+    show("global calls", satellite.library.main.calls.to_string())
+
+    // --- spacesuits ----------------------------------------------------------
+    // The two declared above main. Everything here is a property of §14 that a
+    // capsule alone cannot show.
+    satellite.console.display("== spacesuits ==")
+
+    animal a
+    dog d
+    a.rename("generic")
+    d.rename("rex")
+
+    // who() is animal's, defined once. It calls speak(), and the dog's speak()
+    // is what answers -- so dispatch is virtual, and the subclass changed the
+    // behaviour of a method it did not touch.
+    show("base", a.who())
+    show("derived", d.who())
+
+    // rename() is inherited, and the field it writes is animal's protected
+    // one, reached from a dog. `d.name` from out here would be refused.
+    show("inherited method", d.who())
+
+    // A spacesuit is a reference, not a copy: `same` and `d` are two names for
+    // one object, so renaming through one is visible through the other. That
+    // is the opposite of what the number, string and list sections above show.
+    dog same = d
+    same.rename("renamed")
+    show("reference semantics", d.who())
+
+    // A container of them, so a spacesuit is an ordinary value in every place
+    // a value goes.
+    satellite.container.list<dog> pack
+    pack.append(d)
+    show("list of spacesuits", pack[0].who())
+
+    // --- spaceships ------------------------------------------------------------
+    // Everything below came out of full_test_helper.satl and was merged into
+    // this program before it ran (§16). Neither name is qualified by the file
+    // it came from: an include merges declarations, it does not make a module.
+    satellite.console.display("== spaceships ==")
+
+    show("included capsule", triple(14).to_string())
+
+    tally counted
+    counted.bump()
+    counted.bump()
+    counted.bump()
+    show("included spacesuit", counted.value().to_string())
+
+    // --- files -----------------------------------------------------------------
+    // §8.3. Under satellite.system.home() rather than the current directory,
+    // because the examples are installed somewhere read-only and a test that
+    // fails on where it was run from is testing the wrong thing. It is deleted
+    // at the end of the section.
+    satellite.console.display("== files ==")
+
+    satellite.variable.string scratch = satellite.system.home() + "/satellite_full_test.tmp"
+
+    satellite.variable.file writer = satellite.file.open(scratch, "write")
+    show("opened for write", writer.ok().to_string())
+    // .write() adds no newline. What you hand it is what lands in the file.
+    writer.write("one\n")
+    writer.write("two\n")
+    writer.close()
+
+    // .read() is the whole file, in one string.
+    satellite.variable.file reader = satellite.file.open(scratch, "read")
+    show("read back", reader.read())
+    show("path", reader.path())
+    reader.close()
+
+    // "append" adds to the end; "write" would have truncated it.
+    satellite.variable.file appender = satellite.file.open(scratch, "append")
+    appender.write("three\n")
+    appender.close()
+
+    satellite.variable.file again = satellite.file.open(scratch, "read")
+    show("after append", again.read().length().to_string())
+    again.close()
+
+    // .new() makes a file that is NOT there. A path that exists is .ok()
+    // false with an .error() to read -- not an exception, and not a silent
+    // truncation of somebody's data.
+    satellite.variable.file clobber = satellite.file.new(scratch)
+    show("new refuses to clobber", clobber.ok().to_string())
+    show("and says why", clobber.error())
+
+    // A failed open is the same shape: ask .ok(), read .error(). There is no
+    // separate error channel to forget to check.
+    satellite.variable.file missing = satellite.file.open("no_such_file_anywhere.txt", "read")
+    show("missing file ok()", missing.ok().to_string())
+    show("missing file error()", missing.error())
+
+    show("deleted", satellite.system.delete(scratch).to_string())
+
+    // --- directories -----------------------------------------------------------
+    // Properties rather than values: what is in a directory depends on whose
+    // machine this is, and a test that printed the listing would differ for
+    // everyone. That the listing is non-empty and sorted does not.
+    satellite.console.display("== directories ==")
+
+    show("current is a path", (satellite.directory.current().length() > 0).to_string())
+    show("exists(\".\")", satellite.directory.exists(".").to_string())
+    show("exists(nonsense)", satellite.directory.exists("no_such_directory_here").to_string())
+
+    satellite.container.list<satellite.variable.string> entries = satellite.directory.list()
+    show("listing is non-empty", (entries.length() > 0).to_string())
+
+    // Sorted in satellite's own string order, so this holds in-language and
+    // not merely in the C++ that produced it.
+    satellite.variable.bool sorted = satellite.bool.true
+    satellite.statement.for (satellite.variable.number e = 1; e < entries.length(); e = e + 1) {
+        satellite.statement.if (entries[e] < entries[e - 1]) {
+            sorted = satellite.bool.false
+        }
+    }
+    show("listing is sorted", sorted.to_string())
+
+    // --- the system ------------------------------------------------------------
+    // Same rule: the numbers are this machine's, so what is checked is that
+    // they were answered at all.
+    satellite.console.display("== the system ==")
+
+    show("home is a path", (satellite.system.home().length() > 0).to_string())
+    show("memory.total(gb) > 0", (satellite.system.memory.total("gb") > 0).to_string())
+    show("memory.free(mb) > 0", (satellite.system.memory.free("mb") > 0).to_string())
+    // .main() is this process's own resident set, read fresh each call.
+    show("memory.main(kb) > 0", (satellite.system.memory.main("kb") > 0).to_string())
+    // .this.* is the running thread's stack, because Linux accounts an address
+    // space per process -- a heap-per-thread figure would be the same number
+    // for every thread and would answer nothing.
+    show("memory.this.used(kb) > 0", (satellite.system.memory.this.used("kb") > 0).to_string())
+
+    // --- time ------------------------------------------------------------------
+    // satellite.variable.time is an instant. Subtracting two of them gives
+    // nanoseconds as an ordinary number, which is why the result below is
+    // compared and not printed.
+    satellite.console.display("== time ==")
+
+    satellite.variable.time started = satellite.time.now()
+    satellite.variable.number spin = 0
+    satellite.statement.for (satellite.variable.number s = 0; s < 5000; s = s + 1) {
+        spin = spin + s
+    }
+    satellite.variable.time finished = satellite.time.now()
+
+    show("clock reads non-zero", (started.nanoseconds() > 0).to_string())
+    show("elapsed is positive", (finished.minus(started) > 0).to_string())
+    show("time moved forward", (finished.nanoseconds() > started.nanoseconds()).to_string())
+
+    // --- random ----------------------------------------------------------------
+    // Three tiers, and the digit count is an argument rather than a property of
+    // the generator (§18). The VALUES below differ on every run; the digit
+    // counts beside them do not, and those are what is actually being checked.
+    satellite.console.display("== random ==")
+
+    show("fast(8)", satellite.random.fast(8).to_string())
+    show("fast(8) digits", satellite.random.fast(8).digits().to_string())
+    show("normal(24)", satellite.random.normal(24).to_string())
+    show("normal(24) digits", satellite.random.normal(24).digits().to_string())
+    show("ultra(40)", satellite.random.ultra(40).to_string())
+    show("ultra(40) digits", satellite.random.ultra(40).digits().to_string())
+
+    // A number far past anything a machine word holds. It is not a
+    // special case: the digit count is just an argument, and the exact-decimal
+    // number type from the section above is what receives the result.
+    satellite.variable.number huge = satellite.random.ultra(200)
+    show("ultra(200) digits", huge.digits().to_string())
+    show("ultra(200)", huge.to_string())
+
+    // .range() is inclusive at BOTH ends, on all three tiers, so a d6 is
+    // range(1, 6) and not range(1, 7).
+    satellite.variable.number die = satellite.random.fast.range(1, 6)
+    show("fast.range(1, 6)", die.to_string())
+    show("and it is in range", (die >= 1).and(die <= 6).to_string())
+
+    satellite.variable.number pick = satellite.random.ultra.range(1000, 2000)
+    show("ultra.range(1000, 2000)", pick.to_string())
+    show("and it is in range", (pick >= 1000).and(pick <= 2000).to_string())
+
+    // --- analyze ---------------------------------------------------------------
+    // satellite.analyze LEXES the file rather than scanning its text, so a
+    // satellite.spacesuit written inside a comment or a string does not count.
+    // argz[0] is this file, so the program reports on itself and the answer is
+    // right whatever directory it was run from.
+    satellite.console.display("== analyze ==")
+    satellite.console.display(satellite.analyze(argz[0]))
+
+    // --- the arguments object ------------------------------------------------
+    // argz is not a plain list<string>: it is the arguments object (§8.8),
+    // which satisfies that type and carries a NAME for every element plus
+    // about thirty more the command line never had. The `== arguments ==`
+    // section above already walked the command-line half; this is the rest.
+    satellite.console.display("== the arguments object ==")
+
+    // .length() is the command line and .count() is everything, which is the
+    // whole of §8.8's central decision: the loop at the top of this capsule
+    // must keep walking only what the user typed.
+    show("length is the command line", (argz.count() > argz.length()).to_string())
+    show("names() matches count()", (argz.names().length() == argz.count()).to_string())
+
+    // A bare name after a dot, which is the one place in the language that is
+    // not a method call.
+    show("bare selector", argz.operating_system)
+    show("architecture", argz.architecture)
+
+    // The three spellings are one lookup, so they cannot disagree.
+    show("three spellings agree",
+         (argz.username == argz["username"])
+             .and(argz.username == argz.get("username")).to_string())
+
+    show("has(known)", argz.has("cxx_compiler").to_string())
+    show("has(unknown)", argz.has("no_such_entry").to_string())
+
+    // What built this interpreter, which is the fact the object exists to
+    // carry: it describes the binary that is running, not whatever compiler
+    // happens to be installed now.
+    show("cxx_compiler", argz.cxx_compiler)
+    show("cxx_standard", argz.cxx_standard)
+    show("make_version", argz.make_version)
+    show("interpreter_version", argz.interpreter_version)
+    show("library_path_source", argz.library_path_source)
+
+    // Machine-dependent, so the property is checked rather than the value.
+    show("username is set", (argz.username.length() > 0).to_string())
+    show("pointer_bits", argz.pointer_bits)
+    show("byte_order", argz.byte_order)
+
+    satellite.console.display("== all features ran ==")
+    satellite.return(satellite)
+}

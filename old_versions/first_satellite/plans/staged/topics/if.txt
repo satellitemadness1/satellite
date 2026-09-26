@@ -1,0 +1,261 @@
+satellite.statement.if / satellite.statement.else -- branching.
+
+FORM
+
+    satellite.statement.if (CONDITION)
+    {
+        STATEMENTS
+    }
+    satellite.statement.else
+    {
+        STATEMENTS
+    }
+
+The condition goes in parentheses; the branch is a brace block. The
+block is not optional. There is no one-statement form, so
+
+    satellite.statement.if (n > 2)
+        satellite.console.display("no")
+
+is an error: expected '{' to open a block.
+
+Statements are newline-terminated, but the header is not line-bound: the
+'(' may open on the next line, the condition may wrap, and '{' may sit
+on the same line as ')'. Spaces around the dots are free --
+satellite . statement . if is the same five tokens.
+
+An if works anywhere a statement does: in a capsule, in a spacesuit
+member, inside another if or a loop, and at the top level of a file
+outside any capsule.
+
+SCOPE, AND THE ONE PLACE IT IS NOT A SCOPE
+
+Inside a capsule or a spacesuit member, each block is its own scope. A
+variable declared in a branch is gone after it:
+
+    satellite.statement.if (n == 1)
+    {
+        satellite.variable.number inner = 9
+    }
+    satellite.console.display(inner)
+    -> unknown variable in capsule: inner
+
+A branch may also declare a name the enclosing scope already uses. That
+shadows for the length of the block and the outer variable comes back
+untouched -- the redeclaration rebind of 19.3 applies within one scope,
+not across a nested one.
+
+AT THE TOP LEVEL IT DOES NOT. Top-level names are globals looked up by
+name at run time, and a block there opens no scope, so the same program
+written outside a capsule prints 9. Worse, the leak is dynamic: the name
+exists only if the branch actually ran, so reading it after a branch
+that did not run is "no such variable: inner" instead. Declare at the
+top level before the if, or put the code in a capsule.
+
+The lookup message tells you which of the three you are in: "no such
+variable: x" at the top level, "unknown variable in capsule: x" in a
+capsule, "unknown variable in spacesuit s: x" in a spacesuit member.
+
+ELSE
+
+The else is optional. When present it takes a block, or a chained if:
+
+    satellite.statement.if (n == 1)
+    {
+        satellite.console.display("one")
+    }
+    satellite.statement.else satellite.statement.if (n == 2)
+    {
+        satellite.console.display("two")
+    }
+    satellite.statement.else
+    {
+        satellite.console.display("many")
+    }
+
+There is no satellite.statement.elif -- an else followed by an if is the
+chain, and it nests as deep as you write it. Writing elif anyway is not
+a parse error; it is "no such module function: satellite.statement.elif"
+when that line runs.
+
+The chained if may sit on the line below its else. The newline does not
+detach it, even though statements are newline-terminated: the else is
+looking for a block or an if and keeps looking past the line end.
+
+The else must follow the if's closing brace. Blank lines and // comments
+between the two are fine; there are no /* */ comments in the language,
+so that spelling is a parse error rather than a gap. A STATEMENT between
+them detaches the else, and what you get then depends on where the brace
+is:
+
+    satellite.statement.else       // brace on the next line
+    {
+        ...
+    }
+    -> satellite.statement.else is a module path, not a value
+
+    satellite.statement.else { ... }        // brace on the same line
+    -> unexpected Punct({) after the end of a statement
+
+The first is a RUN-TIME error: the else parses as an ordinary path
+expression and the block behind it parses as a block statement of its
+own, so nothing complains until that line executes -- and a detached
+else inside a branch that never runs is never reported at all. The
+second is caught by the parser, because a '{' cannot follow a finished
+statement on one line.
+
+EMPTY PARENS AFTER ELSE
+
+    satellite.statement.else()
+    {
+        STATEMENTS
+    }
+
+is the same statement as satellite.statement.else with no parens. An
+else takes no condition, so an empty pair carries nothing; the parser
+accepts it and drops it. Nothing between the parens is a token, so
+else ( ) works, and so does an else whose '(' and ')' are on two lines.
+The empty pair may also precede a chained if.
+
+It is accepted (19.8) because every other statement form in this
+language is written with parentheses, so reaching for them on else is a
+mistake a reader makes once per program rather than once per career, and
+refusing it produces an error that talks only about the brace -- which
+sends the reader to look at the block, where nothing is wrong.
+
+Only an EMPTY pair. A condition on an else is still refused, and so is a
+second pair:
+
+    satellite.statement.else(n < 5)
+    -> expected '{' to open a block
+
+That is the same unhelpful-looking message, and here it is the right one
+to get: a condition on an else is a misunderstanding rather than a
+spelling, so the reader should be sent back to the shape of the
+statement.
+
+WHAT COUNTS AS A CONDITION
+
+A satellite.variable.bool, and nothing else. There is no truthiness and
+no implicit conversion. A bare number is not a condition:
+
+    satellite.statement.if (1)
+    -> condition must be a satellite.variable.bool, got
+       satellite.variable.number
+
+    satellite.statement.if (0)      same error
+    satellite.statement.if ("")     ... got satellite.variable.string
+    satellite.statement.if ({1, 2}) ... got satellite.container.list
+    satellite.statement.if (satellite)
+                                    ... got nil
+
+0 is not false, "" is not false, and a non-empty string is not true.
+Every value in satellite has a declared type, so "is 0 false?" is a
+question this language never has to answer.
+
+THIS CHECK IS MADE WHEN THE if RUNS, not when the file is parsed. A
+condition of the wrong type inside a branch that is never taken is never
+reported, and the program exits 0. Do not read a clean run as a check of
+every condition in the file.
+
+Comparisons produce bools: == != < > <= >=. Two cautions:
+
+  - == and != accept operands of different types and answer false and
+    true. 1 == "1" is false, not an error. "No implicit conversion"
+    means the two are never made comparable, not that comparing them is
+    refused.
+  - < > <= >= do not apply to bools. TRUE > FALSE is
+    "> does not apply to true and false".
+
+A bool answers to .negate(), .and(), .or() and .to_string(). Unary ! is
+a bool operator too and refuses anything else: !5 is "! wants a
+satellite.variable.bool, got 5" -- note that one names the VALUE, while
+the condition message names the type.
+
+.to_string() is the one to remember inside a branch, because a bool does
+not concatenate: "flag=" + b is "+ does not apply to flag= and true",
+while "flag=" + b.to_string() prints flag=true. (19.9 has this as open;
+today it is refused.)
+
+WRITING THE TWO BOOL VALUES
+
+    satellite.bool.true
+    satellite.bool.false
+
+are canonical (8.4). They are module constants, not type paths: it is
+not satellite.variable.bool.true, because satellite.variable.* is a type
+namespace in which no path is ever a value. Writing it that way is
+"satellite.variable.bool.true is a module path, not a value".
+
+Bare TRUE and FALSE also work (19.7), in capitals only:
+
+    satellite.variable.bool flag = TRUE
+    satellite.statement.if (FALSE) { } satellite.statement.else { }
+
+They are NOT reserved words -- satellite is still the only one. They are
+answered last, after every scope you own has been asked and said no, so
+anything of yours with that name wins the word:
+
+    satellite.variable.number TRUE = 5
+    satellite.statement.if (TRUE > 4)      // your 5, compared
+
+A capsule named TRUE is likewise called, not overruled. Lowercase true
+and false are nothing at all, and so is True -- what you get is the
+unknown-name message for wherever you are, which at the top level is
+"no such variable: true" and in a capsule is "unknown variable in
+capsule: true".
+
+NO TERNARY, NO &&, NO ||
+
+There is no conditional expression. (n > 0) ? 1 : 2 is "unexpected
+Punct(?) after the end of a statement" where a statement ends, and
+"expected ')' after the condition" when you try it inside a condition.
+Write the if and assign in both branches.
+
+There is no && and no ||. The two-character operators are exactly
+== <= >= != (3.5), so the logical pair has never been in the language:
+
+    satellite.statement.if (n > 0 && n < 5)
+    -> expected ')' after the condition
+    -> expected an expression, found Punct(})
+
+Two lines, not one: the parser gives up on the condition and then
+stumbles over the brace that closes the block it never opened. The
+second line is wreckage, not a second problem.
+
+Section 15 ranks this third among the five gaps found by writing the
+bootstrap lexer in satellite. It is not on 19's list of nine, which came
+from a different program.
+
+What stands in for them is .and() and .or(), and those are ORDINARY
+METHOD CALLS on a bool. THE LEFT SIDE MUST BE PARENTHESISED, because
+'.' binds tighter than a comparison:
+
+    satellite.statement.if ((n > 0).and(n < 5))     // right
+    satellite.statement.if (n > 0.and(n < 5))       // wrong
+    -> satellite.variable.number has no method and
+
+The wrong one attaches .and to the literal 0, and the error names a
+number rather than the parentheses you left out.
+
+BOTH SIDES ARE ALWAYS EVALUATED. A false receiver does not skip the
+argument, and neither does a true one:
+
+    satellite.bool.false.and(noisy())     // noisy() still runs
+    satellite.bool.true.or(noisy())       // noisy() still runs
+
+So the guard idiom does not guard. With i == 3 and a list of length 3,
+
+    satellite.statement.if ((i < l.length()).and(l[i] == 9))
+
+fails with "index 3 is outside a list of length 3". The argument to
+.and() is evaluated before .and() is called, exactly like the argument
+to any other call. Nest the ifs instead:
+
+    satellite.statement.if (i < l.length())
+    {
+        satellite.statement.if (l[i] == 9)
+        {
+            satellite.console.display("found")
+        }
+    }

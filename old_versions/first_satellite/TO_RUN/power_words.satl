@@ -1,0 +1,98 @@
+satellite.include(satellite)
+
+satellite.capsule satellite.main(satellite.container.list<satellite.variable.string> arguments)
+{
+    // Generate a massive 25-digit session ID for the broadcast
+    satellite.variable.number session_id = satellite.random.ultra(25)
+    satellite.console.display("STARTING SOCIETY IMPACT BROADCAST...")
+    satellite.console.display("SESSION ID: " + session_id)
+    satellite.console.display("RUNNING INDEFINITELY -- press Ctrl+C to stop.")
+    satellite.console.display("------------------------------------")
+
+    // Load up our societal impact words
+    satellite.container.list<satellite.variable.string> word_list
+    word_list.append("Fortitude")
+    word_list.append("Vigor")
+    word_list.append("Tenacity")
+    word_list.append("Mettle")
+    word_list.append("Efficacy")
+    word_list.append("Stalwartness")
+    word_list.append("Antifragility")
+    word_list.append("Dynamism")
+    word_list.append("Veracity")
+    word_list.append("Perenniality")
+
+    // The list of maps, one map per word, each holding that word's count.
+    //
+    // .append({word, 0}) builds a MAP because the list was declared to hold
+    // maps -- the braces take the shape of the position they are handed to.
+    satellite.container.list<satellite.container.map<satellite.variable.string, satellite.variable.number>> tracker_list
+
+    satellite.variable.number setup_index = 0
+    satellite.statement.while (setup_index < word_list.length())
+    {
+        satellite.variable.string current_word = word_list[setup_index]
+        tracker_list.append({current_word, 0})
+        setup_index = setup_index + 1
+    }
+
+    // Search at an exact match. Raise this toward 10 to make the lookups
+    // below forgiving -- 2 ignores case, 6 matches on a fragment, 10 finds
+    // anything remotely alike.
+    satellite.system.threshold(1)
+
+    satellite.variable.number current_broadcast = 0
+    satellite.variable.bool broadcasting = TRUE
+
+    // Main execution loop -- runs until interrupted.
+    satellite.statement.while (broadcasting)
+    {
+        // Draw a random number between 0 and 9 to pick a word.
+        //
+        // FAST, not ultra. §18 makes every draw spin a window before it
+        // answers -- fast is 50-100ms, normal 250-300ms, ultra 2000-3000ms --
+        // so ultra in a loop would broadcast once every two or three seconds.
+        // Ultra is right for the session ID above, which is drawn once.
+        satellite.variable.number random_index = satellite.random.fast.range(0, 9)
+        satellite.variable.string selected_word = word_list[random_index]
+
+        satellite.console.display("BROADCASTING: " + selected_word)
+
+        // ADDRESSING A KEY IN A LIST OF MAPS. tracker_list[selected_word]
+        // traverses the whole structure and answers a list of what it found,
+        // so no hand-written search loop is needed to READ the count.
+        satellite.variable.number old_count = tracker_list[selected_word].first()
+        satellite.variable.number new_count = old_count + 1
+
+        // Writing still names the map it is changing: a search result is not
+        // storage, so the map comes out, changes, and goes back.
+        satellite.variable.number slot_index = 0
+        satellite.statement.while (slot_index < tracker_list.length())
+        {
+            satellite.container.map<satellite.variable.string, satellite.variable.number> current_map = tracker_list[slot_index]
+            satellite.statement.if (current_map.has(selected_word))
+            {
+                current_map.set(selected_word, new_count)
+                tracker_list[slot_index] = current_map
+            }
+            slot_index = slot_index + 1
+        }
+
+        satellite.console.display("   -> " + selected_word + " total displays: " + new_count)
+
+        current_broadcast = current_broadcast + 1
+
+        // Every tenth broadcast, show the whole tally.
+        satellite.statement.if (current_broadcast.modulo(10) == 0)
+        {
+            satellite.console.display("--- TALLY AFTER " + current_broadcast + " BROADCASTS ---")
+            satellite.console.display(tracker_list.to_string())
+        }
+
+        satellite.console.display("- - - - - - - - - - - - - - - - - -")
+    }
+
+    satellite.console.display("BROADCAST SEQUENCE COMPLETE.")
+
+    satellite.return(satellite)
+}
