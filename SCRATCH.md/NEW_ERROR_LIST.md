@@ -35,7 +35,7 @@ What I **did** fix is at the bottom, so you know what changed under you.
 | A7 | main must end with satellite.return(satellite); it quits from anywhere | **built**: S103 names it; any capsule, any depth, any thread quits, exit 0; 36 test programs moved |
 | A8 | deep recursion must not crash: a counter, and special code past ~100,000 | **built**: fresh stack segments when under 1 MiB is left; 1,000,000 deep ran in 5.3 s |
 | A9 | an unknown config.ini row gets its own S-code | **built**: S016 CONFIG_ROW_NOT_UNDERSTOOD, a notice naming each row and its line |
-| A10 | the edits were your categories and tags: keep them, add a gap under code, publish | in progress |
+| A10 | the edits were your categories and tags: keep them, add a gap under code, publish | **ready, not published**: your server stopped answering this machine at about 20:30. publish.sh now pulls your categories and tags into the pages first; a 20px spacer sits between each program and its output box; every page matches satl (319 examples) |
 | new | str.upper()/uppercase()/up(), str.lower()/lowercase() | **built**, every language's letters, not only a-z |
 | new | satellite.console.display(...).center() | **built**, and .centre(): the width the console has as the line is shown; a pipe gets it as written |
 
