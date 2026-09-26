@@ -244,6 +244,96 @@ expect "an infinity name refuses a string, before anything runs" "27|1|0" \
        "$(infinity_says '    satellite.variable.infinity x = "text"' 'x was declared satellite.variable.infinity, and it holds a string')"
 expect "an infinity name refuses a binary: besides its family it takes a plain number (Q24), before anything runs" "27|1|0" \
        "$(infinity_says '    satellite.variable.infinity x = b1010' 'and it holds a binary')"
+# satellite.statement.break AND .continue (MILESTONES M20.E, M20.F; the author asked for them
+# 2026-09-26): break leaves the nearest while or for, from inside an if in it; continue starts
+# its next pass (a for's step runs first); a break in an inner loop leaves only that one; a
+# return inside a loop still leaves the capsule. Outside every loop, or with anything after
+# it, it is refused before anything runs.
+cat > build/break_continue.satl <<'BRK_EOF'
+satellite.include(satellite)
+
+satellite.capsule first_over(satellite.container.list<satellite.variable.number> xs, satellite.variable.number limit)
+{
+    satellite.statement.for(satellite.variable.number i = 1; i <= xs.size; i++)
+    {
+        satellite.statement.if (xs[i] > limit)
+        {
+            satellite.return(xs[i])
+        }
+    }
+    satellite.return(0)
+}
+
+satellite.capsule satellite.main()
+{
+    satellite.variable.number n = 0
+    satellite.statement.while (n < 100)
+    {
+        n = n + 1
+        satellite.statement.if (n == 5)
+        {
+            satellite.statement.break
+        }
+    }
+    satellite.console.display(n)
+
+    satellite.variable.string odds = ""
+    satellite.statement.for(satellite.variable.number i = 1; i <= 9; i++)
+    {
+        satellite.statement.if (i % 2 == 0)
+        {
+            satellite.statement.continue()
+        }
+        odds = odds + i.string
+    }
+    satellite.console.display(odds)
+
+    satellite.variable.string pairs = ""
+    satellite.statement.for(satellite.variable.number a = 1; a <= 3; a++)
+    {
+        satellite.statement.for(satellite.variable.number b = 1; b <= 3; b++)
+        {
+            satellite.statement.if (b == 2)
+            {
+                satellite.statement.break
+            }
+            pairs = pairs + a.string + b.string + " "
+        }
+    }
+    satellite.console.display(pairs)
+
+    satellite.variable.number m = 0
+    satellite.variable.number seen = 0
+    satellite.statement.while (m < 10)
+    {
+        m = m + 1
+        satellite.statement.if (m < 8)
+        {
+            satellite.statement.continue
+        }
+        seen = seen + 1
+    }
+    satellite.console.display(seen)
+    satellite.console.display(first_over({3, 9, 12}, 5))
+    satellite.return(satellite)
+}
+BRK_EOF
+HOME="$CHECK_HOME" "$interpreter" build/break_continue.satl > build/break_continue.out 2>&1
+expect "break leaves the loop, continue its pass, an inner break only the inner loop, return the capsule" \
+       "0|5|13579|11 21 31 |3|9" "$?|$(tail -5 build/break_continue.out | tr '\n' '|' | sed 's/|$//')"
+expect "satellite.statement.break outside every loop is refused before anything runs" "13|1|0" \
+       "$(infinity_says '    satellite.statement.break' 'leaves the nearest satellite.statement.while or satellite.statement.for, and this line is inside neither')"
+expect "satellite.statement.continue in an if that no loop is around is refused too" "13|1|0" \
+       "$(infinity_says '    satellite.statement.if (1 == 1)
+    {
+        satellite.statement.continue
+    }' 'starts the next pass of the nearest satellite.statement.while or satellite.statement.for')"
+expect "a break with something after it is refused: it stands alone" "13|1|0" \
+       "$(infinity_says '    satellite.statement.while (1 == 1)
+    {
+        satellite.statement.break 5
+    }' 'stands alone on its line')"
+
 # THE WHOLE TABLE, cell by cell (ERRORS2 #8, 2026-09-26): what a plain name takes from a lone
 # literal runs ("before" printed, no refusal), and what it does not is refused BEFORE anything
 # runs, in the walker's sentence. Measured against the walker first: no cell changed its answer.

@@ -78,3 +78,5 @@
 1 18 7	satellite.directory.free(d)
 1 31	satellite.access
 1 31 1	satellite.access(name)
+1 13 5	satellite.statement.break
+1 13 6	satellite.statement.continue

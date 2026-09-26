@@ -161,6 +161,17 @@ struct Where {
     // AND EACH multiple WITH ONE SPACESUIT AMONG ITS TYPES, with that spacesuit: asked only
     // for a capsule after its dot, since its container methods are a container's (remember_shape).
     DeclaredObjects multiples;
+    // satellite.statement.break AND .continue NEED A LOOP AROUND THEM (2026-09-26). A while or a
+    // for leaves its `{` marked as a loop's; the body loops keep one mark an open brace.
+    bool opening_a_loop = false;
+    std::vector<bool> open_blocks;
+    bool inside_a_loop() const
+    {
+        for (const bool loop : open_blocks) if (loop) return true;
+        return false;
+    }
+    void opened() { open_blocks.push_back(opening_a_loop); opening_a_loop = false; }
+    void closed() { if (!open_blocks.empty()) open_blocks.pop_back(); }
     std::size_t statement = kNowhere;    // where the statement being judged starts
     const Arguments *arguments = nullptr;  // the rows satl holds, which `argz.row = x` may not write
     bool typed_line = false;             // at the prompt: declaring a kept name again replaces it
@@ -1787,6 +1798,35 @@ signed long long int check_statement(const std::vector<std::bitset<16>> &row,
         // and stepping over this one would make the body's `}` read as the
         // capsule's and end the check early.
         at = brace;
+        where.opening_a_loop = true;
+        return success;
+    }
+
+    // satellite.statement.break AND .continue (MILESTONES M20.E, M20.F): alone on their line, with
+    // or without (), and inside a while or a for of this body -- an if around one is fine, a
+    // capsule is not: a break cannot leave the loop of the capsule that called this one.
+    if (code == word::code_of(1, 13, 5) || code == word::code_of(1, 13, 6)) {
+        const std::size_t stop = past_the_statement(row, at);
+        const std::string spelled(word::spelling_of(code));
+        std::size_t k = at + 1;
+        if (code_at(row, k) == token::left_parenthesis_token && code_at(row, k + 1) == token::right_parenthesis_token)
+            k += 2;
+        const Code after = code_at(row, k);
+        if (after != token::line_end_token && after != token::comment_token && after != token::end_of_file_token) {
+            why = spelled + " stands alone on its line: it takes nothing and nothing follows it";
+            at = stop;
+            return satl_line_not_understood;
+        }
+        if (!where.inside_a_loop()) {
+            why = spelled + (code == word::code_of(1, 13, 5)
+                                 ? " leaves the nearest satellite.statement.while or satellite.statement.for, "
+                                 : " starts the next pass of the nearest satellite.statement.while or "
+                                   "satellite.statement.for, ") +
+                  "and this line is inside neither";
+            at = stop;
+            return satl_line_not_understood;
+        }
+        at = stop;
         return success;
     }
 
@@ -1858,6 +1898,7 @@ signed long long int check_statement(const std::vector<std::bitset<16>> &row,
         }
         ending.push_back({past_matching_brace(row, brace), name});
         at = brace;                 // ON the brace, as if and while are
+        where.opening_a_loop = true;
         return success;
     }
 
@@ -2237,6 +2278,7 @@ signed long long int check_typed_line(const BytecodeRegistry &registry,
         // A BLOCK TYPED AT THE PROMPT (2026-09-25): its braces are stepped over as a
         // capsule body's are, and each statement inside is judged in turn.
         if (code_at(row, at) == token::left_brace_token || code_at(row, at) == token::right_brace_token) {
+            if (code_at(row, at) == token::left_brace_token) where.opened(); else where.closed();
             ++at;
             continue;
         }
@@ -2287,10 +2329,11 @@ signed long long int check_prompt_statements(const BytecodeRegistry &registry,
         if (code == token::right_brace_token) {
             if (depth == 0) break;      // the hidden capsule's own closing brace
             --depth;
+            where.closed();
             ++at;
             continue;
         }
-        if (code == token::left_brace_token) { ++depth; ++at; continue; }
+        if (code == token::left_brace_token) { ++depth; where.opened(); ++at; continue; }
         const std::size_t was = at;
         std::string why;
         if (habit_from_another_language(row, at, why))
@@ -2412,10 +2455,11 @@ signed long long int check_program(const BytecodeRegistry &registry,
             if (code == token::right_brace_token) {
                 if (depth == 0) { closing = at; break; }      // the capsule's own closing brace
                 --depth;
+                where.closed();
                 ++at;
                 continue;
             }
-            if (code == token::left_brace_token) { ++depth; ++at; continue; }
+            if (code == token::left_brace_token) { ++depth; where.opened(); ++at; continue; }
             const std::size_t was = at;
             if (depth == 0) last_statement = at;
             std::string why;

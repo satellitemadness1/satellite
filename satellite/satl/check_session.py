@@ -180,6 +180,23 @@ check(t.wait_for(lambda t: any(r.startswith('m is a map (string -> list of numbe
       t.wait_for(lambda t: any(r.startswith('  m["key"][n]') for r in t.screen.text())),
       'satellite.access(m) on a line of its own prints what m is and how to reach every level of it')
 
+# CTRL-C STOPS A LOOP TYPED AT THE PROMPT (the author's testers, 2026-09-26, ERRORS3 7): it
+# kept a core at 100% and the prompt never came back. Now the loop stops, the prompt returns,
+# and the loop's name keeps what it reached.
+t.at_prompt()
+t.type(b'satellite.variable.number spin = 0\r')
+t.at_prompt()
+t.type(b'satellite.statement.while (spin > -1)\r')
+t.type(b'spin = spin + 1\r')
+t.type(b'}\r')
+time.sleep(1.0)
+t.type(b'\x03')
+check(t.wait_for('Ctrl-C stopped satellite.statement.while'), 'Ctrl-C stops a while typed at the prompt')
+t.at_prompt()
+t.type(b'satellite.console.display(spin > 0)\r')
+check(t.wait_for(lambda t: any(r.strip() == 'true' for r in t.screen.text()[-6:])),
+      '... and the prompt comes back, runs the next line, and the loop\'s name kept what it reached')
+
 t.at_prompt()
 t.type(b'exit\r')
 check(t.finish() == 0, 'exit leaves with 0')

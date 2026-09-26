@@ -31,6 +31,7 @@
 
 #include "../machine/s_codes.hpp"
 #include "../machine/stack_segments.hpp"
+#include "../machine/stop_flag.hpp"
 #include "../machine/thread_stop.hpp"
 
 #include "statement_ring.hpp"
@@ -461,9 +462,36 @@ struct Frame {
     bool returned = false;                 // satellite.return was reached: the body ends here
     bool answered = false;                 // ...and it handed back a value, in `answer`
     Value answer;
+    // satellite.statement.break AND .continue (MILESTONES M20.E, M20.F; 2026-09-26). Each ends
+    // the bodies it is in the way a return does -- an if's, an else's -- up to the nearest while
+    // or for, which takes it (after_the_body): a break ends that loop, a continue starts its next
+    // pass. The checker refuses one that no loop is around, so none reaches a capsule's end.
+    bool broke = false;
+    bool skipped = false;
 
-    bool ending() const { return pending || returned; }
+    bool ending() const { return pending || returned || broke || skipped; }
 };
+
+// WHAT A LOOP DOES WHEN ITS BODY HAS ENDED: go round again, leave the loop (a break, taken
+// here), or leave the capsule (a return, left set for the caller to see).
+enum class AfterBody { next_pass, leave_the_loop, leave_the_capsule };
+
+AfterBody after_the_body(Frame &frame)
+{
+    if (frame.broke) { frame.broke = false; return AfterBody::leave_the_loop; }
+    if (frame.skipped) { frame.skipped = false; return AfterBody::next_pass; }
+    return frame.ending() ? AfterBody::leave_the_capsule : AfterBody::next_pass;
+}
+
+// CTRL-C AT THE PROMPT STOPS A LOOP (the author's testers, 2026-09-26, ERRORS3 7): the session's
+// handler only sets a flag, and a loop typed there never looked at it -- one core at 100% and a
+// prompt that never came back. Read once a pass; null outside a session, so a file run pays one
+// pointer test (and a file run's Ctrl-C stops the process as it always did).
+bool the_session_asked_to_stop()
+{
+    const volatile sig_atomic_t *flag = stop_flag();
+    return flag != nullptr && *flag != 0;
+}
 
 // Past an if's whole chain -- its body and every else after it, `else if`
 // included -- with where each branch's statements begin put in `bodies`. run_if's
@@ -736,6 +764,8 @@ signed long long int run_while(const BytecodeRegistry &registry,
     at = past;
 
     for (;;) {
+        if (the_session_asked_to_stop())
+            return report_error("satl(run): Ctrl-C stopped satellite.statement.while", interrupted);
         std::size_t here = condition_at;
         ExpressionContext context{variables, functions, state};
         const bool opened = code_at(row, here) == token::left_parenthesis_token;
@@ -773,8 +803,8 @@ signed long long int run_while(const BytecodeRegistry &registry,
             run_statements(registry, capsules, functions, which_row, brace + 1, variables, state, frame);
         if (stops_the_program(code))
             return code;
-        if (frame.ending())
-            return success;         // a satellite.return in the body left the capsule
+        if (after_the_body(frame) != AfterBody::next_pass)
+            return success;         // a break left the loop, or a satellite.return the capsule
     }
 }
 
@@ -1023,6 +1053,10 @@ signed long long int run_for(const BytecodeRegistry &registry,
 
     signed long long int stopped = success;
     for (;;) {
+        if (the_session_asked_to_stop()) {
+            stopped = report_error("satl(run): Ctrl-C stopped satellite.statement.for", interrupted);
+            break;
+        }
         std::size_t here = parts.condition;
         ExpressionContext turn{variables, functions, state};
         const Value holds = [&] {
@@ -1055,8 +1089,8 @@ signed long long int run_for(const BytecodeRegistry &registry,
             break;
 
         stopped = run_statements(registry, capsules, functions, which_row, brace + 1, variables, state, frame);
-        if (stops_the_program(stopped) || frame.ending())
-            break;
+        if (stops_the_program(stopped) || after_the_body(frame) != AfterBody::next_pass)
+            break;                  // a continue comes round to the step, as C's does
         stopped = run_for_step(row, parts, name, moves_by, functions, variables, state);
         if (stops_the_program(stopped))
             break;
@@ -1708,6 +1742,19 @@ signed long long int run_statements(const BytecodeRegistry &registry,
             return success;
         }
 
+        // satellite.statement.break AND .continue, alone on their line, with or without ().
+        if (code == word::code_of(1, 13, 5) || code == word::code_of(1, 13, 6)) {
+            std::size_t k = at + 1;
+            if (code_at(row, k) == token::left_parenthesis_token && code_at(row, k + 1) == token::right_parenthesis_token)
+                k += 2;
+            if (!read_to_the_end(row, k))
+                return report_error(std::string("satl(run): ") + word::spelling_of(code) + " " + kNotReadToTheEnd,
+                                    satl_line_not_understood);
+            at = past_the_statement(row, at);
+            (code == word::code_of(1, 13, 5) ? frame.broke : frame.skipped) = true;
+            return success;
+        }
+
         if (code == word::code_of(1, 13, 1)) {       // satellite.statement.if
             const signed long long int stopped =
                 run_if(registry, capsules, functions, which_row, at, variables, state, true, frame);
@@ -2008,6 +2055,11 @@ signed long long int run_site_here(const BytecodeRegistry &registry,
             return code;
         const std::vector<std::bitset<16>> &row = registry[site.row];
         if (frame.pending) {
+            // A CAPSULE CALLING ITSELF LAST IS A LOOP TOO, and is stopped by Ctrl-C at the
+            // prompt the same way (the_session_asked_to_stop).
+            if (the_session_asked_to_stop())
+                return report_error("satl(run): Ctrl-C stopped " + site.shown + ", which was calling itself",
+                                    interrupted);
             called_itself_last = true;
             arguments = std::move(frame.arguments);
             continue;
