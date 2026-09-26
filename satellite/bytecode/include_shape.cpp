@@ -240,13 +240,8 @@ signed long long int file_can_run(const std::vector<std::bitset<16>> &row,
                 const NeverClosed *first = &never.front();
                 for (const NeverClosed &each : never)
                     if (each.line < first->line) first = &each;
-                std::size_t at = 0;
-                for (std::size_t seen = 0; seen < first->line && at < row.size();) {
-                    if (token::carries_a_count(code_at(row, at))) { std::size_t k = at; text_at(row, k); at = k; continue; }
-                    if (code_at(row, at) == token::line_end_token) ++seen;
-                    ++at;
-                }
-                return raise_at(satl_line_not_understood, first->why, std::string(), state, row, at, "satl(check)");
+                return raise_at(satl_line_not_understood, first->why, std::string(), state, row,
+                                never_closed_at(row, lines, *first), "satl(check)");
             }
         }
     }

@@ -65,8 +65,9 @@ Value run_for_answer(const CapsuleSite &site, std::vector<Value> arguments, cons
     const BytecodeRegistry *program = context.state.program;
     Value answer;
     const bool dropped = context.statement && ends_the_line(row, after);
+    // an argument the capsule refuses is shown at `where`, the call, and not at its statement's start
     const signed long long int ran = run_capsule_for(*program, *table, context.functions, site, std::move(arguments),
-                                                     self, context.state, dropped ? nullptr : &answer);
+                                                     self, context.state, dropped ? nullptr : &answer, &row, where);
     // THE CAPSULE HAS ALREADY SAID WHAT WENT WRONG, with its own line and caret -- this
     // only stops the expression it was part of.
     if (stops_the_program(ran)) {

@@ -44,6 +44,7 @@
 #include "../bytecode/token_codes.hpp"
 
 #include <bitset>
+#include <cctype>
 #include <cstddef>
 #include <fstream>
 #include <string>
@@ -141,6 +142,67 @@ inline std::size_t column_of(const std::vector<std::bitset<16>> &row, std::size_
     return offsets[which];
 }
 
+// A LOADED FILE'S LINES AS THE LEXER'S JOIN LEFT THEM, and where each piece was written. Made
+// once a file and kept (the review, 2026-09-26): written_place is asked once a report, once a
+// warned place and once a refused method, and splitting and joining the whole file on every ask
+// made 4,000 warned lines take 9.8 s where they took 0.4. Made again only when the text loaded
+// now is not the text it was made from -- the prompt reloads its own -- and one a thread, so
+// two threads reporting at once never share one being made.
+struct JoinedText {
+    bool made = false;
+    std::string source;                // what it was made from
+    std::vector<std::string> lines;    // join_statements_across_lines's
+    JoinedPieces pieces;
+};
+
+inline const JoinedText &joined_text_of(const std::string &filename, const std::string &source)
+{
+    thread_local std::unordered_map<std::string, JoinedText> kept;
+    JoinedText &one = kept[filename];
+    if (one.made && one.source == source)
+        return one;
+    one.made = true;
+    one.source = source;
+    one.lines.clear();
+    for (std::size_t from = 0; from <= source.size();) {
+        const std::size_t stop = source.find('\n', from);
+        one.lines.push_back(source.substr(from, stop == std::string::npos ? std::string::npos : stop - from));
+        if (stop == std::string::npos) break;
+        from = stop + 1;
+    }
+    join_statements_across_lines(one.lines, &one.pieces);
+    return one;
+}
+
+// WHERE A CODE WAS WRITTEN, when its line is not the line it was lexed on (ERRORS2 #11): a
+// statement over several lines is lexed on its first, and a block's { is moved to the front of
+// the next, so the tokens of a line are not always that line's text. The lexer's own join, run
+// again on the loaded text as the registry's rows were made (joined_text_of), and `at`'s offset
+// in the line it left is followed back to the physical line and column (JoinedPiece). `line`
+// comes in as the line the code was lexed on (1-based) and goes out as the one it was written
+// on. False when the file was never loaded, and the caller keeps what it had.
+inline bool written_place(const std::string &filename, const std::vector<std::bitset<16>> &row, std::size_t at,
+                          std::size_t &line, std::size_t &column, std::string &text)
+{
+    const std::unordered_map<std::string, std::string>::const_iterator loaded = loaded_sources().find(filename);
+    if (loaded == loaded_sources().end() || line == 0 || at >= row.size()) return false;
+    const JoinedText &joined = joined_text_of(filename, loaded->second);
+    const std::vector<std::string> &lines = joined.lines;
+    const JoinedPieces &pieces = joined.pieces;
+    const std::size_t r = line - 1;
+    if (r >= lines.size() || pieces[r].empty()) return false;
+    const std::size_t start = line_starts_at(row, at);
+    std::vector<std::bitset<16>> again;
+    std::vector<std::size_t> offsets;
+    tokenise_one_line(lines[r], again, &offsets);
+    if (at < start || at - start >= offsets.size()) return false;
+    const JoinedPiece written = written_at(pieces[r], offsets[at - start]);
+    line = written.line + 1;
+    column = written.column;
+    text = source_line(filename, line);
+    return true;
+}
+
 // WHERE ONE POSITION IS, all four answers together. Everything a report's
 // `directory:` and `syntax:` rows need, gathered in one call so no caller has to
 // know the order they are worked out in.
@@ -160,6 +222,8 @@ inline SourcePlace place_of(const BytecodeRegistry &registry, const BytecodeFile
     place.known = true;
     place.filename = which_row < filenames.size() ? filenames[which_row] : std::string();
     place.line = line_of(registry[which_row], at);
+    if (written_place(place.filename, registry[which_row], at, place.line, place.column, place.text))
+        return place;
     place.text = source_line(place.filename, place.line);
     place.column = column_of(registry[which_row], at, place.text);
     return place;
@@ -200,6 +264,38 @@ inline void report_at(CriticalReport &report, const BytecodeRegistry &registry,
                       const BytecodeFilenames &filenames, std::size_t which_row, std::size_t at)
 {
     report_at(report, place_of(registry, filenames, which_row, at));
+}
+
+// WHAT WAS WRITTEN FOR THE METHOD CODE AT `at` (ERRORS2 #10). One method has one code and may
+// have several spellings -- `power`, `power_of` and `to_the_power_of` are one -- and a refusal
+// named it by the registry's first, so `n.power(2)` was told "n.power_of is not built". Read
+// back from the loaded text of `filename` where the code was written (written_place), and lexed
+// again: answered only when what stands there IS that method; `fallback` otherwise.
+inline std::string method_as_written(const std::vector<std::bitset<16>> &row, std::size_t at,
+                                     const std::string &filename, const std::string &fallback)
+{
+    std::size_t line = line_of(row, at), column = 0;
+    std::string text;
+    if (!written_place(filename, row, at, line, column, text)) {
+        text = source_line(filename, line);
+        column = column_of(row, at, text);
+    }
+    if (text.empty() || at >= row.size()) return fallback;
+    std::size_t end = column;
+    while (end < text.size() && (std::isalnum(static_cast<unsigned char>(text[end])) != 0 || text[end] == '_'))
+        ++end;
+    if (end == column) return fallback;
+    const std::string written = text.substr(column, end - column);
+    std::vector<std::bitset<16>> again;
+    tokenise_one_line("x." + written, again);
+    for (std::size_t k = 0; k < again.size();) {
+        const token::Code code = static_cast<token::Code>(again[k].to_ulong());
+        if (token::carries_a_count(code)) { skip_payload(again, k); continue; }
+        if (code == token::method_token)
+            return k + 1 < again.size() && again[k + 1] == row[at] ? written : fallback;
+        ++k;
+    }
+    return fallback;
 }
 
 // WHICH ROW A ROW IS, BY ITS ADDRESS.

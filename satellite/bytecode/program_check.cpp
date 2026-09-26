@@ -183,6 +183,17 @@ struct Where {
     std::vector<std::pair<std::string, Code>> replacing;
 };
 
+// THE FILE A STATEMENT STANDS IN, as load_program read it -- for reading back what it wrote.
+// A line typed at the prompt with nothing declared around it is session.cpp's "<typed>".
+std::string file_of(const Where &where)
+{
+    std::size_t s = where.scope;
+    while (s < where.capsules.scopes.size() && where.capsules.scopes[s].kind != ScopeKind::file)
+        s = where.capsules.scopes[s].parent;
+    if (s < where.capsules.scopes.size()) return where.capsules.scopes[s].file;
+    return where.typed_line ? std::string("<typed>") : std::string();
+}
+
 // A DECLARATION TAKES ITS NAME, OR ANSWERS FALSE WHEN THE NAME IS TAKEN -- the second
 // declaration a program is refused for. AT THE PROMPT the name may be one an earlier
 // line kept, and declaring it again replaces it, type and all (program_walk.hpp's
@@ -572,14 +583,13 @@ signed long long int method_right_for(Code type, Code method, const std::string 
 // 2026-09-18: `n.append("x")` on a number and `f.replace(1)` on a file passed the
 // check and were refused after earlier lines had printed). `k` is the code after
 // the name. Only the first method is judged: what a method answers is a run-time
-// fact, so a chain's later segments are left to the walker.
-signed long long int method_on_a_name(const std::vector<std::bitset<16>> &row, std::size_t k,
-                                      const std::string &name, Code declared_as, std::string &why)
+// fact, so a chain's later segments are left to the walker. `spelling` is the name and
+// the method as the refusal says them (method_on_a_name, below).
+signed long long int method_judged(const std::vector<std::bitset<16>> &row, std::size_t k,
+                                   const std::string &name, Code declared_as, std::string &why,
+                                   const std::string &spelling)
 {
-    if (code_at(row, k) != token::method_token || !token::is_method_code(code_at(row, k + 1)))
-        return success;
     const Code method = code_at(row, k + 1);
-    const std::string spelling = std::string(name) + "." + method_spelling(method);
     const int arity = file_method_arity(method);
     const bool of_a_string_or_number = method == token::find_token || method == token::add_token ||
                                        method == token::to_string_token || method == token::to_number_token ||
@@ -782,6 +792,29 @@ signed long long int method_on_a_name(const std::vector<std::bitset<16>> &row, s
         return satl_line_not_understood;
     }
     return success;
+}
+
+// AS WRITTEN: `n.power(2)` is told about n.power, not the registry's n.power_of (ERRORS2 #10).
+// ONLY WHEN IT IS REFUSED (the review, 2026-09-26): reading the name back from the text costs
+// a look at the whole file, and asked for every method a program has it made the checker's
+// time grow with the square of the file -- 8,000 lines of `s = s.lower()` took 17 s, not
+// 0.1. A method that passes is judged once, by the registry's name, which it never shows;
+// one that is refused is judged again under the name it was written with, for the sentence.
+signed long long int method_on_a_name(const std::vector<std::bitset<16>> &row, std::size_t k,
+                                      const std::string &name, Code declared_as, std::string &why,
+                                      const std::string &file)
+{
+    if (code_at(row, k) != token::method_token || !token::is_method_code(code_at(row, k + 1)))
+        return success;
+    const std::string registry_name = method_spelling(code_at(row, k + 1));
+    const signed long long int judged = method_judged(row, k, name, declared_as, why, name + "." + registry_name);
+    if (judged == success)
+        return success;
+    const std::string written = method_as_written(row, k + 1, file, registry_name);
+    if (written == registry_name)
+        return judged;
+    why.clear();
+    return method_judged(row, k, name, declared_as, why, name + "." + written);
 }
 
 // WHAT A METHOD-CALL STATEMENT MAY BE, WHOLE (the review: `f.size = 3`, `f.`,
@@ -1126,7 +1159,7 @@ signed long long int names_in_statement(const std::vector<std::bitset<16>> &row,
             Code type = 0;
             const signed long long int read = library_read_is_right(capsules, where.registry, row, at, written, type, why);
             if (read != success) return read;
-            const signed long long int method = method_on_a_name(row, at, written, type, why);
+            const signed long long int method = method_on_a_name(row, at, written, type, why, file_of(where));
             if (method != success) return method;
             continue;
         }
@@ -1302,10 +1335,16 @@ signed long long int names_in_statement(const std::vector<std::bitset<16>> &row,
                 // A FIELD'S VALUE NAMING ANOTHER FIELD: there is no object yet (003's S0511).
                 const bool a_field = where.field && capsules.scopes[scope].layout != nullptr &&
                                      capsules.scopes[scope].layout->slot_of(name) != kNoSlot;
+                // `satellite.machine.cores()`: a row of main's arguments, spelled as a word (ERRORS2 #9).
+                const bool after_satellite = before_this == token::method_token &&
+                                             (and_before_that == word::kFirst || and_before_that == word::code_of(1, 22));
+                const std::string a_row =
+                    after_satellite ? arguments_row_written_as_a_word(row, at, and_before_that != word::kFirst) : "";
                 why = a_field ? name + " is a field of " + capsules.scopes[scope].layout->shown +
                                     ", and a field's value is worked out before there is an object -- it cannot name "
                                     "another field; give it its value in the satellite.constructor instead"
-                              : name + " has no satellite.variable line declaring it";
+                      : !a_row.empty() ? a_row
+                                       : name + " has no satellite.variable line declaring it";
                 return name_not_declared;
             } else if (declared.find(name)->second == word::code_of(1, 6, 21) &&
                        past_the_argument_names(row, k) != k) {
@@ -1335,7 +1374,8 @@ signed long long int names_in_statement(const std::vector<std::bitset<16>> &row,
                     const signed long long int indexed = string_index_check(row, k, name, why);
                     if (indexed != success) return indexed;
                 }
-                const signed long long int judged_here = method_on_a_name(row, k, name, declared.find(name)->second, why);
+                const signed long long int judged_here =
+                    method_on_a_name(row, k, name, declared.find(name)->second, why, file_of(where));
                 if (judged_here != success) return judged_here;
             }
             at = k;

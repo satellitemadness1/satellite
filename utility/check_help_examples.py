@@ -6,7 +6,8 @@ the author's desktop whatever DISPLAY says); each program runs with no display, 
 an empty XDG_RUNTIME_DIR and 20 seconds. Expected failures on 2026-09-25: the arguments example
 (it wants two words after it), satellite.history (refused on purpose, its comment says so),
 satellite.include and satellite.library (they name files that are not there), and the window
-examples (NO_DISPLAY, which is the point of running them with none).
+examples (NO_DISPLAY, which is the point of running them with none). check.sh runs this and
+expects exactly those eight, by page: a page that starts failing, or stops, is named there.
 
 A program starts at a line `satellite.include(satellite)` and runs to the last line of code
 before prose begins again (a line that is not blank, not indented, and not satellite code or
@@ -42,7 +43,10 @@ for path in sorted(glob.glob('satellite.help/*/help_text.txt')) + ['satellite.he
             with open(p, 'w') as f:
                 f.write(body)
             env = {k: v for k, v in os.environ.items() if k not in ('DISPLAY', 'WAYLAND_DISPLAY', 'XAUTHORITY', 'GDK_BACKEND')}
-            empty = tempfile.mkdtemp(); os.chmod(empty, 0o700)
+            # THE EMPTY XDG_RUNTIME_DIR LIVES IN THE EXAMPLE'S OWN FOLDER and goes with it: a mkdtemp
+            # of its own was never removed, and left 33 folders in /tmp every run of check.sh.
+            empty = os.path.join(d, 'xdg')
+            os.mkdir(empty); os.chmod(empty, 0o700)
             env.update(SATL_NO_WINDOW='1', XDG_RUNTIME_DIR=empty)
             try:
                 r = subprocess.run([satl, 'example.satl'], cwd=d, capture_output=True, text=True, timeout=20,

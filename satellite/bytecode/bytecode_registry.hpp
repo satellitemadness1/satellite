@@ -78,11 +78,43 @@ using BytecodeFilenames = std::vector<std::string>;
 //
 // Answers what the file ENDS inside -- a string, a (, a [ or a list that never closes, or a
 // list closed with the wrong bracket -- by the physical line (0-based) where it opened.
+// A LIST'S { STILL OPEN AT A LINE'S END, WITH A NEW STATEMENT ON THE NEXT LINE, is answered
+// too, and ends its statement there (2026-09-26): the file does not end inside it, but the
+// next } it would take is a block's -- `l = {1, 2` took main's own } and the satellite.return
+// between, and was refused as satellite.return. `column` is where the opener stands in its
+// line as the join LEFT it -- its written column, or two past it on a line a block's { was
+// moved to the front of (npos for a string); `at_the_end` is false for one the file does not
+// end inside, so the prompt knows a statement that is refused from one still being typed.
 struct NeverClosed {
     std::size_t line = 0;
     std::string why;
+    std::size_t column = std::string::npos;
+    bool at_the_end = true;
 };
-std::vector<NeverClosed> join_statements_across_lines(std::vector<std::string> &lines);
+
+// WHERE EACH PIECE OF A LINE THE JOIN LEFT WAS WRITTEN (ERRORS2 #11, 2026-09-26), for a report's
+// line and caret: from offset `at` of that line on, the text is physical line `line`'s (0-based)
+// from `column` on. A line the join did not touch is one piece, {0, itself, 0}; a line it emptied
+// has none; a statement's first line has one for every line joined onto it; and a line a block's
+// { was moved to the front of begins with a piece that is that {, where it was written.
+struct JoinedPiece {
+    std::size_t at = 0;
+    std::size_t line = 0;
+    std::size_t column = 0;
+};
+using JoinedPieces = std::vector<std::vector<JoinedPiece>>;   // one entry a line
+
+std::vector<NeverClosed> join_statements_across_lines(std::vector<std::string> &lines,
+                                                      JoinedPieces *pieces = nullptr);
+
+// Where offset `at` of a line the join left was written: the last piece at or before it, moved on.
+JoinedPiece written_at(const std::vector<JoinedPiece> &pieces, std::size_t at);
+
+// WHERE ONE OF THEM IS REFUSED: its opener's code in `row` -- the caret under the { itself --
+// when the opener stands on a statement's first line; otherwise its line's first code.
+// `lines` is what join_statements_across_lines left of the text `row` was made from.
+std::size_t never_closed_at(const std::vector<std::bitset<16>> &row, const std::vector<std::string> &lines,
+                            const NeverClosed &each);
 
 // Appends one row -- this file, tokenised on `threads` in batches of lines --
 // and its name to `filenames`, so the two stay row for row. The main .satl goes

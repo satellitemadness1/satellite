@@ -605,17 +605,47 @@ void tokenise_one_line(std::string_view text, std::vector<std::bitset<16>> &row,
         offsets->push_back(n);   // the line end sits past the last character
 }
 
-std::vector<NeverClosed> join_statements_across_lines(std::vector<std::string> &lines)
+JoinedPiece written_at(const std::vector<JoinedPiece> &pieces, std::size_t at)
 {
+    JoinedPiece found{at, 0, at};
+    for (const JoinedPiece &each : pieces)
+        if (each.at <= at) found = {at, each.line, each.column + (at - each.at)};
+    return found;
+}
+
+std::vector<NeverClosed> join_statements_across_lines(std::vector<std::string> &lines, JoinedPieces *pieces)
+{
+    if (pieces != nullptr) {
+        pieces->assign(lines.size(), {});
+        for (std::size_t i = 0; i < lines.size(); ++i) (*pieces)[i].push_back({0, i, 0});
+    }
     struct Open {
         char what;           // ( [ or L, a list's {
         std::size_t line;
+        std::size_t column;  // where it stands in its line
+        bool map = false;    // a list's { with a : inside it: a map's
     };
-    const auto never_closed_because = [](char what) {
-        return what == '(' ? std::string("this ( is never closed -- the file ends inside it, so its ) is missing")
-             : what == '[' ? std::string("this [ is never closed -- the file ends inside it, so its ] is missing")
-                           : std::string("this list was opened with { and never closed with } -- items are "
-                                         "separated by commas, as in {\"one\", \"two\"}");
+    // expression.cpp's own sentences for a list and a map, said before anything runs.
+    const auto never_closed_because = [](const Open &opened) {
+        return opened.what == '(' ? std::string("this ( is never closed -- the file ends inside it, so its ) is missing")
+             : opened.what == '[' ? std::string("this [ is never closed -- the file ends inside it, so its ] is missing")
+             : opened.map ? std::string("this map was opened with { and never closed with } -- each entry is a key, "
+                                        "a : and a value, and entries are separated by commas, as in "
+                                        "{\"zoe\": 30, \"al\": 4}")
+                          : std::string("this list was opened with { and never closed with } -- items are "
+                                        "separated by commas, as in {\"one\", \"two\"}");
+    };
+    // THE NEXT LINE THAT HOLDS CODE BEGINS A NEW STATEMENT: it begins with a word. A list goes on
+    // into a line that begins with its } , a comma, a .method, a value or an operator; a
+    // statement never begins with any of those. Blank lines and // lines are stepped over.
+    const auto next_begins_a_statement = [&lines](std::size_t from) {
+        for (std::size_t n = from; n < lines.size(); ++n) {
+            const std::size_t first = lines[n].find_first_not_of(" \t");
+            if (first == std::string::npos || lines[n].compare(first, 2, "//") == 0) continue;
+            const unsigned char c = static_cast<unsigned char>(lines[n][first]);
+            return std::isalpha(c) != 0 || c == '_';
+        }
+        return false;
     };
     std::vector<NeverClosed> never;
     std::vector<Open> open;
@@ -644,12 +674,14 @@ std::vector<NeverClosed> join_statements_across_lines(std::vector<std::string> &
                 continue;
             }
             if (c == '(' || c == '[') {
-                open.push_back({c, i});
+                open.push_back({c, i, k});
             } else if (c == '{') {
                 // A LIST'S { stands where a value goes; a BLOCK'S follows a ), a name or a word
                 // and is the statements' business, never this pass's.
                 if (!open.empty() || last == '(' || last == ',' || last == '=' || last == '[')
-                    open.push_back({'L', i});
+                    open.push_back({'L', i, k});
+            } else if (c == ':' && !open.empty() && open.back().what == 'L') {
+                open.back().map = true;
             } else if (c == ')' || c == ']' || c == '}') {
                 const char wants = c == ')' ? '(' : c == ']' ? '[' : 'L';
                 bool held = false;
@@ -657,7 +689,8 @@ std::vector<NeverClosed> join_statements_across_lines(std::vector<std::string> &
                 if (held) {
                     // AN OPENER CLOSED WITH THE WRONG BRACKET was never closed: `display({1, 2)`.
                     while (open.back().what != wants) {
-                        never.push_back({open.back().line, never_closed_because(open.back().what)});
+                        never.push_back({open.back().line, never_closed_because(open.back()), open.back().column,
+                                         false});
                         open.pop_back();
                     }
                     open.pop_back();
@@ -665,6 +698,23 @@ std::vector<NeverClosed> join_statements_across_lines(std::vector<std::string> &
             }
             spaced_before_last = k > 0 && (physical[k - 1] == ' ' || physical[k - 1] == '\t');
             last = c;
+        }
+
+        // A LIST'S { OPEN AT THE END OF A LINE THAT WAITS FOR NOTHING -- no comma, no {, no :, no
+        // operator at its end -- with a new statement on the next line was never closed: the }
+        // it would take further down is a block's (the error sweep, 2026-09-26). It is answered
+        // where it stands and its statement ends here. `l = {1,` over lines is untouched, and so
+        // is `{a >` over lines (the review, 2026-09-26): a comparison, a logic or a bit sign
+        // waits for what it compares, as it does inside ( ), where every line goes on. A tight
+        // + or - does not: `x++` and `x--` end a statement.
+        const bool waits = last == '{' || last == ',' || last == ':' || last == '=' || last == '&' ||
+                           last == '|' || last == '(' || last == '[' || last == '<' || last == '>' ||
+                           last == '!' || last == '~' ||
+                           (spaced_before_last && (last == '+' || last == '-' || last == '*' || last == '/' ||
+                                                   last == '%' || last == '^'));
+        if (!in_string && !open.empty() && open.back().what == 'L' && !waits && next_begins_a_statement(i + 1)) {
+            never.push_back({open.back().line, never_closed_because(open.back()), open.back().column, false});
+            open.pop_back();
         }
 
         // DOES THE STATEMENT GO ON INTO THE NEXT LINE?
@@ -684,6 +734,10 @@ std::vector<NeverClosed> join_statements_across_lines(std::vector<std::string> &
         } else {
             joined += joiner + part;
             lines[i].clear();
+            if (pieces != nullptr) {
+                (*pieces)[into].push_back({joined.size() - part.size(), i, 0});
+                (*pieces)[i].clear();
+            }
         }
         if (goes_on && i + 1 < lines.size()) {
             joiner = in_string ? "\n" : " ";
@@ -732,16 +786,50 @@ std::vector<NeverClosed> join_statements_across_lines(std::vector<std::string> &
                                         before_brace != '=' && before_brace != '[' && before_brace != '{';
             if (!a_blocks_brace)
                 continue;
+            if (pieces != nullptr) {
+                // the { stands at the front of the next line now, and is shown where it was written
+                const JoinedPiece brace = written_at((*pieces)[i], brace_at);
+                for (JoinedPiece &each : (*pieces)[i]) if (each.at > brace_at) --each.at;
+                for (JoinedPiece &each : (*pieces)[i + 1]) each.at += 2;
+                (*pieces)[i + 1].insert((*pieces)[i + 1].begin(), JoinedPiece{0, brace.line, brace.column});
+            }
             lines[i].erase(brace_at, 1);
             lines[i + 1].insert(0, "{ ");
+            // A LIST REFUSED ON THAT LINE stands two further along it now, and never_closed_at
+            // finds its { in the line as it was left (the review, 2026-09-26: `l = {1, 2` just
+            // inside an if's { had its caret under the = ).
+            for (NeverClosed &each : never)
+                if (each.line == i + 1 && each.column != std::string::npos) each.column += 2;
         }
     }
     if (in_string)
         never.push_back({string_line, "a string that begins on this line is never closed -- the file ends inside "
                                       "it, so its closing \" is missing"});
     for (const Open &each : open)
-        never.push_back({each.line, never_closed_because(each.what)});
+        never.push_back({each.line, never_closed_because(each), each.column});
     return never;
+}
+
+std::size_t never_closed_at(const std::vector<std::bitset<16>> &row, const std::vector<std::string> &lines,
+                            const NeverClosed &each)
+{
+    std::size_t at = 0;
+    for (std::size_t seen = 0; seen < each.line && at < row.size();) {
+        if (token::carries_a_count(static_cast<Code>(row[at].to_ulong()))) { skip_payload(row, at); continue; }
+        if (static_cast<Code>(row[at].to_ulong()) == token::line_end_token) ++seen;
+        ++at;
+    }
+    // A LINE A STATEMENT WAS JOINED ONTO holds its first physical line's text first, so an opener
+    // there is the same code of the row it was when that line stood alone. A line left empty by
+    // the join has no codes of its own, and its opener's caret stays at the line.
+    if (each.column == std::string::npos || each.line >= lines.size() || lines[each.line].empty())
+        return at;
+    std::vector<std::bitset<16>> again;
+    std::vector<std::size_t> offsets;
+    tokenise_one_line(lines[each.line], again, &offsets);
+    for (std::size_t k = 0; k < offsets.size(); ++k)
+        if (offsets[k] == each.column) return at + k;
+    return at;
 }
 
 void add_file_to_bytecode_registry(const std::string &filename,

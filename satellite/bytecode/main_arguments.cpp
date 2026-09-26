@@ -140,6 +140,39 @@ Value the_arguments_value(const Arguments *arguments, const FunctionTable &funct
     return Value::of_index(index);
 }
 
+std::string arguments_row_written_as_a_word(const std::vector<std::bitset<16>> &row, std::size_t at,
+                                            bool after_system)
+{
+    std::vector<std::string> names;
+    for (std::size_t k = at; code_at(row, k) == token::name_token;) {
+        names.push_back(text_at(row, k));
+        if (code_at(row, k) != token::method_token) break;
+        ++k;
+    }
+    // satellite.system.hostname is arguments.system.hostname first, and satellite.system.cores
+    // is arguments.cores; satellite.machine.cores is arguments.machine.cores.
+    const char *const system_first[] = {"system.", ""};
+    const char *const plain[] = {""};
+    for (const char *under : after_system ? std::vector<const char *>(system_first, system_first + 2)
+                                          : std::vector<const char *>(plain, plain + 1)) {
+        std::string path, found, written = after_system ? "satellite.system" : "satellite";
+        std::size_t used = 0;
+        for (std::size_t n = 0; n < names.size(); ++n) {
+            path += (n == 0 ? "" : ".") + names[n];
+            if (word::code_of_spelling("satellite.library.main.arguments." + std::string(under) + path) != 0) {
+                found = under + path;
+                used = n + 1;
+            }
+        }
+        if (found.empty()) continue;
+        for (std::size_t n = 0; n < used; ++n) written += "." + names[n];
+        return written + " is not a word -- in 004 it is a row of main's arguments: arguments." + found +
+               " in a satellite.main(satellite.variable.arguments arguments), or satellite.library.main.arguments." +
+               found + " in any capsule";
+    }
+    return std::string();
+}
+
 std::size_t past_the_argument_names(const std::vector<std::bitset<16>> &row, std::size_t at)
 {
     std::string key;
