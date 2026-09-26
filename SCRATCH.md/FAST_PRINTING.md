@@ -5,8 +5,19 @@ It replaces the open design in `SCRATCH.md/DISPLAY_THREADS.md`. That file still 
 attempt: why it was pulled out, and every measurement it made. `SCRATCH.md/RUNNING_PROGRAMS.md`
 holds the running-programs half.
 
-**Nothing in this plan is built yet.** The measurements below are real. The code they came from is in
-`SCRATCH.md/FAST_PRINTING/`.
+**Steps 1 and 2 are built, installed and pushed** (builds 0109 `ab6e7d7` and 0111 `fbf0788`). **Step 3 is
+next.** The measurements below are real. The code they came from is in `SCRATCH.md/FAST_PRINTING/`.
+
+| best of five (step 2: of three) | 0108 | 0109, step 1 | 0111, step 2 |
+|---|---|---|---|
+| 1,000,000 lines | 2.34 s | 1.07 s | 1.06 s (0109 read 1.12 in that race) |
+| 1,000,000 numbers | 2.10 s | 0.83 s | 0.83 s |
+| 200 × 1 MiB | 0.63 s | 0.22 s | 0.23 s (noise) |
+
+Output byte-identical in every race. `./check.sh` 1028 of 1028 after each step.
+
+After step 1 he said: *"we are building a fast-enough-plan anyways, we gave up on racing compiled C++
+with our interpreter"*. **The rule below still holds** (a slower step stops), but no C++ race is owed.
 
 ---
 
@@ -119,7 +130,7 @@ ignores my timings: give him the command, and lead with right/wrong counts.
 
 ## THE PLAN, IN ORDER
 
-### Step 1 — the word checks become one read (the ~90%)
+### Step 1 — the word checks become one read (the ~90%) — DONE, build 0109, `ab6e7d7`
 
 **What changes:**
 - **DISPLAY NEVER ASKS ABOUT WINDOWS AT ALL** (the author, 2026-09-26: *"make sure that your plan
@@ -157,7 +168,7 @@ language, not only display.
 **Expected:** by instruction count, most of the 1.27 µs. Callgrind and the three bench programs say
 how much.
 
-### Step 2 — string literals built straight from their codes
+### Step 2 — string literals built straight from their codes — DONE, build 0111, `fbf0788`
 
 **What changes:** `text_at` builds the `satellite_string` directly from the bytecode's codes, in one
 pass. Today it goes codes → UTF-8 → `from_utf8` → codes.
