@@ -304,7 +304,7 @@ void refuse_unclosed_strings(CapsuleTable &table, const std::vector<std::bitset<
     if (!lines.empty() && lines.front().compare(0, 2, "#!") == 0)
         lines.front().clear();
     for (const NeverClosed &each : join_statements_across_lines(lines))
-        refuse(table, r, first_code_of_line(row, each.line), satl_line_not_understood, each.why);
+        refuse(table, r, never_closed_at(row, lines, each), satl_line_not_understood, each.why);
 }
 
 // A SHEBANG, `#!/usr/bin/env satl`, AS A FILE'S FIRST LINE: what makes a program a script a

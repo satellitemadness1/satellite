@@ -78,11 +78,25 @@ using BytecodeFilenames = std::vector<std::string>;
 //
 // Answers what the file ENDS inside -- a string, a (, a [ or a list that never closes, or a
 // list closed with the wrong bracket -- by the physical line (0-based) where it opened.
+// A LIST'S { STILL OPEN AT A LINE'S END, WITH A NEW STATEMENT ON THE NEXT LINE, is answered
+// too, and ends its statement there (2026-09-26): the file does not end inside it, but the
+// next } it would take is a block's -- `l = {1, 2` took main's own } and the satellite.return
+// between, and was refused as satellite.return. `column` is where the opener stands in its
+// line (npos for a string); `at_the_end` is false for one the file does not end inside, so
+// the prompt knows a statement that is refused from one that is still being typed.
 struct NeverClosed {
     std::size_t line = 0;
     std::string why;
+    std::size_t column = std::string::npos;
+    bool at_the_end = true;
 };
 std::vector<NeverClosed> join_statements_across_lines(std::vector<std::string> &lines);
+
+// WHERE ONE OF THEM IS REFUSED: its opener's code in `row` -- the caret under the { itself --
+// when the opener stands on a statement's first line; otherwise its line's first code.
+// `lines` is what join_statements_across_lines left of the text `row` was made from.
+std::size_t never_closed_at(const std::vector<std::bitset<16>> &row, const std::vector<std::string> &lines,
+                            const NeverClosed &each);
 
 // Appends one row -- this file, tokenised on `threads` in batches of lines --
 // and its name to `filenames`, so the two stay row for row. The main .satl goes

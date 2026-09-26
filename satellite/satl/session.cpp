@@ -379,11 +379,13 @@ Opens what_it_opens(const std::string &code)
 
 // WHETHER A STATEMENT IS STILL OPEN at the end of these lines: a string, a ( , a [ or a list the
 // lexer's own join says is open (bytecode_registry.hpp), or a last line waiting for the rest --
-// a comma, or an operator with a space before it.
+// a comma, or an operator with a space before it. A list the join says was never closed, with
+// a statement typed after it, is not waiting for anything: it runs, and is refused.
 bool still_open(const std::vector<std::string> &lines)
 {
     std::vector<std::string> copy = lines;
-    if (!join_statements_across_lines(copy).empty()) return true;
+    for (const NeverClosed &each : join_statements_across_lines(copy))
+        if (each.at_the_end) return true;
     const std::string last = code_part(lines.back());
     if (last.empty()) return false;
     const char c = last.back();

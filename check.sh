@@ -5841,6 +5841,25 @@ printf 'satellite.include(satellite)\n\nsatellite.capsule satellite.main()\n{\n 
 "$interpreter" "$sweep/multi_line_numbers.satl" > "$sweep/multi_line_numbers.out" 2>&1
 expect "... and a report after a statement over two lines names the line an editor shows" "1" \
        "$(grep -c 'multi_line_numbers.satl:7$' "$sweep/multi_line_numbers.out")"
+# THE ERROR SWEEP, 2026-09-26: a list's { left open with a statement on the next line is refused
+# itself, before anything runs, with the caret under that { -- where the join carried it on into
+# main's own }, and the satellite.return between was refused instead ("has no library built for
+# it yet", S210). A { whose } comes further down, past a blank line and a comment, still joins.
+caret_under_brace() { awk '/^syntax: /{b=index($0,"{"); getline; print (index($0,"/\\")==b)?1:0; exit}' "$1"; }
+expect "l = {1, 2 left open is refused as a list never closed, before anything runs, caret under its {" "13|1|0|1" \
+       "$(body_refused open_list '    satellite.container.list l = {1, 2' 'this list was opened with { and never closed with } -- items are separated by commas')|$(caret_under_brace "$sweep/open_list.out")"
+expect "... and m = {\"a\": 1 left open, as a map never closed" "13|1|0|1" \
+       "$(body_refused open_map '    satellite.container.map m = {"a": 1' 'this map was opened with { and never closed with } -- each entry is a key')|$(caret_under_brace "$sweep/open_map.out")"
+expect "... and a list whose } is two lines down, past a blank line and a comment, still runs" "0|0|1|1" \
+       "$(body_refused closed_later '    satellite.container.list l = {1, 2
+
+        // the } is on its own line
+    }
+    satellite.console.display(l)' 'never closed')|$(grep -cx '{1, 2}' "$sweep/closed_later.out")"
+printf 'satellite.container.list l = {1, 2\nsatellite.console.display("swallowed with it")\nsatellite.console.display("after")\n' |
+    "$interpreter" --repl > "$sweep/open_list_session.out" 2>&1; code_run=$?
+expect "... and at the prompt it is refused with the line after it, and the session goes on" "13|1|0|1" \
+       "$code_run|$(tr '\n' ' ' < "$sweep/open_list_session.out" | grep -c 'this list was opened with { and never closed')|$(grep -cx 'swallowed with it' "$sweep/open_list_session.out")|$(grep -cx after "$sweep/open_list_session.out")"
 # A8: a capsule calling itself mid-body must not crash the interpreter (the author: "we could build
 # code that ONLY applies to this special circumstance so the interpreter doesnt' crash"). Every
 # capsule call measures the stack left and moves to a fresh segment under a megabyte
