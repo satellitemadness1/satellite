@@ -43,7 +43,10 @@ for path in sorted(glob.glob('satellite.help/*/help_text.txt')) + ['satellite.he
             with open(p, 'w') as f:
                 f.write(body)
             env = {k: v for k, v in os.environ.items() if k not in ('DISPLAY', 'WAYLAND_DISPLAY', 'XAUTHORITY', 'GDK_BACKEND')}
-            empty = tempfile.mkdtemp(); os.chmod(empty, 0o700)
+            # THE EMPTY XDG_RUNTIME_DIR LIVES IN THE EXAMPLE'S OWN FOLDER and goes with it: a mkdtemp
+            # of its own was never removed, and left 33 folders in /tmp every run of check.sh.
+            empty = os.path.join(d, 'xdg')
+            os.mkdir(empty); os.chmod(empty, 0o700)
             env.update(SATL_NO_WINDOW='1', XDG_RUNTIME_DIR=empty)
             try:
                 r = subprocess.run([satl, 'example.satl'], cwd=d, capture_output=True, text=True, timeout=20,

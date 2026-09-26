@@ -193,6 +193,8 @@ signed long long int run_capsule_on_a_thread(const BytecodeRegistry &registry,
                                             Value &answer,
                                             bool &answered);
 
+// `called_row` and `called_at`, when given, are where the call's name was written: an
+// argument its capsule refuses is shown there, and at the statement being walked otherwise.
 signed long long int run_capsule_for(const BytecodeRegistry &registry,
                                      const CapsuleTable &capsules,
                                      const FunctionTable &functions,
@@ -200,7 +202,9 @@ signed long long int run_capsule_for(const BytecodeRegistry &registry,
                                      std::vector<Value> arguments,
                                      const UserDefinedHandle &self,
                                      MachineState &state,
-                                     Value *answer);
+                                     Value *answer,
+                                     const std::vector<std::bitset<16>> *called_row = nullptr,
+                                     std::size_t called_at = 0);
 
 // WHAT THE PROMPT REMEMBERS BETWEEN LINES (the author, 2026-09-24: "the prompt has to
 // remember what you type in ... it has to be built to have persistence"). One table of

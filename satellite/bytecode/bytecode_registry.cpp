@@ -703,9 +703,13 @@ std::vector<NeverClosed> join_statements_across_lines(std::vector<std::string> &
         // A LIST'S { OPEN AT THE END OF A LINE THAT WAITS FOR NOTHING -- no comma, no {, no :, no
         // operator at its end -- with a new statement on the next line was never closed: the }
         // it would take further down is a block's (the error sweep, 2026-09-26). It is answered
-        // where it stands and its statement ends here. `l = {1,` over lines is untouched.
+        // where it stands and its statement ends here. `l = {1,` over lines is untouched, and so
+        // is `{a >` over lines (the review, 2026-09-26): a comparison, a logic or a bit sign
+        // waits for what it compares, as it does inside ( ), where every line goes on. A tight
+        // + or - does not: `x++` and `x--` end a statement.
         const bool waits = last == '{' || last == ',' || last == ':' || last == '=' || last == '&' ||
-                           last == '|' || last == '(' || last == '[' ||
+                           last == '|' || last == '(' || last == '[' || last == '<' || last == '>' ||
+                           last == '!' || last == '~' ||
                            (spaced_before_last && (last == '+' || last == '-' || last == '*' || last == '/' ||
                                                    last == '%' || last == '^'));
         if (!in_string && !open.empty() && open.back().what == 'L' && !waits && next_begins_a_statement(i + 1)) {
@@ -791,6 +795,11 @@ std::vector<NeverClosed> join_statements_across_lines(std::vector<std::string> &
             }
             lines[i].erase(brace_at, 1);
             lines[i + 1].insert(0, "{ ");
+            // A LIST REFUSED ON THAT LINE stands two further along it now, and never_closed_at
+            // finds its { in the line as it was left (the review, 2026-09-26: `l = {1, 2` just
+            // inside an if's { had its caret under the = ).
+            for (NeverClosed &each : never)
+                if (each.line == i + 1 && each.column != std::string::npos) each.column += 2;
         }
     }
     if (in_string)

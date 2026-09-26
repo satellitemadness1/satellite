@@ -82,8 +82,9 @@ using BytecodeFilenames = std::vector<std::string>;
 // too, and ends its statement there (2026-09-26): the file does not end inside it, but the
 // next } it would take is a block's -- `l = {1, 2` took main's own } and the satellite.return
 // between, and was refused as satellite.return. `column` is where the opener stands in its
-// line (npos for a string); `at_the_end` is false for one the file does not end inside, so
-// the prompt knows a statement that is refused from one that is still being typed.
+// line as the join LEFT it -- its written column, or two past it on a line a block's { was
+// moved to the front of (npos for a string); `at_the_end` is false for one the file does not
+// end inside, so the prompt knows a statement that is refused from one still being typed.
 struct NeverClosed {
     std::size_t line = 0;
     std::string why;

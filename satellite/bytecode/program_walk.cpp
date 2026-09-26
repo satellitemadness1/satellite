@@ -1482,7 +1482,8 @@ Reached reached_from(const CapsuleTable &capsules, std::size_t which_row, std::s
 // inside an expression, a method on an object, a button's press through run_capsule
 // -- so there is one reader of "call a capsule". `self` is the object a spacesuit's
 // capsule runs on, null for any other; `answer` is where what it hands back goes,
-// null when nothing will read it.
+// null when nothing will read it. `called_row` and `called_at`, when given, are where the
+// call was written -- its name -- and an argument that does not fit is shown there.
 signed long long int run_site(const BytecodeRegistry &registry,
                               const CapsuleTable &capsules,
                               const FunctionTable &functions,
@@ -1491,7 +1492,9 @@ signed long long int run_site(const BytecodeRegistry &registry,
                               const UserDefinedHandle &self,
                               MachineState &state,
                               Value *answer,
-                              bool *answered = nullptr);
+                              bool *answered = nullptr,
+                              const std::vector<std::bitset<16>> *called_row = nullptr,
+                              std::size_t called_at = 0);
 
 // A CAPSULE CALL STANDING AS A STATEMENT -- `greet(1, 2)` or `other.tools.greet(1, 2)`,
 // `at` on its first name and left past the statement. Its arguments are worked out
@@ -1552,7 +1555,8 @@ signed long long int call_capsule(const BytecodeRegistry &registry,
         frame.called_at = started;
         return success;
     }
-    return run_site(registry, capsules, functions, runs, std::move(arguments), self, state, nullptr);
+    return run_site(registry, capsules, functions, runs, std::move(arguments), self, state, nullptr, nullptr, &row,
+                    started);
 }
 
 } // namespace
@@ -2019,15 +2023,20 @@ signed long long int run_site_here(const BytecodeRegistry &registry,
                                    const UserDefinedHandle &given,
                                    MachineState &state,
                                    Value *answer,
-                                   bool *answered)
+                                   bool *answered,
+                                   const std::vector<std::bitset<16>> *call_row,
+                                   std::size_t call_at)
 {
     // THE OBJECT IS HELD BY A HANDLE OF ITS OWN FOR EVERY TURN: `given` is a reference
     // into whoever called, and a capsule may give the name it came from another object.
     const UserDefinedHandle self = given;
     bool called_itself_last = false;
-    // THE STATEMENT BEING WALKED IS THE CALL, until the body's first statement runs.
-    const std::vector<std::bitset<16>> *called_row = state.statement_row;
-    std::size_t called_at = state.statement_at;
+    // THE CALL IS WHERE ITS NAME WAS WRITTEN, when the caller says -- `f(1, "x")` inside
+    // `display(1 + f(1, "x"))` is shown at f, not at display (the review, 2026-09-26). A caller
+    // that cannot say -- a constructor, a thread, a button -- is shown at the statement being
+    // walked, which is still the calling one until the body's first statement runs.
+    const std::vector<std::bitset<16>> *called_row = call_row != nullptr ? call_row : state.statement_row;
+    std::size_t called_at = call_row != nullptr ? call_at : state.statement_at;
     for (;;) {
         Frame frame;
         frame.site = &site;
@@ -2079,16 +2088,20 @@ signed long long int run_site(const BytecodeRegistry &registry,
                               const UserDefinedHandle &given,
                               MachineState &state,
                               Value *answer,
-                              bool *answered)
+                              bool *answered,
+                              const std::vector<std::bitset<16>> *called_row,
+                              std::size_t called_at)
 {
     if (stack_is_running_low()) {
         signed long long int ran = success;
         on_a_fresh_stack([&] {
-            ran = run_site_here(registry, capsules, functions, site, std::move(arguments), given, state, answer, answered);
+            ran = run_site_here(registry, capsules, functions, site, std::move(arguments), given, state, answer, answered,
+                                called_row, called_at);
         });
         return ran;
     }
-    return run_site_here(registry, capsules, functions, site, std::move(arguments), given, state, answer, answered);
+    return run_site_here(registry, capsules, functions, site, std::move(arguments), given, state, answer, answered,
+                         called_row, called_at);
 }
 
 } // namespace
@@ -2213,9 +2226,12 @@ signed long long int run_capsule_for(const BytecodeRegistry &registry,
                                      std::vector<Value> arguments,
                                      const UserDefinedHandle &self,
                                      MachineState &state,
-                                     Value *answer)
+                                     Value *answer,
+                                     const std::vector<std::bitset<16>> *called_row,
+                                     std::size_t called_at)
 {
-    return run_site(registry, capsules, functions, site, std::move(arguments), self, state, answer);
+    return run_site(registry, capsules, functions, site, std::move(arguments), self, state, answer, nullptr,
+                    called_row, called_at);
 }
 
 signed long long int run_capsule_on_a_thread(const BytecodeRegistry &registry,

@@ -142,28 +142,53 @@ inline std::size_t column_of(const std::vector<std::bitset<16>> &row, std::size_
     return offsets[which];
 }
 
+// A LOADED FILE'S LINES AS THE LEXER'S JOIN LEFT THEM, and where each piece was written. Made
+// once a file and kept (the review, 2026-09-26): written_place is asked once a report, once a
+// warned place and once a refused method, and splitting and joining the whole file on every ask
+// made 4,000 warned lines take 9.8 s where they took 0.4. Made again only when the text loaded
+// now is not the text it was made from -- the prompt reloads its own -- and one a thread, so
+// two threads reporting at once never share one being made.
+struct JoinedText {
+    bool made = false;
+    std::string source;                // what it was made from
+    std::vector<std::string> lines;    // join_statements_across_lines's
+    JoinedPieces pieces;
+};
+
+inline const JoinedText &joined_text_of(const std::string &filename, const std::string &source)
+{
+    thread_local std::unordered_map<std::string, JoinedText> kept;
+    JoinedText &one = kept[filename];
+    if (one.made && one.source == source)
+        return one;
+    one.made = true;
+    one.source = source;
+    one.lines.clear();
+    for (std::size_t from = 0; from <= source.size();) {
+        const std::size_t stop = source.find('\n', from);
+        one.lines.push_back(source.substr(from, stop == std::string::npos ? std::string::npos : stop - from));
+        if (stop == std::string::npos) break;
+        from = stop + 1;
+    }
+    join_statements_across_lines(one.lines, &one.pieces);
+    return one;
+}
+
 // WHERE A CODE WAS WRITTEN, when its line is not the line it was lexed on (ERRORS2 #11): a
 // statement over several lines is lexed on its first, and a block's { is moved to the front of
-// the next, so the tokens of a line are not always that line's text. The lexer's own join is run
-// again on the loaded text, as the registry's rows were made, and `at`'s offset in the line it
-// left is followed back to the physical line and column (JoinedPiece). `line` comes in as the
-// line the code was lexed on (1-based) and goes out as the one it was written on. False when
-// the file was never loaded, and the caller keeps what it had.
+// the next, so the tokens of a line are not always that line's text. The lexer's own join, run
+// again on the loaded text as the registry's rows were made (joined_text_of), and `at`'s offset
+// in the line it left is followed back to the physical line and column (JoinedPiece). `line`
+// comes in as the line the code was lexed on (1-based) and goes out as the one it was written
+// on. False when the file was never loaded, and the caller keeps what it had.
 inline bool written_place(const std::string &filename, const std::vector<std::bitset<16>> &row, std::size_t at,
                           std::size_t &line, std::size_t &column, std::string &text)
 {
     const std::unordered_map<std::string, std::string>::const_iterator loaded = loaded_sources().find(filename);
     if (loaded == loaded_sources().end() || line == 0 || at >= row.size()) return false;
-    std::vector<std::string> lines;
-    const std::string &source = loaded->second;
-    for (std::size_t from = 0; from <= source.size();) {
-        const std::size_t stop = source.find('\n', from);
-        lines.push_back(source.substr(from, stop == std::string::npos ? std::string::npos : stop - from));
-        if (stop == std::string::npos) break;
-        from = stop + 1;
-    }
-    JoinedPieces pieces;
-    join_statements_across_lines(lines, &pieces);
+    const JoinedText &joined = joined_text_of(filename, loaded->second);
+    const std::vector<std::string> &lines = joined.lines;
+    const JoinedPieces &pieces = joined.pieces;
     const std::size_t r = line - 1;
     if (r >= lines.size() || pieces[r].empty()) return false;
     const std::size_t start = line_starts_at(row, at);

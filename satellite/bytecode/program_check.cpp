@@ -487,16 +487,13 @@ signed long long int method_right_for(Code type, Code method, const std::string 
 // 2026-09-18: `n.append("x")` on a number and `f.replace(1)` on a file passed the
 // check and were refused after earlier lines had printed). `k` is the code after
 // the name. Only the first method is judged: what a method answers is a run-time
-// fact, so a chain's later segments are left to the walker.
-signed long long int method_on_a_name(const std::vector<std::bitset<16>> &row, std::size_t k,
-                                      const std::string &name, Code declared_as, std::string &why,
-                                      const std::string &file)
+// fact, so a chain's later segments are left to the walker. `spelling` is the name and
+// the method as the refusal says them (method_on_a_name, below).
+signed long long int method_judged(const std::vector<std::bitset<16>> &row, std::size_t k,
+                                   const std::string &name, Code declared_as, std::string &why,
+                                   const std::string &spelling)
 {
-    if (code_at(row, k) != token::method_token || !token::is_method_code(code_at(row, k + 1)))
-        return success;
     const Code method = code_at(row, k + 1);
-    // AS WRITTEN: `n.power(2)` is told about n.power, not the registry's n.power_of (ERRORS2 #10).
-    const std::string spelling = std::string(name) + "." + method_as_written(row, k + 1, file, method_spelling(method));
     const int arity = file_method_arity(method);
     const bool of_a_string_or_number = method == token::find_token || method == token::add_token ||
                                        method == token::to_string_token || method == token::to_number_token ||
@@ -688,6 +685,29 @@ signed long long int method_on_a_name(const std::vector<std::bitset<16>> &row, s
         return satl_line_not_understood;
     }
     return success;
+}
+
+// AS WRITTEN: `n.power(2)` is told about n.power, not the registry's n.power_of (ERRORS2 #10).
+// ONLY WHEN IT IS REFUSED (the review, 2026-09-26): reading the name back from the text costs
+// a look at the whole file, and asked for every method a program has it made the checker's
+// time grow with the square of the file -- 8,000 lines of `s = s.lower()` took 17 s, not
+// 0.1. A method that passes is judged once, by the registry's name, which it never shows;
+// one that is refused is judged again under the name it was written with, for the sentence.
+signed long long int method_on_a_name(const std::vector<std::bitset<16>> &row, std::size_t k,
+                                      const std::string &name, Code declared_as, std::string &why,
+                                      const std::string &file)
+{
+    if (code_at(row, k) != token::method_token || !token::is_method_code(code_at(row, k + 1)))
+        return success;
+    const std::string registry_name = method_spelling(code_at(row, k + 1));
+    const signed long long int judged = method_judged(row, k, name, declared_as, why, name + "." + registry_name);
+    if (judged == success)
+        return success;
+    const std::string written = method_as_written(row, k + 1, file, registry_name);
+    if (written == registry_name)
+        return judged;
+    why.clear();
+    return method_judged(row, k, name, declared_as, why, name + "." + written);
 }
 
 // WHAT A METHOD-CALL STATEMENT MAY BE, WHOLE (the review: `f.size = 3`, `f.`,

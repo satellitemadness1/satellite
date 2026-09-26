@@ -1579,10 +1579,16 @@ expect "satellite.help(double) is the float, (bin) the binary, and (window) name
 # example wants two words after it, satellite.history's is refused as its comment says, include
 # and library name files that are not there, and the console and window examples have no
 # display -- and it is exactly those eight, by page, or an example that broke is named here.
-help_examples=$(timeout 300 python3 utility/check_help_examples.py "$interpreter" 2>&1)
+# ITS OWN TEMPORARY FOLDER, and nothing is left in it (the review, 2026-09-26): each example's
+# empty XDG_RUNTIME_DIR was a mkdtemp that was never removed, 33 folders in /tmp a run.
+help_tmp=$PWD/build/help_examples_tmp
+rm -rf -- "$help_tmp" && mkdir -p -- "$help_tmp"
+help_examples=$(TMPDIR=$help_tmp timeout 300 python3 utility/check_help_examples.py "$interpreter" 2>&1)
 expect "every satellite.help example runs, but the eight its checker's header names" \
        "satellite.help/arguments/help_text.txt satellite.help/satellite.console/help_text.txt satellite.help/satellite.history/help_text.txt satellite.help/satellite.include/help_text.txt satellite.help/satellite.library/help_text.txt satellite.help/satellite.library/help_text.txt satellite.help/satellite.variable.window/help_text.txt satellite.help/satellite.window/help_text.txt |8 failing" \
        "$(printf '%s\n' "$help_examples" | sed -n 's/^\(FAIL\|TIMEOUT\) \([^:]*\):.*/\2/p' | tr '\n' ' ')|$(printf '%s\n' "$help_examples" | tail -n 1)"
+expect "... and running them leaves nothing behind in the temporary folder it was given" 0 \
+       "$(find "$help_tmp" -mindepth 1 -maxdepth 1 | wc -l)"
 # A brace inside a string is text and not a block: the refusals are read from the CODES.
 printf 'satellite.console.display("{ not a block }")\n' | "$interpreter" --repl 2>/dev/null | grep -q '{ not a block }'
 expect "a brace inside a string literal is not a block" 0 $?
@@ -5914,6 +5920,70 @@ expect "... and a method on a statement's second line is refused by the name wri
        "$(body_refused joined_method '    satellite.variable.number n = 3
     satellite.console.display(n
         .power(2))' 'n.power is not built for satellite.variable.number' | cut -d'|' -f1,2)"
+# THE REVIEW OF THE ERROR SWEEP, 2026-09-26. A list or a map item that breaks after a comparison
+# or a ! and goes on with a name is one statement, as it is inside ( ) -- the never-closed rule
+# above called `{a >` a list left open, where the build before it printed {false, 1}.
+expect "{a > / b, 1}, {a < / b}, {\"big\": a > / b} and {1, ! / t} over two lines each run, as they did" "0|0|1|1|1|1|1|1" \
+       "$(body_refused compare_split '    satellite.variable.number a = 3
+    satellite.variable.number b = 4
+    satellite.container.list l = {a >
+        b, 1}
+    satellite.console.display(l)
+    satellite.console.display({a <
+        b})
+    satellite.console.display({a, b, a > b, a <
+        b})
+    satellite.container.map m = {"big": a >
+        b}
+    satellite.console.display(m)
+    satellite.variable.bool t = satellite.bool.true
+    satellite.console.display({1, !
+        t})' 'never closed')|$(grep -cx '{false, 1}' "$sweep/compare_split.out")|$(grep -cx '{true}' "$sweep/compare_split.out")|$(grep -cx '{3, 4, false, true}' "$sweep/compare_split.out")|$(grep -cx '{"big": false}' "$sweep/compare_split.out")|$(grep -cx '{1, false}' "$sweep/compare_split.out")"
+# A LIST LEFT OPEN JUST INSIDE A BLOCK WHOSE { ENDS ITS HEADER'S LINE has its caret under the
+# list's {, where it was under the = two columns to the left: the join moves that { to the front
+# of the list's line, and the list's column was looked for in the line as it was written.
+expect "... and l = {1, 2 left open just inside an if's {, the caret under the list's {, not the =" "13|1|0|1|1" \
+       "$(body_refused open_list_in_if '    satellite.variable.number a = 1
+    satellite.statement.if(a == 1) {
+        satellite.container.list l = {1, 2
+        satellite.console.display("x")
+    }' 'this list was opened with { and never closed with }')|$(grep -c 'open_list_in_if.satl:8$' "$sweep/open_list_in_if.out")|$(caret_under_brace "$sweep/open_list_in_if.out")"
+# AN ARGUMENT A CAPSULE REFUSES IS SHOWN AT THE CALL THAT HANDED IT IN, when the call stands
+# inside an expression -- `display(1 + f(1, "x"))` had its caret under display, the statement's
+# first word, and not under f.
+printf 'satellite.include(satellite)\n\nsatellite.capsule f(satellite.variable.number a, satellite.variable.number b)\n{\n    satellite.return(a)\n}\n\nsatellite.capsule satellite.main()\n{\n    satellite.console.display("before")\n    satellite.console.display(1 + f(1, "x"))\n    satellite.return(satellite)\n}\n' > "$sweep/call_place.satl"
+"$interpreter" "$sweep/call_place.satl" > "$sweep/call_place.out" 2>&1; code_run=$?
+expect "an argument refused inside display(1 + f(1, \"x\")) is shown under the f that handed it in" "27|1|1|1" \
+       "$code_run|$(tr '\n' ' ' < "$sweep/call_place.out" | grep -c "f's b was declared satellite.variable.number, and it holds a string")|$(grep -c 'call_place.satl:11$' "$sweep/call_place.out")|$(caret_under_first "$sweep/call_place.out" 'f(')"
+# THE CHECKER'S TIME GROWS WITH THE FILE, NOT WITH ITS SQUARE. Each method's written name was
+# read back from the whole file, split and joined again, for every method a program had, so
+# 4,000 lines of s = s.lower() took 4 s where 4,000 lines of s = s + "b" take 0.1; and each
+# line a warning was logged from paid the same, so 2,000 of them took 1.6 s.
+python3 - "$sweep" <<'EOF'
+import sys
+room = sys.argv[1]
+head = 'satellite.include(satellite)\n\nsatellite.capsule satellite.main()\n{\n'
+tail = '    satellite.return(satellite)\n}\n'
+for name, line in (('many_methods', '    s = s.lower()\n'), ('many_plain', '    s = s + "b"\n')):
+    with open('%s/%s.satl' % (room, name), 'w') as out:
+        out.write(head + '    satellite.variable.string s = "Ab"\n' + line * 4000 +
+                  '    satellite.console.display(s)\n' + tail)
+for name, line in (('many_warned', '    b = satellite.file.exists(5)\n'),
+                   ('many_unwarned', '    b = satellite.file.exists("5")\n')):
+    with open('%s/%s.satl' % (room, name), 'w') as out:
+        out.write(head + '    satellite.variable.bool b = satellite.bool.true\n' + line * 2000 +
+                  '    satellite.console.display(b)\n' + tail)
+EOF
+methods=$( { TIMEFORMAT=%R; time "$interpreter" "$sweep/many_methods.satl" > "$sweep/many_methods.out" 2>&1; } 2>&1 )
+plain=$( { TIMEFORMAT=%R; time "$interpreter" "$sweep/many_plain.satl" > "$sweep/many_plain.out" 2>&1; } 2>&1 )
+expect "4,000 lines of s = s.lower() are checked in the time 4,000 of s = s + \"b\" are (${methods}s against ${plain}s)" "1|1|1" \
+       "$(grep -cx ab "$sweep/many_methods.out")|$(grep -cx 'Ab\(bbbb\)\{1000\}' "$sweep/many_plain.out")|$(awk -v m="$methods" -v p="$plain" 'BEGIN { print (m < 2 * p + 0.3) ? 1 : 0 }')"
+warn_home=$PWD/$sweep/warn_home
+rm -rf -- "$warn_home" && mkdir -p -- "$warn_home/.satl" && cp "$CHECK_HOME/.satl/config.ini" "$warn_home/.satl/"
+warned=$( { TIMEFORMAT=%R; time HOME=$warn_home "$interpreter" "$sweep/many_warned.satl" > "$sweep/many_warned.out" 2>&1; } 2>&1 )
+unwarned=$( { TIMEFORMAT=%R; time HOME=$warn_home "$interpreter" "$sweep/many_unwarned.satl" > "$sweep/many_unwarned.out" 2>&1; } 2>&1 )
+expect "2,000 lines each logging an S020 run in the time 2,000 that log nothing do (${warned}s against ${unwarned}s)" "1|1|2000|1" \
+       "$(grep -cx false "$sweep/many_warned.out")|$(grep -cx false "$sweep/many_unwarned.out")|$(grep -c 'S020 NUMBER_TAKEN_AS_TEXT' "$warn_home/.satl/satellite.log")|$(awk -v w="$warned" -v u="$unwarned" 'BEGIN { print (w < 2 * u + 0.3) ? 1 : 0 }')"
 # A8: a capsule calling itself mid-body must not crash the interpreter (the author: "we could build
 # code that ONLY applies to this special circumstance so the interpreter doesnt' crash"). Every
 # capsule call measures the stack left and moves to a fresh segment under a megabyte
