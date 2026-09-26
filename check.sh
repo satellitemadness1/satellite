@@ -802,6 +802,45 @@ expect "a map written whole with a comma missing is refused, after a string endi
        "$(index_says "    satellite.console.display({\"a\": \"$(printf '\334\200')\" \"b\": 2})" 'this map was opened with { and never closed')"
 expect "satellite.container.map() takes nothing" "13|1" \
        "$(index_says '    satellite.container.map m = satellite.container.map(5)' 'makes a map of nothing and takes nothing')"
+# A MAP'S OWN NUMBERED WORDS, 003'S SPELLING (the author's testing, 2026-09-26, ERRORS2 1b A/D):
+# .has(k) is .contains(k), .get(k) is m[k], .set(k, v) is m[k] = v -- refused before, though the
+# map's help page names them, and his programs call them seventy times. A bare string starts
+# as "" (1b B), and S501's and S301's paragraphs say what was read and what met (1b E).
+cat > build/map_words.satl <<'MAPW_EOF'
+satellite.include(satellite)
+
+satellite.capsule satellite.main(satellite.variable.arguments args)
+{
+    satellite.container.map<satellite.variable.string, satellite.variable.number> m = {"a": 1}
+    satellite.console.display(m.has("a"))
+    satellite.console.display(m.has("z"))
+    satellite.console.display(m.get("a"))
+    m.set("b", 2)
+    m.set("a", 10)
+    satellite.console.display(m)
+    satellite.console.display(m.get("b") + 1)
+    satellite.console.display(args.has("cores"))
+    satellite.variable.string empty
+    satellite.console.display("[" + empty + "]")
+    satellite.return(satellite)
+}
+MAPW_EOF
+HOME="$CHECK_HOME" "$interpreter" build/map_words.satl > build/map_words.out 2>&1
+expect "a map's .has .get .set are contains, [k] and [k] =; the arguments' .has too; a bare string is \"\"" \
+       '0|true|false|1|{"a": 10, "b": 2}|3|true|[]' \
+       "$?|$(tail -7 build/map_words.out | tr '\n' '|' | sed 's/|$//')"
+expect "m.set is held to the map's value type, in the words m[k] = v uses" "27|1" \
+       "$(index_says '    satellite.container.map<satellite.variable.string, satellite.variable.number> m = {"a": 1}
+    m.set("b", "two")' 'the value does not fit: it holds a string')"
+expect "m.get of a missing key is S501, and its paragraph says a key a map does not hold" "47|1" \
+       "$(index_says '    satellite.container.map<satellite.variable.string, satellite.variable.number> m = {"a": 1}
+    satellite.console.display(m.get("zz"))' 'there is no such key in it .* or a key a map does not hold')"
+expect "m.set with one argument says what it takes" "13|1" \
+       "$(index_says '    satellite.container.map<satellite.variable.string, satellite.variable.number> m = {"a": 1}
+    m.set("b")' 'm.set(key, value) takes a key and a value')"
+expect "S301's paragraph names a value a declaration does not take, not only an operator" "27|1" \
+       "$(index_says '    satellite.container.list<satellite.variable.number> n = {1, 2}
+    n[1] = "text"' 'or a name, an item or a key given a value its declaration does not take')"
 # A WRITE THROUGH A multiple IS HELD TO THE TYPE IT HOLDS (type_shape.hpp's arm_holding):
 # the walk down the declaration stopped at a multiple, and everything below it went in --
 # 108 wrong values accepted in check_container_shapes' first sweep, 2026-09-26.

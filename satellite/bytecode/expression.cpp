@@ -1374,6 +1374,45 @@ Value one_operand(const std::vector<std::bitset<16>> &row, std::size_t &at, Expr
             if (read)
                 return after_an_argument(row, at, std::move(answer), name, key, *found.value, context);
         }
+        // A MAP'S OWN NUMBERED WORDS, 003'S SPELLING (1 4 1 2 and 1 4 1 1): `m.get(k)` IS m[k]
+        // AND `m.set(k, v)` IS m[k] = v, through the same two functions, so a missing key and a
+        // value that does not fit are refused in the same words. The author found them refused
+        // on 2026-09-26 (ERRORS2 1b A/D) and his programs call them seventy times. `.has(k)` is
+        // contains's third spelling, in REGISTRY.satellite.
+        if (found.value->is_index() && code_at(row, at) == token::method_token &&
+            code_at(row, at + 1) == token::name_token) {
+            std::size_t k = at + 1;
+            const std::string member = text_at(row, k);
+            if ((member == "get" || member == "set") && code_at(row, k) == token::left_parenthesis_token) {
+                const std::size_t open = k;
+                std::vector<Value> arguments;
+                ++k;
+                while (code_at(row, k) != token::right_parenthesis_token) {
+                    arguments.push_back(evaluate_at(row, k, 1, context));
+                    if (context.code != success) return Value();
+                    if (code_at(row, k) != token::comma_token) break;
+                    ++k;
+                }
+                const std::size_t wanted = member == "get" ? 1 : 2;
+                if (code_at(row, k) != token::right_parenthesis_token || arguments.size() != wanted) {
+                    context.refuse(satl_line_not_understood,
+                                   name + (member == "get" ? ".get(key) takes one key, and reads the value under it"
+                                                           : ".set(key, value) takes a key and a value, and files one under the other"),
+                                   open);
+                    return Value();
+                }
+                at = k + 1;
+                if (member == "get") {
+                    Value answer = index_into(*found.value, arguments[0], name, name_at, context);
+                    if (context.code != success) return Value();
+                    return maybe_a_method(row, at, std::move(answer), "that value", context);
+                }
+                static const TypeShape kAnything;
+                write_through_index(*found.value, {arguments[0]}, std::move(arguments[1]), name, name_at,
+                                    found.shape != nullptr ? *found.shape : kAnything, context);
+                return Value();
+            }
+        }
         // `f[n]` -- LINE n OF A FILE, and `a[n]` -- ITEM n OF A LIST, both
         // counting from 1 (the author, 2026-09-18: "we'll build it so you can
         // iterate over the lines as if they were objects").

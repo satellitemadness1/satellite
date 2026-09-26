@@ -136,7 +136,7 @@ inline constexpr Code append_token = 0x0B07;  // append  [METHOD] object.append(
 inline constexpr Code insert_token = 0x0B08;  // insert  [METHOD] object.insert(n, x) -- x becomes line n and the rest move down; lines c
 inline constexpr Code index_of_token = 0x0B09;  // index_of  [METHOD] object.index_of(x) -- the number of the first line that IS x, or 0 (S
 inline constexpr Code search_token = 0x0B0A;  // search  [METHOD] object.search(x) -- the number of the first line that CONTAINS x, or 0 
-inline constexpr Code contains_token = 0x0B0B;  // contains/contain  [METHOD] object.contains(x) -- whether any line is x (a file), any ite
+inline constexpr Code contains_token = 0x0B0B;  // contains/contain/has  [METHOD] object.contains(x) -- whether any line is x (a file), any
 inline constexpr Code remove_at_token = 0x0B0C;  // remove_at  [METHOD] object.remove_at(n) -- takes line n out (SATELLITE_FILE_OPERATIONS, 
 inline constexpr Code remove_token = 0x0B0D;  // remove  [METHOD] object.remove(x) -- takes out the first line that is x (SATELLITE_FILE_
 inline constexpr Code remove_first_token = 0x0B0E;  // remove_first  [METHOD] object.remove_first() (SATELLITE_FILE_OPERATIONS, 2026-09-18)
@@ -354,6 +354,7 @@ inline constexpr Code method_code_of(std::string_view spelling)
     if (spelling == "search") return search_token;
     if (spelling == "contains") return contains_token;
     if (spelling == "contain") return contains_token;
+    if (spelling == "has") return contains_token;
     if (spelling == "remove_at") return remove_at_token;
     if (spelling == "remove") return remove_token;
     if (spelling == "remove_first") return remove_first_token;

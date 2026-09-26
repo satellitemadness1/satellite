@@ -159,8 +159,10 @@ inline SCode s_code_for(signed long long int machine_code)
                 "change would be a global, and satellite has none."};
     case types_do_not_meet:
         return {"S301", "TYPES_DO_NOT_MEET",
-                "this operator has no scenario for the two kinds it was given. Nothing was guessed "
-                "at, because a guess here is an answer that is wrong and does not say so."};
+                "two kinds met that have nothing to do with each other: an operator given kinds it "
+                "has no scenario for, or a name, an item or a key given a value its declaration does "
+                "not take. Nothing was guessed at, because a guess here is an answer that is wrong "
+                "and does not say so."};
     case division_by_zero:
         return {"S401", "DIVISION_BY_ZERO",
                 "a divisor worked out to 0. There is no number this could answer, so it answers "
@@ -186,8 +188,9 @@ inline SCode s_code_for(signed long long int machine_code)
                 "a setting could not be saved, so it holds for this run and is gone at the end of it."};
     case line_past_the_end:
         return {"S501", "LINE_PAST_THE_END",
-                "a line was read by its number and the file has no line with that number. Lines "
-                "count from 1, and the last one is the file's size."};
+                "something was read that is not there: a line past the end of a file, an item past "
+                "the end of a list, or a key a map does not hold. Lines and items count from 1, and "
+                "the last one is the size."};
     case file_has_no_lines:
         return {"S502", "FILE_HAS_NO_LINES",
                 "a word about lines was used on a binary file, and a binary file is bytes, not lines."};

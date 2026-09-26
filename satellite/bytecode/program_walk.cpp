@@ -1073,10 +1073,16 @@ signed long long int run_for(const BytecodeRegistry &registry,
 // other way to fill one -- an index has no literal yet. A list starts empty for
 // the same reason, and every other type still starts as nothing, which is what
 // name_not_declared already reports when it is read too early.
+//
+// A STRING STARTS AS "" FOR THE SAME REASON (2026-09-26, ERRORS2 1b B): the author declared
+// `satellite.variable.string empty` and could not display it -- it held nothing, and display
+// refuses nothing. An empty string is what a string with nothing in it is, as an empty list
+// is. What a bare NUMBER holds is his to rule, so it still holds nothing.
 Value empty_container_for(Code declared)
 {
     if (is_an_index_word(declared)) return Value::of_index(make_index());
     if (declared == word::code_of(1, 4, 2)) return Value::of_list(make_list());
+    if (declared == word::code_of(1, 6, 1)) return Value::of_string(satellite_string());
     return Value();
 }
 

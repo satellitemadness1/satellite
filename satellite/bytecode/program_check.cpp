@@ -1210,6 +1210,14 @@ signed long long int names_in_statement(const std::vector<std::bitset<16>> &row,
                     declared.find(name)->second != word::code_of(1, 6, 21)) {
                     std::size_t m = k + 1;
                     const std::string member = text_at(row, m);
+                    // A MAP'S .get(k) AND .set(k, v) (expression.cpp, 2026-09-26): its key and
+                    // value are judged from the `(` as the loop goes on; the count, when it runs.
+                    const Code as = declared.find(name)->second;
+                    if ((member == "get" || member == "set") && code_at(row, m) == token::left_parenthesis_token &&
+                        (is_an_index_word(as) || as == word::code_of(1, 4, 6))) {
+                        at = m;
+                        continue;
+                    }
                     why = name + " is " + word::spelling_of(declared.find(name)->second) + ", and " + member +
                           " is not one of its methods -- only an object of a satellite.spacesuit has capsules to call";
                     return satl_line_not_understood;
