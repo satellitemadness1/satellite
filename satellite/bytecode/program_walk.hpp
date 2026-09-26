@@ -238,6 +238,23 @@ signed long long int run_typed_line(const BytecodeRegistry &registry,
                                     TypedLineMemory &kept,
                                     MachineState &state);
 
+// A STATEMENT AT THE PROMPT WHEN THE SESSION HAS DECLARED CAPSULES OR SPACESUITS (the author,
+// 2026-09-25): it is the body of `site`, a hidden capsule at the end of what the session
+// declared (session.cpp), checked with the kept names as its first names and then run in
+// `kept`'s own table -- so what it declares is kept, and it can call what was declared.
+signed long long int check_prompt_statements(const BytecodeRegistry &registry,
+                                             const CapsuleTable &capsules,
+                                             const CapsuleSite &site,
+                                             const FunctionTable &functions,
+                                             const TypedLineMemory &kept,
+                                             MachineState &state);
+signed long long int run_prompt_statements(const BytecodeRegistry &registry,
+                                           const CapsuleTable &capsules,
+                                           const CapsuleSite &site,
+                                           const FunctionTable &functions,
+                                           TypedLineMemory &kept,
+                                           MachineState &state);
+
 // THE SESSION IS OVER: every file a kept name holds is saved and closed, and a save
 // that fails is said, as at the end of a capsule's body. success or that failure.
 signed long long int forget_typed_lines(TypedLineMemory &kept);

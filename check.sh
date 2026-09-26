@@ -1378,10 +1378,12 @@ SATL="$interpreter" timeout 600 python3 -u satellite/satl/check_session.py > bui
 expect "satl --repl at a real terminal: $(grep -c '^ok' build/check_session.out) checks (build/check_session.out)" 0 $code
 # The prompt's own refusals, from a pipe: each says which spelling it refused, and the
 # session goes on to the line after them.
-printf 'satellite.include(satellite)\n{\nsatellite.capsule satellite.main()\nsatellite.return(satellite)\nsatellite.help(no_such_topic)\nsatellite.console.display("after them all")\n' | \
+# REBASED 2026-09-25: a block is gathered at the prompt now, so a stray } and a satellite.main
+# typed there are what is refused in the place of "a block has nowhere to live".
+printf 'satellite.include(satellite)\n}\nsatellite.capsule satellite.main()\n{\n}\nsatellite.return(satellite)\nsatellite.help(no_such_topic)\nsatellite.console.display("after them all")\n' | \
     "$interpreter" --repl > build/repl_refusals.out 2>&1
-expect "the five spellings and a help with no topic are refused by name, and the line after them still runs" "1|1|1|1|1|1" \
-       "$(grep -c 'a session has already taken satellite in' build/repl_refusals.out)|$(grep -c 'a block has nowhere to live' build/repl_refusals.out)|$(grep -c 'a capsule belongs to a program' build/repl_refusals.out)|$(grep -c 'nothing here to return from' build/repl_refusals.out)|$(grep -c 'there is no help on no_such_topic yet' build/repl_refusals.out)|$(grep -c '^after them all$' build/repl_refusals.out)"
+expect "the prompt's refusals by name -- include, a stray }, satellite.main, return, a help with no topic -- and the line after them still runs" "1|1|1|1|1|1" \
+       "$(grep -c 'a session has already taken satellite in' build/repl_refusals.out)|$(grep -c 'this } closes nothing' build/repl_refusals.out)|$(grep -c 'satellite.main belongs to a program you run' build/repl_refusals.out)|$(grep -c 'nothing here to return from' build/repl_refusals.out)|$(grep -c 'there is no help on no_such_topic yet' build/repl_refusals.out)|$(grep -c '^after them all$' build/repl_refusals.out)"
 # satellite.help() AND satellite.help(topic) READ THE TEXT FILES IN satellite.help/ (the
 # author, 2026-09-22: "you just need to write text files ... then a function that reads
 # them"): the list, a topic by its last part, and the same topic by its whole name.
@@ -5169,10 +5171,80 @@ expect "a list and an index write a string with \\\" \\\\ \\n \\t in it as its l
        '{"a\"b", "c\\d", "e\nf", "plain"}|{"k\"": "v\tw"}' "$(tr '\n' '|' < build/list_literals.out | sed 's/|$//')"
 # AND A LIST'S { IS NOT A BLOCK: a { after = ( , [ : or an operator opens a value, and
 # one at the start of a line or after ) a name or a word still opens a refused block.
-printf '%s\n' 'satellite.statement.if(1 == 1) {' 'satellite.console.display({1, {2, 3}}.size)' |
+# REBASED 2026-09-25: the block is gathered until its } and then runs.
+printf '%s\n' 'satellite.statement.if(1 == 1) {' 'satellite.console.display({1, {2, 3}}.size)' '}' |
     "$interpreter" --repl > build/prompt_braces.out 2>&1
-expect "prompt: if(...) { is still a block, and a list inside a list is a value" "1|2" \
-       "$(grep -c 'a block has nowhere to live at the prompt' build/prompt_braces.out)|$(grep -x '[0-9][0-9]*' build/prompt_braces.out)"
+expect "prompt: if(...) { opens a block that runs at its }, and a list inside a list is a value" "0|2" \
+       "$(grep -c 'refused\|S[0-9][0-9]*:' build/prompt_braces.out)|$(grep -x '[0-9][0-9]*' build/prompt_braces.out)"
+
+# BLOCKS AT THE PROMPT (the author, 2026-09-25; satellite/satl/session.cpp): a block is gathered
+# until its braces close; what it declares is kept for the session, what it does runs. From a pipe,
+# with the braces written out, as a paste brings them -- check_session.py types them by hand.
+cat > build/prompt_blocks.in <<'PROMPT_BLOCKS_EOF'
+satellite.capsule greet(satellite.variable.string who)
+{
+    satellite.console.display("hello, " + who)
+}
+greet("Ada")
+satellite.spacesuit dog()
+{
+    satellite.constructor(satellite.variable.string given)
+    {
+        name = given
+    }
+    satellite.protected
+    {
+        satellite.variable.string name = ""
+    }
+    satellite.public
+    {
+        satellite.capsule call_speak()
+        {
+            satellite.console.display(name + " says woof")
+        }
+    }
+}
+dog rex("Rex")
+rex.call_speak()
+satellite.variable.number n = 3
+satellite.statement.if(n > 5)
+{
+    satellite.console.display("big")
+}
+satellite.statement.else
+{
+    satellite.console.display("small")
+}
+satellite.statement.while(n > 0)
+{
+    satellite.console.display(n)
+    n = n - 1
+}
+satellite.console.display("a" +
+    "b")
+satellite.capsule greet(satellite.variable.string who)
+{
+    satellite.console.display("hi again, " + who)
+}
+greet("Bo")
+satellite.capsule broken()
+{
+    satellite.console.display(nobody)
+}
+greet("still here")
+satellite.statement.if(n == 0) {
+    satellite.console.display("brace on the if's line")
+}
+PROMPT_BLOCKS_EOF
+"$interpreter" --repl < build/prompt_blocks.in > build/prompt_blocks.out 2> build/prompt_blocks.err; code=$?
+expect "prompt blocks: a capsule and a spacesuit kept and used, if/else, while, a line over two, a capsule declared again, { on the if's line" \
+       "hello, Ada|Rex says woof|small|3|2|1|ab|hi again, Bo|hi again, still here|brace on the if's line" \
+       "$(tr '\n' '|' < build/prompt_blocks.out | sed 's/|$//')"
+expect "... and a declaration with a fault is refused and not kept, the session going on" "25|1" \
+       "$code|$(grep -c 'in broken, nobody has no satellite.variable line declaring it' build/prompt_blocks.err)"
+printf 'satellite.capsule unfinished()\n{\n    satellite.console.display(1)\n' | "$interpreter" --repl > /dev/null 2> build/prompt_open.err; code=$?
+expect "... and the input ending inside a block says so, and runs none of it" "13|1" \
+       "$code|$(grep -c 'the input ended inside a block, so it was not run' build/prompt_open.err)"
 
 # M5 -- satellite.log AND NAMES (satellite/machine/satellite_log.hpp). Every report satl
 # makes is kept as the author's [entry], once each; a warning meant for the log alone
@@ -5546,6 +5618,15 @@ expect ".center() and .centre() at 40 columns: hello after 17 spaces, two after 
        "'                 hello'|'                  two'|'left'" "$centred_at_40"
 expect "... and into a pipe, which has no width, as written" "hello|two|left" \
        "$("$interpreter" "$sweep/center.satl" 2>/dev/null | tr '\n' '|' | sed 's/|$//')"
+# A BLOCK'S { ON ITS HEADER'S LINE (A4's rule): an if, a while, an else and an else if accept it
+# as a capsule already did, and every line number stays the editor's.
+printf 'satellite.include(satellite)\n\nsatellite.capsule satellite.main() {\n    satellite.variable.number n = 2\n    satellite.statement.if(n == 1) {\n        satellite.console.display("one")\n    } satellite.statement.else satellite.statement.if(n == 2) {\n        satellite.console.display("two")\n    } satellite.statement.else {\n        satellite.console.display("other")\n    }\n    satellite.statement.while(n > 0) {\n        n = n - 1\n    }\n    satellite.console.display(n)\n    satellite.console.display(nobody)\n    satellite.return(satellite)\n}\n' > "$sweep/same_line_braces.satl"
+"$interpreter" "$sweep/same_line_braces.satl" > "$sweep/same_line_braces.out" 2>&1; code_run=$?
+expect "a { on its header's line: if, else if, else, while -- and a report after them names the editor's line" "25|1" \
+       "$code_run|$(grep -c 'same_line_braces.satl:16$' "$sweep/same_line_braces.out")"
+sed -i '/display(nobody)/d' "$sweep/same_line_braces.satl"
+expect "... and the chain runs: two, then the while counts n down to 0" "two|0" \
+       "$("$interpreter" "$sweep/same_line_braces.satl" 2>/dev/null | tr '\n' '|' | sed 's/|$//')"
 # A4: "it should accept anything that is valid satellite regardless of how many spaces or lines
 # are in it, we should accept strings that span 90 lines" (bytecode_registry.cpp,
 # join_statements_across_lines). His own example first, then every way a line goes on.

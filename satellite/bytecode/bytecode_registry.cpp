@@ -696,6 +696,46 @@ std::vector<NeverClosed> join_statements_across_lines(std::vector<std::string> &
     }
     if (into != std::string::npos)
         lines[into] = joined;
+
+    // A BLOCK'S { AT THE END OF ITS HEADER'S LINE -- `satellite.statement.if(x) {`, `} satellite.
+    // statement.else {` -- moves to the front of the next line (2026-09-25, the author's "accept
+    // anything that is valid satellite regardless of how many spaces or lines are in it"): the
+    // statements find a body's { after their line's end, and a capsule's header already took it
+    // either way. The line count stays exactly what it was. A list's { (after = ( , [ or inside
+    // brackets) is a value and stays where it is.
+    if (!in_string && open.empty()) {
+        for (std::size_t i = 0; i + 1 < lines.size(); ++i) {
+            const std::string &line = lines[i];
+            char before_brace = '\0', last = '\0', earlier = '\0';
+            std::size_t brace_at = std::string::npos;
+            int depth = 0;
+            bool quoted = false;
+            for (std::size_t k = 0; k < line.size(); ++k) {
+                const char c = line[k];
+                if (quoted) {
+                    if (c == '\\' && k + 1 < line.size()) ++k;
+                    else if (c == '"') { quoted = false; earlier = last; last = '"'; }
+                    continue;
+                }
+                if (c == '/' && k + 1 < line.size() && line[k + 1] == '/') break;
+                if (c == '"') { quoted = true; continue; }
+                if (c == ' ' || c == '\t') continue;
+                if (c == '(' || c == '[') ++depth;
+                else if ((c == ')' || c == ']') && depth > 0) --depth;
+                if (c == '{') { brace_at = k; before_brace = last; }
+                earlier = last;
+                last = c;
+            }
+            (void)earlier;
+            const bool a_blocks_brace = last == '{' && brace_at != std::string::npos && depth == 0 &&
+                                        before_brace != '\0' && before_brace != '(' && before_brace != ',' &&
+                                        before_brace != '=' && before_brace != '[' && before_brace != '{';
+            if (!a_blocks_brace)
+                continue;
+            lines[i].erase(brace_at, 1);
+            lines[i + 1].insert(0, "{ ");
+        }
+    }
     if (in_string)
         never.push_back({string_line, "a string that begins on this line is never closed -- the file ends inside "
                                       "it, so its closing \" is missing"});

@@ -84,6 +84,7 @@ LineStatus LineReader::read(const std::string &prompt, std::string &line)
 LineStatus LineReader::read(const Prompt &prompt, std::string &line)
 {
     line.clear();
+    typed_ = false;
     return interactive_ ? read_typed(prompt, line) : read_piped(line);
 }
 
@@ -223,6 +224,7 @@ LineStatus LineReader::read_typed(const Prompt &prompt, std::string &line)
             }
             leave(editor.line());
             line = editor.line();
+            typed_ = true;
             return LineStatus::Line;
 
         // CTRL-C ABANDONS THE LINE AND KEEPS THE SESSION.

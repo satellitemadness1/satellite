@@ -39,6 +39,9 @@ owed on them). Then PLAN M0.5: the build port, the installer and satl-term.
 | `display(...).center()` / `.centre()` | 6563258 | `bytecode/console_calls.cpp` |
 | A statement over any number of lines, and a string over as many as it spans; what the file ends inside is refused where it opened | 353c585 | `bytecode/bytecode_registry.cpp` (`join_statements_across_lines`) |
 | A capsule calling itself mid-body a million deep: fresh stack segments under 1 MiB left | 8c8dc35 | `machine/stack_segments.hpp` |
+| A number first + text that spells a number adds (`4 + "2"` is 6); a bool joins a string as `true`/`false` with one space | 1a913c0, 0117872 | `satellite_object/satellite_object.cpp` |
+| BLOCKS AT THE PROMPT: a block is gathered until its braces close; `{` and a spacesuit's constructor/protected/public are written for the person; a `}` on an indent-only line steps back; capsules and spacesuits are kept for the session, an if/while/for runs (an if waits one line for its else) | this commit | `satl/session.cpp`, `prompt/line_reader.hpp`, `prompt/editor.cpp`, `bytecode/program_check.cpp` (`check_prompt_statements`), `program_walk.cpp` (`run_prompt_statements`) |
+| A block's `{` on its header's line -- `if(x) {`, `} satellite.statement.else {`, `while(...) {` -- moves to the next line's front before lexing, so every statement takes it; line numbers unchanged | this commit | `bytecode/bytecode_registry.cpp` |
 
 | piece | files | checked by |
 |---|---|---|

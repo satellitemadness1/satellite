@@ -2123,6 +2123,42 @@ signed long long int run_typed_line(const BytecodeRegistry &registry,
     return answer;
 }
 
+signed long long int run_prompt_statements(const BytecodeRegistry &registry,
+                                           const CapsuleTable &capsules,
+                                           const CapsuleSite &site,
+                                           const FunctionTable &functions,
+                                           TypedLineMemory &kept,
+                                           MachineState &state)
+{
+    // THE PROGRAM AND ITS TABLE ARE THE PROMPT'S FOR THE LENGTH OF THE STATEMENT: a capsule
+    // called inside an expression finds them through state, as a file's does.
+    const BytecodeRegistry *program_before = state.program;
+    const CapsuleTable *capsules_before = state.capsules;
+    state.program = &registry;
+    state.capsules = &capsules;
+    Frame frame;
+    signed long long int ran = run_statements(registry, capsules, functions, site.row, site.body, kept.variables, state, frame);
+    state.program = program_before;
+    state.capsules = capsules_before;
+    if (ran == program_returned)
+        ran = success;
+    // AND EVERY FILE IT HOLDS IS SAVED, as after a plain typed line.
+    signed long long int answer = ran;
+    std::unordered_map<const satellite_file *, bool> still_unsaved;
+    for (satellite_file *file : files_kept(kept.variables)) {
+        if (!file->ok() || file->save()) continue;
+        still_unsaved.emplace(file, true);
+        if (kept.unsaved.count(file) != 0) continue;
+        const signed long long int code =
+            report_error("satl(prompt): the changes to " + file->path() + " could not be saved after the line -- " +
+                             file->error(),
+                         file_unwritable);
+        if (!stops_the_program(answer)) answer = code;
+    }
+    kept.unsaved = std::move(still_unsaved);
+    return answer;
+}
+
 signed long long int forget_typed_lines(TypedLineMemory &kept)
 {
     const signed long long int saved = close_files(kept.variables, success);

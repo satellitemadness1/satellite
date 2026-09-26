@@ -71,6 +71,14 @@ Editor::Outcome Editor::apply(const KeyEvent &event)
         return Outcome::Continue;
 
     case Key::Char:
+        // A } TYPED ON A LINE THAT IS ONLY ITS INDENTATION steps back one level first: the
+        // prompt starts a block's next line one level in (session.cpp), and the } that closes
+        // the block belongs under the line that opened it (2026-09-25).
+        if (event.text == "}" && cursor_ == buffer_.size() && buffer_.size() >= 4 &&
+            buffer_.find_first_not_of(' ') == std::string::npos) {
+            buffer_.erase(buffer_.size() - 4);
+            cursor_ = buffer_.size();
+        }
         buffer_.insert(cursor_, event.text);
         cursor_ += event.text.size();
         return Outcome::Continue;

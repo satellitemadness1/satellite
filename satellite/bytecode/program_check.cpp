@@ -2081,6 +2081,12 @@ signed long long int check_typed_line(const BytecodeRegistry &registry,
             return report_error("satl(prompt): " + why, satl_line_not_understood);
     }
     for (std::size_t at = 0; at < row.size() && code_at(row, at) != token::end_of_file_token; ) {
+        // A BLOCK TYPED AT THE PROMPT (2026-09-25): its braces are stepped over as a
+        // capsule body's are, and each statement inside is judged in turn.
+        if (code_at(row, at) == token::left_brace_token || code_at(row, at) == token::right_brace_token) {
+            ++at;
+            continue;
+        }
         const std::size_t was = at;
         std::string why;
         if (habit_from_another_language(row, at, why))
@@ -2092,6 +2098,57 @@ signed long long int check_typed_line(const BytecodeRegistry &registry,
             declared[replaced.first] = replaced.second;
         where.replacing.clear();
         if (at <= was)                  // a statement must always move forward
+            ++at;
+    }
+    (void)state;
+    return success;
+}
+
+signed long long int check_prompt_statements(const BytecodeRegistry &registry,
+                                             const CapsuleTable &capsules,
+                                             const CapsuleSite &site,
+                                             const FunctionTable &functions,
+                                             const TypedLineMemory &kept,
+                                             MachineState &state)
+{
+    // THE SAME JUDGEMENT AS A TYPED LINE, with the prompt's own capsules and spacesuits
+    // around it: the statement is the body of a hidden capsule at the end of what the
+    // session declared (session.cpp), so a bare capsule name reaches a declared capsule and
+    // a spacesuit's name is a type -- and the kept names are its first names, as a
+    // capsule's parameters are.
+    DeclaredNames declared;
+    EndingNames ending;
+    Where where{registry, capsules, site.scope, functions};
+    where.site = &site;
+    where.typed_line = true;
+    for (const std::pair<const std::string, Variable> &name : kept.variables) {
+        declared[name.first] = name.second.declared;
+        remember_shape(where, name.first, name.second.shape);
+    }
+    const std::vector<std::bitset<16>> &row = registry[site.row];
+    std::size_t depth = 0;
+    for (std::size_t at = site.body; at < row.size(); ) {
+        const Code code = code_at(row, at);
+        if (code == token::end_of_file_token)
+            break;
+        if (code == token::right_brace_token) {
+            if (depth == 0) break;      // the hidden capsule's own closing brace
+            --depth;
+            ++at;
+            continue;
+        }
+        if (code == token::left_brace_token) { ++depth; ++at; continue; }
+        const std::size_t was = at;
+        std::string why;
+        if (habit_from_another_language(row, at, why))
+            return report_error("satl(prompt): " + why, satl_line_not_understood);
+        const signed long long int stopped = check_statement(row, at, where, declared, ending, why);
+        if (stops_the_program(stopped))
+            return report_error("satl(prompt): " + why, stopped);
+        for (const std::pair<std::string, Code> &replaced : where.replacing)
+            declared[replaced.first] = replaced.second;
+        where.replacing.clear();
+        if (at <= was)
             ++at;
     }
     (void)state;

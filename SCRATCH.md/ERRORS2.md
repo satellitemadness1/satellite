@@ -106,15 +106,21 @@ it. It's one branch in the same function.
 
 It doesn't mention that `satellite.include(./x)` and `(../x)` work unquoted since tonight.
 
-### 5. A statement typed over several lines at the prompt
+### 5. Blocks at the prompt -- BUILT, at his word
 
-Files accept statements across lines since tonight (`join_statements_across_lines`). The prompt
-(`satl --repl`, satl's console) still runs each typed line alone:
-`satellite.console.display("a" +` then Enter is refused.
-
-Should the prompt wait for the rest, with a continuation prompt? It's a question of how the
-prompt should look and behave, so it's his. The joining code is already there to reuse
-(`satellite/satl/session.cpp` runs the typed line).
+A block is gathered until its braces close. The prompt writes the `{`, and for a spacesuit its
+constructor, protected and public sections. What a block declares is kept for the session;
+an if, while or for runs. A statement over several lines is gathered too. Terminal-checked in
+`satellite/satl/check_session.py`. Still open around it:
+- **A level is 4 spaces, not the tab he wrote.** Every satellite program is indented with 4
+  spaces. One constant in session.cpp changes it.
+- **A block written whole on ONE line, `{ statement }`, is refused**, in a file as at the
+  prompt ("followed by something that is not a method call"). A statement can't have a `}`
+  after it on its line. His "accept anything valid regardless of lines" suggests it should
+  work; the fix is the same kind as tonight's same-line `{` (move a trailing `}` to the next
+  line).
+- **Re-declaring a spacesuit that objects were made from:** the objects keep the old layout
+  (each holds its own).
 
 ### 6. Choices made tonight that he may overrule
 

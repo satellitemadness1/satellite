@@ -34,7 +34,7 @@ open(os.path.join(room, '.hidden'), 'w').close()
 os.mkdir(os.path.join(room, 'nested'))
 
 t = Terminal(width=100)
-check(t.wait_for('One statement a line'), 'the session says how to leave it')
+check(t.wait_for('A statement a line'), 'the session says how to leave it')
 check(t.wait_for(prompt_in(os.getcwd()).rstrip()), 'the prompt is [satellite][user][folder]>>')
 row = t.screen.row
 drawn = t.screen.text()[row]
@@ -121,6 +121,54 @@ check(t.wait_for(lambda t: b'directory_not_found' in t.raw),   # the message is 
 t.at_prompt()
 t.type(b'satellite.console.display("the session goes on")\r')
 check(t.wait_for('the session goes on'), '... and the session goes on')
+
+# BLOCKS AT THE PROMPT (the author, 2026-09-25): a line that opens a block has its { written
+# for it and the next line starts one level in; a spacesuit gets its constructor, and then its
+# protected and public sections as each } closes the one before; a } typed on a line that is
+# only indentation steps back first; what the block declares is kept, what it does runs.
+t.at_prompt()
+t.type(b'satellite.spacesuit dog()\r')
+check(t.wait_for('...     satellite.constructor()') and screen_order(t, '... {', '...     satellite.constructor()', '...     {'),
+      'satellite.spacesuit dog() + Enter writes { and satellite.constructor() with its {')
+t.type(b'satellite.console.display("made")\r')
+t.type(b'}\r')
+check(t.wait_for('...     satellite.protected') and screen_order(t, '...     }', '...     satellite.protected', '...     {'),
+      '... the constructor\'s } steps back one level, and satellite.protected is written with its {')
+t.type(b'satellite.variable.string name = "Rex"\r')
+t.type(b'}\r')
+check(t.wait_for('...     satellite.public') and screen_order(t, '...     satellite.protected', '...     satellite.public'),
+      '... and after protected\'s }, satellite.public with its {')
+t.type(b'satellite.capsule call_speak()\r')
+check(t.wait_for(lambda t: t.screen.text().count('...         {') >= 1),
+      '... a capsule inside it has its { written too')
+t.type(b'satellite.console.display(name + " says woof")\r')
+t.type(b'}\r')
+t.type(b'}\r')
+t.type(b'}\r')
+t.at_prompt()
+t.type(b'dog d()\r')
+check(t.wait_for('made'), '... and the spacesuit was kept: an object of it is made at the prompt')
+t.at_prompt()
+t.type(b'd.call_speak()\r')
+check(t.wait_for('Rex says woof'), '... and its capsule runs')
+t.at_prompt()
+t.type(b'satellite.capsule twice(satellite.variable.number n)\r')
+check(t.wait_for(lambda t: t.screen.text()[t.screen.row].startswith('...') and t.screen.col == 8 and
+                 t.screen.text()[t.screen.row - 1] == '... {'),
+      'satellite.capsule + Enter writes { and starts the next line one level in')
+t.type(b'satellite.return(n * 2)\r')
+t.type(b'}\r')
+t.at_prompt()
+t.type(b'satellite.variable.number big = twice(21)\r')
+t.at_prompt()
+t.type(b'satellite.statement.if(big == 42)\r')
+t.type(b'satellite.console.display("forty two")\r')
+t.type(b'}\r')
+t.type(b'satellite.statement.else\r')
+t.type(b'satellite.console.display("not it")\r')
+t.type(b'}\r')
+check(t.wait_for('forty two') and 'not it' not in [r.strip() for r in t.screen.text()],
+      'an if written at the prompt waits for its else, then runs, with a capsule the session declared')
 
 t.at_prompt()
 t.type(b'exit\r')

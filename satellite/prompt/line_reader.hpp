@@ -82,6 +82,17 @@ public:
     // Both ends are a terminal: lines are edited, and the prompt is drawn.
     bool interactive() const { return interactive_; }
 
+    // THE NEXT LINE STARTS WITH THIS ALREADY WRITTEN, the cursor after it -- the indentation
+    // of a block the prompt opened, or a section it typed for a spacesuit (the author,
+    // 2026-09-25). Only at a terminal, and never over a paste's unfinished line.
+    void preset(std::string text)
+    {
+        if (interactive_ && carried_.empty()) carried_ = std::move(text);
+    }
+    // WHETHER THE LAST LINE WAS TYPED AND ENTERED BY HAND -- not pasted, not piped. Only a
+    // line typed by hand has its { written for it: a paste and a pipe bring their own.
+    bool last_line_was_typed() const { return typed_; }
+
 private:
     LineStatus read_piped(std::string &line);
     LineStatus read_typed(const Prompt &prompt, std::string &line);
@@ -101,6 +112,7 @@ private:
     std::size_t scanned_ = 0; // a pipe: input_ holds no '\n' before this
     std::size_t last_read_ = 0; // bytes the last read(2) brought
 
+    bool typed_ = false;              // the last line came from the keys and Enter
     std::deque<std::string> pasted_;  // whole lines a paste brought, not yet answered
     std::string carried_;             // the paste's unfinished last line
 };
