@@ -1215,20 +1215,20 @@ Value one_operand(const std::vector<std::bitset<16>> &row, std::size_t &at, Expr
         return maybe_a_method(row, at, Value::of_list(make_list(std::move(items))), "that list", context);
     }
 
-    // A STRING LITERAL BECOMES A satellite_string HERE, which is the one doorway
-    // UTF-8 comes in through. Strict: a bad sequence is string_error (4) naming
-    // the byte, rather than a string standing for bytes that could not be read.
+    // A STRING LITERAL BECOMES A satellite_string HERE, straight from its codes and
+    // with no trip through UTF-8 (bytecode_registry.cpp's string_literal_at, FAST_PRINTING.md
+    // step 2). Strict: a character the string cannot hold is string_error (4), naming it,
+    // rather than a string standing for a character that could not be read.
     if (code == token::string_token) {
-        const std::string utf8 = string_at(row, at);
-        Value held;
-        std::size_t bad_offset = 0;
-        const signed long long int made = Value::of_utf8(utf8, held, bad_offset);
+        satellite_string text;
+        std::size_t bad_character = 0;
+        const signed long long int made = string_literal_at(row, at, text, bad_character);
         if (made != success) {
-            context.refuse(made, "that string holds a byte at " + std::to_string(bad_offset) +
-                                     " that is not part of any character");
+            context.refuse(made, "that string's character " + std::to_string(bad_character + 1) +
+                                     " is not a character a string can hold");
             return Value();
         }
-        return maybe_a_method(row, at, std::move(held), "that string", context);
+        return maybe_a_method(row, at, Value::of_string(std::move(text)), "that string", context);
     }
 
     // A BINARY LITERAL IS A satellite.variable.binary, its width kept: b0010 is

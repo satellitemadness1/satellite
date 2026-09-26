@@ -172,6 +172,10 @@ public:
         return (static_cast<char32_t>(narrow16_[unit + 1]) << 16) | static_cast<char32_t>(narrow16_[unit + 2]);
     }
 
+    // ROOM FOR `units` UNITS, so a string built a character at a time is allocated once
+    // (bytecode_registry.cpp's string_literal_at knows its length before it starts).
+    void reserve_units(std::size_t units) { narrow16_.reserve(units); }
+
     void append(const satellite_string &other);
     // Answers success, or string_error (4) for a code this type cannot hold: a
     // surrogate (0xD800-0xDFFF) or anything above 0x10FFFF. Nothing is appended

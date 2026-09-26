@@ -5,6 +5,7 @@
 #include "cascade_convert.hpp"
 
 #include "../satellite_variable_string/character_table.hpp"
+#include "../satellite_variable_string/satellite_string.hpp"
 #include "word_codes.hpp"
 
 #include <algorithm>
@@ -1092,6 +1093,106 @@ std::string string_at(const std::vector<std::bitset<16>> &row, std::size_t &at)
         }
     }
     return meant;
+}
+
+// A STRING LITERAL, BUILT STRAIGHT INTO ITS satellite_string (FAST_PRINTING.md step 2).
+// The evaluator read a literal as string_at's UTF-8 and then of_utf8 decoded it back, every
+// time its line ran: codes -> bytes a character at a time -> codes again, ~1,500 instructions
+// for a 37-character literal (callgrind on build 0108, 2026-09-26). There is nothing to
+// convert: a payload code under 128 IS the satellite_string code of that character -- one
+// character table, character_table.hpp -- and a character above U+FFFF is 40000 and two
+// units in both. So each character goes into the string as the code it already is.
+//
+// THE SAME TEXT AS string_at, BYTE FOR BYTE ONCE ENCODED, which is why every character --
+// a plain code, a wide one, one out of a wide run -- goes through `take`, the one place the
+// escapes are worked out, exactly as string_at works them out on the bytes: \" \\ \n \t \r
+// and \' become their character; a backslash before anything else, before a character
+// outside ASCII, or at the end, is kept; a code that is no character (text_at skips it)
+// neither makes nor breaks an escape.
+//
+// A CHARACTER THE STRING CANNOT HOLD -- a surrogate, or past U+10FFFF -- is string_error,
+// as of_utf8 refused its bytes. The lexer never writes one; a .sate made by hand could.
+signed long long int string_literal_at(const std::vector<std::bitset<16>> &row, std::size_t &at,
+                                       satellite_string &out, std::size_t &bad_character)
+{
+    constexpr char32_t kBackslash = character_table::code_of_ascii[static_cast<unsigned char>('\\')];
+    constexpr char32_t kNoEscape = 0xFFFFFFFF;
+    // What the character after a backslash stands for, or kNoEscape.
+    const auto escaped = [](char32_t code) -> char32_t {
+        if (code >= 128) return kNoEscape;
+        switch (character_table::ascii_of_code[code]) {
+        case '"': return character_table::code_of_ascii[static_cast<unsigned char>('"')];
+        case '\\': return character_table::code_of_ascii[static_cast<unsigned char>('\\')];
+        case 'n': return character_table::code_of_ascii[static_cast<unsigned char>('\n')];
+        case 't': return character_table::code_of_ascii[static_cast<unsigned char>('\t')];
+        case 'r': return character_table::code_of_ascii[static_cast<unsigned char>('\r')];
+        case '\'': return character_table::code_of_ascii[static_cast<unsigned char>('\'')];
+        default: return kNoEscape;
+        }
+    };
+
+    std::size_t i = at;
+    const unsigned long long int count = count_at(row, i);
+    const std::size_t stop = std::min(row.size(), i + static_cast<std::size_t>(count));
+    out.clear();
+    out.reserve_units(stop - i);
+    bool after_a_backslash = false;
+    std::size_t characters = 0;
+    signed long long int answer = success;
+    const auto put = [&](char32_t code) {
+        if (answer != success) return;
+        if (out.append_code(code) != success) {
+            answer = string_error;
+            bad_character = characters;
+            return;
+        }
+        ++characters;
+    };
+    const auto take = [&](char32_t code) {
+        if (after_a_backslash) {
+            after_a_backslash = false;
+            const char32_t meant = escaped(code);
+            if (meant != kNoEscape) {
+                put(meant);
+                return;
+            }
+            put(kBackslash);
+        }
+        if (code == kBackslash)
+            after_a_backslash = true;
+        else
+            put(code);
+    };
+
+    while (i < stop) {
+        const Code code = static_cast<Code>(row[i].to_ulong());
+        if (code < 128) {
+            take(code);
+            ++i;
+            continue;
+        }
+        // 40000: the two codes after it are one 32-bit character (D3.1).
+        if (code == token::wide_token) {
+            if (i + 2 < stop)
+                take(satellite_string::code_of((static_cast<char32_t>(row[i + 1].to_ulong()) << 16) |
+                                               static_cast<char32_t>(row[i + 2].to_ulong())));
+            i += 3;
+            continue;
+        }
+        if (code == token::wide_run_token) {
+            std::size_t k = i;
+            const unsigned long long int run = count_at(row, k);
+            for (unsigned long long int w = 0; w < run && k < stop; ++w, ++k)
+                take(satellite_string::code_of(static_cast<char32_t>(row[k].to_ulong())));
+            i = k;
+            continue;
+        }
+        ++i;   // no character: text_at skips it too
+    }
+    if (after_a_backslash)
+        put(kBackslash);
+    at = stop;
+    return answer;
 }
 
 unsigned long long int codes_in(const BytecodeRegistry &registry)

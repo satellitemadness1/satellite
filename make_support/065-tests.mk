@@ -48,8 +48,12 @@ $(BUILD)/exit_status_cases: $(MACHINE)/exit_status_cases.cpp $(MACHINE)/exit_sta
 # NOT satellite_config.hpp, which it never includes: a make that raises the build
 # number rewrites that row while this links, so it came out older than the header
 # after most builds, and check.sh called it stale.
+#
+# AND satellite_string.cpp, since bytecode_registry.cpp builds a string literal straight into
+# its satellite_string (string_literal_at, FAST_PRINTING.md step 2, 2026-09-26).
 COUNT_CASES_SOURCES = $(BYTECODE)/count_cases.cpp $(BYTECODE)/bytecode_registry.cpp $(BYTECODE)/cascade_convert.cpp \
-                      $(SATELLITE)/threads/startup_threads.cpp $(MACHINE)/machine_state.cpp
+                      $(SATELLITE)/threads/startup_threads.cpp $(MACHINE)/machine_state.cpp \
+                      $(STRING16)/satellite_string.cpp
 #
 # THE SANITIZER ONLY WHERE THE COMPILER CAN LINK IT (the author's fresh AlmaLinux 10.2,
 # 2026-09-23: `/usr/bin/ld: cannot find /usr/lib64/libubsan.so.1.0.0`). g++'s libubsan

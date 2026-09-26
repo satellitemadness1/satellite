@@ -196,4 +196,13 @@ std::string text_at(const std::vector<std::bitset<16>> &row, std::size_t &at);
 // above its definition.
 std::string string_at(const std::vector<std::bitset<16>> &row, std::size_t &at);
 
+class satellite_string;   // satellite_variable_string/satellite_string.hpp
+
+// THE SAME LITERAL, BUILT STRAIGHT INTO THE satellite_string IT IS: string_at's
+// characters and escapes, with no trip through UTF-8. What the evaluator reads a
+// literal with. Answers success, or string_error with `bad_character` (counted from
+// 0) at a character the string cannot hold. See the note above its definition.
+signed long long int string_literal_at(const std::vector<std::bitset<16>> &row, std::size_t &at,
+                                       satellite_string &out, std::size_t &bad_character);
+
 } // namespace satellite004
