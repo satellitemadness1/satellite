@@ -89,6 +89,27 @@ signed long long int raise_context(const ExpressionContext &context, const std::
     return raise_at(context.code, context.why, doing, state, row, at);
 }
 
+// WHERE A PARAMETER IS WRITTEN: its name in its capsule's header, from the header's ( on, for
+// the caret of a refusal of what it was handed -- the header is where its type is declared.
+// The header's first code when it cannot be found.
+std::size_t parameter_written_at(const std::vector<std::bitset<16>> &row, std::size_t header, const std::string &name)
+{
+    bool inside = false;
+    for (std::size_t k = header; k < row.size();) {
+        const Code code = code_at(row, k);
+        if (code == token::left_brace_token || code == token::end_of_file_token) break;
+        if (code == token::left_parenthesis_token) inside = true;
+        if (inside && code == token::name_token) {
+            const std::size_t here = k;
+            if (text_at(row, k) == name) return here;
+            continue;
+        }
+        if (token::carries_a_count(code)) { skip_payload(row, k); continue; }
+        ++k;
+    }
+    return header;
+}
+
 } // namespace
 
 Code code_at(const std::vector<std::bitset<16>> &row, std::size_t at)
@@ -461,6 +482,11 @@ struct Frame {
     bool returned = false;                 // satellite.return was reached: the body ends here
     bool answered = false;                 // ...and it handed back a value, in `answer`
     Value answer;
+    // WHERE THE CALL THAT BEGAN THIS TURN STANDS -- the caller's statement, or this capsule's
+    // own last call to itself -- so an argument its parameter refuses is shown at the call
+    // (ERRORS2 #7). Null when nothing is known, and the parameter's header is shown instead.
+    const std::vector<std::bitset<16>> *called_row = nullptr;
+    std::size_t called_at = 0;
 
     bool ending() const { return pending || returned; }
 };
@@ -933,10 +959,10 @@ signed long long int run_for_step(const std::vector<std::bitset<16>> &row,
         return report_error(std::string("satl(run): satellite.statement.for's third part ") + kNotReadToTheEnd,
                             satl_line_not_understood);
     if (!answer.is_number())
-        return report_error("satl(run): satellite.statement.for's " + name + " was declared " +
-                                word::spelling_of(word::code_of(1, 6, 4)) + " and its step answered " +
-                                answer.kind_name(),
-                            types_do_not_meet);
+        return raise_at(types_do_not_meet,
+                        "satellite.statement.for's " + name + " was declared " +
+                            word::spelling_of(word::code_of(1, 6, 4)) + " and its step answered " + answer.kind_name(),
+                        std::string(), state, row, parts.step);
     counting->second.value = std::move(answer);
     return success;
 }
@@ -1120,6 +1146,7 @@ signed long long int run_assignment(const std::vector<std::bitset<16>> &row,
         return success;
     }
     ++at;
+    const std::size_t value_at = at;   // a type refusal's caret: under the value that does not fit
 
     ExpressionContext context{variables, functions, state};
     Value value;
@@ -1161,9 +1188,8 @@ signed long long int run_assignment(const std::vector<std::bitset<16>> &row,
         const signed long long int stored = on_store(holds, value, refused);
         if (stored != success) {
             at = past_the_statement(row, at);
-            return report_error(std::string("satl(run): ") + name + " was declared " + word::spelling_of(holds) +
-                                    ", and " + refused,
-                                stored);
+            return raise_at(stored, name + " was declared " + word::spelling_of(holds) + ", and " + refused,
+                            std::string(), state, row, value_at);
         }
     }
 
@@ -1175,9 +1201,8 @@ signed long long int run_assignment(const std::vector<std::bitset<16>> &row,
     std::string why;
     if (against.word != 0 && !value_fits(against, value, why)) {
         at = past_the_statement(row, at);
-        return report_error(std::string("satl(run): ") + name + " was declared " + shape_written(against) + ", and " +
-                                why,
-                            types_do_not_meet);
+        return raise_at(types_do_not_meet, name + " was declared " + shape_written(against) + ", and " + why,
+                        std::string(), state, row, value_at);
     }
     // A NAME ALREADY THERE KEEPS ITS DECLARATION AND TAKES THE VALUE -- in this body's
     // table, or in the field of the object, which every holder of it then sees.
@@ -1523,6 +1548,8 @@ signed long long int call_capsule(const BytecodeRegistry &registry,
     if (frame.site == &runs && is_last_in(runs, row, started)) {
         frame.arguments = std::move(arguments);
         frame.pending = true;
+        frame.called_row = &row;     // the next turn's call is this one
+        frame.called_at = started;
         return success;
     }
     return run_site(registry, capsules, functions, runs, std::move(arguments), self, state, nullptr);
@@ -1938,6 +1965,15 @@ signed long long int run_turn(const BytecodeRegistry &registry,
     // satellite.variable line uses -- so `when_pressed(satellite.variable.number n)`
     // handed a window is refused in the same words, and not quietly bound.
     const std::vector<CapsuleParameter> &wants = site.parameters;
+    // A REFUSED ARGUMENT IS SHOWN AT THE CALL that handed it in, or at the parameter itself.
+    const auto refuse_argument = [&](signed long long int code, std::size_t which, const std::string &why) {
+        const std::string said = site.shown + "'s " + wants[which].name + " was declared " +
+                                 shape_written(wants[which].shape) + ", and " + why;
+        if (frame.called_row != nullptr)
+            return raise_at(code, said, std::string(), state, *frame.called_row, frame.called_at);
+        return raise_at(code, said, std::string(), state, registry[site.row],
+                        parameter_written_at(registry[site.row], site.declared_at, wants[which].name));
+    };
     if (arguments.size() != wants.size())
         return report_error("satl(run): " + site.shown + " takes " + std::to_string(wants.size()) +
                                 (wants.size() == 1 ? " argument, and was given " : " arguments, and was given ") +
@@ -1953,14 +1989,10 @@ signed long long int run_turn(const BytecodeRegistry &registry,
         for (auto *on_store : {float_on_store, hexadecimal_on_store, color_on_store, fraction_on_store}) {
             const signed long long int stored = on_store(wants[at].declared(), arguments[at], why);
             if (stored != success)
-                return report_error("satl(run): " + site.shown + "'s " + wants[at].name + " was declared " +
-                                        shape_written(wants[at].shape) + ", and " + why,
-                                    stored);
+                return refuse_argument(stored, at, why);
         }
         if (!value_fits(wants[at].shape, arguments[at], why))
-            return report_error("satl(run): " + site.shown + "'s " + wants[at].name + " was declared " +
-                                    shape_written(wants[at].shape) + ", and " + why,
-                                types_do_not_meet);
+            return refuse_argument(types_do_not_meet, at, why);
         theirs[wants[at].name] = Variable{wants[at].declared(), wants[at].shape, std::move(arguments[at])};
     }
     return close_files(theirs,
@@ -1993,9 +2025,14 @@ signed long long int run_site_here(const BytecodeRegistry &registry,
     // into whoever called, and a capsule may give the name it came from another object.
     const UserDefinedHandle self = given;
     bool called_itself_last = false;
+    // THE STATEMENT BEING WALKED IS THE CALL, until the body's first statement runs.
+    const std::vector<std::bitset<16>> *called_row = state.statement_row;
+    std::size_t called_at = state.statement_at;
     for (;;) {
         Frame frame;
         frame.site = &site;
+        frame.called_row = called_row;
+        frame.called_at = called_at;
         const signed long long int code =
             run_turn(registry, capsules, functions, site, arguments, self, state, frame);
         if (stops_the_program(code))
@@ -2004,6 +2041,8 @@ signed long long int run_site_here(const BytecodeRegistry &registry,
         if (frame.pending) {
             called_itself_last = true;
             arguments = std::move(frame.arguments);
+            called_row = frame.called_row;
+            called_at = frame.called_at;
             continue;
         }
         if (answer != nullptr && answered != nullptr) {

@@ -46,7 +46,7 @@ expect "... is told what a hex has, before anything runs" "1|" \
 # A SUM ON A HEX IS A NUMBER, and a hex name refuses it rather than invent a width.
 "$interpreter" tests/hex_sum_in_a_hex.satl > build/hex_x.out 2>&1; expect "a hex name given my_number + x01" 27 $?
 expect "... says it was given the number 32, and both ways out" 1 \
-       "$(grep -c 'given the number 32 -- a hex name holds only a hex, and arithmetic on a hex answers a number, .*write the hex it should be: x20' build/hex_x.out)"
+       "$(tr '\n' ' ' < build/hex_x.out | grep -c 'given the number 32 -- a hex name holds only a hex, and arithmetic on a hex answers a number, .*write the hex it should be: x20')"
 
 # MIXING THE NEW TYPES IS THE AUTHOR'S "GRAND FINALE": said as not built yet.
 "$interpreter" tests/hex_meets_percentage.satl > build/hex_x.out 2>&1; expect "x1F + 50%" 14 $?

@@ -240,6 +240,13 @@ expect "a satellite.variable.number name refuses an infinity" "27|1|1" \
        "$(infinity_says '    satellite.variable.number n = satellite.infinity()' 'n was declared satellite.variable.number, and it holds an infinity')"
 expect "an infinity name refuses a string" "27|1|1" \
        "$(infinity_says '    satellite.variable.infinity x = "text"' 'x was declared satellite.variable.infinity, and it holds a string')"
+# ERRORS2 #7 (the error sweep, 2026-09-26): a type refused while running is the full report every
+# other refusal is -- its S-code, the file and line, the caret under the value that does not fit --
+# where it was one bare line with its machine code at the end.
+printf 'satellite.include(satellite)\n\nsatellite.capsule satellite.main()\n{\n    satellite.console.display("before")\n    satellite.variable.number n = "abc"\n    satellite.return(satellite)\n}\n' > build/type_report.satl
+"$interpreter" build/type_report.satl > build/type_report.out 2>&1; code=$?
+expect "a type refused while running is the full report: S301, its line, the caret under the value" "27|1|1|1|1|1" \
+       "$code|$(grep -cx before build/type_report.out)|$(grep -cx 'S301: TYPES_DO_NOT_MEET' build/type_report.out)|$(tr '\n' ' ' < build/type_report.out | grep -c 'satl(run): n was declared satellite.variable.number, and it holds a string')|$(grep -c 'type_report.satl:6$' build/type_report.out)|$(awk '/^syntax: /{b=index($0,"\""); getline; print (index($0,"/\\")==b)?1:0; exit}' build/type_report.out)"
 expect "an infinity name refuses a binary: besides its family it takes a plain number (Q24)" "27|1|1" \
        "$(infinity_says '    satellite.variable.infinity x = b1010' 'and it holds a binary')"
 expect ".reverse() on an infinity is refused by name" "27|1|1" \
@@ -4655,7 +4662,9 @@ expect "a call to itself that is not last runs what follows it" \
        "0|2|1|0|0|1|0|0|2|1|0|0|1|0|0|0|1|2|3|1|2|3" "$code|$(tr '\n' '|' < build/tail_call.out | sed 's/|$//')"
 "$interpreter" tests/tail_call_wrong_type.satl > build/tail_call.out 2>&1; code=$?
 expect "a last call to itself still measures its arguments" "27|1|0" \
-       "$code|$(grep -c "down's n was declared satellite.variable.number, and it holds a string" build/tail_call.out)|$(grep -c 'NOT REACHED' build/tail_call.out)"
+       "$code|$(tr '\n' ' ' < build/tail_call.out | grep -c "down's n was declared satellite.variable.number, and it holds a string")|$(grep -c 'NOT REACHED' build/tail_call.out)"
+expect "... in the full report, shown at the call that handed it in: line 9, down(\"not a number\")" "1|1" \
+       "$(grep -cx 'S301: TYPES_DO_NOT_MEET' build/tail_call.out)|$(grep -c 'tail_call_wrong_type.satl:9$' build/tail_call.out)"
 
 # satellite.library (the author, 2026-09-23: "we need to design it so that globals don't
 # work, but satellite.library does work"): a value written once at the top of its file, one
