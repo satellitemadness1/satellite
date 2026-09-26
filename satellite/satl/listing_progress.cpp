@@ -5,6 +5,7 @@
 #include "listing.hpp"
 
 #include <chrono>
+#include <iostream>
 #include <csignal>
 #include <pthread.h>
 #include <string>
@@ -42,6 +43,10 @@ ListingProgress::ListingProgress(bool shown, unsigned long long int total) : tot
 {
     if (!shown)
         return;
+    // EVERYTHING DISPLAYED BEFORE THE LISTING IS ON THE SCREEN FIRST: this line is written straight
+    // to the terminal from its own thread, and the printing satellite may still hold lines the
+    // program displayed before it (display/printing_satellite.hpp).
+    std::cout.flush();
     sigset_t all, before;
     sigfillset(&all);
     ::pthread_sigmask(SIG_BLOCK, &all, &before);   // the new thread takes this mask

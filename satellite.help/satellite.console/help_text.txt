@@ -30,6 +30,14 @@ is checked even when it will not be shown. satl's own title block goes to
 standard error, so what your program displays can be piped or written to a file
 on its own.
 
+A display hands its line to satl's printing thread and the program goes straight
+on; the line reaches the screen a moment later, always in the order it was
+displayed, and before any report that comes after it. A program must not display
+faster than the console can print: when more than arguments.display.buffer lines
+are waiting for the console -- 131072, unless ~/.satl/config.ini says
+display.buffer = ... -- the program stops with S840 and exits 65. Displaying into
+a pipe nobody reads, or into a less nobody scrolls, reaches it too.
+
 satellite.console.foreground(xFF8800) and .background(x000000) colour every line
 display writes from then on, until .foreground() or .background() puts the
 terminal's own colour back; a line's own foreground= or background= wins over

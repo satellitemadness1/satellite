@@ -11,11 +11,11 @@ read about the machine it runs on. It is filled from four places:
    -- arguments.version, arguments.threads_startup, arguments.infinity and more.
 2) ~/.satl/config.ini, your own file: one "key = value" a line, # for comments.
    A row can be set for one machine by its name without "arguments." --
-   directory.default, float.whole and float.decimal are the rows read from this
-   file today; any other number row there is not read. The switches live here
-   too (access = true), and "features = b..." is what satl really reads: satl
-   --rebuild writes it from the switches. No config.ini is only a notice (S010),
-   and the run carries on.
+   directory.default, float.whole, float.decimal and display.buffer are the
+   rows read from this file today; any other number row there is not read.
+   The switches live here too (access = true), and "features = b..." is what
+   satl really reads: satl --rebuild writes it from the switches. No config.ini
+   is only a notice (S010), and the run carries on.
 3) the command line: satl prog.satl one two gives arguments.program,
    arguments.argument_1, arguments.argument_2 and arguments.length = 3, the
    program counted. satl --debug prints every argument, these included.

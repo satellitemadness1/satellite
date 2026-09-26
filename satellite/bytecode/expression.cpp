@@ -33,6 +33,7 @@
 #include "library_values.hpp"
 #include "window_calls.hpp"
 #include "../machine/stop_flag.hpp"
+#include "../display/printing_satellite.hpp"
 
 #include "word_codes.hpp"
 #include "word_counts.hpp"
@@ -1622,6 +1623,39 @@ Value evaluate_at(const std::vector<std::bitset<16>> &row, std::size_t &at, int 
     return left;
 }
 
+// A PLAIN display, HANDED TO THE PRINTING SATELLITE. Its line is made there -- a number's digits,
+// a float's, a string's UTF-8, the colour codes a pipe must not get, the newline -- exactly as
+// display's library made it here before. What can be REFUSED is decided here, on this line:
+// every kind below takes its text without refusing, and a container's text is made here, so a
+// list holding a file is refused where it is written, and a window's text reads its window on
+// the thread that owns it.
+Value display_plainly(Code code, Value &&argument, ExpressionContext &context)
+{
+    signed long long int answer = success;
+    if (argument.is_string() || argument.is_number() || argument.is_bool() || argument.is_binary() ||
+        argument.is_hexadecimal() || argument.is_color() || argument.is_percentage() || argument.is_infinity() ||
+        argument.is_float() || argument.is_fraction()) {
+        answer = display_value(std::move(argument));
+    } else if (argument.is_list() || argument.is_index() || argument.is_window() || argument.is_thread()) {
+        satellite_string written;
+        std::string why;
+        const signed long long int made = argument.to_string(written, why);
+        if (made != success) {
+            context.refuse(made, std::string(word::spelling_of(code)) + " was given " + argument.kind_name() +
+                                     ", and " + why);
+            return Value();
+        }
+        answer = display_value(Value::of_string(std::move(written)));
+    } else {
+        context.refuse(not_built_yet, std::string(word::spelling_of(code)) + " has no scenario for " +
+                                          argument.kind_name());
+        return Value();
+    }
+    if (stops_the_program(answer))
+        context.refuse(answer, std::string(word::spelling_of(code)) + " refused");
+    return Value::of_code(answer);
+}
+
 } // namespace
 
 signed long long int display_a_number(const Scenarios &scenarios, const satellite_number &value)
@@ -1805,7 +1839,8 @@ Value call_word(const std::vector<std::bitset<16>> &row, std::size_t &at, Expres
     }
     // ONE LINE AT A TIME ONCE A THREAD EXISTS (machine/console_lock.hpp): the console's
     // words and every numbered library below are called holding the console lock, because
-    // display writes std::cout from inside its library. NOT input, which waits for a person:
+    // std::cout is one stream for every thread -- and a display's hand-off to the printing
+    // satellite (display/printing_satellite.hpp) is one line's too. NOT input, which waits for a person:
     // holding the lock there would stop every other thread's lines until somebody typed.
     // Before any start() the hold holds nothing, and a plain display pays one load.
     const bool waits_for_a_person = code == word::fixed_code<1, 5, 2> || code == word::fixed_code<1, 5, 3>;
@@ -1837,6 +1872,10 @@ Value call_word(const std::vector<std::bitset<16>> &row, std::size_t &at, Expres
     // plain display pays one test and nothing else.
     if (to_the_screen && (centred || !options.empty() || (console_colours_ever_set() && console_colours().any())))
         return display_with_options(code, *scenarios, argument, options, context, centred);
+    // A PLAIN display GOES TO THE PRINTING SATELLITE (display/printing_satellite.hpp, FAST_PRINTING.md
+    // step 3): the finished value, moved, and this thread goes on to its next line.
+    if (to_the_screen)
+        return display_plainly(code, std::move(argument), context);
     if (scenarios->directory != nullptr)
         return call_directory_word(code, *scenarios, argument, context);
 

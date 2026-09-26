@@ -55,6 +55,7 @@
 #include "../satellite-numbers/call_number.hpp"
 #include "satl/satl_file.hpp"
 #include "satl/session.hpp"
+#include "display/printing_satellite.hpp"
 #include "threads/startup_threads.hpp"
 #include "version/version.hpp"
 
@@ -310,7 +311,8 @@ signed long long int run_satl(int argc, char **argv)
     // two precisions (arguments.cpp) and the console's font size (console_settings.cpp). A
     // notice, not a refusal: every setting keeps its default, as with S010.
     {
-        std::vector<std::string> known{kRegisterKey, "float.whole", "float.decimal", "console.font_size"};
+        std::vector<std::string> known{kRegisterKey, "float.whole", "float.decimal", "console.font_size",
+                                       "display.buffer"};
         for (const FeatureFact &fact : feature_facts()) known.push_back(fact.name);
         for (const satellite_argument_row &row : return_arguments_vector())
             if (row.is_text && row.name.size() > 10) known.push_back(row.name.substr(10));
@@ -330,7 +332,7 @@ signed long long int run_satl(int argc, char **argv)
             stray.description = "config.ini has rows satl does not read, so they change nothing: " + unknown +
                                 ". The rows it reads are features, the feature switches (access, word_counts, "
                                 "statements and the rest satl --rebuild lists), directory.default, log_path, "
-                                "float.whole, float.decimal and console.font_size";
+                                "float.whole, float.decimal, console.font_size and display.buffer";
             stray.directory = config_file::path();
             print_notice(stray);
         }
@@ -355,6 +357,14 @@ signed long long int run_satl(int argc, char **argv)
     // is no state to read a row through, so its rows go to the one holder
     // (satellite_variable_float/float_precision.hpp) here, before anything runs.
     float_precision_from(arguments);
+    // arguments.display.buffer, READ ONCE into the printing satellite (display/printing_satellite.hpp):
+    // "we load this value so we don't have to keep getting it from arguments". A row past one limb
+    // is more displays than any machine can hold, so it means no limit that could be reached.
+    {
+        const satellite_number &most = arguments.number("arguments.display.buffer");
+        set_the_display_buffer(most.is_zero() ? kDisplayBufferDefault
+                                              : most.fits_one_limb() ? most.limb(0) : ULLONG_MAX);
+    }
     state.set("satellite " + version_line(arguments) + " (starting)", success);
     state.set("arguments(gathered)", success);
 
@@ -636,6 +646,18 @@ signed long long int run_satl(int argc, char **argv)
     // which is why run_calls ended the same way (satl_file.cpp:211). Without
     // this the program exits 0 having printed nothing, silently.
     std::cout.flush();
+    // AN OVERRUN THE WALKER NEVER MET: the printing satellite found his buffer full after the
+    // program's last statement had run (display/printing_satellite.hpp), so it is said here.
+    if (display_overrun_is_mine_to_report()) {
+        CriticalReport report;
+        const SCode named = s_code_for(display_string_buffer_overrun);
+        report.code = named.code;
+        report.name = named.name;
+        report.description = "satl(run): " + display_overrun_sentence();
+        report.notes.push_back(named.means);
+        report.notes.push_back("machine code 65 display_string_buffer_overrun -- satl exits with this.");
+        return raise(report, display_string_buffer_overrun);
+    }
     if (!std::cout)
         return report_error("satl.run(error): the output refused the last lines", display_error);
     return code;
@@ -691,6 +713,10 @@ void out_of_memory_handler()
 int main(int argc, char **argv)
 {
     std::ios::sync_with_stdio(false);
+    // THE PRINTING SATELLITE, BEFORE ANYTHING PRINTS (display/printing_satellite.hpp): "we need to
+    // create a thread off of the satl process" -- which starts the display thread -- and std::cout
+    // pointed at them, so satl's own words and the program's lines keep one order.
+    satellite004::start_the_printing_satellite();
 
     // 32 KiB OF STACK FOR EVERY MiB OF MEMORY, before anything runs (the author,
     // 2026-09-22; machine/stack_share.hpp): a capsule calling itself died at

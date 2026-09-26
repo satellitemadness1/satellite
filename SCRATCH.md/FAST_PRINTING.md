@@ -5,16 +5,31 @@ It replaces the open design in `SCRATCH.md/DISPLAY_THREADS.md`. That file still 
 attempt: why it was pulled out, and every measurement it made. `SCRATCH.md/RUNNING_PROGRAMS.md`
 holds the running-programs half.
 
-**Steps 1 and 2 are built, installed and pushed** (builds 0109 `ab6e7d7` and 0111 `fbf0788`). **Step 3 is
-next.** The measurements below are real. The code they came from is in `SCRATCH.md/FAST_PRINTING/`.
+**Steps 1 to 4 are built.** 1 and 2 are installed and pushed (builds 0109 `ab6e7d7`, 0111 `fbf0788`);
+3 and 4 went in together as build 0113 (0112 was the same before the review's fixes, never kept).
+**Steps 5 and 6 are next.** The measurements below are real.
+The code they came from is in `SCRATCH.md/FAST_PRINTING/`.
 
-| best of five (step 2: of three) | 0108 | 0109, step 1 | 0111, step 2 |
-|---|---|---|---|
-| 1,000,000 lines | 2.34 s | 1.07 s | 1.06 s (0109 read 1.12 in that race) |
-| 1,000,000 numbers | 2.10 s | 0.83 s | 0.83 s |
-| 200 × 1 MiB | 0.63 s | 0.22 s | 0.23 s (noise) |
+| best of five (step 2: of three) | 0108 | 0109, step 1 | 0111, step 2 | 0112, steps 3+4 (0113 the same) |
+|---|---|---|---|---|
+| 1,000,000 lines | 2.34 s | 1.07 s | 1.06 s (0109 read 1.12 in that race) | 1.07 s (0111 read 1.02) |
+| 1,000,000 numbers | 2.10 s | 0.83 s | 0.83 s | 0.85 s (0111 read 0.81) |
+| 200 × 1 MiB | 0.63 s | 0.22 s | 0.23 s (noise) | 0.30 s (0111 read 0.22) |
 
-Output byte-identical in every race. `./check.sh` 1028 of 1028 after each step.
+Output byte-identical in every race. `./check.sh` 1028 of 1028 after steps 1 and 2; 1035 of 1035 after
+3 and 4, seven rows of them new. 0113 against 0111: lines 1.04 s / 1.00, numbers 0.86 / 0.80, big 0.22-0.31 / 0.22.
+
+**STEPS 3 AND 4 CAME OUT SLOWER, AND HE KEPT THEM.** Reported the moment they were timed, with the
+numbers above and three options -- hand over 8 KB at a time instead of each display, fix the big
+strings, or revert. His answer: *"let's just keep it for now, and someday we can do the whole 3.5 ns
+thing that beats compiled C++, the mini interpreter, so it's no big deal either way, we can always
+build a mini satl for printing someday"*, then *"keep step 3"*. Why it is slower, measured:
+- **200 × 1 MiB, +36%: my choice.** A slot keeps its value until the interpreter reuses it 1,024
+  displays later, so the interpreter frees it on its own thread. For 1 MiB strings that held every one
+  alive: peak memory 26 MB -> 440 MB, page faults 7k -> 107k.
+- **Short lines and numbers, +5%: the hand-off costs what it saves.** After steps 1 and 2 a display's
+  own work past its statement is ~500 instructions (callgrind on 0111), and handing it over costs about
+  that.
 
 After step 1 he said: *"we are building a fast-enough-plan anyways, we gave up on racing compiled C++
 with our interpreter"*. **The rule below still holds** (a slower step stops), but no C++ race is owed.
@@ -176,7 +191,46 @@ pass. Today it goes codes → UTF-8 → `from_utf8` → codes.
 **Why:** ~1,500 instructions a literal, paid by every program. It's independent of display, and cheap
 to do while in `expression.cpp` for step 1.
 
-### Step 3 — the printing satellite (the five steps)
+### Step 3 — the printing satellite (the five steps) — BUILT, build 0113
+
+**As built** (`satellite/display/printing_satellite.hpp` and `.cpp`), and where it differs from the plan
+below -- my choices, his to overrule:
+- **A styled display** (`foreground=`, `end=`, `.center()`, the console's colours) is made on the
+  interpreter's thread and handed over as its bytes: its refusals need its text there anyway.
+- **A container's text** (list, index, window, thread) is made on the interpreter's thread, so a list
+  holding a file is refused on its line. Everything else is moved in as its value.
+- **Freeing: the slot keeps the value** until the interpreter reuses it (see the +36% above).
+- **The overrun report** points at the statement the walker was on when it stopped the program --
+  in a display loop, the loop's closing `}`, not the display line.
+- **At the prompt,** an overrun stops that line and the prompt comes back; the next line starts clean
+  (`display_overrun_let_go` in session.cpp).
+- **Ctrl-C at the prompt lets go of what the stopped line left waiting,** as a terminal lets go of its
+  output -- otherwise up to 131,072 lines scroll on, and the second press ends the whole session.
+
+**ONE FRESH READER WENT THROUGH IT BEFORE THE COMMIT** (a one-agent workflow, read-only). Eleven
+findings, all fixed before 0112's successor was built:
+1. a styled line (colours, `end=`, `.center()`) overtook std::cout's bytes before it -- `clear()` then a
+   coloured display cleared the screen after the line. Shown on 0112 (`Hello` came out before `ESC[2J`);
+   now `display_line_bytes`, and a check.sh row.
+2. an overrun nobody reported (a program thread's, at the prompt) left the printing satellite dropping
+   everything for the rest of the session -- the prompt's next line now lets go as a report would.
+3. a flush after an overrun returned before up to 256 KiB already on their way, so the S840 report could
+   land among them and exit could cut a line (or a colour code) in half -- it now waits while the screen
+   is still taking text, and gives up after 1 s with nothing written (a fifo nobody reads).
+4. SIGTTOU was still blocked on the display thread (its mask was added to, from a thread with every
+   signal blocked) -- now set outright.
+5. Ctrl-C at the prompt left up to 131,072 lines to scroll -- see above.
+6. after an overrun the count of finished jobs could stop short and hang the next flush -- jobs let go
+   now travel through the pieces (a piece may carry no bytes), so they settle in order.
+7. two threads flushing at once could lose a wake-up -- the sleepers are counted, not flagged.
+8. out of memory on the printing satellite was permanent and could leave half a line in a piece -- the
+   half line is taken back out, and it is said once.
+9. one failed allocation in the std::cout stream would have left it pointing into memory it gave away.
+10. a membarrier that failed after registering fenced one side only -- both sides fence from then on.
+11. one huge line kept a huge buffer for the rest of the run -- given back past 256 KiB.
+
+Checked and found fine: the slot hand-off, the pieces, the asymmetric barrier between all three threads,
+the flush in normal running, several threads displaying, fork, satl's own console, the S840 check.
 
 One thread, started off `main()` at satl's start-up. It has an explicit small stack, because satl
 widens its own stack limit to gigabytes (`stack_share.hpp`).
@@ -247,7 +301,11 @@ screen is slow, jobs wait in the printing satellite, where they are counted.
     > program has overrun the 131,072 item buffer. Rework it so that it displays less -- or raise
     > arguments.display.buffer (display.buffer = ... in ~/.satl/config.ini).
 
-### Step 4 — one door for everything satl prints
+### Step 4 — one door for everything satl prints — BUILT with step 3, build 0113
+
+Step 3 could not keep the order without it, so it went in with it (`satellite/display/display_stream.cpp`).
+One difference: **the listing's progress line flushes std::cout before it starts** instead of going
+through the door -- it writes from its own thread, and a flush first keeps the order the same way.
 
 **What changes:** `std::cout` gets a new stream buffer. Its 8 KB goes to the display thread as **one
 piece**, not a hand-off per line. That covers satl's own messages, the prompt, and every library still
@@ -322,14 +380,19 @@ std::cout's 8 KB (satl's own text) ───────────────
 ## OPEN — HIS TO RULE
 
 1. **An overrun at the prompt:** stop the line and bring the prompt back (my pick, as for every other
-   critical error at the prompt), or end satl.
+   critical error at the prompt, and BUILT that way in 0113), or end satl.
 2. **A slow reader** (`| less`, Ctrl-S, a slow window) holding 131,072 jobs crashes too. That is his
    ruling, and it stands unless he changes it. The first attempt showed it is reachable.
 3. **What counts as one item:** a display job, one 8 KB piece of satl's own text, and one line of a
-   program's output.
+   program's output -- as built. **A byte cap as well?** His limit counts strings, not bytes: 131,072
+   waiting strings of 1 MiB would run out of memory long before the count is reached. The first design
+   capped bytes at 512 MB. His to rule.
 4. **S840 / machine code 65 / the message:** above; his to reword.
 5. **SECRET.md:** his, for another time.
 6. **RUNNING_PROGRAMS.md 1–7:** the spelling, whether satl waits, keyboard input, Ctrl-C.
+7. **Someday, his:** the mini satl for printing (*"the whole 3.5 ns thing that beats compiled C++"*), and
+   the option he did not take today -- the interpreter makes its own line, as 0111 did, and hands
+   over whole 8 KB pieces, so nothing is paid a display.
 
 ---
 

@@ -18,6 +18,15 @@ owed on them). Then PLAN M0.5: the build port, the installer and satl-term.
 
 ## 1. What is built and checked
 
+**2026-09-26 -- FAST PRINTING STEPS 1 TO 4** (SCRATCH.md/FAST_PRINTING.md is the plan, the
+measurements and what is still his; check.sh 1035):
+
+| piece | commit | files |
+|---|---|---|
+| A display asks no other word family: `is_display_word` is one compare, and file, info, infinity, window, container and console are never asked of it. `word::code_of` is `constexpr` and `word::fixed_code<1, 5, 1>` is a code the compiler works out; the window words are a table built at compile time. 1M lines 2.34 s -> 1.07 s | ab6e7d7 | `bytecode/make_word_codes.py`, `word_codes.hpp`, `window_calls.cpp`, `expression.cpp` and the six family checks |
+| A string literal is built straight from its codes, with no trip through UTF-8 (`string_literal_at`) | fbf0788 | `bytecode/bytecode_registry.cpp` |
+| THE PRINTING SATELLITE: a plain display moves its finished value to a thread of its own, which makes the line and hands 64 KiB pieces to a display thread; `std::cout`'s 8 KB goes through the same door, and a flush waits for the screen. His buffer: `arguments.display.buffer` (131072; `display.buffer =` in config.ini), past which the program stops with S840 and exit 65. 5-36% slower than 0111 on the three races, kept at his word ("keep step 3"); one fresh reader's eleven findings fixed first | build 0113 | `satellite/display/` (new), `expression.cpp`, `console_calls.cpp`, `program_walk.cpp`, `arguments.cpp`, `structured-library.cpp` |
+
 **2026-09-26 -- CONTAINERS.md STEPS 1 AND 2: any container in any container, and satellite.access**
 (SCRATCH.md/CONTAINERS.md opens with where it stands and what is his to overrule; check.sh 958):
 

@@ -6491,5 +6491,70 @@ import os; print(len(pairs) or os.cpu_count())")
 expect "arguments.cores and arguments.machine.cores both answer the physical cores" "$physical|$physical" \
        "$("$interpreter" "$sweep/cores.satl" 2>/dev/null | tr '\n' '|' | sed 's/|$//')"
 
+# THE PRINTING SATELLITE (satellite/display/printing_satellite.hpp; SCRATCH.md/FAST_PRINTING.md
+# steps 3 and 4, 2026-09-26): a plain display's finished value is moved to a thread of its own,
+# which makes its line and hands 64 KiB pieces to a display thread; std::cout's 8 KB goes through
+# the same door; and the author's buffer -- arguments.display.buffer, 131,072 by default -- past
+# which the program stops with S840 and exit 65.
+printing=build/printing_satellite
+rm -rf -- "$printing" && mkdir -p -- "$printing/home/.satl"
+: > "$printing/home/.satl/config.ini"
+printing_home="$PWD/$printing/home"
+# BYTE FOR BYTE: 20 lines of 1 MiB characters, every one moved whole.
+printf 'satellite.include(satellite)\n\nsatellite.capsule satellite.main()\n{\n    satellite.variable.string s = "0123456789abcdef"\n    satellite.statement.for(satellite.variable.number i = 0; i < 16; i++)\n    {\n        s = s + s\n    }\n    satellite.statement.for(satellite.variable.number j = 0; j < 20; j++)\n    {\n        satellite.console.display(s)\n    }\n    satellite.return(satellite)\n}\n' > "$printing/big.satl"
+HOME="$printing_home" "$interpreter" "$printing/big.satl" > "$printing/big.out" 2>/dev/null; code=$?
+expect "printing satellite: 20 lines of 1 MiB come out byte for byte" \
+       "0|$(python3 -c "import hashlib; print(hashlib.sha256((('0123456789abcdef' * 65536) + chr(10)).encode() * 20).hexdigest())")" \
+       "$code|$(sha256sum < "$printing/big.out" | cut -d' ' -f1)"
+# EVERY KIND A PLAIN DISPLAY TAKES, made on the printing satellite's thread as display's library
+# made it on the interpreter's -- and a styled line and end=, made on the interpreter's.
+printf 'satellite.include(satellite)\n\nsatellite.capsule satellite.main()\n{\n    satellite.console.display("a string")\n    satellite.console.display(42)\n    satellite.console.display(-7)\n    satellite.console.display(123456789012345678901234567890)\n    satellite.console.display(12.5)\n    satellite.console.display(satellite.bool.true)\n    satellite.console.display(b0101)\n    satellite.console.display(x00FF)\n    satellite.console.display(50%%)\n    satellite.console.display({1, "two", 3.5})\n    satellite.console.display({"zoe": 1, "al": 2})\n    satellite.console.display(satellite.infinity())\n    satellite.variable.fraction f = 1/3\n    satellite.console.display(f)\n    satellite.console.display("styled", foreground=xFF8800)\n    satellite.console.display("no newline", end="")\n    satellite.console.display(" -- joined")\n    satellite.console.display("emoji 😀 and 中文")\n    satellite.return(satellite)\n}\n' > "$printing/kinds.satl"
+HOME="$printing_home" "$interpreter" "$printing/kinds.satl" > "$printing/kinds.out" 2>/dev/null; code=$?
+expect "printing satellite: a string, numbers, a float, a bool, binary, hex, a percentage, containers, infinity, a fraction, a styled line, end=, emoji" \
+       '0|a string|42|-7|123456789012345678901234567890|12.5|true|b0101|x00FF|50%|{1, "two", 3.5}|{"zoe": 1, "al": 2}|(infinity)|1/3|styled|no newline -- joined|emoji 😀 and 中文' \
+       "$code|$(tr '\n' '|' < "$printing/kinds.out" | sed 's/|$//')"
+# A REPORT COMES AFTER THE LINES BEFORE IT: std::cerr flushes std::cout, and a flush waits for the
+# display thread. 100,000 lines, then a division by zero, into one file.
+printf 'satellite.include(satellite)\n\nsatellite.capsule satellite.main()\n{\n    satellite.statement.for(satellite.variable.number i = 1; i < 100001; i++)\n    {\n        satellite.console.display(i)\n    }\n    satellite.variable.number z = 0\n    satellite.variable.number q = 1 / z\n    satellite.return(satellite)\n}\n' > "$printing/report_after.satl"
+HOME="$printing_home" "$interpreter" "$printing/report_after.satl" > "$printing/report_after.out" 2>&1; code=$?
+expect "printing satellite: the division-by-zero report comes after all 100,000 lines before it" "22|100000|yes" \
+       "$code|$(grep -cx '[0-9][0-9]*' "$printing/report_after.out")|$([ "$(grep -n 'S401' "$printing/report_after.out" | head -1 | cut -d: -f1)" -gt "$(grep -nx '100000' "$printing/report_after.out" | cut -d: -f1)" ] && echo yes)"
+# A STYLED LINE DOES NOT OVERTAKE satl's OWN BYTES before it (the review, 2026-09-26): with the
+# console's colours set every display is styled, and clear()'s escape, still in std::cout's 8 KB,
+# went out after the line -- the screen cleared at the end, and nothing left on it.
+printf 'satellite.include(satellite)\n\nsatellite.capsule satellite.main()\n{\n    satellite.console.foreground(xFF0000)\n    satellite.console.clear()\n    satellite.console.display("Hello")\n    satellite.return(satellite)\n}\n' > "$printing/clear_then_styled.satl"
+HOME="$printing_home" "$interpreter" "$printing/clear_then_styled.satl" > "$printing/clear_then_styled.out" 2>/dev/null; code=$?
+expect "printing satellite: clear() then a coloured display come out in that order" "0|yes" \
+       "$code|$(python3 -c "import sys; b = open(sys.argv[1], 'rb').read(); c = b.find(b'\x1b[2J'); h = b.find(b'Hello'); print('yes' if 0 <= c < h else repr(b[:60]))" "$printing/clear_then_styled.out")"
+# arguments.display.buffer: 131,072 unless config.ini says otherwise for this machine; a value that
+# is not a count is refused; a program reads it and may not write it.
+printf 'satellite.include(satellite)\n\nsatellite.capsule satellite.main(satellite.variable.arguments args)\n{\n    satellite.console.display(args.display.buffer)\n    satellite.return(satellite)\n}\n' > "$printing/read_buffer.satl"
+printf 'satellite.include(satellite)\n\nsatellite.capsule satellite.main(satellite.variable.arguments args)\n{\n    args.display.buffer = 5\n    satellite.return(satellite)\n}\n' > "$printing/write_buffer.satl"
+default_buffer=$(HOME="$printing_home" "$interpreter" "$printing/read_buffer.satl" 2>/dev/null)
+printf 'display.buffer = 1000\n' > "$printing/home/.satl/config.ini"
+set_buffer=$(HOME="$printing_home" "$interpreter" "$printing/read_buffer.satl" 2>/dev/null)
+printf 'display.buffer = zero\n' > "$printing/home/.satl/config.ini"
+HOME="$printing_home" "$interpreter" "$printing/read_buffer.satl" > /dev/null 2>&1; bad_buffer=$?
+: > "$printing/home/.satl/config.ini"
+HOME="$printing_home" "$interpreter" "$printing/write_buffer.satl" > "$printing/write_buffer.out" 2>&1; written_buffer=$?
+expect "arguments.display.buffer: 131072, config.ini's display.buffer = 1000, a word refused (20), a program writing it refused (35)" \
+       "131072|1000|20|35|1" \
+       "$default_buffer|$set_buffer|$bad_buffer|$written_buffer|$(grep -c 'args.display.buffer is a row satl holds' "$printing/write_buffer.out")"
+# THE OVERRUN: a fifo nobody reads holds 64 KiB, the display thread waits on it, and the author's
+# buffer fills. With display.buffer = 1000 the program stops with S840 and exit 65 -- once, with his
+# sentence -- and satl leaves at once, holding no more than the buffer.
+printf 'satellite.include(satellite)\n\nsatellite.capsule satellite.main()\n{\n    satellite.variable.string s = "0123456789abcdef"\n    satellite.statement.for(satellite.variable.number i = 0; i < 6; i++)\n    {\n        s = s + s\n    }\n    satellite.statement.for(satellite.variable.number j = 0; j < 1000000; j++)\n    {\n        satellite.console.display(s)\n    }\n    satellite.return(satellite)\n}\n' > "$printing/overrun.satl"
+printf 'display.buffer = 1000\n' > "$printing/home/.satl/config.ini"
+mkfifo "$printing/nobody_reads"
+HOME="$printing_home" /usr/bin/time -o "$printing/overrun.time" -f '%M' timeout 60 "$interpreter" "$printing/overrun.satl" \
+    1<> "$printing/nobody_reads" 2> "$printing/overrun.err"; code=$?
+: > "$printing/home/.satl/config.ini"
+overrun_peak=$(tail -1 "$printing/overrun.time")
+expect "the display buffer: past 1000 waiting, the program stops with S840 DISPLAY_STRING_BUFFER_OVERRUN once, exit 65, with the author's sentence" \
+       "65|1|1" \
+       "$code|$(grep -c 'S840: DISPLAY_STRING_BUFFER_OVERRUN' "$printing/overrun.err")|$(tr '\n' ' ' < "$printing/overrun.err" | grep -c 'is not meant to overrun the console with messages faster than it can print')"
+expect "the display buffer: ... holding no more than the buffer: under 256 MiB at its peak (${overrun_peak} KiB)" "yes" \
+       "$([ "${overrun_peak:-999999999}" -lt 262144 ] && echo yes)"
+
 echo "$passed passed, $failed failed"
 [ "$failed" = 0 ]

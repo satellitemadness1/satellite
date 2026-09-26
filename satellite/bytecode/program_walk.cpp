@@ -33,6 +33,7 @@
 #include "../machine/stack_segments.hpp"
 #include "../machine/stop_flag.hpp"
 #include "../machine/thread_stop.hpp"
+#include "../display/printing_satellite.hpp"
 
 #include "statement_ring.hpp"
 #include "suit_run.hpp"
@@ -1702,8 +1703,19 @@ signed long long int run_statements(const BytecodeRegistry &registry,
             return thread_stopped;
         // satellite.return(satellite) ON ANOTHER THREAD (thread_stop.hpp's program_quit): this
         // walker ends here too, between two statements, and the program with it.
-        if (program_quit().load(std::memory_order_relaxed))
-            return program_returned;
+        //
+        // AND THE DISPLAY BUFFER OVERRAN (display/printing_satellite.hpp): the printing satellite
+        // set the same flag, so this check -- already paid on every statement -- stops the
+        // program for it too, and costs nothing more. The main thread's walker says S840 ONCE,
+        // at the line it is on; a program's thread ends quietly, as for satellite.return.
+        if (program_quit().load(std::memory_order_relaxed)) {
+            if (!display_overran() || on_a_program_thread())
+                return program_returned;
+            if (display_overrun_is_mine_to_report())
+                return raise_at(display_string_buffer_overrun, display_overrun_sentence(), std::string(), state,
+                                row, at);
+            return display_string_buffer_overrun;
+        }
 
         if (code == token::right_brace_token)
             return success;

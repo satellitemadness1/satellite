@@ -135,6 +135,10 @@ public:
     static signed long long int from_utf8(const std::string &utf8, satellite_string &out, std::size_t &bad_offset);
     // A string -> UTF-8 bytes. Cannot fail for a string made by this class.
     std::string to_utf8() const;
+    // THE SAME BYTES, ON THE END OF `out`: the printing satellite writes a displayed string
+    // straight into the piece it is making (display/printing_satellite.cpp), with no string
+    // of its own in between -- a 1 MiB display was a 1 MiB copy more.
+    void append_utf8_to(std::string &out) const;
 
     // Unicode number <-> code, and back. Any Unicode scalar value has a code.
     static char32_t code_of(char32_t unicode);

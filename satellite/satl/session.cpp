@@ -1,6 +1,7 @@
 // The prompt's session. See session.hpp.
 
 #include "session.hpp"
+#include "../display/printing_satellite.hpp"
 
 #include "drives.hpp"
 #include "listing.hpp"
@@ -599,6 +600,7 @@ signed long long int run_session(const Arguments &arguments, const FunctionTable
         forget_the_block();
         asked_to_stop = 0;
         presses = 0;
+        display_overrun_let_go();   // an overrun stopped the line before, not this one
         counts(declared_name(first).empty()
                    ? run_one_line(text, functions, threads, batches, kept, state, program)
                    : keep_declaration(program, text, functions, threads, batches, state));
@@ -613,6 +615,10 @@ signed long long int run_session(const Arguments &arguments, const FunctionTable
 
     std::string line;
     for (;;) {
+        // CTRL-C STOPPED THE LINE BEFORE: what it displayed and is still waiting is let go, as a
+        // terminal lets go of its output on Ctrl-C (display/printing_satellite.hpp).
+        if (asked_to_stop != 0)
+            display_let_go_of_what_waits();
         // FLUSHED BEFORE THE PROMPT IS DRAWN, and cleared if a write was refused:
         // one refused write would otherwise fail every later line, and the
         // renderer's first draw clears the row it starts on (render.hpp).
@@ -684,6 +690,7 @@ signed long long int run_session(const Arguments &arguments, const FunctionTable
                 declared_name(code).empty()) {
                 asked_to_stop = 0;
                 presses = 0;
+                display_overrun_let_go();   // an overrun stopped the line before, not this one
                 counts(run_one_line(line, functions, threads, batches, kept, state, program));
                 continue;
             }

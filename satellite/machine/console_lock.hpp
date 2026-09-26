@@ -6,6 +6,8 @@
 // (structured-library.cpp), which makes the two streams unsafe to write from two threads
 // at once: a line could land inside another, or worse. 003 queued whole strings for one
 // printer thread; 004 holds this lock for the length of one line instead (threads, 2026-09-23).
+// Since 2026-09-26 004 has a printing thread too (display/printing_satellite.hpp): a display
+// hands its value to it, and this lock still keeps one line's hand-off whole.
 //
 // TAKEN ONLY ONCE A THREAD HAS BEEN STARTED. Until then satl is one walker, and a plain
 // display pays one relaxed load and nothing else -- the author races display, and a lock

@@ -231,6 +231,29 @@ signed long long int Arguments::gather_config()
     // prints the SATELLITE INFINITY WARNING and counts again. The same rule as the two
     // above: a missing row takes the author's 999,999,999, and a row that is there
     // counts at least one calculation.
+    // THE DISPLAY BUFFER (the author, 2026-09-26): 131,072 displays may wait for the console. A
+    // missing row takes that; a row, or config.ini's `display.buffer = ...` for this machine, is a
+    // count of at least 1, and one that is not is refused rather than quietly replaced -- the
+    // float precisions' rule, above.
+    {
+        const Argument *buffer = find("arguments.display.buffer");
+        if (buffer == nullptr)
+            add_number("arguments.display.buffer", satellite_number(131072ull));
+        else if (buffer->kind != ArgumentKind::number || buffer->number.negative() || buffer->number.is_zero())
+            return refuse("arguments.display.buffer is a number row of at least 1 display");
+        std::string said;
+        if (config_file::read_value("display.buffer", said) && !said.empty()) {
+            satellite_number value;
+            std::size_t bad_offset = 0;
+            if (satellite_number::from_text(said, value, bad_offset) != success || value.negative() || value.is_zero())
+                return report_error(config_file::path() + ": display.buffer = " + said +
+                                        " is not a count of displays -- write a whole number of at least 1, "
+                                        "such as display.buffer = 131072",
+                                    config_value_not_understood);
+            add_number("arguments.display.buffer", std::move(value));
+        }
+    }
+
     const Argument *counter = find("arguments.infinity.counter");
     if (counter == nullptr)
         add_number("arguments.infinity.counter", satellite_number(999999999ull));

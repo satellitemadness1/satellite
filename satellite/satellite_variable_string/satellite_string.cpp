@@ -155,6 +155,34 @@ std::string satellite_string::to_utf8() const
     return out;
 }
 
+// to_utf8's bytes on the end of `out`. THE FAST PATH IS to_utf8's OWN, written at the end of
+// what `out` already holds -- one byte a unit first, grown once at the first code that is not
+// ASCII. A string holding a wide character is rare enough to go through to_utf8 whole.
+void satellite_string::append_utf8_to(std::string &out) const
+{
+    if (wide_count_ != 0) {
+        out += to_utf8();
+        return;
+    }
+    const char16_t *const units = narrow16_.data();
+    const std::size_t count = narrow16_.size();
+    const std::size_t start = out.size();
+    std::size_t k = 0;
+    overwrite_string(out, start + count, [&](char *const first, std::size_t) {
+        char *write = first + start;
+        write_utf8<char16_t, true>(units, count, k, write);
+        return static_cast<std::size_t>(write - first);
+    });
+    if (k == count)
+        return;
+    const std::size_t written = out.size();
+    overwrite_string(out, written + (count - k) * 3, [&](char *const first, std::size_t) {
+        char *write = first + written;
+        write_utf8<char16_t, false>(units, count, k, write);
+        return static_cast<std::size_t>(write - first);
+    });
+}
+
 // FROM THE BOOKMARK WHEN IT IS NOT PAST THE CHARACTER, and from the front when it is
 // (satellite_string.hpp says why a walk can never go backwards). Either way the walk
 // ends by moving the bookmark to where it stopped, so the next character along is one

@@ -1,6 +1,13 @@
 // satellite.console.display  `1 5 1` -- its likely scenarios, compiled as a
 // library with no main.
 //
+// SINCE 2026-09-26 A DISPLAY DOES NOT WRITE THROUGH HERE. The printing satellite makes every
+// line -- a plain display's from the value the interpreter moves to it, a styled one from the
+// bytes the interpreter makes -- and a display thread writes it (satellite/display/,
+// SCRATCH.md/FAST_PRINTING.md step 3). These scenarios still describe the word, and
+// call_word still asks that the word has a library; the bytes they wrote are the bytes the
+// printing satellite writes now, which check.sh holds it to.
+//
 // Each scenario answers a machine code: 0 when the value reached the output,
 // display_error when the output refused it.
 //

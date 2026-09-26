@@ -2,6 +2,7 @@
 // and console_style.hpp what each colour means and which of 003's rules it keeps.
 
 #include "console_calls.hpp"
+#include "../display/printing_satellite.hpp"
 #include "../machine/console_lock.hpp"
 
 #include "program_walk.hpp"
@@ -469,9 +470,11 @@ Value display_with_options(Code code, const Scenarios &scenarios, const Value &a
     }
     if (centred)
         text = centred_text(text);
-    // ONE CALL, ONE LINE: the style's reset goes before end= or the newline (003).
+    // ONE CALL, ONE LINE: the style's reset goes before end= or the newline (003). Made here,
+    // where its refusals are, and handed to the printing satellite as the bytes it is
+    // (display/printing_satellite.hpp).
     const signed long long int answer =
-        scenarios.text(for_the_screen(styled_line(text, style) + (ended ? ending : "\n")), false);
+        display_line_bytes(for_the_screen(styled_line(text, style) + (ended ? ending : "\n")));
     if (stops_the_program(answer))
         context.refuse(answer, spelled + " refused");
     return Value::of_code(answer);

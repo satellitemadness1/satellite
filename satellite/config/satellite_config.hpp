@@ -88,7 +88,7 @@ inline std::vector<satellite_argument_row> return_arguments_vector()
     arguments_vector.push_back({"arguments.startup_display", 0, true, true});
     arguments_vector.push_back({"arguments.version", 4, false, false});
     arguments_vector.push_back({"arguments.revision", 8, false, false});
-    arguments_vector.push_back({"arguments.build", 111, false, false});
+    arguments_vector.push_back({"arguments.build", 113, false, false});
     arguments_vector.push_back({"arguments.object_bytes_max", 34359738368, false, false});
     arguments_vector.push_back({"arguments.threads_max", 1000000, false, false});
     arguments_vector.push_back({"arguments.threads_startup", 1024, false, false});
@@ -128,6 +128,15 @@ inline std::vector<satellite_argument_row> return_arguments_vector()
     // satl prints the SATELLITE INFINITY WARNING and resets the count to 0. Read by
     // nothing yet: SATELLITE_INFINITY.md.
     arguments_vector.push_back({"arguments.infinity.counter", 999999999, false, false});
+
+    // THE DISPLAY BUFFER (the author, 2026-09-26): "arguments.display.buffer(131072) is the
+    // default, but the user can configure it to anything if they want, and we load this value so
+    // we don't have to keep getting it from arguments, it's loaded as an unsigned long long int".
+    // How many displays may wait for the console before the program is stopped with S840
+    // (display/printing_satellite.hpp). One machine may set `display.buffer = ...` in
+    // ~/.satl/config.ini; a program cannot change it -- "it has to be changed outside of program
+    // execution".
+    arguments_vector.push_back({"arguments.display.buffer", 131072, false, false});
 
     return(arguments_vector);
 }

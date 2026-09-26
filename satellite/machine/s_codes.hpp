@@ -250,6 +250,12 @@ inline SCode s_code_for(signed long long int machine_code)
         return {"S810", "INTERRUPTED",
                 "Ctrl-C stopped this between statements. satl exits 130, which is 128 + SIGINT -- "
                 "what a shell and 003 both answer."};
+    // The author's name for it (2026-09-26): "report display string buffer overrun".
+    case display_string_buffer_overrun:
+        return {"S840", "DISPLAY_STRING_BUFFER_OVERRUN",
+                "the program displayed faster than the console could print, and the displays waiting "
+                "passed arguments.display.buffer. The ones still waiting are let go, and the program "
+                "stops here."};
 
     // S13xx -- THE WINDOW (SATELLITE_WINDOW.md WIN-3, 2026-09-20).
     case no_display:
