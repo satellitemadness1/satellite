@@ -41,7 +41,7 @@ INTERPRETER_SOURCES = $(SATELLITE)/structured-library.cpp \
                       $(BYTECODE)/capsule_calls.cpp $(BYTECODE)/library_values.cpp \
                       $(BYTECODE)/expression.cpp $(BYTECODE)/sate_file.cpp \
                       $(BYTECODE)/file_calls.cpp $(BYTECODE)/info_calls.cpp $(BYTECODE)/access_calls.cpp $(BYTECODE)/access_words.cpp $(BYTECODE)/container_calls.cpp \
-                      $(BYTECODE)/string_calls.cpp \
+                      $(BYTECODE)/string_calls.cpp $(BYTECODE)/string_check.cpp \
                       $(BYTECODE)/console_style.cpp $(BYTECODE)/console_calls.cpp $(SATELLITE)/satellite_variable_file/satellite_file.cpp \
                       $(BYTECODE)/infinity_calls.cpp $(INFINITY)/satellite_infinity.cpp \
                       $(BYTECODE)/thread_calls.cpp $(OBJECT)/object_lock.cpp \

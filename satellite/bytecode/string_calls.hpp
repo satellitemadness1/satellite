@@ -51,14 +51,21 @@ int string_method_arity(token::Code method);
 // `{1}.append(2)` is.
 bool changes_a_string(token::Code method);
 
-// THE CHECKER'S HALF: `name.method(...)` on a name declared satellite.variable.string,
-// judged before anything runs. `open` is the code after the method (a `(` or not);
-// `bracketed` and `given` are what program_check.cpp's brackets_at found there. A
-// literal that can never be right is refused here too -- text where a position goes, a
-// binary, hex or percentage where text goes -- so the lines above it never print first.
+// THE CHECKER'S HALF (string_check.cpp): `name.method(...)` on a name declared
+// satellite.variable.string, or on a string literal, judged before anything runs. `open` is
+// the code after the method (a `(` or not); `bracketed` and `given` are what
+// program_check.cpp's brackets_at found there. A literal that can never be right is refused
+// here too, so the lines above it never print first: anything but a whole number where a
+// position goes, a first position of 0, a binary, hex or percentage where text goes, and ""
+// as the text replace looks for -- and a `[` after the chain's answer, which is not built.
 signed long long int string_method_check(const std::vector<std::bitset<16>> &row, std::size_t open,
                                          bool bracketed, std::size_t given, token::Code method,
                                          const std::string &spelling, std::string &why);
+
+// `s[...]` ON A NAME DECLARED A STRING, judged before anything runs: a lone literal in the
+// brackets that is not a whole number, or is 0, refused as s[n] refuses it. `open` is the `[`.
+signed long long int string_index_check(const std::vector<std::bitset<16>> &row, std::size_t open,
+                                        const std::string &name, std::string &why);
 
 // THE WALKER'S HALF. `home` is the variable's own value when the chain is still on a
 // name, and nullptr otherwise: append and clear need it, everything else ignores it.

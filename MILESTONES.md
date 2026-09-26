@@ -557,8 +557,39 @@ as well as the libraries, against 003's satl, and all match. **Choices he may ov
 - **A number where text goes is its digits, with S020** -- `.find` too, now. A bool, a list or
   any other kind is refused (S301).
 - **`append` and `clear` change the name**, as a list's `append` does, and are refused on a
-  literal. `"".split("")` is an empty list and `"".split(",")` one empty piece, as in 003.
+  literal inside an expression -- `display("abc".append("d"))` is S110. **Alone on its own
+  line, `"abc".append("d")` runs nothing and says nothing**: a line that starts with a literal
+  is passed over whole, by the checker and the walker alike (`5 + 3` and `"abc".size` alone
+  on a line too), before M16 as after it -- his to rule whether such a line is refused.
+  `"".split("")` is an empty list and `"".split(",")` one empty piece, as in 003.
 - **`resolved` answers the string as it is**: 004 has no live escapes.
+- **A float or a bool where text goes is refused (S301)** while a whole number is its digits:
+  `s.contains(42)` is true of "n42n", `s.contains(4.5)` stops the program. Whether his
+  "just convert the number to the string" covers 4.5 is his; until then it is refused only
+  when the line runs, not before.
+- **`[ ]` straight after a method's answer or a literal is not built** -- `s.split(",")[2]`,
+  `"abc"[1]`, `l.reverse()[1]` -- and is refused by name (S110) with the way round it: give
+  the value a name first. On a string, before anything runs. Building it is his to decide.
+
+**The review of 2026-09-26, fixed on this branch:**
+- `t.append("ab")` in a loop was quadratic -- 200,000 appends 6.10 s, 50,000 0.35 s -- because
+  a statement's last append copied the whole string to answer a line that lets the answer go
+  (`call_method`'s `return *live`; a list is a handle, so its copy was a count). A change that
+  ends a statement answers nothing now: 200,000 appends take 0.23 s.
+- `s[i]` walked from the string's front whenever it held one wide character, so a loop over the
+  characters was quadratic: 32,769 characters with one emoji 1.87 s, 65,537 13 s. The string
+  keeps a bookmark of the last character a walk reached (`satellite_string.hpp`), and 32,769
+  take 0.10 s. **Reading forwards is linear; reading backwards is not** -- a wide character's
+  halves can be any sixteen bits, so no walk can step back, and a loop from `s.size` down to 1
+  on a string with a wide character still walks from the front each time.
+- A refusal names the piece it refused: `s.trim.append changes a string, and this one has no
+  name to change` (it said `s.append`, of s, which has a name), `w[...].at(9)`, and
+  `that string.split(...).size`.
+- Before anything runs, on a string name or a string literal: a float, binary, hex,
+  percentage, fraction, bool or text where a position goes, a first position of 0 (`s.at(0)`,
+  `s[0]`, `s.substring(0, n)`), `""` as the text `replace` looks for, and `s[1] = "j"`.
+- `strings/check_string_methods.py`: a crash is not a refusal, -1 stays -1 through build/satl,
+  and 003's satl runs once a case, with a HOME of its own and no display.
 
 **Answered, and one ruling covers both** (the author, 2026-09-16): for
 `string_object.replace(number1, number2)` and `string_object.find(number)`, a

@@ -1225,6 +1225,13 @@ signed long long int names_in_statement(const std::vector<std::bitset<16>> &row,
                     judged.push_back(close + 2);
                 }
             } else if (where.objects.count(name) == 0) {
+                // `s["x"]`, `s[1.5]`, `s[0]` ON A STRING (M16): a literal no character is at,
+                // refused as s[n] refuses it, before anything runs (string_calls.hpp).
+                if (declared.find(name)->second == word::code_of(1, 6, 1) &&
+                    code_at(row, k) == token::left_square_bracket_token) {
+                    const signed long long int indexed = string_index_check(row, k, name, why);
+                    if (indexed != success) return indexed;
+                }
                 const signed long long int judged_here = method_on_a_name(row, k, name, declared.find(name)->second, why);
                 if (judged_here != success) return judged_here;
             }
@@ -1447,6 +1454,12 @@ signed long long int names_in_statement(const std::vector<std::bitset<16>> &row,
                 }
                 why = colour_literal_refused(row, past + 3, spelled);
                 if (!why.empty()) return types_do_not_meet;
+            }
+            // `"abc"[1]` -- [ ] STRAIGHT AFTER A STRING LITERAL is not built, and the walker says
+            // so (expression.cpp, index_after_an_answer); said here, before anything runs.
+            if (code == token::string_token && code_at(row, past) == token::left_square_bracket_token) {
+                why = index_after_an_answer("that string");
+                return satl_line_not_understood;
             }
             // A STRING'S OWN METHOD ON A STRING LITERAL (M16): judged as a name's is, by
             // string_calls.hpp, and let through when it is right -- `"a,b".split(",")`.
@@ -2097,6 +2110,19 @@ signed long long int check_statement(const std::vector<std::bitset<16>> &row,
         if (a_method_call && found != declared.end() && where.objects.count(name) != 0) {
             const signed long long int held = names_in_statement(row, at, stop, declared, where, why);
             if (held != success) { at = stop; return held; }
+        }
+        // `s[1] = "j"` -- A STRING'S CHARACTER IS READ, NEVER WRITTEN (M16): refused in the
+        // walker's own sentence (write_through_index), before anything runs.
+        if (a_method_call && found != declared.end() && found->second == word::code_of(1, 6, 1) &&
+            code_at(row, k) == token::left_square_bracket_token) {
+            std::size_t end = k, close = 0, count = 0;
+            while (code_at(row, end) == token::left_square_bracket_token && brackets_at(row, end, close, count))
+                end = close + 1;
+            if (code_at(row, end) == token::assign_token) {
+                why = name + " is a string, and [ ] = ... changes an item of a list or a key of an index";
+                at = stop;
+                return types_do_not_meet;
+            }
         }
         if (a_method_call && found != declared.end()) {
             const signed long long int shaped = a_call_to_its_end(row, k, name, why);

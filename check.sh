@@ -5901,7 +5901,9 @@ expect "n.split(\",\") on a number names the string as the type that has it" "14
 expect "n.contains(\"4\") on a number names the string, the file and the container" "14|1|0" \
        "$(body_refused m16_number_contains '    satellite.variable.number n = 45
     satellite.console.display(n.contains("4"))' 'so far a string, a file and a container have it')"
-expect "s[0] is refused, S411: characters count from 1" "16|1|1|1" \
+# REFUSED BEFORE ANYTHING RUNS since the review of 2026-09-26 (string_check.cpp): a literal 0
+# is never a character, so "before" is not printed -- the third field, 1 until then.
+expect "s[0] is refused before anything runs, S411: characters count from 1" "16|1|0|1" \
        "$(body_refused m16_zero '    satellite.variable.string s = "abc"
     satellite.console.display(s[0])' 's\[0\]: characters count from 1, so the first is s\[1\]')|$(grep -c '^S411: POSITION_PAST_THE_END$' "$sweep/m16_zero.out")"
 expect "s[9] past the end says how many characters there are" "16|1|1" \
@@ -5913,7 +5915,7 @@ expect "s.at(-1) is refused, S410" "19|1|1" \
 expect "s.substring(4, 2) runs backwards and is refused, S412, naming the empty piece's spelling" "17|1|1" \
        "$(body_refused m16_backwards '    satellite.variable.string s = "hello"
     satellite.console.display(s.substring(4, 2))' 'starts after it ends -- an empty piece is written with its end one before its start, as s.substring(3, 2)')"
-expect "s.replace(\"\", \"x\") has nothing to look for, and is refused, S421" "18|1|1" \
+expect "s.replace(\"\", \"x\") has nothing to look for, and is refused before anything runs, S421" "18|1|0" \
        "$(body_refused m16_replace_empty '    satellite.variable.string s = "abc"
     satellite.console.display(s.replace("", "x"))' 'an empty text is found everywhere -- there is nothing to replace')"
 expect "\"abc\".append(\"d\") has no name to change, and is refused" "13|1|1" \
@@ -5927,6 +5929,151 @@ expect "starts_with ends_with substring split trim at resolved are registry rows
               n=${pair%%:*}; rest=${pair#*:}; hex=${rest%%:*}; bits=${rest#*:}
               printf '%s|%s|' "$(grep -c "^$bits  ${n}_token " REGISTRY.satellite)" "$(grep -c "Code ${n}_token = 0x$hex;" satellite/bytecode/token_codes.hpp)"
           done | sed 's/|$//')"
+# THE REVIEW OF M16, 2026-09-26. A STATEMENT'S LAST APPEND COPIED THE WHOLE STRING to answer
+# a line that lets the answer go (call_method's `return *live`): 200,000 appends took 6.10 s and
+# 50,000 0.35 s. A list is a handle, so its copy was a count and the list rows above never saw
+# it. So this measures what one append costs on a string of 1,024 characters and on one of
+# 4,194,304: the same 2,000 appends of "" onto each. In place, the two take the same time; a
+# copy per append makes the second eight thousand million bytes of copying. Nothing about the
+# output differs -- this row is the only thing that would say so.
+for size in 10 22; do
+  {
+    echo 'satellite.include(satellite)'
+    echo 'satellite.capsule satellite.main()'
+    echo '{'
+    echo '    satellite.variable.string t = "a"'
+    echo "    satellite.statement.for(satellite.variable.number d = 0; d < $size; d++)"
+    echo '    {'
+    echo '        t.append(t)'
+    echo '    }'
+    echo '    satellite.statement.for(satellite.variable.number i = 0; i < 2000; i++)'
+    echo '    {'
+    echo '        t.append("")'
+    echo '    }'
+    echo '    satellite.console.display(t.size)'
+    echo '    satellite.return(satellite)'
+    echo '}'
+  } > "$sweep/m16_append_$size.satl"
+done
+sa_small=$( { TIMEFORMAT=%R; time "$interpreter" "$sweep/m16_append_10.satl" > "$sweep/m16_append_10.out" 2>&1; } 2>&1 )
+sa_big=$(   { TIMEFORMAT=%R; time "$interpreter" "$sweep/m16_append_22.satl" > "$sweep/m16_append_22.out" 2>&1; } 2>&1 )
+expect "2,000 appends landed on a string of 4,194,304 characters" "4194304" "$(tail -1 "$sweep/m16_append_22.out")"
+expect "a string's append costs the same on 4,194,304 characters as on 1,024 (${sa_small}s -> ${sa_big}s)" "flat" \
+       "$(awk -v s="$sa_small" -v b="$sa_big" 'BEGIN { print (b < s * 4 + 0.3) ? "flat" : "A COPY EACH: " b "s vs " s "s" }')"
+# ... AND USED IN AN EXPRESSION, THE ANSWER IS STILL THE STRING: only a line that lets it go
+# is answered nothing.
+printf 'satellite.include(satellite)\n\nsatellite.capsule satellite.main()\n{\n    satellite.variable.string t = "ab"\n    satellite.console.display(t.append("c"))\n    satellite.variable.string u = t.append("d").append("e")\n    t.append("f")\n    satellite.console.display(t + " " + u)\n    satellite.return(satellite)\n}\n' > "$sweep/m16_append_answer.satl"
+output=$("$interpreter" "$sweep/m16_append_answer.satl" 2>/dev/null); code_run=$?
+expect "t.append(x) inside an expression answers the string it made; alone on a line it answers nothing" \
+       "abc|abcdef abcde|0" "$(printf '%s' "$output" | tr '\n' '|')|$code_run"
+# s[i] WALKED FROM THE FRONT FOR EVERY i ONCE THE STRING HELD ONE WIDE CHARACTER, so a loop over
+# the characters was quadratic: 32,769 characters with one emoji 1.87 s, 65,537 13 s, where
+# 131,072 with none took 0.27 s. The string keeps a bookmark of where the last walk stopped
+# (satellite_string.hpp), so eight times the characters is eight times the steps: 4,097 and
+# 32,769 characters, each ending in an emoji, each read one character at a time.
+for size in 12 15; do
+  python3 -c "
+with open('$sweep/m16_wide_loop_$size.satl', 'w', encoding='utf-8') as f:
+    f.write('''satellite.include(satellite)
+
+satellite.capsule satellite.main()
+{
+    satellite.variable.string s = \"a\"
+    satellite.statement.for(satellite.variable.number d = 0; d < $size; d++)
+    {
+        s.append(s)
+    }
+    s.append(\"\U0001F600\")
+    satellite.variable.number found = 0
+    satellite.statement.for(satellite.variable.number i = 1; i <= s.size; i++)
+    {
+        satellite.statement.if(s[i] == \"a\")
+        {
+            found = found + 1
+        }
+    }
+    satellite.console.display(found)
+    satellite.return(satellite)
+}
+''')"
+done
+sw_small=$( { TIMEFORMAT=%R; time "$interpreter" "$sweep/m16_wide_loop_12.satl" > "$sweep/m16_wide_loop_12.out" 2>&1; } 2>&1 )
+sw_big=$(   { TIMEFORMAT=%R; time "$interpreter" "$sweep/m16_wide_loop_15.satl" > "$sweep/m16_wide_loop_15.out" 2>&1; } 2>&1 )
+expect "every character of a 32,769-character string ending in an emoji was read" "32768" "$(tail -1 "$sweep/m16_wide_loop_15.out")"
+expect "s[i] over a string holding a wide character is linear (8x the characters: ${sw_small}s -> ${sw_big}s)" "linear" \
+       "$(awk -v s="$sw_small" -v b="$sw_big" 'BEGIN { print (b < s * 16 + 0.1) ? "linear" : "QUADRATIC: " b "s vs " s "s" }')"
+# THE BOOKMARK IS NEVER WRONG: read backwards (from the front again), after an append (kept),
+# after a clear (back to 0), in a copy, and in a substring cut from a string that had one.
+python3 -c "
+with open('$sweep/m16_bookmark.satl', 'w', encoding='utf-8') as f:
+    f.write('''satellite.include(satellite)
+
+satellite.capsule satellite.main()
+{
+    satellite.variable.string s = \"a\U0001F600b\U0001F600c\"
+    satellite.console.display(s[5] + s[1] + s[3] + s[4] + s[2])
+    satellite.console.display(s.substring(2, 4) + \"|\" + s.substring(4, 5) + \"|\" + s.at(3))
+    s.append(\"\U0001F30Dd\")
+    satellite.console.display(s[7] + s[6] + s[5])
+    satellite.variable.string t = s
+    s.clear
+    s.append(\"x\U0001F680yz\")
+    satellite.console.display(s[3] + s[2] + s[4] + s[1])
+    satellite.console.display(t[6] + t[1])
+    satellite.variable.string u = t.substring(2, 7)
+    satellite.console.display(u[6] + u[1] + u[5])
+    satellite.return(satellite)
+}
+''')"
+output=$("$interpreter" "$sweep/m16_bookmark.satl" 2>/dev/null); code_run=$?
+expect "s[i] on a wide string is right backwards, after an append, after a clear, in a copy and in a substring" \
+       "$(python3 -c "print('cab\U0001F600\U0001F600|\U0001F600b\U0001F600|\U0001F600c|b|d\U0001F30Dc|y\U0001F680zx|\U0001F30Da|d\U0001F600\U0001F30D', end='')")|0" \
+       "$(printf '%s' "$output" | tr '\n' '|')|$code_run"
+# A REFUSAL NAMES THE PIECE IT REFUSED, not the chain's root: `s.trim.append` said "s.append
+# changes a string, and this one has no name to change" -- of s, which has one.
+expect "s.trim.append(\"d\") names s.trim, the string with no name, not s" "13|1|1" \
+       "$(body_refused m16_chain_append '    satellite.variable.string s = "abc"
+    s.trim.append("d")' 's.trim.append changes a string, and this one has no name to change')"
+expect "w[1].at(9) names the item, w[...], not the list" "16|1|1" \
+       "$(body_refused m16_item_at '    satellite.container.list w = {"xy", "z"}
+    satellite.console.display(w[1].at(9))' 'w\[...\].at(9): there is no such character -- it holds 2 characters')"
+expect "\"a,b\".split(\",\").size(1) names the list split answered, not the string" "13|1|1" \
+       "$(body_refused m16_chain_size '    satellite.console.display("a,b".split(",").size(1))' 'that string.split(...).size takes 0 arguments, and was given 1')"
+# [ ] STRAIGHT AFTER A METHOD'S ANSWER IS NOT BUILT, and was refused as a space missing round a
+# math sign -- after the lines above it had printed. Said as what it is, with the way round it:
+# before anything runs on a string, and as the line runs on anything else.
+expect "s.split(\",\")[2] is refused before anything runs: [ ] after a method's answer is not built" "13|1|0" \
+       "$(body_refused m16_split_index '    satellite.variable.string s = "a,b,c"
+    satellite.console.display(s.split(",")[2])' "s.split(...)\[...\]: \[ \] is not built yet straight after a call's answer, a literal or a bracket -- give the value a name first")"
+expect "... and in a declaration too, where it was the bare one-line report" "13|1|0" \
+       "$(body_refused m16_split_index_declared '    satellite.variable.string s = "a,b,c"
+    satellite.variable.string x = s.split(",")[2]' "s.split(...)\[...\]: \[ \] is not built yet")"
+expect "\"abc\"[1] is refused before anything runs, in the same words" "13|1|0" \
+       "$(body_refused m16_literal_index '    satellite.console.display("abc"[1])' "that string\[...\]: \[ \] is not built yet")"
+expect "l.reverse()[1] on a list is refused in the same words as it runs" "13|1|1" \
+       "$(body_refused m16_list_answer_index '    satellite.container.list l = {1, 2}
+    satellite.console.display(l.reverse()[1])' "l.reverse()\[...\]: \[ \] is not built yet")"
+# A LITERAL NO CHARACTER IS AT IS REFUSED BEFORE ANYTHING RUNS (string_check.cpp): its kind is
+# known from its token, so the lines above it do not print first. Each was refused only as it
+# ran. A float or a bool where TEXT goes is not among them: that one is the author's to rule.
+m16_before=""
+for pair in 'at(1.5)|s.at takes a character.s position -- a number, counting from 1 -- and was given a float|27' \
+            'at(x10)|and was given a hex|27' 'at(50%)|and was given a percentage|27' 'at(1/2)|and was given a fraction|27' \
+            'at(satellite.bool.true)|and was given a bool|27' 'at(0)|s.at(0): characters count from 1, so the first is s.at(1)|16' \
+            'substring(0, 2)|s.substring(0, 2): characters count from 1, so the first is 1|16'; do
+    call=${pair%%|*}; rest=${pair#*|}; said=${rest%|*}; code=${rest##*|}
+    m16_before="$m16_before$(body_refused m16_literal_position "    satellite.variable.string s = \"abc\"
+    satellite.console.display(s.$call)" "$said" | sed "s/^$code|/ok|/")/"
+done
+expect "s.at(1.5), s.at(x10), s.at(50%), s.at(1/2), s.at(true), s.at(0) and s.substring(0, 2) are refused before anything runs" \
+       "ok|1|0/ok|1|0/ok|1|0/ok|1|0/ok|1|0/ok|1|0/ok|1|0/" "$m16_before"
+expect "s[1.5] and s[\"x\"] are refused before anything runs, S301" "27|1|0/27|1|0" \
+       "$(body_refused m16_index_float '    satellite.variable.string s = "abc"
+    satellite.console.display(s[1.5])' 's\[...\] takes a character.s position -- a number, counting from 1 -- and was given a float')/$(body_refused m16_index_text '    satellite.variable.string s = "abc"
+    satellite.console.display(s["x"])' 's\[...\] takes a character.s position -- a number, counting from 1 -- and was given a string')"
+expect "s[1] = \"j\" is refused before anything runs: a string's characters are read, never written" "27|1|0" \
+       "$(body_refused m16_index_write '    satellite.variable.string s = "abc"
+    s[1] = "j"' 's is a string, and \[ \] = ... changes an item of a list or a key of an index')"
 # .center() ON A DISPLAY (the author, 2026-09-25): the line in the middle of the console, for the
 # width it has as it is shown -- a terminal of 40 columns puts "hello" after 17 spaces, "centre"
 # is the second spelling, and a pipe, which has no width, gets the text as written.

@@ -1,6 +1,7 @@
 // satellite/bytecode/string_calls.cpp -- what a string answers (M16). string_calls.hpp
 // says what each method is and why positions count from 1; string_pieces.hpp holds the
-// loops over the characters. This file is the arguments and the refusals.
+// loops over the characters. This file is the arguments and the refusals as the program
+// runs; string_check.cpp is the ones said before it runs.
 
 #include "string_calls.hpp"
 
@@ -20,12 +21,6 @@ namespace {
 
 namespace fast = number_fast_path;
 namespace pieces = string_pieces;
-
-// WHICH ARGUMENTS ARE POSITIONS. Every other argument of a string's method is text.
-bool takes_a_position(token::Code method)
-{
-    return method == token::at_token || method == token::substring_token;
-}
 
 std::string a_count_of(std::size_t n, const char *one, const char *many)
 {
@@ -175,66 +170,6 @@ int string_method_arity(token::Code method)
 bool changes_a_string(token::Code method)
 {
     return method == token::append_token || method == token::clear_token;
-}
-
-signed long long int string_method_check(const std::vector<std::bitset<16>> &row, std::size_t open,
-                                         bool bracketed, std::size_t given, token::Code method,
-                                         const std::string &spelling, std::string &why)
-{
-    const int wanted = string_method_arity(method);
-    // A METHOD THAT TAKES NOTHING MAY BE WRITTEN WITH OR WITHOUT ITS BRACKETS, as a
-    // container's is: `s.size` and `s.size()` are one read. One that takes something needs
-    // them, and the count is judged here, before the line above it prints.
-    if (given != static_cast<std::size_t>(wanted) || (wanted > 0 && !bracketed)) {
-        why = spelling + " takes " + std::to_string(wanted) + (wanted == 1 ? " argument" : " arguments") +
-              (bracketed ? ", and was given " + std::to_string(given) : ", in brackets after it");
-        return satl_line_not_understood;
-    }
-    if (!bracketed || wanted == 0)
-        return success;
-    // A LITERAL THAT CAN NEVER BE RIGHT, one argument at a time: an argument is a lone
-    // literal when a `,` or the `)` comes straight after it.
-    std::size_t at = open + 1;
-    for (int n = 0; n < wanted; ++n) {
-        const token::Code code = code_at(row, at);
-        std::size_t past = at;
-        if (token::carries_a_count(code))
-            skip_payload(row, past);
-        else
-            ++past;
-        const token::Code after = code_at(row, past);
-        const bool lone = after == token::comma_token || after == token::right_parenthesis_token;
-        if (lone && takes_a_position(method) && code == token::string_token) {
-            why = spelling + " takes a character's position -- a number, counting from 1 -- and was given text";
-            return types_do_not_meet;
-        }
-        if (lone && !takes_a_position(method) &&
-            (code == token::binary_token || code == token::hexadecimal_token || code == token::percentage_token)) {
-            why = spelling + " takes text, and was given " +
-                  (code == token::binary_token ? "a binary" : code == token::hexadecimal_token ? "a hex number" : "a percentage");
-            return types_do_not_meet;
-        }
-        // On to the next argument: past this one's own brackets and payloads, to its comma.
-        std::size_t depth = 0;
-        while (at < row.size()) {
-            const token::Code here = code_at(row, at);
-            if (token::carries_a_count(here)) { skip_payload(row, at); continue; }
-            if (here == token::line_end_token || here == token::end_of_file_token) return success;
-            if (here == token::left_parenthesis_token || here == token::left_square_bracket_token ||
-                here == token::left_brace_token)
-                ++depth;
-            else if (here == token::right_parenthesis_token || here == token::right_square_bracket_token ||
-                     here == token::right_brace_token) {
-                if (depth == 0) return success;
-                --depth;
-            } else if (here == token::comma_token && depth == 0) {
-                ++at;
-                break;
-            }
-            ++at;
-        }
-    }
-    return success;
 }
 
 Value call_string_method(token::Code method, const Value &receiver, Value *home, const std::vector<Value> &arguments,

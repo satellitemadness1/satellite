@@ -48,25 +48,32 @@ a-z, so "héllo".upper() is HÉLLO -- and the string itself is unchanged.
 .contains(x), .starts_with(x) and .ends_with(x) answer true or false, and ""
 is inside every string, at both ends.
 
-A character is read by its position, counting from 1 as a list's items do:
-s[1] and s.at(1) are the first character and s[s.size] the last, each answered
-as a string of one character. .substring(start, end) is the characters from
-start to end, both counted from 1 and both kept, so "hello".substring(2, 4) is
-ell; an empty piece is written with its end one before its start. A position
-of 0 or past the end is refused (S411), a negative one too (S410), and so is a
-range that runs backwards (S412).
+A character is read by its position, counting from 1 as a list's items do: s[1]
+and s.at(1) are the first character and s[s.size] the last, each answered as a
+string of one character. .substring(start, end) is the characters from start to
+end, both counted from 1 and both kept, so "hello".substring(2, 4) is ell; an
+empty piece is written with its end one before its start. A position of 0 or
+past the end is refused (S411), a negative one too (S410), and so is a range
+that runs backwards (S412). On a string name, a 0, a float or text written
+straight into the brackets is refused before anything runs. .find counts from 0,
+so the character it finds is s[s.find(x) + 1]. A string's characters are read,
+never written: s[1] = "j" is refused (S301).
 
 .split(separator) answers a satellite.container.list of the pieces between
 separators: "a,,b".split(",") is {"a", "", "b"}, the empty piece kept, and
-.split("") is every character on its own. .replace(a, b) swaps every a for b,
-left to right, and refuses an empty a (S421). .trim takes spaces, tabs,
-carriage returns and newlines off both ends, and .resolved answers the string
-as it is: satellite 004 has no live escapes to resolve. Each of these answers
-a new string and leaves the name as it was.
+.split("") is every character on its own. [ ] straight after a method's answer
+is not built yet, so s.split(",")[2] is refused before anything runs: give the
+list a name first, and read [2] of that name. .replace(a, b) swaps every a for
+b, left to right, and refuses an empty a (S421). .trim takes spaces, tabs,
+carriage returns and newlines off both ends, and .resolved answers the string as
+it is: satellite 004 has no live escapes to resolve. Each of these answers a new
+string and leaves the name as it was.
 
 .append(x) and .clear change the string on the name, as a list's .append
 changes the list: s.append("!") adds to the end of s, and s.clear empties it.
-They need a name to change, so "abc".append("d") is refused.
+They need a name to change, so "abc".append("d") inside an expression -- as
+display("abc".append("d")) -- is refused (S110), and so is s.trim.append("d"):
+s.trim is a new string, with no name of its own.
 
 Where one of these methods, or .find, takes text and is given a number, it
 takes the number's digits and writes S020 to satellite.log: "n42n".contains(42)
@@ -102,6 +109,7 @@ satellite.capsule satellite.main()
     satellite.console.display(s.contains("lo w")) // true
     satellite.console.display(s.starts_with("hello")) // true
     satellite.console.display(s[1] + s.at(7)) // hw
+    satellite.console.display(s[s.find("world") + 1]) // w
     satellite.console.display(s.substring(1, 5)) // hello
     satellite.console.display(s.split(" ")) // {"hello", "world"}
     satellite.console.display(s.replace("o", "0")) // hell0 w0rld
