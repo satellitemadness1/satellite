@@ -18,6 +18,18 @@ owed on them). Then PLAN M0.5: the build port, the installer and satl-term.
 
 ## 1. What is built and checked
 
+**2026-09-26 -- CONTAINERS.md STEPS 1 AND 2: any container in any container, and satellite.access**
+(SCRATCH.md/CONTAINERS.md opens with where it stands and what is his to overrule; check.sh 958):
+
+| piece | commit | files |
+|---|---|---|
+| `satellite.container.map` is the same container as `.index` (`is_an_index_word`); `satellite.container.map()` is an empty one | fdc586b | `bytecode/type_shape.hpp`, `container_calls.cpp` |
+| A map written whole: `{"zoe": 30, "al": 4}` (a key twice keeps its first place, its last value) | fdc586b | `bytecode/expression.cpp` (`map_literal`) |
+| A write or append through a `multiple` is held to the type the value is held as (`arm_holding`); two types of one kind are not chosen between | fdc586b | `bytecode/type_shape.cpp`, `expression.cpp`, `container_calls.cpp` |
+| A `multiple` with one spacesuit among its types calls that spacesuit's capsules | fdc586b | `bytecode/program_check.cpp` (`where.multiples`) |
+| `satellite.access(name)`, 1 31 1: the type, the value, a line to reach every level and to fill it, .size and .keys; prints on a line of its own, answers text elsewhere, works at the prompt | fdc586b | `bytecode/access_calls.cpp`, `access_words.cpp` |
+| Every container shape to a depth, and every line access prints, run as code (depth 4: 5,412 programs, 0 wrong; check.sh runs depth 2) | fdc586b | `utility/check_container_shapes.py` |
+
 **2026-09-25, EVENING -- THE ERROR SWEEP AND THE AUTHOR'S ANSWERS, every one built and pushed**
 (SCRATCH.md/NEW_ERROR_LIST.md holds the questions and his words; check.sh 934 passed at the end):
 
