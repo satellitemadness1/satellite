@@ -22,6 +22,25 @@ What I **did** fix is at the bottom, so you know what changed under you.
 
 ---
 
+## Your answers (2026-09-25, evening), and where each one is
+
+| item | your answer | state |
+|---|---|---|
+| A1 | a string + a number converts the number | **built**, every kind of number; a number first still adds |
+| A2 | threads / thread = what satl may create; machine.thread(s) = hardware threads | **built** |
+| A3 | the build number in an untracked file, counted on this machine only | **built**: `.satellite_counts_builds` |
+| A4 | accept anything valid across any number of lines, strings included | queued |
+| A5 | refuse characters that have no meaning | **built**, by name |
+| A6 | refuse an unknown escape; `\\` writes a backslash | **built** |
+| A7 | main must end with satellite.return(satellite); it quits from anywhere | queued |
+| A8 | deep recursion must not crash: a counter, and special code past ~100,000 | queued |
+| A9 | an unknown config.ini row gets its own S-code | queued |
+| A10 | the edits were your categories and tags: keep them, add a gap under code, publish | in progress |
+| new | str.upper()/uppercase()/up(), str.lower()/lowercase() | queued |
+| new | satellite.console.display(...).center() | queued |
+
+---
+
 ## Part A — needs your decision
 
 ### A1. `"n = " + 4` is refused (from your errors.md)

@@ -84,12 +84,15 @@ signed long long int refuse_pair(const satelliteObject &left, const satelliteObj
 // The pairs that refuse by converting nothing say so in the conversion's own
 // words, since "no scenario" would be untrue -- the scenario exists and is a
 // conversion the program has to write out loud.
+// ONLY number + string REACHES THIS NOW: a string on the left joins a number since
+// 2026-09-25 (add() below). With the number on the left, + adds, and what adding a string
+// means is not ruled yet -- so the sentence says how to write the join that works.
 signed long long int refuse_conversion(const satelliteObject &left, const satelliteObject &right,
                                        std::string &why)
 {
-    why = std::string("+ was given ") + left.kind_name() + " and " + right.kind_name() +
-          ", and satellite converts nothing on its own -- write the conversion "
-          "(satellite.variable.number.to_string) out loud";
+    why = std::string("+ was given ") + left.kind_name() + " and then " + right.kind_name() +
+          " -- with a number first, + adds; to join them, put the text first (\"total: \" + n) or write "
+          "n.string";
     return types_do_not_meet;
 }
 
@@ -364,6 +367,31 @@ signed long long int satelliteObject::add(const satelliteObject &other, satellit
     // and is_percentage() needs one side a percentage.
     if (pair_of(kind(), other.kind()) == pair_of(number, number))
         return run_number_pair(*this, other, number_and_number_add, "+", out, why);
+    // A STRING WITH A NUMBER ADDED TO IT JOINS THE NUMBER AS TEXT (the author, 2026-09-25:
+    // "when we have a string and we add a number to it, it has to auto convert") -- EVERY
+    // kind of number, as exactly the text its own .string gives: 1.5, 1/3, 50%, x1F,
+    // b1010. Asked before the float, fraction and hex files, which would refuse the pair.
+    // A plain number goes through string_and_number_add.hpp, the file kept for this
+    // ruling. A colour, an infinity or a bool is not a number, and is still refused.
+    if (is_string() && (other.is_number() || other.is_float() || other.is_fraction() || other.is_percentage() ||
+                        other.is_hexadecimal() || other.is_binary())) {
+        satellite_string answer;
+        signed long long int code = success;
+        if (other.is_number()) {
+            code = string_and_number_add(*as_string(), *other.as_number(), answer);
+        } else {
+            satellite_string text;
+            code = other.to_string(text, why);
+            if (code == success)
+                code = string_and_string_add(*as_string(), text, answer);
+        }
+        if (code != success) {
+            if (why.empty()) why = "the string and " + std::string(other.kind_name()) + " could not be joined";
+            return code;
+        }
+        out = satelliteObject::of_string(std::move(answer));
+        return success;
+    }
     if (refuse_infinity_arithmetic(*this, other, "+", "INF-3", why))
         return not_built_yet;
     if (signed long long int code = success; answered_by_its_own_file('+', *this, other, out, why, code))
@@ -382,8 +410,9 @@ signed long long int satelliteObject::add(const satelliteObject &other, satellit
         return success;
     }
 
-    // BOTH ORDERS, BOTH REFUSING, and each through its own file -- see
-    // number_and_string_add.hpp for why the file exists while it refuses.
+    // BOTH ORDERS, each through its own file. number + string refuses (see
+    // number_and_string_add.hpp); string + number joins, and is answered above, before
+    // the other kinds of number -- this arm stays for the pair table's sake.
     case pair_of(number, string): {
         satellite_string answer;
         const signed long long int code = number_and_string_add(*as_number(), *other.as_string(), answer);

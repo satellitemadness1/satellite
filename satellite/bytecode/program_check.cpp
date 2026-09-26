@@ -2060,6 +2060,11 @@ signed long long int check_typed_line(const BytecodeRegistry &registry,
         remember_shape(where, name.first, name.second.shape);
     }
     const std::vector<std::bitset<16>> &row = registry.front();
+    {
+        std::string why;   // a character or an escape that means nothing, as a file refuses it
+        if (first_thing_with_no_meaning(row, 0, why) < row.size())
+            return report_error("satl(prompt): " + why, satl_line_not_understood);
+    }
     for (std::size_t at = 0; at < row.size() && code_at(row, at) != token::end_of_file_token; ) {
         const std::size_t was = at;
         std::string why;

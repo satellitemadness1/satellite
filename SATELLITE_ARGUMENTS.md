@@ -803,7 +803,7 @@ Red notes. None of them blocks A1–A25.
    | alias | is | answers here |
    |---|---|---|
    | `arguments.cores` | `arguments.machine.cores` | 12 (was 24 until 2026-09-25 -- see below) |
-   | `arguments.threads` | `arguments.machine.threads` | 506,566 |
+   | `arguments.threads` | its own word since 2026-09-25 (below) | what satl may create: 506,502 |
    | `arguments.user` | `arguments.username` | madness |
    | `arguments.memory` | `arguments.memory.total` | 66509373440 |
    | `arguments.memory()` | `arguments.memory.total` | 66509373440 |
@@ -818,6 +818,14 @@ Red notes. None of them blocks A1–A25.
    the machine, so for this it's 12"* -- and there is one reader now,
    `machine_facts::physical_cores()`, used by both libraries and by the row. The
    threads pair still differs, and that one is his: see SCRATCH.md/NEW_ERROR_LIST.md.
+
+   **RULED 2026-09-25, THE THREADS PAIR SPLIT.** The author: *"I want arguments.threads or
+   arguments.thread = how many the interpreter can create, and arguments.machine.thread =
+   how many physical threads exist on the machine"*. So `arguments.threads` (second
+   spelling `arguments.thread`) answers the ceiling machine_probe.hpp reads, 506,502 here,
+   and `arguments.machine.threads` (second spelling `arguments.machine.thread`) answers the
+   processors' hardware threads, 24 here -- which the arguments variable's own row already
+   said. The singular spellings are rows of words/aliases.tsv, not new words.
 
    `arguments.memory()` is the author's own spelling from the second brief and it
    reaches a **different code path** — brackets make it a call, so it is answered

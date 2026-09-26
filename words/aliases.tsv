@@ -33,3 +33,9 @@ satellite.variable.colour	satellite.variable.color
 # THE AUTHOR, 2026-09-25 (satellite.variable.info/README.md): "satellite.info.file OR
 # satellite.info.directory or dir for short".
 satellite.info.dir(path)	satellite.info.directory(path)
+#
+# THE AUTHOR, 2026-09-25: "I want arguments.threads or arguments.thread = how many the
+# interpreter can create, and arguments.machine.thread = how many physical threads exist
+# on the machine". The singular is the second spelling of each, so either reaches one word.
+satellite.library.main.arguments.thread	satellite.library.main.arguments.threads
+satellite.library.main.arguments.machine.thread	satellite.library.main.arguments.machine.threads

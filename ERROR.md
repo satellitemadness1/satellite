@@ -39,7 +39,7 @@ each finding (DESIGN §11). PLAN M1 fixes them. Files (under `satellite/` since
 13. *(fixed by 2026-09-25 -- moved to Fixed)*
 14. *(fixed by 2026-09-25 -- moved to Fixed)*
 15. *(fixed 2026-09-25 -- moved to Fixed)*
-16. **Unknown escapes are accepted:** `"a\qb"` displays `aqb`, `"\0"` displays `0`.
+16. *(fixed 2026-09-25, the author's ruling "refuse an escape that is unknown" -- moved to Fixed)*
 17. **A library's file name is never checked against the numbers it describes:**
     `7.7.so` can register itself as `satellite.console.display 1 5 1`.
 
@@ -107,6 +107,11 @@ Found by the two builders themselves; no adversarial reviewer has run yet.
 ## Fixed
 
 *(move entries here with the commit that fixed them)*
+
+**16 -- fixed 2026-09-25 on the author's ruling ("refuse an escape that is unknown").** An
+escape that is not one of the six (\" \\ \n \t \r \') is refused before anything runs,
+naming it and the six; `\\` is how a backslash is written. 003's value escapes (\home,
+\user) are refused with the rest.
 
 **1, 13, 14 and 15 -- checked 2026-09-25, the error sweep (SCRATCH.md/NEW_ERROR_LIST.md):**
 
@@ -320,7 +325,13 @@ check: "before" printed, then 25 at run time, breaking "nothing runs before a
 refusal". The check now steps over the one code, as the run does. A comment line
 still passes: its token steps to the line's end.
 
-## A character with no code, outside a string, is accepted without a word — OPEN
+## A character with no code, outside a string, is accepted without a word — FIXED 2026-09-25
+
+**RULED AND BUILT 2026-09-25.** The author: *"Let's not accept characters that have no
+meaning"*. Every such character outside a string or a comment is refused by name before
+anything runs (capsule_scopes.cpp, first_thing_with_no_meaning), with a hint for the
+common ones -- a no-break space, a curly quote, `#`. A byte-order mark at a file's very
+start is dropped as the file's encoding (satl_file.cpp). What the entry said while open:
 
 **The author's call.** `é` on a line of its own runs and exits 0, and so does a
 no-break space used as indentation. The lexer writes `error_token` for the character

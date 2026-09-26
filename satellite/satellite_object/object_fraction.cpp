@@ -68,7 +68,8 @@ signed long long int refuse_meeting(const std::string &what, const satelliteObje
         return not_built_yet;
     }
     if (what == "+" && other.is_string()) {
-        why = both + ", and satellite converts nothing on its own -- write the conversion (.string) out loud";
+        why = both + " -- with a number first, + adds; to join them, put the text first (\"total: \" + n) or "
+                     "write n.string";
         return types_do_not_meet;
     }
     why = both + ", and there is no scenario for that pair";

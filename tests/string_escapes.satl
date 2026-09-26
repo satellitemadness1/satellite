@@ -16,7 +16,6 @@ satellite.capsule satellite.main()
     satellite.console.display("ends with \\")
     satellite.console.display("\\n is a backslash and an n")
     satellite.console.display("a\"//not a comment")
-    satellite.console.display("a\qb")
     satellite.console.display("x\ry")
     satellite.console.display("a\"b".find("b"))
     satellite.variable.string quote = "\""

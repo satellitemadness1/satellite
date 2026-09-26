@@ -11,6 +11,7 @@
 #include "program_walk.hpp"
 #include "word_codes.hpp"
 
+#include <cstdio>
 #include <utility>
 
 namespace satellite004 {
@@ -351,6 +352,120 @@ std::string outside_every_capsule(const std::vector<std::bitset<16>> &row, std::
     return kOutsideEveryCapsule;
 }
 
+// A CHARACTER THAT MEANS NOTHING IN A PROGRAM IS REFUSED, BY NAME (the author, 2026-09-25:
+// "Let's not accept characters that have no meaning"). The lexer marks one with
+// error_token -- é, a no-break space pasted as indentation, a curly quote from a word
+// processor -- and until now every walker stepped over it, so the line ran as though
+// the character were not there (ERROR.md: "A character with no code, outside a string,
+// is accepted without a word"). Inside a string or a comment a character is text, and
+// never reaches this. A shebang's first line is not satellite's to read.
+std::string named_character(const std::string &text)
+{
+    unsigned long point = 0;
+    const unsigned char first = text.empty() ? 0 : static_cast<unsigned char>(text[0]);
+    const std::size_t length = first < 0x80 ? 1 : first < 0xE0 ? 2 : first < 0xF0 ? 3 : 4;
+    point = length == 1 ? first : first & (0xFF >> (length + 1));
+    for (std::size_t k = 1; k < length && k < text.size(); ++k)
+        point = (point << 6) | (static_cast<unsigned char>(text[k]) & 0x3F);
+    char code[16];
+    std::snprintf(code, sizeof code, "U+%04lX", point);
+    const std::string written = std::string(code) + " (" + text + ")";
+    switch (point) {
+    case 0x00A0: return std::string(code) + ", a no-break space, has no meaning in a program -- it looks like a space and "
+                        "is not one; type an ordinary space instead (it comes from pasting out of a web page or a document)";
+    case 0x200B: return std::string(code) + ", a zero-width space, has no meaning in a program -- it cannot be seen; delete "
+                        "it";
+    case 0xFEFF: return std::string(code) + ", a byte-order mark, has no meaning inside a program -- delete it";
+    case 0x201C: case 0x201D:
+        return written + ", a curly quote, has no meaning in a program -- write a plain \" (a word processor turns \" "
+                         "into this)";
+    case 0x2018: case 0x2019:
+        return written + ", a curly apostrophe, has no meaning in a program -- text goes between plain \" quotes";
+    case '#':
+        return "# has no meaning in a program -- satellite's comments begin with //";
+    default:
+        return written + " has no meaning in a program -- outside a string or a // comment, only satellite's own "
+                         "characters may be written, and a name is made of a-z, A-Z, 0-9 and _, and does not start "
+                         "with a digit";
+    }
+}
+
+// AN ESCAPE SATELLITE DOES NOT KNOW IS REFUSED (the author, 2026-09-25: "refuse an escape
+// that is unknown"). The six are string_at's (bytecode_registry.cpp); "a\qb" kept its
+// backslash until now (ERROR #16), and so did 003's value escapes (\home, \user), which
+// are refused with the rest. The literal is read as it was WRITTEN (text_at), by the
+// lexer's rule that a backslash takes the character after it.
+bool unknown_escape_in(const std::string &written, std::string &why)
+{
+    for (std::size_t k = 0; k < written.size(); ++k) {
+        if (written[k] != '\\')
+            continue;
+        const char next = k + 1 < written.size() ? written[k + 1] : '\0';
+        if (next == '"' || next == '\\' || next == 'n' || next == 't' || next == 'r' || next == '\'') {
+            ++k;
+            continue;
+        }
+        std::size_t end = k + 2;
+        while (end < written.size() && (static_cast<unsigned char>(written[end]) & 0xC0) == 0x80) ++end;
+        why = "\\" + written.substr(k + 1, end - k - 1) + " is not an escape satellite knows -- the six are \\\" \\\\ "
+              "\\n \\t \\r and \\', and a backslash itself is written \\\\";
+        return true;
+    }
+    return false;
+}
+
+} // namespace
+} // namespace scan
+
+// THE FIRST THING IN A ROW THAT MEANS NOTHING -- a character the lexer had no code for, or
+// an escape no string knows -- at or after `from`; row.size() when there is none. The scan
+// refuses it in a file, and check_typed_line at the prompt, in the same words.
+std::size_t first_thing_with_no_meaning(const std::vector<std::bitset<16>> &row, std::size_t from, std::string &why)
+{
+    for (std::size_t at = from; at < row.size();) {
+        const token::Code code = code_at(row, at);
+        if (code == token::error_token) {
+            std::size_t k = at;
+            const std::string character = text_at(row, k);
+            // 003'S COLOUR, #000000 or #ff00aa: the colour readers say it by name ("a colour is
+            // written x000000 here"), which is the better sentence than "# has no meaning".
+            if (character == "#" && (code_at(row, k) == token::number_token || code_at(row, k) == token::name_token)) {
+                std::size_t n = k;
+                const std::string digits = text_at(row, n);
+                if ((digits.size() == 6 || digits.size() == 8) &&
+                    digits.find_first_not_of("0123456789abcdefABCDEF") == std::string::npos) {
+                    at = n;
+                    continue;
+                }
+            }
+            why = scan::named_character(character);
+            return at;
+        }
+        if (code == token::string_token) {
+            std::size_t k = at;
+            if (scan::unknown_escape_in(text_at(row, k), why))
+                return at;
+            at = k;
+            continue;
+        }
+        if (token::carries_a_count(code)) { skip_payload(row, at); continue; }
+        ++at;
+    }
+    return row.size();
+}
+
+namespace scan {
+namespace {
+
+void refuse_characters_with_no_meaning(CapsuleTable &table, const std::vector<std::bitset<16>> &row, std::size_t r,
+                                       std::size_t from)
+{
+    std::string why;
+    const std::size_t at = first_thing_with_no_meaning(row, from, why);
+    if (at < row.size())
+        refuse(table, r, at, satl_line_not_understood, why);
+}
+
 // EVERY SCOPE AND CAPSULE OF ONE FILE. `open` is what each `{` read and not yet
 // closed is, the file's own at the bottom -- a stack, so a space may hold a space
 // as deep as a person writes one, and no C++ recursion is spent on it.
@@ -368,6 +483,7 @@ void scan_row(CapsuleTable &table, const std::vector<std::bitset<16>> &row, std:
     table.in_row.emplace_back(1, file_scope);
 
     refuse_unclosed_strings(table, row, r, file);
+    refuse_characters_with_no_meaning(table, row, r, starts_with_a_shebang(file) ? first_code_of_line(row, 1) : 0);
 
     std::vector<Open> open{{file_scope, Opened::file}};
     // THE {s OPENED AT THE FILE'S TOP BY NO DECLARATION, still open -- where each is, so a

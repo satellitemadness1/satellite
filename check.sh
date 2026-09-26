@@ -1529,14 +1529,16 @@ satellite.capsule other()
     satellite.console.display(\"OTHER\")
 }
 ''' % ch)"
+# REBASED 2026-09-25: a character with no meaning is refused by name (the author: "Let's
+# not accept characters that have no meaning"), before anything runs.
 for tag in e9 1003 1002 11002 1007 1006 11006; do
     output=$("$interpreter" build/stray_include_$tag.satl 2>/dev/null); code_run=$?
-    expect "a stray U+$tag before (\"stray_theirs\") includes nothing" "MINE|0" "$output|$code_run"
+    expect "a stray U+$tag before (\"stray_theirs\") includes nothing -- it is refused by name" "|13" "$output|$code_run"
     # REBASED 2026-09-25 from "MAIN|0": the stray line is at the file's top, outside every
     # capsule, and a line there is refused now rather than stepped over (capsule_scopes.cpp).
     # What this row is for still holds -- OTHER never runs as main -- and nothing runs at all.
     output=$("$interpreter" build/stray_main_$tag.satl 2>/dev/null); code_run=$?
-    expect "a stray U+$tag before satellite.main does not make the next capsule main (refused, S102)" "|11" "$output|$code_run"
+    expect "a stray U+$tag before satellite.main does not make the next capsule main (refused by name)" "|13" "$output|$code_run"
 done
 # U+0704 is 0x0704, method_token: the lexer looked back at the last CODE, so after "܄" a
 # name became a method code the check never sees -- "before" printed and the run died on
@@ -1555,7 +1557,10 @@ satellite.capsule satellite.main(satellite.container.list<satellite.variable.str
 ''' % literal)"
 for tag in 0703 0704 0704_spaced 0704_find 0704_stray 10704; do
     output=$("$interpreter" build/period_in_a_payload_$tag.satl 2>/dev/null); code_run=$?
-    expect "a name after U+$tag is still a name, refused before anything runs" "|25" "$output|$code_run"
+    # REBASED 2026-09-25: the stray one (܄ outside a string) is a character with no meaning,
+    # refused by name before the name after it is judged. Still 0 lines run.
+    wanted="|25"; [ "$tag" = 0704_stray ] && wanted="|13"
+    expect "a name after U+$tag is still a name, refused before anything runs" "$wanted" "$output|$code_run"
 done
 # A character above U+FFFF is 40000 and two codes, in a string as in the bytecode (the author,
 # 2026-09-17: "40000 is not a smile... its the 16-bit value for wide"). Positions count characters.
@@ -1627,14 +1632,23 @@ for name, body in (('declared', ' satellite.variable.number n = 5\n    satellit
                    ('paren', '    satellite.console.display(\"before\")\n    ) undeclared = 5\n')):
     open('build/stray_%s.satl' % name, 'w', encoding='utf-8').write(head + body + tail)"
 output=$("$interpreter" build/stray_declared.satl 2>/dev/null); code_run=$?
-expect "a no-break space before a declaration does not hide it" "5|0" "$output|$code_run"
-for name in undeclared paren; do
+# REBASED 2026-09-25: a character with no meaning is refused by name (the author: "Let's
+# not accept characters that have no meaning"), before anything runs.
+expect "a no-break space before a declaration is refused by name, and nothing runs" "|13|1" \
+       "$output|$code_run|$("$interpreter" build/stray_declared.satl 2>&1 | tr '\n' ' ' | grep -c 'U+00A0, a no-break space, has no meaning')"
+"$interpreter" build/stray_undeclared.satl > build/stray.out 2>&1; code_run=$?
+expect "a no-break space before an undeclared name is refused by name, before anything runs" "13|1|" \
+       "$code_run|$(tr '\n' ' ' < build/stray.out | grep -c 'U+00A0, a no-break space, has no meaning')|$(grep -x before build/stray.out)"
+for name in paren; do
     "$interpreter" build/stray_$name.satl > build/stray.out 2>&1; code_run=$?
     expect "a stray character before an undeclared name ($name) is refused by the check, before anything runs" \
            "25|1|" "$code_run|$(grep -c 'satl(check).*undeclared has no satellite.variable line' build/stray.out)|$(grep -x before build/stray.out)"
 done
 "$interpreter" tests/declared_twice.satl > /dev/null 2>&1; expect "a name declared twice" 26 $?
-"$interpreter" tests/kinds_do_not_meet.satl > /dev/null 2>&1; expect "\"n = \" + 4 converts nothing" 27 $?
+# REBASED 2026-09-25: a string with a number added to it joins the number as text (the author:
+# "when we have a string and we add a number to it, it has to auto convert").
+output=$("$interpreter" tests/kinds_do_not_meet.satl 2>/dev/null); code_run=$?
+expect "\"n = \" + 4 is \"n = 4\"" "n = 4|0" "$output|$code_run"
 # ERROR.md: an expression that stops early is refused, not half-stored. `&` has no
 # meaning yet, and `n = 1 & 2` used to store 1 and `while(n < 3 & 1)` ran as `n < 3`.
 "$interpreter" tests/unread_assignment.satl > build/unread.out 2>&1; expect "n = 1 & 2 is refused, not stored as 1" 13 $?
@@ -4551,11 +4565,13 @@ library_refused method_of_its_type 14 "satellite.library.span.size is not built 
 # neither recorded nor refused).
 printf '\357\273\277satellite.include(satellite)\n\302\240satellite.library.span = 25\n\302\240satellite.library.main = 5\n\nsatellite.capsule satellite.main()\n{\n    satellite.console.display(satellite.library.span)\n    satellite.return(satellite)\n}\n' > build/library/no_code.satl
 "$interpreter" build/library/no_code.satl > build/library/no_code.out 2>&1; code=$?
-expect "a value behind a no-break space is recorded, and a refused line behind one is refused" "13|1" \
-       "$code|$(tr '\n' ' ' < build/library/no_code.out | sed 's/  */ /g' | grep -c 'satellite.library.main is the language.s own word')"
-sed -i '/satellite.library.main = 5/d' build/library/no_code.satl
+# REBASED 2026-09-25: a character with no meaning is refused by name (the author: "Let's
+# not accept characters that have no meaning"), before anything runs.
+expect "a no-break space before a value's line is refused by name" "13|1" \
+       "$code|$(tr '\n' ' ' < build/library/no_code.out | sed 's/  */ /g' | grep -c 'U+00A0, a no-break space, has no meaning')"
+sed -i '/satellite.library.main = 5/d; s/\xc2\xa0//g' build/library/no_code.satl
 "$interpreter" build/library/no_code.satl > build/library/no_code.out 2>&1; code=$?
-expect "... and read back" "0|25" "$code|$(grep -x 25 build/library/no_code.out)"
+expect "... and without it the value reads back, behind the byte-order mark that is dropped" "0|25" "$code|$(grep -x 25 build/library/no_code.out)"
 # A FILE NAMED LIKE A METHOD -- color.satl -- lexes as the method's code after the dot, and is
 # still reached by the stem it was included by (the review, 2026-09-23).
 printf 'satellite.include(satellite)\nsatellite.library.x = 5\n' > build/library/color.satl
@@ -4828,8 +4844,8 @@ expect "start, stop and wait are registry rows 0x0B58-0x0B5A, and token_codes.hp
 # does not know keeps its backslash, and whether it should be refused is ERROR #16's
 # ruling, still his. A tab is shown as <TAB> and a carriage return as <CR>.
 "$interpreter" tests/string_escapes.satl > build/string_escapes.out 2>/dev/null; code=$?
-expect "strings: \\\" \\\\ \\n \\t \\r \\' are escapes, a // after \\\" is text, and \\q keeps its backslash" \
-       '0|say "hi"|one|two|a<TAB>b|DOESN'"'"'T|back\slash|ends with \|\n is a backslash and an n|a"//not a comment|a\qb|x<CR>y|2|"quoted"|true|false|x"y,p<TAB>q' \
+expect "strings: \\\" \\\\ \\n \\t \\r \\' are escapes, and a // after \\\" is text" \
+       '0|say "hi"|one|two|a<TAB>b|DOESN'"'"'T|back\slash|ends with \|\n is a backslash and an n|a"//not a comment|x<CR>y|2|"quoted"|true|false|x"y,p<TAB>q' \
        "$code|$(sed 's/\t/<TAB>/g; s/\r/<CR>/g' build/string_escapes.out | tr '\n' '|' | sed 's/|$//')"
 escape_room=$(mktemp -d "${TMPDIR:-/tmp}/satl_escapes.XXXXXX")
 cp tests/string_escapes_write_code.satl "$escape_room/"
@@ -5177,8 +5193,10 @@ expect "satellite.log: that refusal is one [entry] with its S-code and the progr
 expect "an object named for its own spacesuit: S202 before anything runs" "26||1" \
        "$code|$(cat build/name_suit.out)|$(grep -c 'thing is already the spacesuit thing' build/name_suit.err)"
 "$interpreter" tests/name_not_a_name.satl > build/name_not.out 2> build/name_not.err; code=$?
+# REBASED 2026-09-25: @ is a character with no meaning, and is refused by name first -- still
+# saying what a name is made of.
 expect "!@#\$%^&*() as a name: refused, and the refusal says what a name is" "13||1" \
-       "$code|$(cat build/name_not.out)|$(tr '\n' ' ' < build/name_not.err | grep -c 'followed by something that is not a name -- a name is made of a-z, A-Z, 0-9 and _, and does not start with a digit')"
+       "$code|$(cat build/name_not.out)|$(tr '\n' ' ' < build/name_not.err | grep -c 'a name is made of a-z, A-Z, 0-9 and _, and does not start with a digit')"
 # A NAME HOLDING ESC [ 2 J CLEARED THE SCREEN OF THE PERSON BEING TOLD ABOUT IT: the
 # syntax row was written raw. Now it is \x1b, on the screen and in the log.
 printf 'satellite.include(satellite)\n\nsatellite.capsule satellite.main()\n{\n    satellite.variable.number a\001\033[2Jb = 5\n}\n\nsatellite.return(satellite)\n' \
@@ -5404,6 +5422,54 @@ printf 'satellite.include(satellite)\n\nsatellite.capsule half(satellite.variabl
 output=$("$interpreter" "$sweep/float_parameter.satl" 2>/dev/null); code_run=$?
 expect "half(100) with a float parameter: 100 becomes 100.0, as a declaration makes it" "50.0|1.75|0" \
        "$(printf '%s' "$output" | tr '\n' '|')|$code_run"
+# THE AUTHOR'S RULINGS OF 2026-09-25, EACH ONE LINE OF HIS (SCRATCH.md/NEW_ERROR_LIST.md, Part A).
+#
+# A1: "when we have a string and we add a number to it, it has to auto convert" -- every kind
+# of number joins as the text its own .string gives. A number first still adds, and is refused
+# with the spelling that joins.
+printf 'satellite.include(satellite)\n\nsatellite.capsule satellite.main()\n{\n    satellite.variable.number total = 4\n    satellite.console.display("total: " + total)\n    satellite.console.display("f " + 1.5)\n    satellite.console.display("p " + 50%%)\n    satellite.console.display("b " + b1010)\n    satellite.console.display("h " + x1F)\n    satellite.console.display("q " + 1/3)\n    satellite.console.display("abc".add(7))\n    satellite.return(satellite)\n}\n' > "$sweep/join.satl"
+output=$("$interpreter" "$sweep/join.satl" 2>/dev/null); code_run=$?
+expect "a string + any kind of number joins it as its text: 4, 1.5, 50%, b1010, x1F, 1/3, and .add(7)" \
+       "total: 4|f 1.5|p 50%|b b1010|h x1F|q 1/3|abc7|0" "$(printf '%s' "$output" | tr '\n' '|')|$code_run"
+expect "4 + \"2\" -- a number first -- still adds, and is told how to join" "27|1|1" \
+       "$(body_refused number_first '    satellite.console.display(4 + "2")' 'with a number first, + adds; to join them, put the text first')"
+# A2: "arguments.threads or arguments.thread = how many the interpreter can create, and
+# arguments.machine.thread = how many physical threads exist on the machine".
+printf 'satellite.include(satellite)\n\nsatellite.capsule satellite.main(satellite.variable.arguments arguments)\n{\n    satellite.console.display(arguments.threads)\n    satellite.console.display(arguments.thread)\n    satellite.console.display(arguments.machine.threads)\n    satellite.console.display(arguments.machine.thread)\n    satellite.return(satellite)\n}\n' > "$sweep/threads.satl"
+threads_said=$("$interpreter" "$sweep/threads.satl" 2>/dev/null | tr '\n' ' ')
+set -- $threads_said
+expect "arguments.threads = arguments.thread (what satl may create), machine.threads = machine.thread = $(nproc)" \
+       "same|$(nproc)|$(nproc)|more" "$([ "$1" = "$2" ] && echo same)|$3|$4|$([ "$1" -gt "$3" ] && echo more)"
+# A5: "Let's not accept characters that have no meaning" -- by name, with a hint for the
+# common ones; a byte-order mark at a file's very start is the file's encoding, and dropped.
+printf 'satellite.include(satellite)\n\nsatellite.capsule satellite.main()\n{\n    satellite.console.display("before")\n    satellite.console.display(\342\200\234hello\342\200\235)\n    satellite.return(satellite)\n}\n' > "$sweep/curly.satl"
+"$interpreter" "$sweep/curly.satl" > "$sweep/curly.out" 2>&1; code_run=$?
+expect "a curly quote is refused by name, told to write a plain \", before anything runs" "13|1|0" \
+       "$code_run|$(tr '\n' ' ' < "$sweep/curly.out" | grep -c 'U+201C (.*), a curly quote, has no meaning in a program -- write a plain "')|$(grep -cx before "$sweep/curly.out")"
+printf '\357\273\277satellite.include(satellite)\n\nsatellite.capsule satellite.main()\n{\n    satellite.console.display("bom")\n    satellite.return(satellite)\n}\n' > "$sweep/bom.satl"
+output=$("$interpreter" "$sweep/bom.satl" 2>/dev/null); code_run=$?
+expect "a byte-order mark at the start of a file is dropped, and the program runs" "bom|0" "$output|$code_run"
+# A6: "refuse an escape that is unknown" -- and \\ is how a backslash is written.
+expect "\\q -- an escape satellite does not know -- is refused before anything runs" "13|1|0" \
+       "$(body_refused unknown_escape '    satellite.console.display("a\qb")' '\\q is not an escape satellite knows -- the six are')"
+# A3: "keep the build number in an untracked file, and make on this machine will update it, but
+# not on other machines". A copy of build_number.py and the config, with and without the file.
+bn_room=$(mktemp -d "${TMPDIR:-/tmp}/satl_build_number.XXXXXX")
+mkdir -p "$bn_room/satellite/config" && cp satellite/config/build_number.py satellite/config/satellite_config.hpp "$bn_room/satellite/config/"
+echo one > "$bn_room/input"
+config_before=$(md5sum < "$bn_room/satellite/config/satellite_config.hpp")
+python3 "$bn_room/satellite/config/build_number.py" "$bn_room/stamp" -- "$bn_room/input" > /dev/null
+echo two >> "$bn_room/input"
+python3 "$bn_room/satellite/config/build_number.py" "$bn_room/stamp" -- "$bn_room/input" > /dev/null
+expect "a checkout with no .satellite_counts_builds never writes satellite_config.hpp, however its inputs change" \
+       "same" "$([ "$config_before" = "$(md5sum < "$bn_room/satellite/config/satellite_config.hpp")" ] && echo same)"
+touch "$bn_room/.satellite_counts_builds"; echo three >> "$bn_room/input"
+python3 "$bn_room/satellite/config/build_number.py" "$bn_room/stamp" -- "$bn_room/input" > /dev/null
+expect "... and one that has it raises the build by one" "$(( $(config_row build) + 1 ))" \
+       "$(python3 -c "
+import sys; sys.path.insert(0, '$bn_room/satellite/config'); import build_number
+print([r for r in build_number.live_rows(build_number.read_config()) if r['name'] == 'arguments.build'][0]['number'])")"
+rm -rf "$bn_room"
 # arguments.cores IS arguments.machine.cores (machine_facts.hpp): how many cores exist, the
 # author's "for this it's 12" -- the alias's library counted threads and said 24.
 printf 'satellite.include(satellite)\n\nsatellite.capsule satellite.main(satellite.variable.arguments arguments)\n{\n    satellite.console.display(arguments.cores)\n    satellite.console.display(arguments.machine.cores)\n    satellite.return(satellite)\n}\n' > "$sweep/cores.satl"

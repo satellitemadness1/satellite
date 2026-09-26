@@ -1,28 +1,16 @@
-// satellite.library.main.arguments.machine.threads  `1 14 1 1 1 3` -- how many threads this machine allows.
+// satellite.library.main.arguments.machine.threads  `1 14 1 1 1 3` -- how many threads this
+// machine's processors run at once: 24 on a 12-core processor running two a core.
 //
-// SATELLITE_ARGUMENTS Phase C. The reader and the answer are in
-// satellite-numbers/machine_facts.hpp, shared because each library is compiled
-// from exactly one .cpp -- and because this word has aliases that must not be
-// able to answer anything different.
+// THE AUTHOR, 2026-09-25: *"arguments.machine.thread = how many physical threads exist on
+// the machine"* -- and `arguments.machine.thread`, singular, is this word's second spelling
+// (words/aliases.tsv). How many threads the INTERPRETER may create is arguments.threads, a
+// word of its own; this one answered that count until 2026-09-25, while the arguments
+// variable's row of the same name said 24.
 //
-// READ EVERY TIME, NEVER CACHED. A machine fact a minute old is a wrong answer
-// wearing a right answer's face.
+// READ EVERY TIME, NEVER CACHED, and the answer is machine_facts.hpp's, so the row the
+// arguments variable gathers and this word cannot say different numbers.
 
 #include "../machine_facts.hpp"
-#include "../../satellite/config/machine_probe.hpp"
-
-inline satellite004::FactReply answer_threads()
-{
-    // C6 -- THE MEASURED COUNT WHEN `satl --config` HAS RUN HERE, and the lowest
-    // ceiling /proc states when it has not. NEVER PROBES: reading a word must not
-    // cost nine seconds and three gigabytes, which is the whole reason --config
-    // is a separate, once-per-machine command.
-    const unsigned long long int said = satellite004::threads_this_machine_allows();
-    if (said == 0)
-        return satellite004::machine_facts::could_not_read("any thread ceiling",
-                                                           satellite004::machine_fact_not_read);
-    return satellite004::machine_facts::a_count(said);
-}
 
 extern "C" signed long long int satellite_number_describe(satellite004::LibraryRow *row)
 {
@@ -35,6 +23,6 @@ extern "C" signed long long int satellite_number_describe(satellite004::LibraryR
     row->numbers[4] = 1;
     row->numbers[5] = 3;
     row->depth = 6;
-    row->scenarios.fact = &answer_threads;
+    row->scenarios.fact = &satellite004::machine_facts::answer_hardware_threads;
     return satellite004::success;
 }

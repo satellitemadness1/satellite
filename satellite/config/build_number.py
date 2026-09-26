@@ -57,6 +57,16 @@ import tempfile
 HERE = os.path.dirname(os.path.abspath(__file__))
 ROOT = os.path.dirname(os.path.dirname(HERE))
 CONFIG = os.path.join(HERE, "satellite_config.hpp")
+
+# ONLY THE MACHINE THAT HAS THIS FILE COUNTS BUILDS (the author, 2026-09-25: "keep the
+# build number in an untracked file, and make on this machine will update it, but not on
+# other machines"). It is in .gitignore, so a clone never has it: there, make builds with
+# the number the checkout came with and never writes satellite_config.hpp -- which is
+# what let `git pull` refuse after the first make on every machine that cloned (the
+# number is in a tracked file, and almost every commit changes it). The count itself
+# stays where it always was, in the untracked stamp. `touch .satellite_counts_builds`
+# makes a machine count; deleting it stops it.
+COUNTS_BUILDS = os.path.join(ROOT, ".satellite_counts_builds")
 LONG_LONG_MAX = 2 ** 63 - 1
 # The number the first build of a new revision gets. One, not zero: BUILD 0001 is a
 # build that happened, and a released binary never shows a count of none.
@@ -261,6 +271,17 @@ def main():
         restarted = was is not None and revision is not None and revision != was
 
         if current == recorded and row["number"] == used and not restarted:
+            return
+
+        # A MACHINE THAT DOES NOT COUNT BUILDS (COUNTS_BUILDS, above) builds under the number
+        # its checkout came with, whatever it is -- an older commit checked out is an older
+        # number, not an editor's mistake -- and writes only the stamp, which one processor's
+        # build and PGO's training build (--same) compare themselves against.
+        if not same and not os.path.exists(COUNTS_BUILDS):
+            number = row["number"]
+            write_atomically(stamp, "%d %s %s\n" % (number, current, "-" if revision is None else revision))
+            print("satellite: BUILD %s, the number this checkout came with (only a machine with %s counts builds)"
+                  % (str(number).zfill(4), os.path.basename(COUNTS_BUILDS)))
             return
         if same:
             fail(("no ordinary build has been made yet" if used is None else

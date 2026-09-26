@@ -179,6 +179,11 @@ struct CapsuleScope {
 // A REFUSAL THE SCAN FOUND, with the place it points at. The scan has no program to
 // stop and no report to print, so check_program refuses these before anything runs,
 // in the order they stand in the files.
+// THE FIRST THING IN A ROW THAT MEANS NOTHING -- a character with no code, or an escape no
+// string knows -- at or after `from`, and the sentence refusing it; row.size() when there is
+// none (capsule_scopes.cpp; the author, 2026-09-25).
+std::size_t first_thing_with_no_meaning(const std::vector<std::bitset<16>> &row, std::size_t from, std::string &why);
+
 struct ScopeTrouble {
     std::size_t row = 0;
     std::size_t at = 0;

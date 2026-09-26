@@ -104,6 +104,13 @@ signed long long int load_satl(const std::string &path, std::string &source, Mac
         source.append(buffer, got);
     std::fclose(file);
 
+    // A BYTE-ORDER MARK AT THE VERY START IS DROPPED: some Windows editors write one before
+    // a UTF-8 file, and it is the file saying how it is encoded, never a character anybody
+    // typed -- every other character with no meaning is refused since 2026-09-25, so this
+    // one would otherwise refuse every such file at its first byte.
+    if (source.compare(0, 3, "\xEF\xBB\xBF") == 0)
+        source.erase(0, 3);
+
     // A LINE ENDS AT \n, AT \r\n OR AT A LONE \r -- and from here on only at \n. A file
     // saved on Windows ends every line with \r\n and one from an old Mac with \r alone;
     // the lexer splits on \n, so the \r stayed on the end of every line and the first
