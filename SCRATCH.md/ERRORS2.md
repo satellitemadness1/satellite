@@ -71,6 +71,15 @@ separates "the site is down" from "this machine is blocked".
   (2026-09-24, 21:13–21:40 GMT) and wants them kept. He also said "you can add more tags":
   do that after the pull, once his vocabulary is visible.
 
+**Three new posts are waiting too**, and they're in `publish.sh`'s list:
+- `post-build-an-interpreter-in-cpp`: a whole interpreter in about 200 lines of C++. Its five
+  code boxes were joined and compiled tonight, and run.
+- `post-recursion-a-million-deep`
+- `post-a-syntax-tree-of-objects`: spacesuit nodes evaluating `1 + 2 * 3`.
+
+All 321 of the site's examples pass. He asked for these after asking what satellite needs
+before a language can be written in it; that answer is `SCRATCH.md/LANGUAGE_IN_SATELLITE.md`.
+
 **When the server answers:** run `~/.config/satellite-foundation/publish.sh` by its full path.
 Never upload a few pages with `upload.py` alone: it re-dates those posts to the top of the blog
 and turns their links to other pages into bare links to the site.
