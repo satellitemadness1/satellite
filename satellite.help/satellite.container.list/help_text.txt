@@ -35,7 +35,8 @@ go the other way. There is no for-each loop yet, so walk a list with
 satellite.statement.for and a[i].
 
 The old .sort("down"), .sort_down() and .sort_up() are refused:
-.sort().by_name().reverse() replaced them. On an index, .sum .max .min and .join
+.sort().by_name().reverse() replaced them. .sort("key") and .sort("value") are
+a map's, and a map refuses .by_name() and .by_value(). On an index, .sum .max .min and .join
 ask you to say which half -- scores.values.sum, scores.keys.join(", ").
 
 example:

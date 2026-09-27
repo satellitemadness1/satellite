@@ -30,6 +30,20 @@ lists in the same order, .first and .last are the first and last key, and
 because a map has keys and not positions. Two maps are == when they hold the
 same entries, whatever order those went in.
 
+.sort() puts a map in order by its keys, and is .sort("key") in fewer words;
+.sort("value") puts it in order by its values. Each answers the map with its
+entries in the new order and leaves the name as it was: count =
+count.sort("value") keeps the order. The width comes first, then a to z and 0
+to 9: a whole number by how many digits it has and then by its digits, so 9
+comes before 10 and 100, and every negative number before 0; a string by how
+many characters it has and then by its characters in satellite's own order (a
+to z, then A to Z, then 0 to 9), so "bo" comes before "zoe" before "alice", and
+"file2" before "file10"; a float, a fraction and the rest by what each is
+worth. Entries that tie keep the order they went in. A number key beside a
+string key, or two lists, have no order between them, and .sort refuses them
+rather than guess. .sort().by_name() and .sort().by_value() are a list's: a
+map refuses them, and count.keys.sort().by_name() orders its keys alone.
+
 example:
 
 satellite.include(satellite)
@@ -50,6 +64,10 @@ satellite.capsule satellite.main()
     satellite.console.display(age.size) // 2
     satellite.container.list<satellite.container.map<satellite.variable.string, satellite.variable.number>> rows = {{"a": 1}, {"b": 2}}
     satellite.console.display(rows[2]["b"]) // 2
+    satellite.container.map<satellite.variable.string, satellite.variable.number> count = {"to": 4, "be": 2, "or": 1, "not": 3}
+    satellite.console.display(count.sort()) // {"be": 2, "or": 1, "to": 4, "not": 3}
+    satellite.console.display(count.sort("value")) // {"or": 1, "be": 2, "not": 3, "to": 4}
+    satellite.console.display(count.sort("value").last) // to
     satellite.return(satellite)
 }
 

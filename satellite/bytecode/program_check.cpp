@@ -650,10 +650,27 @@ signed long long int method_judged(const std::vector<std::bitset<16>> &row, std:
                 why = spelling + "( is never closed on its line";
                 return satl_line_not_understood;
             }
-            if (given != static_cast<std::size_t>(wanted) || (wanted > 0 && !bracketed)) {
-                why = spelling + " takes " + std::to_string(wanted) + (wanted == 1 ? " argument" : " arguments") +
+            if (!container_given_fits(method, given) || (wanted > 0 && !bracketed)) {
+                why = spelling + container_takes(method, wanted) +
                       (bracketed ? ", and was given " + std::to_string(given) : ", in brackets after it");
                 return satl_line_not_understood;
+            }
+            // `.sort` GIVEN ITS WORD IN QUOTES is judged here, in the walker's sentence
+            // (container_calls.hpp): "key" or "value" on a name declared a map, and no
+            // word at all on one declared a list. A word worked out -- a name, a call --
+            // and a name declared a multiple, which may hold either, wait for the run.
+            if (method == token::sort_token && given == 1 && code_at(row, k + 3) == token::string_token) {
+                const bool a_map = is_an_index_word(declared_as) || declared_as == word::code_of(1, 6, 21);
+                const bool a_list = declared_as == word::code_of(1, 4, 2) || declared_as == word::code_of(1, 6, 22);
+                std::size_t at = k + 3;
+                const std::string written = text_at(row, at);
+                const std::string refused = code_at(row, at) == token::right_parenthesis_token && (a_map || a_list)
+                                                ? sort_word_refused(written, a_map, name)
+                                                : std::string();
+                if (!refused.empty()) {
+                    why = refused;
+                    return a_map ? satl_line_not_understood : types_do_not_meet;
+                }
             }
             // A NAME DECLARED AN INDEX is told which half to ask, before the run, in
             // the walker's own sentence (container_calls.hpp).

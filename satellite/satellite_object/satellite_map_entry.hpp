@@ -18,7 +18,7 @@
 // is filed, so its width is measured once; a value's is measured every time a value is put in
 // (put_value, below -- the one way a value goes in). A write INSIDE a value -- `m["a"][2] = 5` on a
 // list -- leaves it the kind it was, and a container's width is 0, so nothing there goes stale.
-// Nothing reads a width yet: .sort("key") and .sort("value") will.
+// .sort("key") and .sort("value") read them (satellite_map_sort.hpp).
 
 #include "satellite_object.hpp"
 

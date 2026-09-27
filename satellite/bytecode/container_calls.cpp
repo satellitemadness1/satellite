@@ -5,6 +5,7 @@
 
 #include "../satellite_object/satellite_index.hpp"
 #include "../satellite_object/satellite_list.hpp"
+#include "../satellite_object/satellite_map_sort.hpp"
 #include "../satellite_object/string_and_string_compare.hpp"
 #include "../satellite_object/fast_paths.hpp"
 #include "type_shape.hpp"
@@ -88,13 +89,19 @@ bool text_of_each(const std::vector<satelliteObject> &items, std::vector<satelli
 // order is decided and not built, as `b10 < 9.5` says -- with `why` naming the two
 // items. `asking` is which method wants to know, so the sentence names the line the
 // person wrote.
-signed long long int all_comparable(const std::vector<satelliteObject> &items, const char *asking, std::string &why)
+//
+// `item_at(n)` IS HOW THE nTH ONE IS REACHED, so a map's keys or values are asked
+// where they sit in its entries, never copied out into a list to be asked
+// (.sort("key") and .sort("value"), 2026-09-26); `each` is what one is called.
+template <typename ItemAt>
+signed long long int all_comparable(std::size_t count, ItemAt item_at, const std::string &asking, const char *each,
+                                    std::string &why)
 {
     constexpr std::size_t none = static_cast<std::size_t>(-1);
     std::size_t first_of[satelliteObject::how_many_kinds], second_of[satelliteObject::how_many_kinds];
     for (std::size_t kind = 0; kind < satelliteObject::how_many_kinds; ++kind) first_of[kind] = second_of[kind] = none;
-    for (std::size_t at = 0; at < items.size(); ++at) {
-        const std::size_t kind = items[at].kind();
+    for (std::size_t at = 0; at < count; ++at) {
+        const std::size_t kind = item_at(at).kind();
         if (first_of[kind] == none) first_of[kind] = at;
         else if (second_of[kind] == none) second_of[kind] = at;
     }
@@ -108,15 +115,22 @@ signed long long int all_comparable(const std::vector<satelliteObject> &items, c
         for (std::size_t other = one + 1; other < asked.size(); ++other) {
             int order = 0;
             std::string inner;
-            const signed long long int code = items[asked[one]].compare(items[asked[other]], order, inner);
+            const signed long long int code = item_at(asked[one]).compare(item_at(asked[other]), order, inner);
             if (code != success) {
-                why = std::string(asking) + " by what each item is worth, and item " + std::to_string(asked[one] + 1) +
-                      " and item " + std::to_string(asked[other] + 1) + " have no order between them: " + inner;
+                why = asking + ", and " + each + " " + std::to_string(asked[one] + 1) + " and " + each + " " +
+                      std::to_string(asked[other] + 1) + " have no order between them: " + inner;
                 return code;
             }
         }
     }
     return success;
+}
+
+signed long long int all_comparable(const std::vector<satelliteObject> &items, const char *asking, std::string &why)
+{
+    return all_comparable(
+        items.size(), [&items](std::size_t at) -> const satelliteObject & { return items[at]; },
+        std::string(asking) + " by what each item is worth", "item", why);
 }
 
 // WHAT `.sum` ADDS: THE KINDS THAT ARE NUMBERS. `+` also joins two strings and mixes
@@ -178,7 +192,27 @@ std::string index_refuses(token::Code method, const std::string &name)
     }
     if (method == token::reserve_token)
         return "an index makes its room as keys arrive; .reserve(n) is a list's";
+    // THEY ORDERED THE KEYS AND ANSWERED A LIST OF THEM (ERRORS4 page 012), so a
+    // word count ranked "by value" came out a to z. A map has its own words for
+    // that now, which order its entries and answer the map. NO NAME IN THE SENTENCE:
+    // after `scores.sort()` the name is "scores.sort()", and the sentence read
+    // scores.sort().sort("key").
+    if (method == token::by_name_token || method == token::by_value_token)
+        return std::string("a map is put in order by .sort(\"key\") or .sort(\"value\"), which answer the map "
+                           "-- its keys alone are .keys.sort().") +
+               name_of(method) + "()";
     return "";
+}
+
+std::string sort_word_refused(const std::string &word, bool on_a_map, const std::string &name)
+{
+    if (!on_a_map)
+        return name + ".sort(\"" + word + "\") -- a list is put in order by " + name + ".sort().by_name() or " +
+               name + ".sort().by_value(), and .reverse() after either goes the other way; \"key\" and "
+               "\"value\" are a map's";
+    if (word == "key" || word == "value")
+        return "";
+    return name + ".sort(\"" + word + "\") -- a map is put in order by \"key\" or by \"value\"";
 }
 
 // ---------------------------------------------------------------------------
@@ -362,7 +396,7 @@ Value call_container_method(token::Code method, Value &receiver, Value *home, co
                            " (a list and an index have .append, .size, .empty, .first, .last, .contains, "
                            ".index_of, .search, .insert, .remove, .remove_at, .remove_first, .remove_last, "
                            ".clear, .truncate, .reserve, .sum, .max, .min, .join, .keys, .values, .sort().by_name(), "
-                           ".sort().by_value() and .reverse())");
+                           ".sort().by_value() and .reverse(); a map has .sort(\"key\") and .sort(\"value\"))");
         return Value();
     }
     // A DICT HAS NO POSITIONS, so the methods that count along one are refused
@@ -389,11 +423,9 @@ Value call_container_method(token::Code method, Value &receiver, Value *home, co
         return Value();
     }
     const std::size_t wanted = static_cast<std::size_t>(arity);
-    if (arguments.size() != wanted) {
+    if (!container_given_fits(method, arguments.size())) {
         context.refuse(satl_line_not_understood,
-                       what + " takes " + std::to_string(wanted) +
-                           (wanted == 1 ? " argument" : " arguments") + ", and was given " +
-                           std::to_string(arguments.size()));
+                       what + container_takes(method, arity) + ", and was given " + std::to_string(arguments.size()));
         return Value();
     }
     if (wanted > 0 && !had_parentheses) {
@@ -719,12 +751,53 @@ Value call_container_method(token::Code method, Value &receiver, Value *home, co
         return Value::of_bool(false);
     }
 
-    // `.sort()` TAKES A COPY AND ORDERS NOTHING. The ordering is the
+    // `.sort()` ON A LIST TAKES A COPY AND ORDERS NOTHING. The ordering is the
     // `.by_name()` or `.by_value()` that follows, which is the author's own
     // spelling -- and the copy is what stops
     // `display(names.sort().by_name())` quietly reordering names.
-    case token::sort_token:
-        return receiver;
+    //
+    // ON A MAP IT ORDERS THE ENTRIES (the author, 2026-09-26): `.sort()` and
+    // `.sort("key")` by key, `.sort("value")` by value -- the width first, then a to
+    // z and 0 to 9. satellite_map_sort.hpp says how, and why the answer is the map,
+    // a copy, as a list's is. The word may be any string, written or worked out.
+    case token::sort_token: {
+        std::string by = "key";
+        if (!arguments.empty()) {
+            const satellite_string *word = arguments.front().as_string();
+            if (word == nullptr) {
+                context.refuse(types_do_not_meet, what + container_takes(method, arity) + ", and was given " +
+                                                      arguments.front().kind_name());
+                return Value();
+            }
+            by = word->to_utf8();
+            const std::string refused = sort_word_refused(by, is_index, name);
+            if (!refused.empty()) {
+                context.refuse(is_index ? satl_line_not_understood : types_do_not_meet, refused);
+                return Value();
+            }
+        }
+        if (!is_index)
+            return receiver;
+        const satelliteIndex *held = receiver.as_index()->get();
+        if (held == nullptr)
+            return receiver;
+        // EVERY KIND OF KEY, OR OF VALUE, IS ASKED FOR AN ORDER FIRST, so a number
+        // key beside a string key -- or two list values -- is refused and never
+        // guessed at (satellite_map_sort.hpp: WHAT HAS NO ORDER IS NOT GUESSED AT).
+        const bool by_key = by == "key";
+        std::string why;
+        const signed long long int comparable = all_comparable(
+            held->entries.size(),
+            [held, by_key](std::size_t at) -> const satelliteObject & {
+                return by_key ? held->entries[at].key : held->entries[at].value;
+            },
+            std::string("it puts the entries in order by their ") + (by_key ? "keys" : "values"), "entry", why);
+        if (comparable != success) {
+            context.refuse(comparable, what + (arguments.empty() ? "()" : "(\"" + by + "\")") + ": " + why);
+            return Value();
+        }
+        return Value::of_index(by_key ? sorted_by_key(*held) : sorted_by_value(*held));
+    }
 
     case token::by_name_token:
     case token::by_value_token: {
@@ -892,7 +965,7 @@ Value call_container_method(token::Code method, Value &receiver, Value *home, co
     context.refuse(not_built_yet,
                    what + " is not built for " + receiver.kind_name() +
                        " yet -- a container has .append, .size, .contains, .sort().by_name(), "
-                       ".sort().by_value() and .reverse()");
+                       ".sort().by_value() and .reverse(), and a map .sort(\"key\") and .sort(\"value\")");
     return Value();
 }
 

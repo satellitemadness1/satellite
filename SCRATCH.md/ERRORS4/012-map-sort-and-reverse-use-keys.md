@@ -9,6 +9,10 @@
 entries now hold a key, a value and a width for each (`8237187`). SCRATCH.md/MAP_SORT.md holds his
 words and what is open -- fix this page there, not here.
 
+**2026-09-27: FIXED for .sort().by_name() / .by_value().** On a map they are refused (S301) and point at
+`.sort("key")` / `.sort("value")`, which order the entries and answer the map (satellite_map_sort.hpp).
+**`.reverse()` on a map is NOT changed** -- it still answers the keys reversed as a list; his to rule.
+
 ## What happens
 
 map.sort().by_value() and map.reverse() silently work on the KEYS and answer a list, while .max/.min/.sum/.join on a map ask which half.

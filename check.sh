@@ -976,6 +976,64 @@ expect "multiple<list<number>, list<string>>: an empty one takes a string, and {
 expect "a key written through a multiple's map is held to the map's value type" "27|1" \
        "$(index_says '    satellite.container.map<satellite.variable.string, satellite.container.multiple<satellite.variable.string, satellite.container.map<satellite.variable.string, satellite.variable.number>>> x = {"k": {"j": 1}}
     x["k"]["j"] = "text"' 'the value does not fit: it holds a string')"
+# A MAP PUT IN ORDER (the author, 2026-09-26: ".sort() which is just an alias for sort by key,
+# and .sort("value") which sorts by value"; satellite_map_sort.hpp). The width first, then a to
+# z and 0 to 9: 9 before 10 before 100, every negative before 0 and the wider negative first;
+# "bo" before "zoe" before "alice", "file2" before "file10", and "al" before "Al" (his character
+# table puts a to z before A to Z); a float by its worth; a tie keeps its order. The answer is
+# the map, a copy: the name is untouched until it is assigned, and after it is, a key is still
+# found where it went -- the hash table from key to place is repaired, not rebuilt.
+cat > build/map_sort.satl <<'MSORT_EOF'
+satellite.include(satellite)
+satellite.capsule satellite.main()
+{
+    satellite.container.map<satellite.variable.string, satellite.variable.number> freq = {"to": 4, "be": 2, "or": 1, "not": 3}
+    satellite.console.display(freq.sort())
+    satellite.console.display(freq.sort("key"))
+    satellite.variable.string by = "value"
+    satellite.console.display(freq.sort(by))
+    satellite.console.display(freq)
+    freq = freq.sort("value")
+    satellite.console.display(freq["not"])
+    freq["zz"] = 0
+    satellite.console.display(freq.keys)
+    satellite.container.map<satellite.variable.number, satellite.variable.string> n = {10: "a", 9: "b", 100: "c", -5: "d", -10: "e", 0: "f"}
+    satellite.console.display(n.sort().keys)
+    satellite.container.map<satellite.variable.string, satellite.variable.number> s = {"zoe": 1, "alice": 2, "bo": 3, "file10": 4, "file2": 5, "Al": 6, "al": 7}
+    satellite.console.display(s.sort().keys)
+    satellite.container.map<satellite.variable.string, satellite.variable.float> f = {"a": 10.5, "b": 9.25, "c": 1.25, "d": -2.5}
+    satellite.console.display(f.sort("value").keys)
+    satellite.container.map<satellite.variable.string, satellite.variable.number> ties = {"x": 2, "a": 1, "m": 2, "b": 1}
+    satellite.console.display(ties.sort("value").keys)
+    satellite.return(satellite)
+}
+MSORT_EOF
+HOME="$CHECK_HOME" "$interpreter" build/map_sort.satl > build/map_sort.out 2>&1
+expect "a map's .sort() is .sort(\"key\"), .sort(\"value\") is by value: width then a-z and 0-9, a copy, the key table follows" \
+       '0|{"be": 2, "or": 1, "to": 4, "not": 3}|{"be": 2, "or": 1, "to": 4, "not": 3}|{"or": 1, "be": 2, "not": 3, "to": 4}|{"to": 4, "be": 2, "or": 1, "not": 3}|3|{"or", "be", "not", "to", "zz"}|{-10, -5, 0, 9, 10, 100}|{"al", "bo", "Al", "zoe", "alice", "file2", "file10"}|{"d", "c", "b", "a"}|{"a", "b", "x", "m"}' \
+       "$?|$(tail -10 build/map_sort.out | tr '\n' '|' | sed 's/|$//')"
+expect "a map's .sort word in quotes is judged before the run: \"key\" or \"value\"" "13|1" \
+       "$(index_says '    satellite.container.map m = {"a": 1}
+    satellite.console.display(m.sort("kye"))' 'satl(check): in satellite.main, m.sort("kye") -- a map is put in order by "key" or by "value"')"
+expect "... and a word worked out is judged when it runs, in the same sentence" "13|1" \
+       "$(index_says '    satellite.container.map m = {"a": 1}
+    satellite.variable.string w = "down"
+    satellite.console.display(m.sort(w))' 'satl(run): m.sort("down") -- a map is put in order by "key" or by "value"')"
+expect "a list takes no word: .sort(\"key\") on a name declared a list is refused before the run" "27|1" \
+       "$(index_says '    satellite.container.list a = {3, 1}
+    satellite.console.display(a.sort("key"))' 'satl(check): in satellite.main, a.sort("key") -- a list is put in order by a.sort().by_name() or a.sort().by_value()')"
+expect "a number key beside a string key has no order, and .sort() says so rather than guess" "27|1" \
+       "$(index_says '    satellite.container.map m = {1: "one", "two": 2}
+    satellite.console.display(m.sort())' 'm.sort(): it puts the entries in order by their keys, and entry 1 and entry 2 have no order between them')"
+expect "two list values have no order, and .sort(\"value\") says so" "27|1" \
+       "$(index_says '    satellite.container.map m = {"a": {3, 1}, "b": {2}}
+    satellite.console.display(m.sort("value"))' 'm.sort("value"): it puts the entries in order by their values, and entry 1 and entry 2 have no order between them')"
+expect "on a map, .sort().by_value() is refused and points at .sort(\"value\") (ERRORS4 page 012)" "27|1" \
+       "$(index_says '    satellite.container.map<satellite.variable.string, satellite.variable.number> s = {"zoe": 1, "al": 30}
+    satellite.console.display(s.sort().by_value())' 'a map is put in order by .sort("key") or .sort("value"), which answer the map -- its keys alone are .keys.sort().by_value()')"
+expect ".sort given two is refused before the run, in .sort's own sentence" "13|1" \
+       "$(index_says '    satellite.container.map m = {"a": 1}
+    satellite.console.display(m.sort("key", "value"))' 'm.sort takes nothing, or "key" or "value" on a map, and was given 2')"
 
 # A SPACESUIT IN A CONTAINER AND A CONTAINER IN A SPACESUIT (CONTAINERS.md step 1): a
 # field that is a map of lists, a list of maps filled from inside; objects in a list, in a

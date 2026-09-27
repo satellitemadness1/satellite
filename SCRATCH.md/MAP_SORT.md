@@ -4,16 +4,51 @@ Written 2026-09-26, for the author and for **the session after `/clear`**. Read 
 
 ## START HERE AFTER `/clear`
 
+- **`.sort` IS BUILT (2026-09-27, the commit after `0d939eb`; its hash is in the memory note).** His
+  words that day, after `/clear`: *"I wanted 3 different functions, .sort() which is just an alias for
+  sort by key, and .sort("value") which sorts by value"*. So on a map: `.sort()` = `.sort("key")`, and
+  `.sort("value")`. The code is `satellite/satellite_object/satellite_map_sort.hpp` -- his four
+  functions: `by_width`, `by_a_to_z_0_to_9`, and one template `sorted_by<half, width>` made twice,
+  `sorted_by_key` and `sorted_by_value` (*"both "key" and "value" are the same thing"*).
+- **What it answers (MY CHOICE, his to overrule):** the map, its entries in the new order, as a COPY --
+  as a list's `.sort()` is -- so `display(m.sort("value"))` leaves m alone and `m = m.sort("value")`
+  keeps the order. The key table is repaired, not rebuilt: `m["k"]` still finds every key after.
+- **The order (his words, and MY reading where they stop):** width first, then a-z / 0-9.
+  - two strings: shorter first, then his character table (a-z, A-Z, 0-9): `"bo", "zoe", "alice"`,
+    `"file2"` before `"file10"`, `"al"` before `"Al"`.
+  - two whole numbers: sign first (the width leaves the minus out), then width, then digits -- which is
+    their worth: `-10, -5, 0, 9, 10, 100`.
+  - anything else (float, fraction, percentage, bool, binary...): by worth, satl's own compare --
+    because a float's width counts its decimals, width first would put 1.25 after 9.5. MY CHOICE.
+  - a tie keeps the order it went in (stable).
+  - no order between the kinds present -- a number key and a string key, two list values -- is REFUSED
+    before sorting (S301, "entry 1 and entry 2 have no order between them"), never guessed.
+- **Refused, MY CHOICES:** `m.sort().by_name()` / `.by_value()` on a map (ERRORS4 page 012: they
+  ordered the keys and answered a list) -- the sentence points at `.sort("key")`, `.sort("value")` and
+  `.keys.sort().by_name()`; `list.sort("key")` (a list is `.sort().by_name()`/`.by_value()`); any word
+  but "key"/"value"; a quoted word is judged before the run, a worked-out one when it runs.
+- **Speed, measured 2026-09-27 (best of 3, idle machine):** building a 1,000,000 number map and a
+  200,000 string map is 2.8 s; `.sort()` of the million adds 0.83 s (0.65 s of it is the copy of the
+  map, which `c = m; c[k] = v` costs too) and of the strings 0.3 s. Sorting positions into the map
+  first cost 1.6 s -- the jump into the map on every comparison was the sort -- so each entry's width
+  and whole-number value is laid out in a 32-byte record first (`satelliteMapSortPlace`).
+- **Proved:** 5 random maps of ~2,100 numbers (negatives, one-limb, past 2^64, to 10^30) and ~450
+  strings, sorted by key and by value, equal Python's numeric sort and (length, his table) sort;
+  `./check.sh` rows under "A MAP PUT IN ORDER".
+- **Still open, his:** `.reverse()` on a map still answers its KEYS as a list, reversed (the rest of
+  ERRORS4 page 012), so `count.sort("value").reverse()` is the keys largest-first, not the map. Whether
+  a map's `.reverse()` should answer the map reversed is his. And `m.sort("value")[1]` is the KEY 1, not
+  the first entry -- a map's `[ ]` is a key; `.first` / `.last` are the first and last key.
+- **The other open thread:** FAST_PRINTING.md -- step 6 waits on his RUNNING_PROGRAMS.md answers.
+
+### THE STATE BEFORE .sort (kept as it was written, 2026-09-26)
+
 - **Built (his order: "just build the satellite.container.multiple 2x with a width first, don't worry
   about sorting it at all just yet"):** each map entry is a key, a value and a width for each --
-  commit `8237187`. **`.sort` is NOT started.** It is next, and it is his to design with you: his words
-  are below, word for word, and the open questions after them are NOT decided.
+  commit `8237187`.
 - **Also built the same evening:** S413 COUNTS_FROM_ONE, machine code 66 -- every position 0 in the
   language (commit `861c9a2`). His words: *"will requesting [0] of anything return an error? We need to
   build an error report that explains that satellite starts counting from 1 and not 0"*.
-- **Installed:** `~/.satl/satl` is build 0122 (both commits). `./check.sh` 1042 of 1042.
-- **The other open thread:** FAST_PRINTING.md -- step 5 is built; step 6 (running programs) waits on his
-  answers to RUNNING_PROGRAMS.md's questions. Which comes first, `.sort` or step 6, is his.
 
 ## WHAT IS BUILT (8237187)
 
@@ -94,7 +129,7 @@ Asked how `.sort` should order, and what its list holds, he answered:
 > than that, you just need a class that has two registers -- one for the key and one for the value, and
 > both key and value are a satellite.container.multiple"*
 
-## OPEN — HIS TO RULE, NOT DECIDED
+## OPEN BEFORE .sort WAS BUILT (2026-09-26) -- see START HERE for what each became
 
 1. **What `.sort("key")` / `.sort("value")` answers.** His first words: *"key returns a list with the
    smallest by key at position[0] and value returns the smallest value at position[0]"*. His later words:

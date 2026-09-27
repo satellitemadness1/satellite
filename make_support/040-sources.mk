@@ -104,7 +104,7 @@ HEADERS = $(ARGUMENTS)/arguments.hpp $(ARGUMENTS)/command_line.hpp $(ARGUMENTS)/
           $(PERCENTAGE)/satellite_percentage.hpp \
           $(FLOAT_HEADERS) $(HEX_HEADERS) $(COLOR_HEADERS) $(FRACTION_HEADERS) \
           $(OBJECT)/satellite_object.hpp $(OBJECT)/satellite_spacesuit.hpp \
-          $(OBJECT)/satellite_list.hpp $(OBJECT)/satellite_index.hpp $(OBJECT)/satellite_map_entry.hpp \
+          $(OBJECT)/satellite_list.hpp $(OBJECT)/satellite_index.hpp $(OBJECT)/satellite_map_entry.hpp $(OBJECT)/satellite_map_sort.hpp \
           $(BYTECODE)/type_shape.hpp \
           $(OBJECT)/satellite_bytecode.hpp $(OBJECT)/satellite_capsule.hpp \
           $(OBJECT)/fast_paths.hpp $(OBJECT)/object_pair.hpp \

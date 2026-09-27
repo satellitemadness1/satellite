@@ -120,6 +120,30 @@ inline int container_arity(token::Code method)
     }
 }
 
+// `.sort` ALONE TAKES NOTHING OR ONE THING. The author, 2026-09-26: *"let's have .sort accept a
+// string or a string object, so we type sort("key" or "value")"*, and *".sort() which is just an
+// alias for sort by key"*. On a map `.sort()` is `.sort("key")`, and "key" or "value" says which
+// half the entries are put in order by (satellite_map_sort.hpp); on a list it takes nothing, and
+// .by_name() or .by_value() after it does the ordering. container_arity says 0 for it, which is
+// what lets `m.sort` be written without brackets.
+inline bool container_given_fits(token::Code method, std::size_t given)
+{
+    return given == static_cast<std::size_t>(container_arity(method)) || (method == token::sort_token && given == 1);
+}
+
+// "takes 1 argument, and was given 2" -- or .sort's own sentence, which is not a count.
+inline std::string container_takes(token::Code method, int wanted)
+{
+    if (method == token::sort_token)
+        return " takes nothing, or \"key\" or \"value\" on a map";
+    return " takes " + std::to_string(wanted) + (wanted == 1 ? " argument" : " arguments");
+}
+
+// WHAT `.sort(word)` SAYS TO A WORD IT DOES NOT TAKE, or "" for "key" and "value" on a map. One
+// sentence for the checker, which sees a word written in quotes, and the walker, which sees a
+// string however it was made.
+std::string sort_word_refused(const std::string &word, bool on_a_map, const std::string &name);
+
 // THE ONES THAT CHANGE THE CONTAINER. Everything else answers a new value, and
 // the header above says why the line is drawn here: a statement that is nothing
 // but `names.clear` has to mean the list emptied, or it is a line that does
@@ -202,7 +226,9 @@ std::string container_word_refused(token::Code code, std::size_t given);
 Value call_container_word(token::Code code, const std::vector<Value> &arguments, ExpressionContext &context);
 
 // WHAT AN INDEX SAYS TO .sum .max .min .join AND .reserve, or "" for any other
-// method: which half to ask (`scores.values.sum`), or that room is a list's. ONE
+// method: which half to ask (`scores.values.sum`), or that room is a list's -- and
+// to .by_name() and .by_value(), that a map is put in order by .sort("key") and
+// .sort("value"). ONE
 // SENTENCE FOR THE CHECKER AND THE WALKER, so a name declared an index is refused
 // before anything runs and a value that turns out to be one is refused in the same
 // words.

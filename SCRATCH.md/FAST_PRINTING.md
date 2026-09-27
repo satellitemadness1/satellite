@@ -64,11 +64,12 @@ buffer overran. The step-5 builds: none in 54 runs. Output to a file (HOW TO MEA
   before a push that adds files, scan them for the values in `~/.config/satellite-foundation` without
   printing them (the old scanner, secret_scan.py, was in session 8164ac05's scratchpad on tmpfs and
   may be gone; a grep of the new files for those values does the same).
-- **Installed:** `~/.satl/satl` is build 0122: step 5 (`bd69cb7`), then the map entries (`8237187`) and
-  S413 COUNTS_FROM_ONE (`861c9a2`) -- **the map work and the next thing he asked for, `.sort("key")` /
-  `.sort("value")`, are in `SCRATCH.md/MAP_SORT.md`; read it too.** Which comes first, `.sort` or step 6,
-  is his.
-- **`./check.sh`: 1042 of 1042.**
+- **Installed:** `~/.satl/satl` is build 0124: step 5 (`bd69cb7`), the map entries (`8237187`), S413
+  COUNTS_FROM_ONE (`861c9a2`), and (2026-09-27) **a map's `.sort()` / `.sort("key")` / `.sort("value")`,
+  BUILT -- `SCRATCH.md/MAP_SORT.md` START HERE says what, and what is his to overrule.** Step 6 is next
+  when he answers RUNNING_PROGRAMS.md.
+- **`./check.sh`: 1049 of 1050** (2026-09-27): the one was check_session.py's "an if written at the
+  prompt waits for its else", a pty timing row -- run alone right after, 32 of 32, twice.
 - **`prove-console.sh`: 5 of its 6 stages.** The sixth -- a PROGRAM's console typed into -- fails the same
   way on 0113: its main ends with `satellite.return(satellite)`, which answers machine code 64
   (program_returned) and ends satl before the line is typed. Whether the proof or satl is wrong is his.
