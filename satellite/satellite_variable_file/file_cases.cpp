@@ -658,8 +658,8 @@ void the_list_words()
         f->append(text);
     check(f->size() == 5 && !f->empty(), "list: five lines", said(f));
     std::string out = "stale";
-    check(!f->line(0, out) && out.empty() && f->code() == line_past_the_end && contains_text(f->error(), "line 0"),
-          "line(0): false, line_past_the_end", said(f));
+    check(!f->line(0, out) && out.empty() && f->code() == counts_from_one && contains_text(f->error(), "line 0"),
+          "line(0): false, counts_from_one (S413: satellite counts from 1)", said(f));
     out = "stale";
     check(!f->line(6, out) && out.empty() && f->code() == line_past_the_end, "line(size()+1): false, line_past_the_end",
           said(f));
@@ -667,7 +667,7 @@ void the_list_words()
     check(f->append("after") && f->code() == line_past_the_end, "a later success does not clear the last failure",
           said(f));
     check(f->remove_last(), "list: remove_last");
-    check(!f->insert(0, "x") && f->code() == line_past_the_end, "insert(0): false", said(f));
+    check(!f->insert(0, "x") && f->code() == counts_from_one, "insert(0): false, counts_from_one", said(f));
     check(!f->insert(7, "x") && f->size() == 5, "insert(size()+2): false, nothing added", said(f));
     check(f->insert(6, "six") && f->size() == 6 && line_of(f, 6) == "six", "insert(size()+1): an append", said(f));
     check(f->first(out) && out == "one" && f->last(out) && out == "six", "first and last", out);
@@ -706,7 +706,7 @@ void open_and_closed()
     std::string out;
     f->line(0, out);
     check(f->close() && !f->ok() && f->close(), "close twice: true both times", said(f));
-    check(f->code() == line_past_the_end && f->path() == p, "a closed handle keeps its path, code and error", said(f));
+    check(f->code() == counts_from_one && f->path() == p, "a closed handle keeps its path, code and error", said(f));
     check(f->size() == 0 && f->code() == file_not_open, "closed: size() is 0, file_not_open", said(f));
     check(!f->line(1, out) && f->code() == file_not_open, "closed: line() is false, file_not_open", said(f));
     check(!f->append("x") && !f->insert(1, "x") && !f->replace_line(1, "x") && !f->replace_text("a", "b") &&

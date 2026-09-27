@@ -140,6 +140,10 @@ enum MachineCode : signed long long int {
     // 65, 2026-09-26, with the printing satellite (display/printing_satellite.hpp). The author:
     // "if the buffer is holding 131072 std::string objects then it crashes the interpreter".
     display_string_buffer_overrun = 65, // more displays waited for the console than arguments.display.buffer
+    // 66, 2026-09-26. The author: "We need to build an error report that explains that
+    // satellite starts counting from 1 and not 0". [0] -- of a list, a string, a file -- was
+    // refused before this as "past the end" (S501, S411), which it is not.
+    counts_from_one = 66,               // a position of 0: satellite counts from 1
 
     // 130 AND NOT 32, ON PURPOSE (PLAN M0.6): 128 + SIGINT is what a shell and 003
     // both answer for Ctrl-C, and exit_status_of passes a code under 255 through as
@@ -205,6 +209,7 @@ inline const char *machine_code_name(signed long long int code)
     case wait_never_ends: return "wait_never_ends";
     case program_returned: return "program_returned";
     case display_string_buffer_overrun: return "display_string_buffer_overrun";
+    case counts_from_one: return "counts_from_one";
     case out_of_memory: return "out_of_memory";
     case libraries_not_understood: return "libraries_not_understood";
     case file_not_found: return "file_not_found";

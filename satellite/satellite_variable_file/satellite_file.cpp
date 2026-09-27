@@ -234,8 +234,9 @@ bool satellite_file::usable() const
 
 void satellite_file::past_the_end(std::size_t n) const
 {
-    if (n == 0) {
-        fail(line_past_the_end, "there is no line 0 in " + path_ + ": lines count from 1");
+    if (n == 0) {   // S413
+        fail(counts_from_one, "there is no line 0 in " + path_ + ": satellite counts from 1, not 0, so the "
+                                                                   "first line is 1");
         return;
     }
     fail(line_past_the_end, "line " + std::to_string(n) + " is past the end of " + path_ + ", which has " +
@@ -639,7 +640,13 @@ bool satellite_file::insert(std::size_t n, const std::string &text)
             return false;
         if (n == lines_.size() + 1)
             return append(text);
-        if (n == 0 || n > lines_.size()) {
+        if (n == 0) {   // S413
+            fail(counts_from_one, "insert: there is no line 0 in " + path_ + ": satellite counts from 1, not 0, "
+                                  "so a new line goes in at 1 (the top) to " + std::to_string(lines_.size() + 1) +
+                                  " (the end)");
+            return false;
+        }
+        if (n > lines_.size()) {
             fail(line_past_the_end, "insert: " + std::to_string(n) + " is no place for a line in " + path_ +
                                         ", which has " + std::to_string(lines_.size()) + " lines: 1 to " +
                                         std::to_string(lines_.size() + 1) + " are");

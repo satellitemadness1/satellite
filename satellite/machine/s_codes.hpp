@@ -206,6 +206,15 @@ inline SCode s_code_for(signed long long int machine_code)
     case not_a_position:
         return {"S410", "NOT_A_POSITION",
                 "a position or a line number below zero. Lines count from 1, and nothing counts below zero."};
+    // The author, 2026-09-26: "an error report that explains that satellite starts counting from
+    // 1 and not 0". The wording is drafted from that, and is his to reword.
+    case counts_from_one:
+        return {"S413", "COUNTS_FROM_ONE",
+                "satellite counts from 1, not 0. The first item of a list, the first character of a "
+                "string and the first line of a file are all 1, and the last is the size -- so 0 names "
+                "nothing. (C++, Python and most languages count from 0; satellite counts the way people "
+                "do.) 0 is also what .index_of and .search answer when they find nothing: if this 0 came "
+                "from one of them, what was looked for is not there."};
     case config_value_not_understood:
         return {"S601", "CONFIG_VALUE_NOT_UNDERSTOOD",
                 "a row in satellite_config.hpp cannot mean what its name asks."};

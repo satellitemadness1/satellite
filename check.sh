@@ -692,8 +692,19 @@ expect "reading past the end names the size and says counting from 1" "47|1" \
        "$(list_says '    satellite.console.display(a[5])' 'the list holds 2 items, counting from 1')"
 expect "writing past the end says the list does not grow" "47|1" \
        "$(list_says '    a[5] = "x"' 'Writing past the end does not make the list longer')"
-expect "item 0 is past the end, because items count from 1" "47|1" \
-       "$(list_says '    satellite.console.display(a[0])' 'counting from 1')"
+expect "item 0 is S413 COUNTS_FROM_ONE: satellite counts from 1, and a[1] is the first" "66|1" \
+       "$(list_says '    satellite.console.display(a[0])' 'a\[0\]: satellite counts from 1, not 0, so the first item is a\[1\]')"
+# S413 COUNTS_FROM_ONE (2026-09-26), the author: "We need to build an error report that explains that
+# satellite starts counting from 1 and not 0". Every [0] and every position 0 is that report -- a list's
+# read, write, nested item, .insert and .remove_at, a file's line -- and a map's key 0 is still a key.
+expect "a[0] = x is S413 too, not \"writing past the end\"" "66|1" \
+       "$(list_says '    a[0] = "x"' 'a\[0\]: satellite counts from 1, not 0, so the first item is a\[1\]')"
+expect "a.insert(0, x) is S413, and says where a new item may go" "66|1" \
+       "$(list_says '    a.insert(0, "x")' 'a.insert(0, ...): satellite counts from 1, not 0, so a new item goes in at 1 (the front) to 3 (the end)')"
+expect "a.remove_at(0) is S413" "66|1" \
+       "$(list_says '    a.remove_at(0)' 'a.remove_at(0): satellite counts from 1, not 0, so the first item is 1')"
+expect "S413's report says satellite counts from 1, and that .index_of and .search answer 0 for nothing found" "66|1" \
+       "$(list_says '    satellite.console.display(a[0])' 'S413: COUNTS_FROM_ONE.*satellite counts from 1, not 0. The first item of a list.*what .index_of and .search answer when they find nothing')"
 expect "a negative index says items count from 1" "19|1" \
        "$(list_says '    satellite.console.display(a[-1])' 'items count from 1')"
 expect "an index that is not a number says so" "27|1" \
@@ -6097,9 +6108,21 @@ expect "n.contains(\"4\") on a number names the string, the file and the contain
     satellite.console.display(n.contains("4"))' 'so far a string, a file and a container have it')"
 # REFUSED BEFORE ANYTHING RUNS since the review of 2026-09-26 (string_check.cpp): a literal 0
 # is never a character, so "before" is not printed -- the third field, 1 until then.
-expect "s[0] is refused before anything runs, S411: characters count from 1" "16|1|0|1" \
+expect "s[0] is refused before anything runs, S413: satellite counts from 1" "66|1|0|1" \
        "$(body_refused m16_zero '    satellite.variable.string s = "abc"
-    satellite.console.display(s[0])' 's\[0\]: characters count from 1, so the first is s\[1\]')|$(grep -c '^S411: POSITION_PAST_THE_END$' "$sweep/m16_zero.out")"
+    satellite.console.display(s[0])' 's\[0\]: satellite counts from 1, not 0, so the first character is s\[1\]')|$(grep -c '^S413: COUNTS_FROM_ONE$' "$sweep/m16_zero.out")"
+# S413 away from lists (the rows under "item 0 is S413" say why).
+expect "an item of an item, n[2][0], is S413" "66|1|1" \
+       "$(body_refused zero_nested '    satellite.container.list n = {{1, 2}, {3, 4}}
+    satellite.console.display(n[2][0])' 'satellite counts from 1, not 0, so the first item is')"
+printf 'one\ntwo\n' > "$sweep/zero_lines.txt"
+expect "a file's f[0] is S413, and names the file" "66|1|1" \
+       "$(body_refused zero_line "    satellite.variable.file f = satellite.file.open(\"$PWD/$sweep/zero_lines.txt\")
+    satellite.console.display(f[0])" 'there is no line 0 in .*zero_lines.txt: satellite counts from 1, not 0, so the first line is 1')"
+expect "a map's key 0 is still a key: m[0] = x then m[0]" "0|zero is a key" \
+       "$(body_refused zero_key '    satellite.container.map<satellite.variable.number, satellite.variable.string> m
+    m[0] = "zero is a key"
+    satellite.console.display(m[0])' 'never' | cut -d'|' -f1)|$(tail -1 "$sweep/zero_key.out")"
 expect "s[9] past the end says how many characters there are" "16|1|1" \
        "$(body_refused m16_past '    satellite.variable.string s = "héllo"
     satellite.console.display(s[9])' 's\[9\]: there is no such character -- it holds 5 characters, counting from 1')"
@@ -6253,8 +6276,8 @@ expect "l.reverse()[1] on a list is refused in the same words as it runs" "13|1|
 m16_before=""
 for pair in 'at(1.5)|s.at takes a character.s position -- a number, counting from 1 -- and was given a float|27' \
             'at(x10)|and was given a hex|27' 'at(50%)|and was given a percentage|27' 'at(1/2)|and was given a fraction|27' \
-            'at(satellite.bool.true)|and was given a bool|27' 'at(0)|s.at(0): characters count from 1, so the first is s.at(1)|16' \
-            'substring(0, 2)|s.substring(0, 2): characters count from 1, so the first is 1|16'; do
+            'at(satellite.bool.true)|and was given a bool|27' 'at(0)|s.at(0): satellite counts from 1, not 0, so the first character is s.at(1)|66' \
+            'substring(0, 2)|s.substring(0, 2): satellite counts from 1, not 0, so the first character is 1|66'; do
     call=${pair%%|*}; rest=${pair#*|}; said=${rest%|*}; code=${rest##*|}
     m16_before="$m16_before$(body_refused m16_literal_position "    satellite.variable.string s = \"abc\"
     satellite.console.display(s.$call)" "$said" | sed "s/^$code|/ok|/")/"

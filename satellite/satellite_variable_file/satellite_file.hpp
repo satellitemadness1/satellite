@@ -118,7 +118,9 @@ public:
     // Line n into `out`. False (line_past_the_end) for n == 0 or n > size().
     bool line(std::size_t n, std::string &out) const;
     bool first(std::string &out) const { return line(1, out); }
-    bool last(std::string &out) const { return line(size(), out); }
+    // AN EMPTY FILE'S LAST LINE IS PAST ITS END, NOT LINE 0: line 0 is S413, satellite counting
+    // from 1, which is not what a program asking an empty file for its last line did wrong.
+    bool last(std::string &out) const { return line(size() == 0 ? 1 : size(), out); }
 
     // A new last line. Text holding \n becomes that many lines (a \r\n inside
     // it is one line ending, not text).

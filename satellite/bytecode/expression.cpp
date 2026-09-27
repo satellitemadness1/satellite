@@ -778,6 +778,12 @@ bool position_of(const Value &index, unsigned long long int &out, const std::str
         context.refuse(not_a_position, what + "[" + fast::to_text(*number) + "] -- items count from 1", where);
         return false;
     }
+    // [0] IS NOT PAST THE END, IT IS BEFORE THE FIRST: satellite counts from 1 (S413).
+    if (number->is_zero()) {
+        context.refuse(counts_from_one,
+                       what + "[0]: satellite counts from 1, not 0, so the first item is " + what + "[1]", where);
+        return false;
+    }
     // TOO LARGE TO BE ANY POSITION IS SAID AS THAT, rather than being turned
     // into the largest number there is and reported as one. It used to become
     // 18446744073709551615 and the refusal printed it, so a person who typed

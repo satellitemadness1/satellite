@@ -559,7 +559,17 @@ Value call_container_method(token::Code method, Value &receiver, Value *home, co
                 return *home;
             }
             const unsigned long long int most = method == token::insert_token ? held + 1 : held;
-            if (position == 0 || position > most) {
+            if (position == 0) {
+                context.refuse(counts_from_one,
+                               what + "(0" + (method == token::insert_token ? ", ...)" : ")") +
+                                   ": satellite counts from 1, not 0, so " +
+                                   (method == token::insert_token
+                                        ? "a new item goes in at 1 (the front) to " + std::to_string(most) +
+                                              " (the end)"
+                                        : "the first item is 1"));
+                return Value();
+            }
+            if (position > most) {
                 context.refuse(line_past_the_end,
                                what + "(" + written + "): " +
                                    (held == 0 ? std::string("the list is empty")

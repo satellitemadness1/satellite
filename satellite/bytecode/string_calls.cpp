@@ -96,9 +96,10 @@ Value one_character(const satellite_string &text, const Value &index, const std:
     }
     const unsigned long long int position =
         fast::fits_a_count(*number) ? fast::as_count(*number) : std::numeric_limits<unsigned long long int>::max();
-    if (position == 0) {
-        refuse(position_past_the_end,
-               open + "0" + close + ": characters count from 1, so the first is " + open + "1" + close);
+    if (position == 0) {   // S413: satellite counts from 1
+        refuse(counts_from_one,
+               open + "0" + close + ": satellite counts from 1, not 0, so the first character is " + open + "1" +
+                   close);
         return Value();
     }
     char32_t code = 0;
@@ -123,8 +124,8 @@ Value piece_of(const satellite_string &text, const std::vector<Value> &arguments
         !position_argument(arguments[1], end, end_written, call, context))
         return Value();
     const std::string spelled = call + "(" + start_written + ", " + end_written + ")";
-    if (start == 0) {
-        context.refuse(position_past_the_end, spelled + ": characters count from 1, so the first is 1");
+    if (start == 0) {   // S413
+        context.refuse(counts_from_one, spelled + ": satellite counts from 1, not 0, so the first character is 1");
         return Value();
     }
     if (start - 1 > end) {

@@ -163,12 +163,12 @@ signed long long int literals_given(const std::vector<std::bitset<16>> &row, std
     // `s.at(0)` and `s.substring(0, n)`: the one position a count from 1 does not have.
     if (takes_a_position(method) && !kinds.empty() && zero(kinds[0], written[0])) {
         if (method == token::at_token) {
-            why = spelling + "(0): characters count from 1, so the first is " + spelling + "(1)";
+            why = spelling + "(0): satellite counts from 1, not 0, so the first character is " + spelling + "(1)";
         } else {
             const std::string end = kinds.size() > 1 && kinds[1] == Lone::whole ? written[1] : "...";
-            why = spelling + "(0, " + end + "): characters count from 1, so the first is 1";
+            why = spelling + "(0, " + end + "): satellite counts from 1, not 0, so the first character is 1";
         }
-        return position_past_the_end;
+        return counts_from_one;
     }
     // `s.replace("", x)`: an empty text is found everywhere, so there is nothing to replace.
     if (method == token::replace_token && !kinds.empty() && kinds[0] == Lone::text && written[0].empty()) {
@@ -237,8 +237,8 @@ signed long long int string_index_check(const std::vector<std::bitset<16>> &row,
     if (kind == Lone::not_lone || (kind == Lone::whole && !zero(kind, written)))
         return success;
     if (kind == Lone::whole) {
-        why = name + "[0]: characters count from 1, so the first is " + name + "[1]";
-        return position_past_the_end;
+        why = name + "[0]: satellite counts from 1, not 0, so the first character is " + name + "[1]";
+        return counts_from_one;
     }
     why = name + "[...] takes a character's position -- a number, counting from 1 -- and was given " + kind_named(kind);
     return types_do_not_meet;
