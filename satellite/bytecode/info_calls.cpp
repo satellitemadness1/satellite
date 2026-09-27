@@ -41,7 +41,7 @@ void put(satelliteIndex &keys, const char *key, Value value)
     const Value name = text(key);
     std::string filed;
     key_name_of(name, filed);
-    value_for_writing(keys, filed, name) = std::move(value);
+    file_under(keys, filed, name, std::move(value));
 }
 
 Value a_number(unsigned long long int n)

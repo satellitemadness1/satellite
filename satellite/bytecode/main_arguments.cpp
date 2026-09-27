@@ -119,7 +119,7 @@ Value the_arguments_value(const Arguments *arguments, const FunctionTable &funct
                 break;
             }
             }
-            value_for_writing(rows, filed(key), text_value(key)) = std::move(value);
+            file_under(rows, filed(key), text_value(key), std::move(value));
         }
     }
     // AND EVERY ROW A LIBRARY ANSWERS, as it stood when main began -- a program that
@@ -135,7 +135,7 @@ Value the_arguments_value(const Arguments *arguments, const FunctionTable &funct
         std::string why;
         signed long long int code = success;
         if (live_row(key, functions, value, why, code) && code == success)
-            value_for_writing(rows, filed(key), text_value(key)) = std::move(value);
+            file_under(rows, filed(key), text_value(key), std::move(value));
     }
     return Value::of_index(index);
 }
@@ -339,7 +339,7 @@ void write_an_argument(const std::string &key, Value value, const std::string &n
     // rows first when another name shares them, as every index write does.
     IndexHandle *index = rows_of(name, key, arguments, context);
     if (index != nullptr)
-        value_for_writing(about_to_change(*index), filed(key), text_value(key)) = std::move(value);
+        file_under(about_to_change(*index), filed(key), text_value(key), std::move(value));
 }
 
 Value *an_argument_to_change(const std::string &key, const std::string &name, Value &arguments,
@@ -352,7 +352,7 @@ Value *an_argument_to_change(const std::string &key, const std::string &name, Va
         return nullptr;
     }
     IndexHandle *index = rows_of(name, key, arguments, context);
-    Value *held = index != nullptr ? value_at(about_to_change(*index), filed(key)) : nullptr;
+    Value *held = index != nullptr ? value_to_change_inside(about_to_change(*index), filed(key)) : nullptr;
     if (index != nullptr && held == nullptr)
         context.refuse(name_not_declared, name + "." + key + " is not one of the arguments -- give it a value "
                                           "first: " + name + "." + key + " = satellite.container.list()");

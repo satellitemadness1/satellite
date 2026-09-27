@@ -324,9 +324,9 @@ bool operator==(const satelliteObject &l, const satelliteObject &r)
         if (how_many != (right == nullptr ? 0 : right->entries.size())) return false;
         for (std::size_t at = 0; at < how_many; ++at) {
             std::string key_name;
-            if (!key_name_of(left->entries[at].first, key_name)) return false;
+            if (!key_name_of(left->entries[at].key, key_name)) return false;
             const satelliteObject *theirs = value_at(*right, key_name);
-            if (theirs == nullptr || !(*theirs == left->entries[at].second)) return false;
+            if (theirs == nullptr || !(*theirs == left->entries[at].value)) return false;
         }
         return true;
     }
@@ -803,8 +803,8 @@ signed long long int satelliteObject::to_string(satellite_string &out, std::stri
         if (held != nullptr) {
             for (std::size_t at = 0; at < held->entries.size(); ++at) {
                 if (at != 0) written += ", ";
-                const satelliteObject &key = held->entries[at].first;
-                const satelliteObject &value = held->entries[at].second;
+                const satelliteObject &key = held->entries[at].key;
+                const satelliteObject &value = held->entries[at].value;
                 satellite_string one;
                 if (key.to_string(one, why) != success) return types_do_not_meet;
                 written += key.is_string() ? as_a_literal(one.to_utf8()) : one.to_utf8();

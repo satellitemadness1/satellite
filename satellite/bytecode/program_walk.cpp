@@ -2200,9 +2200,9 @@ std::vector<satellite_file *> files_kept(const VariableTable &variables)
                 for (const Value &item : (*list)->items) waiting.push_back(&item);
         } else if (const IndexHandle *index = value->as_index()) {
             if (*index != nullptr && seen.emplace(index->get(), true).second)
-                for (const std::pair<Value, Value> &entry : (*index)->entries) {
-                    waiting.push_back(&entry.first);
-                    waiting.push_back(&entry.second);
+                for (const satelliteMapEntry &entry : (*index)->entries) {
+                    waiting.push_back(&entry.key);
+                    waiting.push_back(&entry.value);
                 }
         }
     }

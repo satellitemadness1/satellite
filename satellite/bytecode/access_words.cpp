@@ -187,8 +187,8 @@ std::string as_text(const Value &value, bool inside)
         text = "{";
         if (*index != nullptr)
             for (std::size_t at = 0; at < (*index)->entries.size(); ++at)
-                text += (at == 0 ? "" : ", ") + as_text((*index)->entries[at].first, true) + ": " +
-                        as_text((*index)->entries[at].second, true);
+                text += (at == 0 ? "" : ", ") + as_text((*index)->entries[at].key, true) + ": " +
+                        as_text((*index)->entries[at].value, true);
         return text + "}";
     }
     return std::string("<") + value.kind_name() + ">";

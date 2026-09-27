@@ -52,6 +52,7 @@
 // that file's note about 003 before touching this.
 
 #include "satellite_object.hpp"
+#include "satellite_map_entry.hpp"
 
 #include <memory>
 #include <string>
@@ -63,8 +64,9 @@ namespace satellite004 {
 
 struct satelliteIndex {
     // IN THE ORDER THEY WERE PUT IN. This vector IS the order the author asked
-    // for when he said "python dictionary".
-    std::vector<std::pair<satelliteObject, satelliteObject>> entries;
+    // for when he said "python dictionary". Each entry is a key, its value and the
+    // width of each (satellite_map_entry.hpp).
+    std::vector<satelliteMapEntry> entries;
 
     // WHERE EACH KEY IS IN THAT VECTOR. Rebuilt whenever entries move, which is
     // only on a copy -- an append never moves an earlier entry's position.
@@ -128,14 +130,17 @@ inline const satelliteObject *value_at(const satelliteIndex &index, const std::s
 {
     const std::unordered_map<std::string, std::size_t>::const_iterator found = index.where.find(key_name);
     if (found == index.where.end()) return nullptr;
-    return &index.entries[found->second].second;
+    return &index.entries[found->second].value;
 }
 
-inline satelliteObject *value_at(satelliteIndex &index, const std::string &key_name)
+// THE VALUE UNDER A KEY, TO CHANGE SOMETHING INSIDE IT -- an item of the list it is, a key of the
+// map it is, an .append to it -- or nullptr. Never to put a new value there: that is put_value's,
+// which keeps the width. A change inside never changes the value's kind, and so never its width.
+inline satelliteObject *value_to_change_inside(satelliteIndex &index, const std::string &key_name)
 {
     const std::unordered_map<std::string, std::size_t>::iterator found = index.where.find(key_name);
     if (found == index.where.end()) return nullptr;
-    return &index.entries[found->second].second;
+    return &index.entries[found->second].value;
 }
 
 // PUT A KEY IN, OR FIND THE ONE ALREADY THERE, and answer where its value is.
@@ -149,15 +154,27 @@ inline satelliteObject *value_at(satelliteIndex &index, const std::string &key_n
 // AN EXISTING KEY KEEPS ITS PLACE IN THE ORDER. Writing scores["alice"] a second
 // time changes the value and does not move alice to the end, which is what
 // Python does and what anybody reading the output expects.
-inline satelliteObject &value_for_writing(satelliteIndex &index, const std::string &key_name,
-                                          const satelliteObject &key)
+//
+// IT ANSWERS THE ENTRY, NOT ITS VALUE, so the value goes in through put_value and
+// its width with it (satellite_map_entry.hpp). A write that goes on INSIDE the
+// value -- `m["a"][2] = 5` -- may walk into entry.value itself: that never
+// changes the value's kind, and so never its width.
+inline satelliteMapEntry &entry_for_writing(satelliteIndex &index, const std::string &key_name,
+                                            const satelliteObject &key)
 {
     const std::unordered_map<std::string, std::size_t>::iterator found = index.where.find(key_name);
     if (found != index.where.end())
-        return index.entries[found->second].second;
-    index.entries.push_back(std::make_pair(key, satelliteObject()));
+        return index.entries[found->second];
+    index.entries.emplace_back(key);
     index.where.emplace(key_name, index.entries.size() - 1);
-    return index.entries.back().second;
+    return index.entries.back();
+}
+
+// `m[k] = v` in one: the key found or put in, and the value put under it.
+inline void file_under(satelliteIndex &index, const std::string &key_name, const satelliteObject &key,
+                       satelliteObject &&value)
+{
+    put_value(entry_for_writing(index, key_name, key), std::move(value));
 }
 
 } // namespace satellite004

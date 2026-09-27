@@ -48,8 +48,8 @@ const std::vector<satelliteObject> *items_of(const Value &value, std::vector<sat
     if (const IndexHandle *index = value.as_index()) {
         const satelliteIndex *held = index->get();
         if (held != nullptr)
-            for (const std::pair<satelliteObject, satelliteObject> &entry : held->entries)
-                borrowed.push_back(entry.first);
+            for (const satelliteMapEntry &entry : held->entries)
+                borrowed.push_back(entry.key);
         return &borrowed;
     }
     return &borrowed;
@@ -160,7 +160,7 @@ bool a_position_method(token::Code method)
 void take_entry_out(satelliteIndex &index, std::size_t at)
 {
     std::string key_name;
-    if (key_name_of(index.entries[at].first, key_name))
+    if (key_name_of(index.entries[at].key, key_name))
         index.where.erase(key_name);
     index.entries.erase(index.entries.begin() + static_cast<std::ptrdiff_t>(at));
     for (std::pair<const std::string, std::size_t> &row : index.where)
@@ -450,7 +450,7 @@ Value call_container_method(token::Code method, Value &receiver, Value *home, co
             }
             for (std::size_t at = 0; at < body.entries.size(); ++at) {
                 std::string here;
-                if (key_name_of(body.entries[at].first, here) && here == key_name) {
+                if (key_name_of(body.entries[at].key, here) && here == key_name) {
                     take_entry_out(body, at);
                     return *home;
                 }
@@ -646,8 +646,8 @@ Value call_container_method(token::Code method, Value &receiver, Value *home, co
         const satelliteIndex *held = receiver.as_index()->get();
         if (held != nullptr) {
             out.reserve(held->entries.size());
-            for (const std::pair<satelliteObject, satelliteObject> &entry : held->entries)
-                out.push_back(method == token::keys_token ? entry.first : entry.second);
+            for (const satelliteMapEntry &entry : held->entries)
+                out.push_back(method == token::keys_token ? entry.key : entry.value);
         }
         return Value::of_list(make_list(std::move(out)));
     }

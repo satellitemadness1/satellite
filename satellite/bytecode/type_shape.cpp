@@ -96,12 +96,12 @@ bool value_fits(const TypeShape &shape, const satelliteObject &value, std::strin
         if (held == nullptr) return true;
         for (std::size_t at = 0; at < held->entries.size(); ++at) {
             std::string inner;
-            if (!value_fits(shape.parameters[0], held->entries[at].first, inner)) {
+            if (!value_fits(shape.parameters[0], held->entries[at].key, inner)) {
                 why = "a key of it does not fit: " + inner;
                 return false;
             }
             if (shape.parameters.size() > 1 &&
-                !value_fits(shape.parameters[1], held->entries[at].second, inner)) {
+                !value_fits(shape.parameters[1], held->entries[at].value, inner)) {
                 why = "a value of it does not fit: " + inner;
                 return false;
             }

@@ -938,7 +938,7 @@ Value *slot_through_index(Value &root, const std::vector<Value> &indices, const 
                 return nullptr;
             }
             satelliteIndex &body = about_to_change(*keys);
-            satelliteObject *found = value_at(body, key_name);
+            satelliteObject *found = value_to_change_inside(body, key_name);
             if (found == nullptr) {
                 context.refuse(line_past_the_end, what + ": there is no such key in it", where);
                 return nullptr;
@@ -1051,7 +1051,7 @@ Value map_literal(const std::vector<std::bitset<16>> &row, std::size_t &at, std:
         Value value = evaluate_at(row, at, 1, context);
         if (context.code != success)
             return Value();
-        value_for_writing(*made, key_name, key) = std::move(value);
+        file_under(*made, key_name, key, std::move(value));
 
         // WHETHER A COMMA WAS TAKEN IS KEPT, never read back from `at - 1`: the code before
         // `at` may be the last of a string's payload, and U+0700 has the comma's code (the
@@ -2099,18 +2099,19 @@ signed long long int write_through_index(Value &root, const std::vector<Value> &
                 return context.code;
             }
             satelliteIndex &body = about_to_change(*keys);
-            satelliteObject &slot = value_for_writing(body, key_name, indices[step]);
+            satelliteMapEntry &entry = entry_for_writing(body, key_name, indices[step]);
             if (step + 1 == indices.size()) {
                 if (inside->word != 0 && !value_fits(*inside, value, unfit)) {
                     context.refuse(types_do_not_meet,
                                    "the value does not fit: " + unfit, where);
                     return context.code;
                 }
-                slot = std::move(value);
+                put_value(entry, std::move(value));
                 return success;
             }
+            // ON INTO THE VALUE, to write inside it: its kind stays, so its width does.
             here = inside;
-            target = &slot;
+            target = &entry.value;
             satellite_string spelled;
             std::string ignored;
             indices[step].to_string(spelled, ignored);

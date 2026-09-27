@@ -138,7 +138,7 @@ void reach_into(const TypeShape &declared, const std::string &path, const std::s
             const std::size_t shown_keys = std::min<std::size_t>(4, (*held)->entries.size());
             about += ", one of ";
             for (std::size_t at = 0; at < shown_keys; ++at)
-                about += (at == 0 ? "" : ", ") + value_shown((*held)->entries[at].first);
+                about += (at == 0 ? "" : ", ") + value_shown((*held)->entries[at].key);
             if ((*held)->entries.size() > shown_keys)
                 about += " and " + std::to_string((*held)->entries.size() - shown_keys) + " more";
         }

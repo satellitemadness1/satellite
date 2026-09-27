@@ -130,8 +130,8 @@ bool holds_a_window(const Value &value)
         for (const Value &item : (*list)->items)
             if (holds_a_window(item)) return true;
     if (const IndexHandle *index = value.as_index(); index != nullptr && *index != nullptr)
-        for (const auto &[key, item] : (*index)->entries)
-            if (holds_a_window(key) || holds_a_window(item)) return true;
+        for (const satelliteMapEntry &entry : (*index)->entries)
+            if (holds_a_window(entry.key) || holds_a_window(entry.value)) return true;
     return false;
 }
 
