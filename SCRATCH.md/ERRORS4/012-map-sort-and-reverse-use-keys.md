@@ -5,6 +5,10 @@
 **Kind:** wrong-answer  
 **Severity:** low
 
+**2026-09-26, later:** the author designed `.sort("key")` / `.sort("value")` for maps; the map's
+entries now hold a key, a value and a width for each (`8237187`). SCRATCH.md/MAP_SORT.md holds his
+words and what is open -- fix this page there, not here.
+
 ## What happens
 
 map.sort().by_value() and map.reverse() silently work on the KEYS and answer a list, while .max/.min/.sum/.join on a map ask which half.
