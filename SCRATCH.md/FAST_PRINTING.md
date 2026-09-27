@@ -65,7 +65,7 @@ buffer overran. The step-5 builds: none in 54 runs. Output to a file (HOW TO MEA
   printing them (the old scanner, secret_scan.py, was in session 8164ac05's scratchpad on tmpfs and
   may be gone; a grep of the new files for those values does the same).
 - **Installed:** `~/.satl/satl` is build 0124: step 5 (`bd69cb7`), the map entries (`8237187`), S413
-  COUNTS_FROM_ONE (`861c9a2`), and (2026-09-27) **a map's `.sort()` / `.sort("key")` / `.sort("value")`,
+  COUNTS_FROM_ONE (`861c9a2`), and (2026-09-27, `2eee0d4`) **a map's `.sort()` / `.sort("key")` / `.sort("value")`,
   BUILT -- `SCRATCH.md/MAP_SORT.md` START HERE says what, and what is his to overrule.** Step 6 is next
   when he answers RUNNING_PROGRAMS.md.
 - **`./check.sh`: 1049 of 1050** (2026-09-27): the one was check_session.py's "an if written at the

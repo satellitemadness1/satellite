@@ -4,7 +4,7 @@ Written 2026-09-26, for the author and for **the session after `/clear`**. Read 
 
 ## START HERE AFTER `/clear`
 
-- **`.sort` IS BUILT (2026-09-27, the commit after `0d939eb`; its hash is in the memory note).** His
+- **`.sort` IS BUILT (2026-09-27, commit `2eee0d4`, build 0124 installed).** His
   words that day, after `/clear`: *"I wanted 3 different functions, .sort() which is just an alias for
   sort by key, and .sort("value") which sorts by value"*. So on a map: `.sort()` = `.sort("key")`, and
   `.sort("value")`. The code is `satellite/satellite_object/satellite_map_sort.hpp` -- his four
