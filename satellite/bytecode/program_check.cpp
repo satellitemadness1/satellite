@@ -1361,7 +1361,7 @@ signed long long int names_in_statement(const std::vector<std::bitset<16>> &row,
                                     ", and a field's value is worked out before there is an object -- it cannot name "
                                     "another field; give it its value in the satellite.constructor instead"
                       : !a_row.empty() ? a_row
-                                       : name + " has no satellite.variable line declaring it";
+                                       : name_not_declared_why(name);
                 return name_not_declared;
             } else if (declared.find(name)->second == word::code_of(1, 6, 21) &&
                        past_the_argument_names(row, k) != k) {

@@ -150,4 +150,11 @@ std::string link_spelled(const std::vector<std::bitset<16>> &row, std::size_t do
 // the `[`, as `s.split(...)`.
 std::string index_after_an_answer(const std::string &spelled);
 
+// S201 FOR A NAME READ AS A VALUE, and what to write instead when the name is a bare
+// `true` or `false` (the author, 2026-09-29: "Can we have the variable "true"'s error
+// statement tell us to write "satellite.bool.true""). Said by the checker and by the
+// walker, so the two cannot drift. A name being ASSIGNED is not asked here -- `true = 1`
+// wants a declaration, not satellite.bool.true.
+std::string name_not_declared_why(const std::string &name);
+
 } // namespace satellite004

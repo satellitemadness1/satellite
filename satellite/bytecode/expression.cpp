@@ -1439,7 +1439,7 @@ Value one_operand(const std::vector<std::bitset<16>> &row, std::size_t &at, Expr
             }
         }
         if (!found) {
-            context.refuse(name_not_declared, name + " has no satellite.variable line declaring it", name_at);
+            context.refuse(name_not_declared, name_not_declared_why(name), name_at);
             return Value();
         }
         // THE ARGUMENTS VARIABLE'S ROWS BY NAME (main_arguments.hpp):
@@ -2202,6 +2202,14 @@ std::string index_after_an_answer(const std::string &spelled)
 {
     return spelled + "[...]: [ ] is not built yet straight after a call's answer, a literal or a bracket -- give "
                      "the value a name first, and read [ ] of that name";
+}
+
+std::string name_not_declared_why(const std::string &name)
+{
+    std::string why = name + " has no satellite.variable line declaring it";
+    if (name == "true" || name == "false")
+        why += " -- for the value " + name + ", write satellite.bool." + name;
+    return why;
 }
 
 } // namespace satellite004

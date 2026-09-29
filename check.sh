@@ -5148,6 +5148,21 @@ expect "a coloured string answers .find and == the same into a pipe as at a term
 # is judged as it always was.
 expect "a = 1, b = 2 is still a name nobody declared, not a named option" "25|1|0" \
        "$(console_says '    satellite.variable.number a = 1, b = 2' 'b has no satellite.variable line declaring it')"
+# A BARE true OR false READ AS A VALUE IS TOLD THE SPELLING (the author, 2026-09-29: "Can we
+# have the variable "true"'s error statement tell us to write "satellite.bool.true"").
+expect "bool x = true is told to write satellite.bool.true, before anything runs" "25|1|0" \
+       "$(console_says '    satellite.variable.bool ready = true' 'true has no satellite.variable line declaring it -- for the value true, write satellite.bool.true')"
+expect "x = false is told to write satellite.bool.false" "25|1|0" \
+       "$(console_says '    satellite.variable.bool ready = satellite.bool.true
+    ready = false' 'false has no satellite.variable line declaring it -- for the value false, write satellite.bool.false')"
+expect "while(true) is told to write satellite.bool.true" "25|1|0" \
+       "$(console_says '    satellite.statement.while(true)
+    {
+    }' 'for the value true, write satellite.bool.true')"
+expect "display(false) is told to write satellite.bool.false" "25|1|0" \
+       "$(console_says '    satellite.console.display(false)' 'for the value false, write satellite.bool.false')"
+expect "... but true = 1 wants a declaration, and is not told satellite.bool.true" "25|0|0" \
+       "$(console_says '    true = 1' 'satellite.bool.true')"
 expect "satellite.console.width() is told it is read without brackets, and what to write" "13|1|0" \
        "$(console_says '    satellite.console.display(satellite.console.width())' 'satellite.console.width is read without brackets -- write satellite.console.width, not satellite.console.width()')"
 expect "satellite.console.home(5) is told home() takes nothing" "13|1|0" \
