@@ -5340,6 +5340,17 @@ started_ns=$(date +%s%N); timeout 20 "$interpreter" tests/program_join_let_go.sa
 took_ms=$(( ($(date +%s%N) - started_ns) / 1000000 ))
 expect "programs: satellite.return(satellite) on a thread ends a run waiting in a join, quietly, and the program is stopped" \
        "0|yes||0|0" "$code|$([ "$took_ms" -lt 3000 ] && echo yes || echo "no, $took_ms ms")|$(cat build/program_let_go.out)|$(grep -c 'CRITICAL ERROR REPORT' build/program_let_go.err)|$(pgrep -fc 'sleep 6\.17')"
+# start("hide") (STEP 2, 2026-10-01): "the output will be displayed unless my_program.start("hide") is called".
+"$interpreter" tests/program_hidden.satl > build/program_hidden.out 2> build/program_hidden.err; code=$?
+expect "programs: start(\"hide\") throws the output and the errors away, and answers the same -- the word from a name too" \
+       "0|before|4|it ended with code 4|4|shown|after||0" \
+       "$code|$(tr '\n' '|' < build/program_hidden.out)|$(grep -c 'must not show\|nor this' build/program_hidden.err)"
+"$interpreter" tests/program_start_loud.satl > /dev/null 2> build/program_loud.err; code=$?
+expect "programs: start(\"loud\") is refused when it is reached -- start takes nothing, or \"hide\"" "13|1" \
+       "$code|$(grep -c 'start() takes nothing, or "hide" to run it' build/program_loud.err)"
+"$interpreter" tests/program_start_two.satl > /dev/null 2> build/program_start_two.err; code=$?
+expect "programs: start with two words is refused before anything runs" "13|1" \
+       "$code|$(grep -c 'p.start() takes nothing, or "hide"' build/program_start_two.err)"
 expect "code/return is registry row 0x0B67, and token_codes.hpp agrees" "1|1|1" \
        "$(grep -c '^0000101101100111  code_token  *code/return ' REGISTRY.satellite)|$(grep -c 'Code code_token = 0x0B67;' satellite/bytecode/token_codes.hpp)|$(grep -c 'if (spelling == "return") return code_token;' satellite/bytecode/token_codes.hpp)"
 

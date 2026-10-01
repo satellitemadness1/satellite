@@ -469,6 +469,7 @@ inline constexpr WordRow kWords[] = {
     {"satellite.variable.program.join()", {1, 6, 23, 4, 0, 0}, 4},
     {"satellite.variable.program.code()", {1, 6, 23, 5, 0, 0}, 4},
     {"satellite.variable.program.return()", {1, 6, 23, 6, 0, 0}, 4},
+    {"satellite.variable.program.start(how)", {1, 6, 23, 7, 0, 0}, 4},
 };
 
 // Removed words, with the numbers they had in 003 06.
@@ -728,7 +729,7 @@ inline constexpr NextFree kNextFree[] = {
     {"satellite.access", {1, 31, 2, 0, 0, 0, 0}, 3},
     {"satellite.statement.break", {1, 13, 5, 1, 0, 0, 0}, 4},
     {"satellite.statement.continue", {1, 13, 6, 1, 0, 0, 0}, 4},
-    {"satellite.variable.program", {1, 6, 23, 7, 0, 0, 0}, 4},
+    {"satellite.variable.program", {1, 6, 23, 8, 0, 0, 0}, 4},
 };
 
 } // namespace satellite004

@@ -238,8 +238,10 @@ void *watch_the_program(void *given)
     if (watch->out >= 0)
         close(watch->out);
     watch->finished->store(true, std::memory_order_release);
-    // ONE WRITER FEWER, AFTER ITS LAST HAND-OFF (machine/console_lock.hpp's programs_watched).
-    programs_watched().fetch_sub(1, std::memory_order_acq_rel);
+    // ONE WRITER FEWER, AFTER ITS LAST HAND-OFF (machine/console_lock.hpp's programs_watched) -- a
+    // hidden run, with no output to hand, was never counted.
+    if (watch->out >= 0)
+        programs_watched().fetch_sub(1, std::memory_order_acq_rel);
     return nullptr;
 }
 
@@ -383,7 +385,7 @@ void never_ran(satellite_program &program, std::uint64_t run, long long code, co
     program.ended_signal.notify_all();
 }
 
-Value start(const ProgramHandle &which, const std::string &name, ExpressionContext &context)
+Value start(const ProgramHandle &which, const std::string &name, bool hidden, ExpressionContext &context)
 {
     satellite_program &program = *which;
     CriticalReport where;
@@ -412,15 +414,25 @@ Value start(const ProgramHandle &which, const std::string &name, ExpressionConte
     // satl'S OWN WORDS WRITTEN BEFORE THIS LINE GO FIRST, then the program's -- handed over under
     // the console's lock, as every other caller does (the review: unlocked, another thread's write
     // could land in a buffer already in the ring).
-    {
+    // start("hide") -- "the output will be displayed unless my_program.start("hide") is called" (the
+    // author): its output and its errors go to /dev/null, so there is no pipe, nothing for the
+    // screen, and no writer more on the ring.
+    if (!hidden) {
         const ConsoleHold one_hand_off;
         hand_over_what_std_cout_holds();
     }
     // A WRITER MORE, BEFORE ITS THREAD EXISTS (machine/console_lock.hpp's programs_watched).
-    programs_watched().fetch_add(1, std::memory_order_acq_rel);
+    if (!hidden)
+        programs_watched().fetch_add(1, std::memory_order_acq_rel);
+    const auto a_writer_fewer = [hidden] {
+        if (!hidden)
+            programs_watched().fetch_sub(1, std::memory_order_acq_rel);
+    };
     int pipe_ends[2] = {-1, -1};
     ProgramStart begun;
-    if (pipe2(pipe_ends, O_CLOEXEC) != 0) {
+    if (hidden) {
+        begun = start_a_program(program.words, -1);
+    } else if (pipe2(pipe_ends, O_CLOEXEC) != 0) {
         begun.code = 126;
         begun.why = std::string("the machine would not make a pipe for its output: ") + std::strerror(errno);
     } else {
@@ -432,7 +444,7 @@ Value start(const ProgramHandle &which, const std::string &name, ExpressionConte
             close(pipe_ends[0]);
         never_ran(program, run, begun.code, begun.why);
         forget(which);
-        programs_watched().fetch_sub(1, std::memory_order_acq_rel);
+        a_writer_fewer();
         return Value::of_program(which);
     }
     {
@@ -465,7 +477,8 @@ Value start(const ProgramHandle &which, const std::string &name, ExpressionConte
         int status = 0;
         while (waitpid(begun.pid, &status, 0) < 0 && errno == EINTR) {
         }
-        close(pipe_ends[0]);
+        if (pipe_ends[0] >= 0)
+            close(pipe_ends[0]);
         if (begun.pidfd >= 0)
             close(begun.pidfd);
         {
@@ -475,7 +488,7 @@ Value start(const ProgramHandle &which, const std::string &name, ExpressionConte
         never_ran(program, run, 126,
                   std::string("the machine would not make a thread to watch it: ") + std::strerror(refused));
         forget(which);
-        programs_watched().fetch_sub(1, std::memory_order_acq_rel);
+        a_writer_fewer();
         return Value::of_program(which);
     }
     watch.release();   // the watcher owns it now
@@ -569,10 +582,17 @@ signed long long int program_on_store(token::Code holds, Value &value, std::stri
 
 int program_method_arity(token::Code method)
 {
-    if (method == token::start_token || method == token::ok_token || method == token::error_text_token ||
-        method == token::join_token || method == token::code_token)
+    if (method == token::start_token)
+        return 1;                        // start() or start("hide")
+    if (method == token::ok_token || method == token::error_text_token || method == token::join_token ||
+        method == token::code_token)
         return 0;
     return -1;
+}
+
+std::string program_method_takes(token::Code method)
+{
+    return method == token::start_token ? "() takes nothing, or \"hide\"" : "() takes nothing, in its brackets";
 }
 
 std::string program_methods_are()
@@ -588,8 +608,8 @@ Value call_program_method(token::Code method, const ProgramHandle &which, const 
         context.refuse(types_do_not_meet, name + "." + spelling + " -- " + program_methods_are());
         return Value();
     }
-    if (!had_parentheses || !arguments.empty()) {
-        context.refuse(satl_line_not_understood, name + "." + spelling + "() takes nothing, in its brackets");
+    if (!had_parentheses || arguments.size() > static_cast<std::size_t>(program_method_arity(method))) {
+        context.refuse(satl_line_not_understood, name + "." + spelling + program_method_takes(method));
         return Value();
     }
     if (which == nullptr) {
@@ -597,8 +617,22 @@ Value call_program_method(token::Code method, const ProgramHandle &which, const 
                                                         "= {\"name\", \"argument\"}");
         return Value();
     }
-    if (method == token::start_token)
-        return start(which, name, context);
+    if (method == token::start_token) {
+        bool hidden = false;
+        if (!arguments.empty()) {
+            const satellite_string *how = arguments.front().as_string();
+            hidden = how != nullptr && how->to_utf8() == "hide";
+            if (!hidden) {
+                satellite_string shown;
+                std::string why;
+                const std::string given = arguments.front().to_string(shown, why) == success ? shown.to_utf8() : "that";
+                context.refuse(satl_line_not_understood, name + ".start(" + given + ") -- start() takes nothing, or "
+                                                             "\"hide\" to run it with its output thrown away");
+                return Value();
+            }
+        }
+        return start(which, name, hidden, context);
+    }
     satellite_program &program = *which;
     std::string why;
     bool could_start = false;

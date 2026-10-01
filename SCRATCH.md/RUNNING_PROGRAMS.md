@@ -47,9 +47,9 @@ So, as built:
 |---|---|
 | `satellite.variable.program p = {"/dir/program", "arg1"}`, a list of strings, or `= "/dir/program"` | what it runs; one string is the program alone, never split |
 | `p.start()` | starts it and answers at once; its output is shown in satl's console, between satl's lines |
-| `p.start("hide")` | the same, its output thrown away (STEP 2) |
+| `p.start("hide")` | the same, its output and its errors thrown away (STEP 2, built 0129) |
 | `p.ok()`, `p.error()` | whether it could start, and why not |
-| `p.join()`, `p.code()`, `p.return()` | wait for it to end, and answer its exit code |
+| `p.join()`, `p.code()`, `p.return()` | wait for it to end, and answer its exit code (STEP 1, built 0128) |
 | `p.end()`, `p.exit()`, `p.quit()`, `p.shutdown()` | kill it (STEP 3) |
 | `p.pass("text")`, `p.pass({"one", "two"})` | typed into it while it runs (STEP 4) |
 | `satellite.variable.bash c = "mkdir ..."` | the same methods, through bash -c (STEP 5) |

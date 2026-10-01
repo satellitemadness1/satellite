@@ -639,18 +639,19 @@ signed long long int method_judged(const std::vector<std::bitset<16>> &row, std:
         }
         return success;
     }
-    // A PROGRAM'S OWN METHODS (2026-10-01), asked of program_calls.hpp: start, ok, error, join,
-    // code and return, each taking nothing. Before the containers, for the same reason: a list
-    // has a .join of its own.
+    // A PROGRAM'S OWN METHODS (2026-10-01), asked of program_calls.hpp: start, which takes nothing or
+    // "hide", and ok, error, join, code and return, which take nothing. Before the containers, for
+    // the same reason: a list has a .join of its own.
     if (is_program_type(declared_as)) {
-        if (program_method_arity(method) < 0) {
+        const int most = program_method_arity(method);
+        if (most < 0) {
             why = spelling + " -- " + program_methods_are();
             return types_do_not_meet;
         }
         std::size_t close = k + 2, given = 0;
         if (code_at(row, k + 2) != token::left_parenthesis_token || !brackets_at(row, k + 2, close, given) ||
-            given != 0) {
-            why = spelling + "() takes nothing, in its brackets";
+            given > static_cast<std::size_t>(most)) {
+            why = spelling + program_method_takes(method);
             return satl_line_not_understood;
         }
         return success;

@@ -5,6 +5,7 @@
 //     satellite.variable.program run_program = "/dir/some_program"
 //     my_program.start()       starts it and answers at once; its output is shown in satl's own
 //                              console, between satl's own lines, as it comes
+//     my_program.start("hide") the same, with its output and its errors thrown away (STEP 2)
 //     my_program.ok()          whether it could be started
 //     my_program.error()       why not -- or, once it has ended, a code that was not 0 or the
 //                              signal that ended it; "" when there is nothing to say
@@ -63,8 +64,10 @@ bool is_program_type(token::Code word);
 // on-store step asks of every type. Untouched for a name of any other type.
 signed long long int program_on_store(token::Code holds, Value &value, std::string &why);
 
-// What each method takes: 0 for every method built so far. Any other method: -1.
+// The most arguments each method takes: start 1 (start() or start("hide")), every other 0. Any
+// other method: -1. program_method_takes says it in words, for a refusal.
 int program_method_arity(token::Code method);
+std::string program_method_takes(token::Code method);
 
 // For a refusal: the methods a program has.
 std::string program_methods_are();
