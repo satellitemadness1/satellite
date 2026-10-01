@@ -48,6 +48,7 @@ INTERPRETER_SOURCES = $(SATELLITE)/structured-library.cpp \
                       $(BYTECODE)/thread_calls.cpp $(OBJECT)/object_lock.cpp \
                       $(BYTECODE)/program_calls.cpp $(SATELLITE)/satellite_variable_program/program_spawn.cpp \
                       $(SATELLITE)/satellite_variable_program/program_watch.cpp \
+                      $(SATELLITE)/satellite_variable_program/program_stop.cpp \
                       $(BYTECODE)/window_calls.cpp $(BYTECODE)/window_readers.cpp $(BYTECODE)/window_shapes.cpp \
                       $(BYTECODE)/window_questions.cpp $(BYTECODE)/window_methods.cpp $(BYTECODE)/window_run.cpp \
                       $(OBJECT)/satellite_object.cpp \
@@ -92,6 +93,7 @@ HEADERS = $(ARGUMENTS)/arguments.hpp $(ARGUMENTS)/command_line.hpp $(ARGUMENTS)/
           $(SATELLITE)/satellite_variable_program/satellite_program_handle.hpp \
           $(SATELLITE)/satellite_variable_program/program_spawn.hpp \
           $(SATELLITE)/satellite_variable_program/program_watch.hpp \
+          $(SATELLITE)/satellite_variable_program/program_stop.hpp \
           $(MACHINE)/console_lock.hpp $(MACHINE)/thread_stop.hpp $(OBJECT)/object_lock.hpp \
           $(BYTECODE)/file_calls.hpp $(BYTECODE)/info_calls.hpp $(BYTECODE)/access_calls.hpp $(BYTECODE)/access_words.hpp $(BYTECODE)/container_calls.hpp \
           $(BYTECODE)/string_calls.hpp $(OBJECT)/string_pieces.hpp \

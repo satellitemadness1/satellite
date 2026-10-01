@@ -24,6 +24,12 @@
 // no shell" (RUNNING_PROGRAMS.md); a string on its own is the program's name alone and is
 // never split.
 //
+// A BASH LINE IS ONE TOO (STEP 5, `satellite.variable.bash`, 1 6 24) -- the author: "running a
+// program on a machine, and running a bash commnand are two different things", and "satellite.
+// variable.bash my_command = "mkdir /home/madness/code/satl" my_command.start()". Its words are
+// {"bash", "-c", "--", the line}: bash reads the line, so its pipes, its > and its * work, and
+// everything else -- start, hide, pass, join, end -- is the program's.
+//
 // EVERYTHING UNDER `lock` IS WRITTEN BY TWO THREADS: the one that calls start() and join(),
 // and the program's watcher, which hands its output to the screen and writes how it ended.
 
@@ -44,6 +50,7 @@ class satellite_program {
 public:
     // WHAT IT RUNS, fixed at the declaration and never changed after.
     std::vector<std::string> words;           // the program, then each argument
+    bool bash = false;                        // a bash line: words are {"bash", "-c", "--", the line}
 
     // THE LAST RUN, all under `lock`. RUNS ARE COUNTED, so a join() waits for the run that was
     // going when it was reached -- another thread may start the next one the moment it ends.
@@ -76,20 +83,24 @@ public:
     bool running() const { return runs_started > runs_ended; }   // under `lock`
 
     // For satellite.console.display(p): what it runs and how far it has got --
-    // (program /usr/bin/make -j16, running).
+    // (program /usr/bin/make -j16, running), and a bash line as its line: (bash mkdir x, running).
     std::string shown() const
     {
         std::lock_guard<std::mutex> hold(lock);
         std::string what;
-        for (const std::string &word : words) {
-            if (!what.empty()) what += ' ';
-            what += word;
+        if (bash && !words.empty()) {
+            what = words.back();
+        } else {
+            for (const std::string &word : words) {
+                if (!what.empty()) what += ' ';
+                what += word;
+            }
         }
         const std::string where = !started     ? "not started"
                                   : running()  ? "running"
                                   : !could_start ? "could not start"
                                                  : "ended with " + std::to_string(code);
-        return "(program " + what + ", " + where + ")";
+        return std::string(bash ? "(bash " : "(program ") + what + ", " + where + ")";
     }
 };
 

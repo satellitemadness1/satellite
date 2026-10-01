@@ -547,6 +547,7 @@ std::string literal_refused(Code type, Literal kind)
     else if (type == word::code_of(1, 6, 17)) takes = is({Literal::whole});                                  // infinity
     else if (type == word::code_of(1, 6, 2)) takes = false;                                                  // file
     else if (type == word::code_of(1, 6, 23)) takes = is({Literal::text});                                  // program
+    else if (type == word::code_of(1, 6, 24)) takes = is({Literal::text});                                  // bash
     if (takes) return "";
     switch (kind) {
     case Literal::text: return "a string";
@@ -640,12 +641,13 @@ signed long long int method_judged(const std::vector<std::bitset<16>> &row, std:
         return success;
     }
     // A PROGRAM'S OWN METHODS (2026-10-01), asked of program_calls.hpp: start, which takes nothing or
-    // "hide", and ok, error, join, code and return, which take nothing. Before the containers, for
+    // "hide"; pass, which takes one thing; and ok, error, join, code, return, end, exit, quit and
+    // shutdown, which take nothing. A bash line's are the same (STEP 5). Before the containers, for
     // the same reason: a list has a .join of its own.
     if (is_program_type(declared_as)) {
         const int most = program_method_arity(method);
         if (most < 0) {
-            why = spelling + " -- " + program_methods_are();
+            why = spelling + " -- " + program_methods_are(is_bash_type(declared_as));
             return types_do_not_meet;
         }
         std::size_t close = k + 2, given = 0;
@@ -2113,7 +2115,7 @@ signed long long int check_statement(const std::vector<std::bitset<16>> &row,
             why = std::string(word::spelling_of(code)) + " " + name +
                   " is a declaration, and only satellite.variable.number, .string, .binary, "
                   ".percentage, .file, .bool, .infinity, .float, .hex, .color, .fraction, .window, "
-                  ".thread, .program and satellite.container.list, .map (or .index) and .multiple are built yet";
+                  ".thread, .program, .bash and satellite.container.list, .map (or .index) and .multiple are built yet";
             at = stop;
             return satl_line_not_understood;
         }

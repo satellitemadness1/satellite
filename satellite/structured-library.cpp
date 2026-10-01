@@ -37,6 +37,7 @@
 #include "bytecode/program_walk.hpp"
 #include "bytecode/thread_calls.hpp"
 #include "bytecode/program_calls.hpp"
+#include "satellite_variable_program/program_stop.hpp"
 #include "bytecode/word_counts.hpp"
 #include "bytecode/statement_ring.hpp"
 #include "config/config_file.hpp"

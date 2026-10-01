@@ -1,7 +1,8 @@
 // satellite/bytecode/program_calls.cpp -- the header says what these are for, the author's words
 // for each, and which choices are mine. A fresh reader found twelve defects in the first version
 // (2026-10-01); each fix says where it is made what it answers. The watcher -- the thread a run
-// has -- is satellite_variable_program/program_watch.cpp.
+// has -- is satellite_variable_program/program_watch.cpp, and stopping a program -- end(), and the
+// end of the run -- is program_stop.cpp.
 
 #include "program_calls.hpp"
 
@@ -13,9 +14,9 @@
 #include "../machine/thread_stop.hpp"
 #include "../satellite_object/satellite_list.hpp"
 #include "../satellite_variable_program/program_spawn.hpp"
+#include "../satellite_variable_program/program_stop.hpp"
 #include "../satellite_variable_program/program_watch.hpp"
 
-#include <algorithm>
 #include <atomic>
 #include <cerrno>
 #include <chrono>
@@ -24,183 +25,14 @@
 #include <fcntl.h>
 #include <memory>
 #include <mutex>
-#include <poll.h>
 #include <sys/eventfd.h>
-#include <sys/ioctl.h>
-#include <sys/syscall.h>
 #include <sys/wait.h>
-#include <thread>
 #include <unistd.h>
 
 namespace satellite004 {
 namespace {
 
-constexpr auto kStopGrace = std::chrono::seconds(5);            // SIGTERM, this long, then SIGKILL
-constexpr int kLongestStopWait = 200;                           // ms a process is given to show it has stopped
 constexpr auto kJoinLooksUp = std::chrono::milliseconds(100);   // how often a waiting join() looks up
-
-// THE END-OF-RUN LIST: every program with a run started that no join() has finished with yet.
-// `listed` on each program is kept under this list's lock.
-struct Unjoined {
-    std::mutex lock;
-    std::vector<ProgramHandle> programs;
-};
-
-Unjoined &unjoined()
-{
-    static Unjoined one;
-    return one;
-}
-
-// EVERY WATCHER NOT JOINED YET. A watcher outlives its program's run while something the program
-// left running still writes to the pipe, so watchers are joined from here, apart from the runs.
-struct WatcherThread {
-    pthread_t id;
-    ProgramHandle program;
-    std::shared_ptr<std::atomic<bool>> finished;
-};
-
-struct Watchers {
-    std::mutex lock;
-    std::vector<WatcherThread> threads;
-};
-
-Watchers &watchers()
-{
-    static Watchers one;
-    return one;
-}
-
-// WATCHERS THAT HAVE FINISHED, joined now, so a run that starts a program a million times keeps
-// a list of the ones still going.
-void join_finished_watchers()
-{
-    std::vector<WatcherThread> done;
-    {
-        const std::lock_guard<std::mutex> hold(watchers().lock);
-        std::vector<WatcherThread> &threads = watchers().threads;
-        const auto still = std::stable_partition(threads.begin(), threads.end(), [](const WatcherThread &each) {
-            return !each.finished->load(std::memory_order_acquire);
-        });
-        done.assign(std::make_move_iterator(still), std::make_move_iterator(threads.end()));
-        threads.erase(still, threads.end());
-    }
-    for (const WatcherThread &each : done)
-        pthread_join(each.id, nullptr);
-}
-
-// UNDER program.lock: through the pidfd, which can never reach a process given this pid later.
-void send(satellite_program &program, int signal)
-{
-#ifdef SYS_pidfd_send_signal
-    if (program.pidfd >= 0) {
-        syscall(SYS_pidfd_send_signal, program.pidfd, signal, nullptr, 0U);
-        return;
-    }
-#endif
-    if (program.pid > 0)
-        kill(program.pid, signal);
-}
-
-// ASKED TO STOP -- the program and everything it started -- and killed if it has not a little
-// later (the review: "satellite stopped it" left the program's own `sleep` running). Answers once
-// the run has ended.
-//
-// FROZEN FIRST, THEN STOPPED. A program that has only just started may be forking as it is asked:
-// `sh -c "sleep 7.31; echo never"` stopped a millisecond after its start() was found with nothing
-// under it, then sh ended on SIGTERM, and the sleep it had forked meanwhile was handed to the
-// session's reaper and lived on (found 2026-10-01, by the test the review asked for). So the
-// program is SIGSTOPped, everything under it is found and SIGSTOPped too, again until a pass finds
-// nothing new -- a stopped process starts nothing -- and only then is all of it sent SIGTERM and
-// SIGCONT together.
-void stop_it(satellite_program &program)
-{
-    std::vector<ProcessSeen> under;
-    std::uint64_t run = 0;
-    {
-        std::unique_lock<std::mutex> hold(program.lock);
-        // A RUN CLAIMED AND NOT SPAWNED YET -- another thread is inside start() -- has no pid for
-        // a moment; it is waited for, briefly.
-        while (program.running() && program.pid <= 0)
-            program.ended_signal.wait_for(hold, std::chrono::milliseconds(10));
-        if (!program.running())
-            return;
-        run = program.runs_started;
-        // EACH ONE WAITED FOR UNTIL IT HAS STOPPED: a SIGSTOP lands when the process next runs, and
-        // a scan made before that missed the sleep sh forked in between (found 2026-10-01 by
-        // tests/program_end.satl, a tree ended at once after its start()).
-        send(program, SIGSTOP);
-        wait_until_stopped(seen_now(program.pid), kLongestStopWait);
-        for (int pass = 0; pass < 64; ++pass) {
-            bool more = false;
-            for (const ProcessSeen &found : processes_under(program.pid)) {
-                const bool known = std::any_of(under.begin(), under.end(), [&found](const ProcessSeen &each) {
-                    return each.pid == found.pid && each.started == found.started;
-                });
-                if (known)
-                    continue;
-                signal_if_still_there(found, SIGSTOP);
-                wait_until_stopped(found, kLongestStopWait);
-                under.push_back(found);
-                more = true;
-            }
-            if (!more)
-                break;
-        }
-        send(program, SIGTERM);
-        for (const ProcessSeen &each : under)
-            signal_if_still_there(each, SIGTERM);
-        send(program, SIGCONT);
-    }
-    for (const ProcessSeen &each : under)
-        signal_if_still_there(each, SIGCONT);
-    const auto ended = [&program, run] {
-        const std::lock_guard<std::mutex> hold(program.lock);
-        return program.runs_ended >= run;
-    };
-    const auto deadline = std::chrono::steady_clock::now() + kStopGrace;
-    while (std::chrono::steady_clock::now() < deadline) {
-        if (ended() && std::none_of(under.begin(), under.end(), still_there))
-            return;
-        std::this_thread::sleep_for(std::chrono::milliseconds(20));
-    }
-    {
-        const std::lock_guard<std::mutex> hold(program.lock);
-        if (program.runs_ended < run)
-            send(program, SIGKILL);
-    }
-    for (const ProcessSeen &each : under)
-        signal_if_still_there(each, SIGKILL);
-    std::unique_lock<std::mutex> hold(program.lock);
-    program.ended_signal.wait(hold, [&program, run] { return program.runs_ended >= run; });
-}
-
-// ON THE END-OF-RUN LIST once, however often it is started.
-void remember(const ProgramHandle &which)
-{
-    const std::lock_guard<std::mutex> hold(unjoined().lock);
-    if (which->listed)
-        return;
-    which->listed = true;
-    unjoined().programs.push_back(which);
-}
-
-// OFF IT AGAIN once its run is over -- unless another thread has started the next one, which the
-// end of the run is still owed.
-void forget(const ProgramHandle &which)
-{
-    const std::lock_guard<std::mutex> hold(unjoined().lock);
-    if (!which->listed)
-        return;
-    {
-        const std::lock_guard<std::mutex> its(which->lock);
-        if (which->running())
-            return;
-    }
-    which->listed = false;
-    std::vector<ProgramHandle> &programs = unjoined().programs;
-    programs.erase(std::remove(programs.begin(), programs.end(), which), programs.end());
-}
 
 // A RUN THAT NEVER RAN: ended at once, ok() false, error() saying why.
 void never_ran(satellite_program &program, std::uint64_t run, long long code, const std::string &why)
@@ -324,7 +156,7 @@ Value start(const ProgramHandle &which, const std::string &name, bool hidden, Ex
         // NO WATCHER, SO NO RUN: it is ended at once, and is a program that could not start.
         {
             const std::lock_guard<std::mutex> hold(program.lock);
-            send(program, SIGKILL);
+            signal_the_program(program, SIGKILL);
         }
         int status = 0;
         while (waitpid(begun.pid, &status, 0) < 0 && errno == EINTR) {
@@ -344,10 +176,7 @@ Value start(const ProgramHandle &which, const std::string &name, bool hidden, Ex
         return Value::of_program(which);
     }
     watch.release();   // the watcher owns it now
-    {
-        const std::lock_guard<std::mutex> hold(watchers().lock);
-        watchers().threads.push_back(WatcherThread{id, which, std::move(finished)});
-    }
+    keep_watcher(id, which, std::move(finished));
     return Value::of_program(which);
 }
 
@@ -478,13 +307,40 @@ Value end(const ProgramHandle &which)
 
 bool is_program_type(token::Code word)
 {
-    return word == word::code_of(1, 6, 23);
+    return word == word::code_of(1, 6, 23) || is_bash_type(word);
+}
+
+bool is_bash_type(token::Code word)
+{
+    return word == word::code_of(1, 6, 24);
 }
 
 signed long long int program_on_store(token::Code holds, Value &value, std::string &why)
 {
     if (!is_program_type(holds) || value.is_program())
         return success;
+    // A BASH LINE (STEP 5) IS ONE STRING, which bash reads. A list is refused, not guessed at: it
+    // could be lines of a script, or a line and the words bash hands it as $1, $2 -- the author's.
+    if (is_bash_type(holds)) {
+        const satellite_string *text = value.as_string();
+        if (text == nullptr && value.as_list() != nullptr) {
+            why = "it holds a list -- a bash line is one string, and bash reads its spaces, quotes, ; and | "
+                  "itself; a program and its arguments as a list is satellite.variable.program";
+            return types_do_not_meet;
+        }
+        if (text == nullptr)
+            return success;   // the shape check after this says what it holds instead
+        std::string line = text->to_utf8();
+        if (line.empty()) {
+            why = "the line is empty -- there is nothing in it for bash to run";
+            return types_do_not_meet;
+        }
+        auto program = std::make_shared<satellite_program>();
+        program->words = {"bash", "-c", "--", std::move(line)};
+        program->bash = true;
+        value = Value::of_program(std::move(program));
+        return success;
+    }
     std::vector<std::string> words;
     if (const satellite_string *text = value.as_string()) {
         words.push_back(text->to_utf8());
@@ -535,9 +391,10 @@ std::string program_method_takes(token::Code method)
     return method == token::start_token ? "() takes nothing, or \"hide\"" : "() takes nothing, in its brackets";
 }
 
-std::string program_methods_are()
+std::string program_methods_are(bool bash)
 {
-    return "a program has .start(), .ok(), .error(), .join(), .code(), .return(), .end(), .exit(), .quit(), "
+    return std::string(bash ? "a bash line" : "a program") +
+           " has .start(), .ok(), .error(), .join(), .code(), .return(), .end(), .exit(), .quit(), "
            ".shutdown() and .pass()";
 }
 
@@ -546,7 +403,8 @@ Value call_program_method(token::Code method, const ProgramHandle &which, const 
 {
     const std::string spelling = token::method_name_of(method);
     if (program_method_arity(method) < 0) {
-        context.refuse(types_do_not_meet, name + "." + spelling + " -- " + program_methods_are());
+        context.refuse(types_do_not_meet,
+                       name + "." + spelling + " -- " + program_methods_are(which != nullptr && which->bash));
         return Value();
     }
     if (!had_parentheses || arguments.size() > static_cast<std::size_t>(program_method_arity(method)) ||
@@ -597,80 +455,6 @@ Value call_program_method(token::Code method, const ProgramHandle &which, const 
     if (method == token::pass_token)
         return pass(which, arguments.front(), name, context);
     return join(which, context);
-}
-
-signed long long int close_every_program(signed long long int run_ended_with)
-{
-    if (closing_fd() >= 0) {
-        const std::uint64_t one = 1;
-        [[maybe_unused]] const ssize_t said = write(closing_fd(), &one, sizeof one);
-    }
-    signed long long int answer = success;
-    // EVERY PROGRAM ON THE LIST, stopped if it runs, and reported if no join() was ever reached for
-    // it. A thread may start another while these close, so this goes round until a pass finds none.
-    for (;;) {
-        std::vector<ProgramHandle> closing;
-        {
-            const std::lock_guard<std::mutex> hold(unjoined().lock);
-            closing.swap(unjoined().programs);
-            for (const ProgramHandle &each : closing)
-                each->listed = false;
-        }
-        if (closing.empty())
-            break;
-        for (const ProgramHandle &each : closing) {
-            satellite_program &program = *each;
-            bool was_running = false;
-            {
-                const std::lock_guard<std::mutex> hold(program.lock);
-                was_running = program.running();
-            }
-            stop_it(program);
-            CriticalReport report;
-            long long code = 0;
-            {
-                const std::lock_guard<std::mutex> hold(program.lock);
-                // ONE THAT COULD NOT START NEVER RAN, so there was nothing to wait for; and a run that is
-                // already failing has its own report, which this would only bury.
-                if (program.joined || !program.could_start || run_ended_with != success)
-                    continue;
-                report = program.started_at;
-                code = program.code;
-            }
-            const SCode named = s_code_for(program_never_joined);
-            report.code = named.code;
-            report.name = named.name;
-            report.description = named.means;
-            report.notes.push_back(program.name + " was started here, and nothing waited for it: " +
-                                   (was_running ? std::string("it was still running, so satellite stopped it")
-                                                : "it had ended, with code " + std::to_string(code)));
-            report.notes.push_back("write " + program.name + ".join() -- or .code() or .return() -- after its start()");
-            print_critical(report);
-            answer = program_never_joined;
-        }
-    }
-    // EVERY WATCHER JOINED. The closing event stops one still showing what a program left running;
-    // a run started after the list above was taken is stopped first.
-    for (;;) {
-        std::vector<WatcherThread> joining;
-        {
-            const std::lock_guard<std::mutex> hold(watchers().lock);
-            joining.swap(watchers().threads);
-        }
-        if (joining.empty())
-            break;
-        for (const WatcherThread &each : joining) {
-            stop_it(*each.program);
-            pthread_join(each.id, nullptr);
-        }
-    }
-    // THE CLOSING EVENT TAKEN BACK, so a window's presses or the prompt can start programs again.
-    if (closing_fd() >= 0) {
-        std::uint64_t taken = 0;
-        while (read(closing_fd(), &taken, sizeof taken) > 0) {
-        }
-    }
-    return answer;
 }
 
 } // namespace satellite004

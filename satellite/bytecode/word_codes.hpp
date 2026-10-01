@@ -31,7 +31,7 @@ namespace word {
 inline constexpr token::Code kBase = 4096;       // reserved: no word has it
 inline constexpr token::Code kFirst = 4097;      // satellite
 inline constexpr token::Code kLast = 8191;       // the end of the range
-inline constexpr unsigned int kWordsInTable = 460;
+inline constexpr unsigned int kWordsInTable = 474;
 inline constexpr unsigned int kMaxDepth = 7;
 
 inline constexpr bool is_word_code(token::Code code) { return code >= kBase && code <= kLast; }
@@ -134,6 +134,7 @@ inline constexpr KeyedWord kKeyedWords[] = {
     {0x0301061500000000ULL, 4517},  // 1 6 21 -- satellite.variable.arguments
     {0x0301061600000000ULL, 4534},  // 1 6 22 -- satellite.variable.info
     {0x0301061700000000ULL, 4543},  // 1 6 23 -- satellite.variable.program
+    {0x0301061800000000ULL, 4557},  // 1 6 24 -- satellite.variable.bash
     {0x0301070000000000ULL, 4285},  // 1 7 0 -- satellite.random()
     {0x0301070100000000ULL, 4286},  // 1 7 1 -- satellite.random.fast()
     {0x0301070200000000ULL, 4287},  // 1 7 2 -- satellite.random.normal()
@@ -405,6 +406,19 @@ inline constexpr KeyedWord kKeyedWords[] = {
     {0x040106170A000000ULL, 4554},  // 1 6 23 10 -- satellite.variable.program.quit()
     {0x040106170B000000ULL, 4555},  // 1 6 23 11 -- satellite.variable.program.shutdown()
     {0x040106170C000000ULL, 4556},  // 1 6 23 12 -- satellite.variable.program.pass(text)
+    {0x0401061800000000ULL, 4558},  // 1 6 24 0 -- satellite.variable.bash()
+    {0x0401061801000000ULL, 4559},  // 1 6 24 1 -- satellite.variable.bash.start()
+    {0x0401061802000000ULL, 4560},  // 1 6 24 2 -- satellite.variable.bash.ok()
+    {0x0401061803000000ULL, 4561},  // 1 6 24 3 -- satellite.variable.bash.error()
+    {0x0401061804000000ULL, 4562},  // 1 6 24 4 -- satellite.variable.bash.join()
+    {0x0401061805000000ULL, 4563},  // 1 6 24 5 -- satellite.variable.bash.code()
+    {0x0401061806000000ULL, 4564},  // 1 6 24 6 -- satellite.variable.bash.return()
+    {0x0401061807000000ULL, 4565},  // 1 6 24 7 -- satellite.variable.bash.start(how)
+    {0x0401061808000000ULL, 4566},  // 1 6 24 8 -- satellite.variable.bash.end()
+    {0x0401061809000000ULL, 4567},  // 1 6 24 9 -- satellite.variable.bash.exit()
+    {0x040106180A000000ULL, 4568},  // 1 6 24 10 -- satellite.variable.bash.quit()
+    {0x040106180B000000ULL, 4569},  // 1 6 24 11 -- satellite.variable.bash.shutdown()
+    {0x040106180C000000ULL, 4570},  // 1 6 24 12 -- satellite.variable.bash.pass(text)
     {0x04010E0100000000ULL, 4330},  // 1 14 1 0 -- satellite.library.main()
     {0x04010E0101000000ULL, 4331},  // 1 14 1 1 -- satellite.library.main.arguments
     {0x04010E0200000000ULL, 4383},  // 1 14 2 0 -- satellite.library.system()
@@ -980,6 +994,20 @@ inline constexpr WordFacts kWordFacts[] = {
     {"satellite.variable.program.quit()", {1, 6, 23, 10, 0, 0, 0}, 4},
     {"satellite.variable.program.shutdown()", {1, 6, 23, 11, 0, 0, 0}, 4},
     {"satellite.variable.program.pass(text)", {1, 6, 23, 12, 0, 0, 0}, 4},
+    {"satellite.variable.bash", {1, 6, 24, 0, 0, 0, 0}, 3},
+    {"satellite.variable.bash()", {1, 6, 24, 0, 0, 0, 0}, 4},
+    {"satellite.variable.bash.start()", {1, 6, 24, 1, 0, 0, 0}, 4},
+    {"satellite.variable.bash.ok()", {1, 6, 24, 2, 0, 0, 0}, 4},
+    {"satellite.variable.bash.error()", {1, 6, 24, 3, 0, 0, 0}, 4},
+    {"satellite.variable.bash.join()", {1, 6, 24, 4, 0, 0, 0}, 4},
+    {"satellite.variable.bash.code()", {1, 6, 24, 5, 0, 0, 0}, 4},
+    {"satellite.variable.bash.return()", {1, 6, 24, 6, 0, 0, 0}, 4},
+    {"satellite.variable.bash.start(how)", {1, 6, 24, 7, 0, 0, 0}, 4},
+    {"satellite.variable.bash.end()", {1, 6, 24, 8, 0, 0, 0}, 4},
+    {"satellite.variable.bash.exit()", {1, 6, 24, 9, 0, 0, 0}, 4},
+    {"satellite.variable.bash.quit()", {1, 6, 24, 10, 0, 0, 0}, 4},
+    {"satellite.variable.bash.shutdown()", {1, 6, 24, 11, 0, 0, 0}, 4},
+    {"satellite.variable.bash.pass(text)", {1, 6, 24, 12, 0, 0, 0}, 4},
 };
 
 inline constexpr std::size_t kWordFactsCount = sizeof kWordFacts / sizeof kWordFacts[0];
@@ -1293,6 +1321,20 @@ inline constexpr SpelledWord kSpelledWords[] = {
     {"satellite.variable", 4172},
     {"satellite.variable()", 4173},
     {"satellite.variable.arguments", 4517},
+    {"satellite.variable.bash", 4557},
+    {"satellite.variable.bash()", 4558},
+    {"satellite.variable.bash.code()", 4563},
+    {"satellite.variable.bash.end()", 4566},
+    {"satellite.variable.bash.error()", 4561},
+    {"satellite.variable.bash.exit()", 4567},
+    {"satellite.variable.bash.join()", 4562},
+    {"satellite.variable.bash.ok()", 4560},
+    {"satellite.variable.bash.pass(text)", 4570},
+    {"satellite.variable.bash.quit()", 4568},
+    {"satellite.variable.bash.return()", 4564},
+    {"satellite.variable.bash.shutdown()", 4569},
+    {"satellite.variable.bash.start()", 4559},
+    {"satellite.variable.bash.start(how)", 4565},
     {"satellite.variable.bin", 4235},
     {"satellite.variable.binary", 4235},
     {"satellite.variable.binary()", 4236},

@@ -475,6 +475,20 @@ inline constexpr WordRow kWords[] = {
     {"satellite.variable.program.quit()", {1, 6, 23, 10, 0, 0}, 4},
     {"satellite.variable.program.shutdown()", {1, 6, 23, 11, 0, 0}, 4},
     {"satellite.variable.program.pass(text)", {1, 6, 23, 12, 0, 0}, 4},
+    {"satellite.variable.bash", {1, 6, 24, 0, 0, 0}, 3},
+    {"satellite.variable.bash()", {1, 6, 24, 0, 0, 0}, 4},
+    {"satellite.variable.bash.start()", {1, 6, 24, 1, 0, 0}, 4},
+    {"satellite.variable.bash.ok()", {1, 6, 24, 2, 0, 0}, 4},
+    {"satellite.variable.bash.error()", {1, 6, 24, 3, 0, 0}, 4},
+    {"satellite.variable.bash.join()", {1, 6, 24, 4, 0, 0}, 4},
+    {"satellite.variable.bash.code()", {1, 6, 24, 5, 0, 0}, 4},
+    {"satellite.variable.bash.return()", {1, 6, 24, 6, 0, 0}, 4},
+    {"satellite.variable.bash.start(how)", {1, 6, 24, 7, 0, 0}, 4},
+    {"satellite.variable.bash.end()", {1, 6, 24, 8, 0, 0}, 4},
+    {"satellite.variable.bash.exit()", {1, 6, 24, 9, 0, 0}, 4},
+    {"satellite.variable.bash.quit()", {1, 6, 24, 10, 0, 0}, 4},
+    {"satellite.variable.bash.shutdown()", {1, 6, 24, 11, 0, 0}, 4},
+    {"satellite.variable.bash.pass(text)", {1, 6, 24, 12, 0, 0}, 4},
 };
 
 // Removed words, with the numbers they had in 003 06.
@@ -532,7 +546,7 @@ inline constexpr NextFree kNextFree[] = {
     {"satellite.console.display", {1, 5, 1, 1, 0, 0, 0}, 4},
     {"satellite.console.width", {1, 5, 6, 1, 0, 0, 0}, 4},
     {"satellite.console.height", {1, 5, 7, 1, 0, 0, 0}, 4},
-    {"satellite.variable", {1, 6, 24, 0, 0, 0, 0}, 3},
+    {"satellite.variable", {1, 6, 25, 0, 0, 0, 0}, 3},
     {"satellite.variable.string", {1, 6, 1, 23, 0, 0, 0}, 4},
     {"satellite.variable.string.size", {1, 6, 1, 1, 1, 0, 0}, 5},
     {"satellite.variable.string.empty", {1, 6, 1, 2, 1, 0, 0}, 5},
@@ -735,6 +749,7 @@ inline constexpr NextFree kNextFree[] = {
     {"satellite.statement.break", {1, 13, 5, 1, 0, 0, 0}, 4},
     {"satellite.statement.continue", {1, 13, 6, 1, 0, 0, 0}, 4},
     {"satellite.variable.program", {1, 6, 23, 13, 0, 0, 0}, 4},
+    {"satellite.variable.bash", {1, 6, 24, 13, 0, 0, 0}, 4},
 };
 
 } // namespace satellite004

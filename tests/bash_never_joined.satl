@@ -1,0 +1,11 @@
+satellite.include(satellite)
+
+// A BASH LINE NEVER JOINED is stopped at the end of the run, bash and the sleep it started, and the
+// run fails with S742 -- the author's "forcing the user to use both .start() and .join() together".
+satellite.capsule satellite.main(satellite.variable.arguments args)
+{
+    satellite.variable.bash c = "sleep 7.67; echo never"
+    c.start()
+    satellite.console.display("main ends")
+    satellite.return(satellite)
+}

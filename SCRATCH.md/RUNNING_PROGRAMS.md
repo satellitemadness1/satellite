@@ -52,7 +52,7 @@ So, as built:
 | `p.join()`, `p.code()`, `p.return()` | wait for it to end, and answer its exit code (STEP 1, built 0128) |
 | `p.end()`, `p.exit()`, `p.quit()`, `p.shutdown()` | kill it -- it and everything under it, SIGTERM then SIGKILL five seconds later -- and answer its exit code (STEP 3, built 0131) |
 | `p.pass("text")`, `p.pass({"one", "two"})` | typed into it while it runs, a line each; join() and end() close the input (STEP 4, built 0132) |
-| `satellite.variable.bash c = "mkdir ..."` | the same methods, through bash -c (STEP 5) |
+| `satellite.variable.bash c = "mkdir ..."` | a line bash reads -- its pipes, its `>` and its `*` work -- with every method above (STEP 5, built 0134) |
 
 ### The seven open questions of 2026-09-26, where they stand
 
@@ -98,12 +98,33 @@ machine/stack_share.hpp. Raced 2026-10-01 from a process shaped like satl
 - what it is handed: input /dev/null (until pass(), STEP 4), satl's terminal as its controlling
   terminal (so sudo asks there), every other descriptor closed, signals back to their defaults.
 
+And for a bash line (STEP 5), also mine:
+
+- it runs as `bash -c -- "the line"`, bash found on the PATH as a program's name is. The `--` is
+  glibc's own system()'s: without it, a line that begins with `-` is read as bash's options
+  (`bash -c '-n'` exits 2; `bash -c -- '-n'` says "-n: command not found" and answers 127);
+- bash runs as a script does: not a login shell and not interactive, so no .bashrc and no aliases
+  -- what a `#!/bin/bash` script is given, and what std::system's sh is given;
+- ok() is whether bash started. A command in the line that is not found is bash's to say, on the
+  console, and the line answers bash's 127, as in a terminal;
+- an empty line is refused, as an empty program name is;
+- a bash line given to a program name, or a program to a bash name, is allowed and stays what it
+  is -- both are programs, so a capsule taking `satellite.variable.program` takes both;
+- displayed, it reads as its line: `(bash echo one two three | wc -w, ended with 0)`.
+
 ### What is not built, and is his
 
 - Ctrl-C (question 7 above);
+- what a LIST given to a bash name means -- refused for now, as either of two things it could be:
+  the lines of a script, `{"cd /tmp", "make"}`, or a line and the words bash hands it as `$1`, `$2`
+  -- `{"cp \"$1\" \"$2\"", "my file", "backup"}`, which is the safe way to pass a file name with
+  spaces into a bash line;
 - keeping a program's output as a string;
 - a working directory or environment for one run;
-- a program started at the satl prompt and never joined is not stopped when the prompt ends.
+- whether a program started at the satl prompt and never joined should be reported: it is stopped
+  when the prompt ends (structured-library.cpp, since step 1's review), quietly -- no S742, since a
+  session is not a run that a missing join() fails. (This line said "not stopped" until 2026-10-01,
+  STEP 5; that was written before the review's fix.)
 
 ---
 

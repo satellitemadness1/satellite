@@ -120,6 +120,7 @@ inline satelliteObject::Kind kind_of_type_word(token::Code word)
     if (word == word::code_of(1, 6, 20)) return satelliteObject::fraction;
     if (word == word::code_of(1, 6, 13)) return satelliteObject::thread;       // 2026-09-23 (thread_calls.hpp)
     if (word == word::code_of(1, 6, 23)) return satelliteObject::program;      // 2026-10-01 (program_calls.hpp)
+    if (word == word::code_of(1, 6, 24)) return satelliteObject::program;      // a bash line is one (STEP 5)
     if (word == word::code_of(1, 6, 21)) return satelliteObject::index;       // the arguments (main_arguments.hpp)
     if (word == word::code_of(1, 6, 22)) return satelliteObject::list;        // an info: a list of indexes (info_calls.hpp)
     return satelliteObject::how_many_kinds;          // not a type word

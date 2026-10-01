@@ -5377,6 +5377,32 @@ expect "programs: pass() with nothing in it is refused before anything runs" "13
 expect "code/return is registry row 0x0B67, and token_codes.hpp agrees" "1|1|1" \
        "$(grep -c '^0000101101100111  code_token  *code/return ' REGISTRY.satellite)|$(grep -c 'Code code_token = 0x0B67;' satellite/bytecode/token_codes.hpp)|$(grep -c 'if (spelling == "return") return code_token;' satellite/bytecode/token_codes.hpp)"
 
+# satellite.variable.bash (STEP 5, 2026-10-01): "running a program on a machine, and running a bash
+# commnand are two different things" -- a line bash reads, run as `bash -c -- "the line"`, with every
+# method a program has (program_calls.hpp).
+timeout 30 "$interpreter" tests/bash.satl > build/bash.out 2>/dev/null; code=$?
+expect "bash: his mkdir, a pipe, a >, a *, \$(( )) and ||, its code, a missing command, a leading -, shown as its line, hide, pass, end, a program name and two capsules" \
+       "0|0|made|3|build/bash_made/b.txt build/bash_made/saved.txt|saved|42|7|it ended with code 7|127|true|127|(bash echo one two three | wc -w, ended with 0)|4|got first and second|143|true|(bash echo one two three | wc -w, ended with 0)|made|0|from a parameter|0|removed|" \
+       "$code|$(grep -v ': command not found$' build/bash.out | tr '\n' '|')"
+expect "bash: a missing command is bash's to say, a line that begins with - is the line, hide shows nothing, end leaves no sleep, and the folder is gone" \
+       "1|1|0|0|gone" \
+       "$(grep -c '^bash: .*no-such-command-for-satl: command not found$' build/bash.out)|$(grep -c '^bash: .*-n: command not found$' build/bash.out)|$(grep -c 'must not show' build/bash.out)|$(pgrep -fc 'sleep 7\.59')|$([ -e build/bash_made ] && echo there || echo gone)"
+"$interpreter" tests/bash_from_a_list.satl > build/bash_list.out 2> build/bash_list.err; code=$?
+expect "bash: a list given to a bash name is refused when it is reached -- a bash line is one string" "27|before|1" \
+       "$code|$(tr -d '\n' < build/bash_list.out)|$(tr '\n' ' ' < build/bash_list.err | grep -c 'listed was declared satellite.variable.bash, and it holds a list -- a bash line is one string, and bash reads')"
+"$interpreter" tests/bash_from_a_number.satl > build/bash_number.out 2> build/bash_number.err; code=$?
+expect "bash: = 5 is refused before anything runs" "27||1" \
+       "$code|$(tr -d '\n' < build/bash_number.out)|$(tr '\n' ' ' < build/bash_number.err | grep -c 'satl(check): in satellite.main, counted was declared satellite.variable.bash, and it holds a number')"
+"$interpreter" tests/bash_empty.satl > build/bash_empty.out 2> build/bash_empty.err; code=$?
+expect "bash: an empty line is refused when it is reached, as an empty program name is" "27|before|1" \
+       "$code|$(tr -d '\n' < build/bash_empty.out)|$(tr '\n' ' ' < build/bash_empty.err | grep -c 'blank was declared satellite.variable.bash, and the line is empty -- there is nothing in it for bash to run')"
+"$interpreter" tests/bash_unknown_method.satl > build/bash_method.out 2> build/bash_method.err; code=$?
+expect "bash: .size() is refused before anything runs, naming a bash line's methods" "27||1" \
+       "$code|$(tr -d '\n' < build/bash_method.out)|$(tr '\n' ' ' < build/bash_method.err | grep -c 'satl(check): in satellite.main, c.size -- a bash line has .start(), .ok(), .error(), .join(), .code(), .return(), .end(), .exit(), .quit(), .shutdown() and .pass()')"
+timeout 20 "$interpreter" tests/bash_never_joined.satl > build/bash_unjoined.out 2> build/bash_unjoined.err; code=$?
+expect "bash: a line never joined is stopped at the end, bash's own sleep with it, and fails the run, S742" "69|main ends|1|1|0" \
+       "$code|$(tr -d '\n' < build/bash_unjoined.out)|$(grep -c 'S742: PROGRAM_NEVER_JOINED' build/bash_unjoined.err)|$(grep -c 'satellite stopped it' build/bash_unjoined.err)|$(pgrep -fc 'sleep 7\.67')"
+
 # STRING ESCAPES (the author, 2026-09-24: "let's build an escape code into the string").
 # 003's six are worked out when a literal is READ (string_at, bytecode_registry.cpp),
 # so the lexer and the stored program keep the literal as written; an escape satellite
