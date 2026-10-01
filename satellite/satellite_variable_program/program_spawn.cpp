@@ -311,4 +311,27 @@ void signal_if_still_there(const ProcessSeen &process, int signal)
         kill(process.pid, signal);
 }
 
+ProcessSeen seen_now(pid_t pid)
+{
+    pid_t parent = 0;
+    char state = 0;
+    unsigned long long started = 0;
+    if (!read_stat(pid, parent, state, started) || state == 'Z')
+        return ProcessSeen{};
+    return ProcessSeen{pid, started};
+}
+
+void wait_until_stopped(const ProcessSeen &process, int most_ms)
+{
+    for (int waited = 0; waited < most_ms; ++waited) {
+        pid_t parent = 0;
+        char state = 0;
+        unsigned long long started = 0;
+        if (!read_stat(process.pid, parent, state, started) || started != process.started || state == 'Z' ||
+            state == 'T' || state == 't')
+            return;
+        usleep(1000);
+    }
+}
+
 } // namespace satellite004

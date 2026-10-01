@@ -1,0 +1,22 @@
+satellite.include(satellite)
+
+// end, exit, quit and shutdown are a program's methods now, and still names a spacesuit may give its
+// own fields and capsules: a field named end, read inside it, and a capsule named quit, called.
+satellite.spacesuit trip()
+{
+    satellite.public
+    {
+        satellite.variable.number end = 5
+        satellite.capsule quit()
+        {
+            satellite.console.display("quit of a trip, end " + end)
+        }
+    }
+}
+
+satellite.capsule satellite.main()
+{
+    trip t()
+    t.quit()                                                 // quit of a trip, end 5
+    satellite.return(satellite)
+}

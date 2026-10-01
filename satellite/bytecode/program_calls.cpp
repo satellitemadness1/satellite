@@ -36,6 +36,7 @@ namespace {
 constexpr int kQuietBeforeAHalfLine = 50;                       // ms: a prompt with no end yet is shown then
 constexpr std::size_t kLongestLineHeld = 64 * 1024;             // a longer line is shown in pieces this size
 constexpr auto kStopGrace = std::chrono::seconds(5);            // SIGTERM, this long, then SIGKILL
+constexpr int kLongestStopWait = 200;                           // ms a process is given to show it has stopped
 constexpr auto kJoinLooksUp = std::chrono::milliseconds(100);   // how often a waiting join() looks up
 
 // THE END-OF-RUN LIST: every program with a run started that no join() has finished with yet.
@@ -300,7 +301,11 @@ void stop_it(satellite_program &program)
         if (!program.running())
             return;
         run = program.runs_started;
+        // EACH ONE WAITED FOR UNTIL IT HAS STOPPED: a SIGSTOP lands when the process next runs, and
+        // a scan made before that missed the sleep sh forked in between (found 2026-10-01 by
+        // tests/program_end.satl, a tree ended at once after its start()).
         send(program, SIGSTOP);
+        wait_until_stopped(seen_now(program.pid), kLongestStopWait);
         for (int pass = 0; pass < 64; ++pass) {
             bool more = false;
             for (const ProcessSeen &found : processes_under(program.pid)) {
@@ -310,6 +315,7 @@ void stop_it(satellite_program &program)
                 if (known)
                     continue;
                 signal_if_still_there(found, SIGSTOP);
+                wait_until_stopped(found, kLongestStopWait);
                 under.push_back(found);
                 more = true;
             }
@@ -541,6 +547,30 @@ Value join(const ProgramHandle &which, ExpressionContext &context)
     return Value::of_number(satellite_number::from_signed(code));
 }
 
+// end(), exit(), quit() and shutdown() -- the author, 2026-10-01: ".shutdown() kill the process, and
+// same with .end() ... .end() .exit() and .quit() and shutdown() all do the same thing". Stopped as
+// the end of the run stops one -- frozen, then it and everything under it asked with SIGTERM, and
+// killed five seconds later if it has not gone -- and then answered as join() answers, with its
+// exit code: 143 for SIGTERM, 137 for SIGKILL, its own when it had already ended. It counts as
+// joined: a program ended on purpose is not one nothing waited for.
+Value end(const ProgramHandle &which)
+{
+    satellite_program &program = *which;
+    {
+        const std::lock_guard<std::mutex> hold(program.lock);
+        program.joined = true;
+    }
+    stop_it(program);
+    long long code = 0;
+    {
+        const std::lock_guard<std::mutex> hold(program.lock);
+        program.joined = true;   // and a run another thread started meanwhile is this one's too
+        code = program.code;
+    }
+    forget(which);
+    return Value::of_number(satellite_number::from_signed(code));
+}
+
 } // namespace
 
 bool is_program_type(token::Code word)
@@ -585,7 +615,7 @@ int program_method_arity(token::Code method)
     if (method == token::start_token)
         return 1;                        // start() or start("hide")
     if (method == token::ok_token || method == token::error_text_token || method == token::join_token ||
-        method == token::code_token)
+        method == token::code_token || method == token::end_token)
         return 0;
     return -1;
 }
@@ -597,7 +627,8 @@ std::string program_method_takes(token::Code method)
 
 std::string program_methods_are()
 {
-    return "a program has .start(), .ok(), .error(), .join(), .code() and .return()";
+    return "a program has .start(), .ok(), .error(), .join(), .code(), .return(), .end(), .exit(), .quit() and "
+           ".shutdown()";
 }
 
 Value call_program_method(token::Code method, const ProgramHandle &which, const std::vector<Value> &arguments,
@@ -650,6 +681,8 @@ Value call_program_method(token::Code method, const ProgramHandle &which, const 
         return Value::of_bool(could_start);
     if (method == token::error_text_token)
         return a_string(why);
+    if (method == token::end_token)
+        return end(which);
     return join(which, context);
 }
 

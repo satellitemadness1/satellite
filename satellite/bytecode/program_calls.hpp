@@ -12,6 +12,8 @@
 //     my_program.join()        waits for it to end, and answers its exit code
 //     my_program.code()        the same as join()
 //     my_program.return()      the same as join()
+//     my_program.end()         stops it and everything under it, and answers its exit code (STEP 3);
+//     my_program.exit()        .exit(), .quit() and .shutdown() are the same
 //
 // THE AUTHOR'S WORDS, 2026-10-01, in order: "satellite.variable.program my_program = {"/dir/program",
 // "arg1", "arg2"} // or a list of str could optionally be put here, or just the name of the program

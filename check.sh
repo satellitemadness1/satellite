@@ -5351,6 +5351,22 @@ expect "programs: start(\"loud\") is refused when it is reached -- start takes n
 "$interpreter" tests/program_start_two.satl > /dev/null 2> build/program_start_two.err; code=$?
 expect "programs: start with two words is refused before anything runs" "13|1" \
        "$code|$(grep -c 'p.start() takes nothing, or "hide"' build/program_start_two.err)"
+# end(), exit(), quit() and shutdown() (STEP 3, 2026-10-01): ".shutdown() kill the process ... all do the same thing".
+started_ns=$(date +%s%N); timeout 20 "$interpreter" tests/program_end.satl > build/program_end.out 2>/dev/null; code=$?
+took_ms=$(( ($(date +%s%N) - started_ns) / 1000000 ))
+expect "programs: end, exit, quit and shutdown stop it and answer 143; one already ended answers its own; sh's own sleep goes too" \
+       "0|143|it was ended by signal 15 (SIGTERM)|143|143|143|3|143||yes|0" \
+       "$code|$(tr '\n' '|' < build/program_end.out)|$([ "$took_ms" -lt 3000 ] && echo yes || echo "no, $took_ms ms")|$(pgrep -fc 'sleep 7\.43')"
+started_ns=$(date +%s%N); timeout 30 "$interpreter" tests/program_end_stubborn.satl > build/program_stubborn.out 2>/dev/null; code=$?
+took_ms=$(( ($(date +%s%N) - started_ns) / 1000000 ))
+expect "programs: one that ignores SIGTERM is killed five seconds later, and answers 137" \
+       "0|137|it was ended by signal 9 (SIGKILL)||yes" \
+       "$code|$(tr '\n' '|' < build/program_stubborn.out)|$([ "$took_ms" -ge 5000 ] && [ "$took_ms" -lt 9000 ] && echo yes || echo "no, $took_ms ms")"
+"$interpreter" tests/program_end_names.satl > build/program_end_names.out 2>/dev/null; code=$?
+expect "programs: end and quit are still names a spacesuit's field and capsule may have" "0|quit of a trip, end 5|" \
+       "$code|$(tr '\n' '|' < build/program_end_names.out)"
+expect "end/exit/quit/shutdown is registry row 0x0B68, and token_codes.hpp agrees" "1|1|4" \
+       "$(grep -c '^0000101101101000  end_token  *end/exit/quit/shutdown ' REGISTRY.satellite)|$(grep -c 'Code end_token = 0x0B68;' satellite/bytecode/token_codes.hpp)|$(grep -c 'return end_token;' satellite/bytecode/token_codes.hpp)"
 expect "code/return is registry row 0x0B67, and token_codes.hpp agrees" "1|1|1" \
        "$(grep -c '^0000101101100111  code_token  *code/return ' REGISTRY.satellite)|$(grep -c 'Code code_token = 0x0B67;' satellite/bytecode/token_codes.hpp)|$(grep -c 'if (spelling == "return") return code_token;' satellite/bytecode/token_codes.hpp)"
 

@@ -31,7 +31,7 @@ namespace word {
 inline constexpr token::Code kBase = 4096;       // reserved: no word has it
 inline constexpr token::Code kFirst = 4097;      // satellite
 inline constexpr token::Code kLast = 8191;       // the end of the range
-inline constexpr unsigned int kWordsInTable = 455;
+inline constexpr unsigned int kWordsInTable = 459;
 inline constexpr unsigned int kMaxDepth = 7;
 
 inline constexpr bool is_word_code(token::Code code) { return code >= kBase && code <= kLast; }
@@ -400,6 +400,10 @@ inline constexpr KeyedWord kKeyedWords[] = {
     {0x0401061705000000ULL, 4549},  // 1 6 23 5 -- satellite.variable.program.code()
     {0x0401061706000000ULL, 4550},  // 1 6 23 6 -- satellite.variable.program.return()
     {0x0401061707000000ULL, 4551},  // 1 6 23 7 -- satellite.variable.program.start(how)
+    {0x0401061708000000ULL, 4552},  // 1 6 23 8 -- satellite.variable.program.end()
+    {0x0401061709000000ULL, 4553},  // 1 6 23 9 -- satellite.variable.program.exit()
+    {0x040106170A000000ULL, 4554},  // 1 6 23 10 -- satellite.variable.program.quit()
+    {0x040106170B000000ULL, 4555},  // 1 6 23 11 -- satellite.variable.program.shutdown()
     {0x04010E0100000000ULL, 4330},  // 1 14 1 0 -- satellite.library.main()
     {0x04010E0101000000ULL, 4331},  // 1 14 1 1 -- satellite.library.main.arguments
     {0x04010E0200000000ULL, 4383},  // 1 14 2 0 -- satellite.library.system()
@@ -970,6 +974,10 @@ inline constexpr WordFacts kWordFacts[] = {
     {"satellite.variable.program.code()", {1, 6, 23, 5, 0, 0, 0}, 4},
     {"satellite.variable.program.return()", {1, 6, 23, 6, 0, 0, 0}, 4},
     {"satellite.variable.program.start(how)", {1, 6, 23, 7, 0, 0, 0}, 4},
+    {"satellite.variable.program.end()", {1, 6, 23, 8, 0, 0, 0}, 4},
+    {"satellite.variable.program.exit()", {1, 6, 23, 9, 0, 0, 0}, 4},
+    {"satellite.variable.program.quit()", {1, 6, 23, 10, 0, 0, 0}, 4},
+    {"satellite.variable.program.shutdown()", {1, 6, 23, 11, 0, 0, 0}, 4},
 };
 
 inline constexpr std::size_t kWordFactsCount = sizeof kWordFacts / sizeof kWordFacts[0];
@@ -1370,10 +1378,14 @@ inline constexpr SpelledWord kSpelledWords[] = {
     {"satellite.variable.program", 4543},
     {"satellite.variable.program()", 4544},
     {"satellite.variable.program.code()", 4549},
+    {"satellite.variable.program.end()", 4552},
     {"satellite.variable.program.error()", 4547},
+    {"satellite.variable.program.exit()", 4553},
     {"satellite.variable.program.join()", 4548},
     {"satellite.variable.program.ok()", 4546},
+    {"satellite.variable.program.quit()", 4554},
     {"satellite.variable.program.return()", 4550},
+    {"satellite.variable.program.shutdown()", 4555},
     {"satellite.variable.program.start()", 4545},
     {"satellite.variable.program.start(how)", 4551},
     {"satellite.variable.string", 4174},

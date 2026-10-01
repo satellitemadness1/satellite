@@ -56,4 +56,11 @@ bool still_there(const ProcessSeen &process);
 // `signal` to it, when it is still the same process.
 void signal_if_still_there(const ProcessSeen &process, int signal);
 
+// The process with this pid now, or pid 0 when there is none.
+ProcessSeen seen_now(pid_t pid);
+
+// WAITS UNTIL IT HAS STOPPED (state T in /proc) or gone -- a SIGSTOP is delivered when the process
+// next runs, not when it is sent -- for at most `most_ms` milliseconds.
+void wait_until_stopped(const ProcessSeen &process, int most_ms);
+
 } // namespace satellite004
