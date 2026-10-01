@@ -1,0 +1,74 @@
+satellite.include(satellite)
+
+// satellite.variable.program (2026-10-01), the author's:
+//     satellite.variable.program my_program = {"/dir/program", "arg1", "arg2"}
+//     satellite.variable.program run_program = "/dir/some_program"
+//     my_program.start()   my_program.ok()   my_program.error()
+//     my_program.join()    my_program.code()    my_program.return()
+// What each line prints is written beside it; check.sh reads them in this order.
+
+satellite.capsule satellite.main(satellite.variable.arguments args)
+{
+    satellite.variable.program hello = {"echo", "hello from a program"}
+    satellite.console.display("before")                                  // before
+    hello.start()
+    satellite.console.display(hello.join())                              // hello from a program, then 0
+    satellite.console.display("after")                                   // after
+
+    // ONE ARGUMENT, SPACE AND ALL: no shell reads it.
+    satellite.variable.program spaced = {"printf", "[%s]\n", "my file.cpp"}
+    spaced.start()
+    satellite.console.display(spaced.code())                             // [my file.cpp], then 0
+
+    satellite.variable.program seven = {"sh", "-c", "exit 7"}
+    seven.start()
+    satellite.console.display(seven.return())                            // 7
+    satellite.console.display(seven.ok())                                // true
+    satellite.console.display(seven.error())                             // it ended with code 7
+
+    // THE PROGRAM'S NAME ALONE, looked up on the PATH.
+    satellite.variable.program alone = "true"
+    alone.start()
+    satellite.console.display(alone.join())                              // 0
+    satellite.console.display("[" + alone.error() + "]")                 // []
+
+    satellite.variable.program missing = "no-such-program-for-satl"
+    missing.start()
+    satellite.console.display(missing.ok())                              // false
+    satellite.console.display(missing.error())                           // there is no program named ... on the PATH
+    satellite.console.display(missing.code())                            // 127
+
+    satellite.variable.program killed = {"sh", "-c", "kill -TERM $$"}
+    killed.start()
+    satellite.console.display(killed.join())                             // 143
+    satellite.console.display(killed.error())                            // it was ended by signal 15 (SIGTERM)
+
+    // START() ANSWERS AT ONCE: satl's line comes before the program's.
+    satellite.variable.program slow = {"sh", "-c", "sleep 0.3; echo the program finished"}
+    slow.start()
+    satellite.console.display("satl went on")                            // satl went on
+    slow.join()                                                          // the program finished
+
+    // A LIST OF STRINGS, through a name of its own.
+    satellite.container.list<satellite.variable.string> parts = {"echo", "from a list"}
+    satellite.variable.program listed = parts
+    listed.start()
+    listed.join()                                                        // from a list
+    satellite.console.display(listed)                                    // (program echo from a list, ended with 0)
+
+    // TWO NAMES, ONE PROGRAM.
+    satellite.variable.program same = listed
+    satellite.console.display(same == listed)                            // true
+
+    // A LAST LINE WITH NO END: shown as it is, and satl's next line finishes it.
+    satellite.variable.program unended = {"printf", "no end of line"}
+    unended.start()
+    unended.join()
+    satellite.console.display("")                                        // no end of line
+
+    // SIGPIPE IS THE PROGRAM'S AGAIN: yes ends quietly when head has its line.
+    satellite.variable.program piped = {"sh", "-c", "yes | head -1"}
+    piped.start()
+    satellite.console.display(piped.join())                              // y, then 0
+    satellite.return(satellite)
+}

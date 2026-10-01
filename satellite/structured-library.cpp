@@ -36,6 +36,7 @@
 #include "bytecode/function_table.hpp"
 #include "bytecode/program_walk.hpp"
 #include "bytecode/thread_calls.hpp"
+#include "bytecode/program_calls.hpp"
 #include "bytecode/word_counts.hpp"
 #include "bytecode/statement_ring.hpp"
 #include "config/config_file.hpp"
@@ -450,8 +451,13 @@ signed long long int run_satl(int argc, char **argv)
     // line are warm. There is no file to load and no main to find -- a typed line
     // is its own row, checked and walked by the same two functions a capsule's
     // body is (session.hpp).
-    if (command_line.command == Command::repl)
-        return run_session(arguments, functions, threads, state);
+    if (command_line.command == Command::repl) {
+        const signed long long int session = run_session(arguments, functions, threads, state);
+        // EVERY PROGRAM A TYPED LINE STARTED is stopped when the prompt ends (the review,
+        // 2026-10-01) -- quietly: a session is not a run that a missing join() fails.
+        close_every_program(error);
+        return session;
+    }
 
     state.set("satellite(loading)", satellite_loading_successful);
 
@@ -512,8 +518,17 @@ signed long long int run_satl(int argc, char **argv)
     // a thread still walking after this function returns would walk a freed capsule table.
     // Declared AFTER the capsules, so it is destroyed BEFORE them, on every way out of here
     // -- the ordinary end below closes them first, and says what they did.
+    // AND EVERY PROGRAM IT STARTED (program_calls.hpp), on every way out and quietly -- the
+    // ordinary end below is the one that reports a program never joined. PROGRAMS FIRST, so a
+    // thread waiting in a program's join() is let go; then the threads; then any program a
+    // thread started while it was closing (the review, 2026-10-01).
     struct ThreadsCloseFirst {
-        ~ThreadsCloseFirst() { close_every_thread(); }
+        ~ThreadsCloseFirst()
+        {
+            close_every_program(error);
+            close_every_thread();
+            close_every_program(error);
+        }
     } const threads_close_before_the_capsules_go;
     // NOTHING RUNS BEFORE THE WHOLE PROGRAM IS CHECKED.
     code = check_program(bytecode_registry, capsules, functions, state);
@@ -539,11 +554,20 @@ signed long long int run_satl(int argc, char **argv)
     // 2026-09-12, 003's M23): every thread still running is asked to stop and waited for.
     // One that failed and that nobody joined still fails the run -- its report was printed
     // when it happened; this is the exit status it is owed.
+    // EVERY PROGRAM THE RUN STARTED WAS JOINED, OR IS STOPPED AND REPORTED HERE: the author's
+    // "forcing the user to use both .start() and .join() together" (program_calls.hpp). A run
+    // already failing says so itself, and a report about a join would only bury it. PROGRAMS
+    // BEFORE THREADS, so a thread waiting in a join() is let go by its program's end, and once
+    // more after them, for a program a thread started while it closed.
+    const signed long long int a_program_left = close_every_program(stops_the_program(code) ? error : success);
     const signed long long int a_thread_failed = close_every_thread();
+    close_every_program(error);
     if (stops_the_program(code))
         return code;
     if (stops_the_program(a_thread_failed))
         return a_thread_failed;
+    if (stops_the_program(a_program_left))
+        return a_program_left;
 
     // AND NOW THE WINDOW'S OWN RUN, if a window word ever opened one
     // (SATELLITE_WINDOW.md WIN-11). The program's own lines are finished; what
@@ -613,9 +637,13 @@ signed long long int run_satl(int argc, char **argv)
     // AND THE THREADS A PRESS STARTED, closed here and not only by the guard (the review,
     // 2026-09-23): their failures count like main's threads', and the tables and the flush
     // below are read and written with none of them still running.
+    const signed long long int a_pressed_program_left = close_every_program(success);
     const signed long long int a_pressed_thread_failed = close_every_thread();
+    close_every_program(error);
     if (stops_the_program(a_pressed_thread_failed))
         return a_pressed_thread_failed;
+    if (stops_the_program(a_pressed_program_left))
+        return a_pressed_program_left;
 
     // THE `word_counts` BIT'S ANSWER, printed when the run is over rather than as
     // it goes: a profile is a thing you read after, and the hot path must not pay

@@ -1,0 +1,9 @@
+satellite.include(satellite)
+
+// A program's methods are its own: .size() is refused before anything runs.
+satellite.capsule satellite.main(satellite.variable.arguments args)
+{
+    satellite.variable.program p = "true"
+    satellite.console.display(p.size())
+    satellite.return(satellite)
+}

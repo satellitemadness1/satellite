@@ -80,3 +80,11 @@
 1 31 1	satellite.access(name)
 1 13 5	satellite.statement.break
 1 13 6	satellite.statement.continue
+1 6 23	satellite.variable.program
+1 6 23 0	satellite.variable.program()
+1 6 23 1	satellite.variable.program.start()
+1 6 23 2	satellite.variable.program.ok()
+1 6 23 3	satellite.variable.program.error()
+1 6 23 4	satellite.variable.program.join()
+1 6 23 5	satellite.variable.program.code()
+1 6 23 6	satellite.variable.program.return()

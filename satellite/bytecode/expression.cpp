@@ -22,6 +22,7 @@
 #include "string_calls.hpp"
 #include "console_calls.hpp"
 #include "thread_calls.hpp"
+#include "program_calls.hpp"
 #include "../satellite_object/object_lock.hpp"
 #include "../machine/console_lock.hpp"
 #include "../machine/thread_stop.hpp"
@@ -196,6 +197,17 @@ Value apply(Code op, std::size_t op_at, const Value &left, const Value &right, E
                 context.refuse(types_do_not_meet,
                                std::string(spelling_of(op)) + " was given two threads, and only == and != compare "
                                                               "those -- one thread or two",
+                               op_at);
+                return Value();
+            }
+            return Value::of_bool((left == right) == (op == token::equals_token));
+        }
+        // AND TWO PROGRAMS THE SAME WAY (2026-10-01): one program or two, never an order.
+        if (left.is_program() && right.is_program()) {
+            if (an_ordering(op)) {
+                context.refuse(types_do_not_meet,
+                               std::string(spelling_of(op)) + " was given two programs, and only == and != compare "
+                                                              "those -- one program or two",
                                op_at);
                 return Value();
             }
@@ -616,6 +628,19 @@ Value call_method(const std::vector<std::bitset<16>> &row, std::size_t &at, cons
         // capsule handed back. Before the containers ever see it: a list has a .join too.
         if (const ThreadHandle *thread = (*live).thread_handle()) {
             Value answer = call_thread_method(method, *thread, arguments, had_parentheses, name, context);
+            if (context.code != success)
+                return Value();
+            held = std::move(answer);
+            live = &held;
+            on_the_name = false;
+            continue;
+        }
+
+        // A PROGRAM ANSWERS ITS OWN (program_calls.cpp): start answers the program, so
+        // `p.start().join()` goes on; join, code and return answer its exit code. Before the
+        // containers, as a thread's are: a list has a .join too.
+        if (const ProgramHandle *program = (*live).program_handle()) {
+            Value answer = call_program_method(method, *program, arguments, had_parentheses, name, context);
             if (context.code != success)
                 return Value();
             held = std::move(answer);
@@ -1642,7 +1667,8 @@ Value display_plainly(Code code, Value &&argument, ExpressionContext &context)
         argument.is_hexadecimal() || argument.is_color() || argument.is_percentage() || argument.is_infinity() ||
         argument.is_float() || argument.is_fraction()) {
         answer = display_value(std::move(argument));
-    } else if (argument.is_list() || argument.is_index() || argument.is_window() || argument.is_thread()) {
+    } else if (argument.is_list() || argument.is_index() || argument.is_window() || argument.is_thread() ||
+               argument.is_program()) {
         satellite_string written;
         std::string why;
         const signed long long int made = argument.to_string(written, why);
@@ -2002,7 +2028,8 @@ Value call_word(const std::vector<std::bitset<16>> &row, std::size_t &at, Expres
     // displays a window for is to see which one they have hold of. Same branch as
     // the containers, because satellite_object.cpp's to_string is the one spelling
     // for all of them.
-    else if ((argument.is_list() || argument.is_index() || argument.is_window() || argument.is_thread()) &&
+    else if ((argument.is_list() || argument.is_index() || argument.is_window() || argument.is_thread() ||
+              argument.is_program()) &&
              scenarios->text != nullptr) {
         satellite_string written;
         std::string why;

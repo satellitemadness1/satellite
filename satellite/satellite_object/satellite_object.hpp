@@ -55,6 +55,7 @@
 #include "../satellite_variable_infinity/satellite_infinity.hpp"
 #include "../satellite_variable_window/satellite_window.hpp"
 #include "../satellite_variable_thread/satellite_thread_handle.hpp"
+#include "../satellite_variable_program/satellite_program_handle.hpp"
 #include "../satellite_variable_number/satellite_number.hpp"
 #include "../satellite_variable_percentage/satellite_percentage.hpp"
 #include "../satellite_variable_string/satellite_string.hpp"
@@ -149,7 +150,8 @@ public:
                               satellite_hexadecimal_number, // 15 satellite.variable.hex (2026-09-22)
                               satellite_color,         // 16 satellite.variable.color (2026-09-22)
                               satellite_fraction,      // 17 satellite.variable.fraction (2026-09-22)
-                              ThreadHandle             // 18 satellite.variable.thread (2026-09-23, 003's "Thr")
+                              ThreadHandle,            // 18 satellite.variable.thread (2026-09-23, 003's "Thr")
+                              ProgramHandle            // 19 satellite.variable.program (2026-10-01)
                               // APPEND HERE, NEVER INSERT ABOVE. 003's own list
                               // is the map of what comes: Flo, Lst, Map, Fil,
                               // Bin, Hex, Arg, Thr. Arms take their numbers in
@@ -203,7 +205,8 @@ public:
         color = 16,
         fraction = 17,
         thread = 18,
-        how_many_kinds = 19
+        program = 19,
+        how_many_kinds = 20
     };
 
     static_assert(std::variant_size_v<Held> == how_many_kinds, "Kind must name every arm of Held");
@@ -223,6 +226,7 @@ public:
     static_assert(std::is_same_v<std::variant_alternative_t<color, Held>, satellite_color>, "");
     static_assert(std::is_same_v<std::variant_alternative_t<fraction, Held>, satellite_fraction>, "");
     static_assert(std::is_same_v<std::variant_alternative_t<thread, Held>, ThreadHandle>, "");
+    static_assert(std::is_same_v<std::variant_alternative_t<program, Held>, ProgramHandle>, "");
 
     Held held;
 
@@ -245,6 +249,7 @@ public:
     satelliteObject(satellite_color from) : held(std::move(from)) {}
     satelliteObject(satellite_fraction from) : held(std::move(from)) {}
     satelliteObject(ThreadHandle from) : held(std::move(from)) {}
+    satelliteObject(ProgramHandle from) : held(std::move(from)) {}
 
     static satelliteObject of_nothing() { return satelliteObject(); }
     static satelliteObject of_bool(bool from) { return satelliteObject(from); }
@@ -265,6 +270,7 @@ public:
     static satelliteObject of_color(satellite_color from) { return satelliteObject(std::move(from)); }
     static satelliteObject of_fraction(satellite_fraction from) { return satelliteObject(std::move(from)); }
     static satelliteObject of_thread(ThreadHandle from) { return satelliteObject(std::move(from)); }
+    static satelliteObject of_program(ProgramHandle from) { return satelliteObject(std::move(from)); }
     // A machine code is a number, as it already was in bytecode/value.hpp.
     static satelliteObject of_code(signed long long int code)
     {
@@ -295,6 +301,7 @@ public:
     bool is_color() const { return held.index() == color; }
     bool is_fraction() const { return held.index() == fraction; }
     bool is_thread() const { return held.index() == thread; }
+    bool is_program() const { return held.index() == program; }
 
     // THE ARM, OR nullptr. std::get_if and never std::get: a wrong guess answers
     // nullptr rather than throwing, and satellite does not run on exceptions.
@@ -359,6 +366,14 @@ public:
         return handle != nullptr ? handle->get() : nullptr;
     }
     const ThreadHandle *thread_handle() const { return std::get_if<ThreadHandle>(&held); }
+
+    // THE PROGRAM, through its handle as a thread is: two names for one program are one program.
+    satellite_program *as_program() const
+    {
+        const ProgramHandle *handle = std::get_if<ProgramHandle>(&held);
+        return handle != nullptr ? handle->get() : nullptr;
+    }
+    const ProgramHandle *program_handle() const { return std::get_if<ProgramHandle>(&held); }
 
     satellite_number *as_number() { return std::get_if<satellite_number>(&held); }
     satellite_string *as_string() { return std::get_if<satellite_string>(&held); }

@@ -37,6 +37,25 @@ inline std::atomic<bool> &a_thread_was_started()
     return started;
 }
 
+// PROGRAMS BEING WATCHED RIGHT NOW (bytecode/program_calls.cpp): a running program's watcher
+// hands its output to the printing satellite's ring from a thread of its own, so while one is
+// alive the ring takes its lock -- and only then. Counted up by start() BEFORE the watcher
+// exists, on the one thread that is running satl code then, and down by the watcher AFTER its
+// last hand-off: a run that starts one program does not pay for a lock on every display after it
+// (the review, 2026-10-01, measured 15% on three million displays).
+inline std::atomic<int> &programs_watched()
+{
+    static std::atomic<int> count{0};
+    return count;
+}
+
+// WHETHER THE RING HAS MORE THAN ONE WRITER: a thread was started, or a program is watched.
+inline bool the_ring_has_more_than_one_writer()
+{
+    return a_thread_was_started().load(std::memory_order_acquire) ||
+           programs_watched().load(std::memory_order_acquire) > 0;
+}
+
 // HELD FOR ONE LINE. Holds nothing while the program has never started a thread.
 class ConsoleHold {
 public:

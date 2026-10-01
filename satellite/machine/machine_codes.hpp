@@ -144,6 +144,12 @@ enum MachineCode : signed long long int {
     // satellite starts counting from 1 and not 0". [0] -- of a list, a string, a file -- was
     // refused before this as "past the end" (S501, S411), which it is not.
     counts_from_one = 66,               // a position of 0: satellite counts from 1
+    // 67-69, 2026-10-01, with programs (bytecode/program_calls.hpp): the author's
+    // `satellite.variable.program p = {"name", "argument"}` with p.start() and p.join().
+    // A program that cannot START is not one of these: ok() and error() say that.
+    program_already_running = 67,       // .start() on a program that is still running
+    program_not_started = 68,           // .ok(), .error(), .join(), .code() on one never started
+    program_never_joined = 69,          // the run ended, and a program it started was never joined
 
     // 130 AND NOT 32, ON PURPOSE (PLAN M0.6): 128 + SIGINT is what a shell and 003
     // both answer for Ctrl-C, and exit_status_of passes a code under 255 through as
@@ -210,6 +216,9 @@ inline const char *machine_code_name(signed long long int code)
     case program_returned: return "program_returned";
     case display_string_buffer_overrun: return "display_string_buffer_overrun";
     case counts_from_one: return "counts_from_one";
+    case program_already_running: return "program_already_running";
+    case program_not_started: return "program_not_started";
+    case program_never_joined: return "program_never_joined";
     case out_of_memory: return "out_of_memory";
     case libraries_not_understood: return "libraries_not_understood";
     case file_not_found: return "file_not_found";

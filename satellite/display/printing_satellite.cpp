@@ -630,14 +630,15 @@ signed long long int what_the_screen_said()
     return success;
 }
 
-// THE HAND-OFF. Under `handing` only once a program has started a thread -- the rule
-// machine/console_lock.hpp gives a line -- so a program that never does pays nothing for it.
+// THE HAND-OFF. Under `handing` only while the ring has more than one writer -- once a program
+// has started a thread, the rule machine/console_lock.hpp gives a line, or while a program it
+// started is being watched -- so a program that does neither pays nothing for it.
 template <typename Fill>
 void hand_over(Fill fill)
 {
     Satellite &s = the_satellite();
     std::unique_lock<std::mutex> hold;
-    if (a_thread_was_started().load(std::memory_order_acquire))
+    if (the_ring_has_more_than_one_writer())
         hold = std::unique_lock<std::mutex>(s.handing);
     const std::uint64_t n = s.handed.load(std::memory_order_relaxed);
     if (n - s.free_seen >= kSlots) {
@@ -662,7 +663,7 @@ std::uint64_t handed_so_far()
 {
     Satellite &s = the_satellite();
     std::unique_lock<std::mutex> hold;
-    if (a_thread_was_started().load(std::memory_order_acquire))
+    if (the_ring_has_more_than_one_writer())
         hold = std::unique_lock<std::mutex>(s.handing);
     return s.handed.load(std::memory_order_relaxed);
 }

@@ -1,5 +1,113 @@
 # RUNNING PROGRAMS — satellite running `clang++` and anything else, and a fast std::system on posix_spawn
 
+## 2026-10-01: HIS DESIGN, AND WHAT IS BUILT
+
+**Read this section first.** Everything below the line after it is the 2026-09-26 plan, kept as
+it was written; its open questions are answered here where he answered them.
+
+### Why (his words, 2026-10-01)
+
+> *"we were working on implementing something similar to cstdlib's std::system to run a command on
+> the machine and the reason we were doing that is to make the scripts in /~/Documents in
+> satellite"*
+
+> *"there's running a program on a machine, and running a bash commnand are two different things"*
+
+What those scripts need beyond running a program -- 491 program starts across the eight of them,
+310 of them chores a language does itself, and what satellite 0125 can and cannot do -- is in
+`~/Documents/satl/running-programs-2026-10-01/` (inventory.json, the probes, the review).
+
+### His design, in his words, in order
+
+> *"satellite.variable.program my_program = {"/dir/program", "arg1", "arg2"} // or a list of str
+> could optionally be put here, or just the name of the program in quotes like this:
+> satellite.variable.program run_program = "/dir/some_program"*
+> *my_program.start() my_program.ok() my_program.error() my_program.end() // for build.code
+> my_program.pass("some_str") // or a list, or my_program.pass({"one", "two"})*
+> *and the output will be displayed unless my_program.start("hide") is called*
+> *and when all that is complete with posix_spawn, we do: satellite.variable.bash my_command =
+> "mkdir /home/madness/code/satl" my_command.start()"*
+
+> *"instead of just .end() have alias .code() .return() .exit()"*, then *"oh wait, I forgot .end()
+> should shut the program down, with alias .shutdown()"*, then *"and .code() .return() (not
+> .exit(), that sounds like .quit()) will be for the return"*
+
+Asked whether start() waits: *"just make .join() .end() and .code() wait for the program to
+finish, all 3 do the same thing, and return the error code, and have .start() return to satl
+while the output from the program is displayed, so it runs in another window, forcing the user to
+use both .start() and .join() together"*. Asked which window: *"satl's own console"*. Asked what
+.shutdown() does: *"let's have .shutdown() kill the process, and same with .end() instead of .end()
+waiting like join, .end() .exit() and .quit() and shutdown() all do the same thing"*. Asked what
+pass() gives: *"typed input while the program is running"*. With no display: *"Use satl's own
+output"*.
+
+So, as built:
+
+| | |
+|---|---|
+| `satellite.variable.program p = {"/dir/program", "arg1"}`, a list of strings, or `= "/dir/program"` | what it runs; one string is the program alone, never split |
+| `p.start()` | starts it and answers at once; its output is shown in satl's console, between satl's lines |
+| `p.start("hide")` | the same, its output thrown away (STEP 2) |
+| `p.ok()`, `p.error()` | whether it could start, and why not |
+| `p.join()`, `p.code()`, `p.return()` | wait for it to end, and answer its exit code |
+| `p.end()`, `p.exit()`, `p.quit()`, `p.shutdown()` | kill it (STEP 3) |
+| `p.pass("text")`, `p.pass({"one", "two"})` | typed into it while it runs (STEP 4) |
+| `satellite.variable.bash c = "mkdir ..."` | the same methods, through bash -c (STEP 5) |
+
+### The seven open questions of 2026-09-26, where they stand
+
+1. **What "a fast std::system call" is** -- ANSWERED: a satellite type, satellite.variable.program,
+   and satellite.variable.bash for a bash line ("two different things").
+2. **The satellite spelling** -- ANSWERED, above.
+3. **What comes back** -- ANSWERED for the code: join(), code() and return(). The output is shown, or
+   thrown away with "hide"; KEEPING it as a string was not asked for and is not built.
+4. **Whether satl waits** -- ANSWERED: start() answers at once, and join() waits.
+5. **How the output meets satl's lines** -- through the printing satellite's ring, as satl's own
+   words go, whole line by whole line (display/printing_satellite.hpp's display_bytes).
+6. **Keyboard input** -- ANSWERED: pass(), "typed input while the program is running" (STEP 4).
+7. **Ctrl-C** -- STILL OPEN, his. As built, a program is in satl's own process group, so Ctrl-C
+   reaches both, as it does a bash script and the programs it runs.
+
+### What starts the program: posix_spawn's own clone, with one more step
+
+His word was posix_spawn. glibc's posix_spawn is clone(CLONE_VM | CLONE_VFORK) and a list of steps
+before exec, and that list has no step to give a child back the stack satl was given -- the rule in
+machine/stack_share.hpp. Raced 2026-10-01 from a process shaped like satl
+(RUNNING_PROGRAMS/spawn_race.cpp; run it yourself, the command is at its top):
+
+| | per run | the child's stack limit |
+|---|---|---|
+| posix_spawn | 565 us | 1,986,560 KiB -- satl's widened 1.94 GiB |
+| fork + the hook (what prompt_run.cpp does) | 8,481 us | 8,192 KiB |
+| clone + the hook (what is built, program_spawn.cpp) | 594 us | 8,192 KiB |
+
+### My choices, his to overrule
+
+- a program that cannot start is not a refusal: ok() is false, error() says why, and join() answers
+  what a shell answers -- 127 for no such program, 126 for one that may not be run;
+- a program ended by a signal answers 128 + the signal, as a shell does, and error() names it;
+  error() also says "it ended with code N" when the code was not 0, and "" when there is nothing;
+- every method needs its brackets, as a thread's do (p.ok is refused, p.ok() is right);
+- ok(), error() and join() before any start() are S741; start() while it still runs is S740, and once
+  it has ended start() runs it again;
+- "forcing the user to use both": a program started and never joined is stopped when the run ends
+  (SIGTERM, then SIGKILL five seconds later) and the run fails, S742, placed at that start() -- not
+  for one that could not start, and not when the run is already failing for its own reason;
+- its output and its errors are one stream, in the order it wrote them; whole lines go to the screen
+  as they come, and a line with no end yet (a prompt) is shown once the program has been quiet 50 ms;
+- what it is handed: input /dev/null (until pass(), STEP 4), satl's terminal as its controlling
+  terminal (so sudo asks there), every other descriptor closed, signals back to their defaults.
+
+### What is not built, and is his
+
+- Ctrl-C (question 7 above);
+- keeping a program's output as a string;
+- a working directory or environment for one run;
+- a program started at the satl prompt and never joined is not stopped when the prompt ends.
+
+---
+
+
 Written 2026-09-26 for **the session after `/clear`**. Read this whole file first. Its companion
 is now `SCRATCH.md/FAST_PRINTING.md`, whose step 6 builds this file's work. (It was
 `SCRATCH.md/DISPLAY_THREADS.md`, where the first display attempt stopped.)

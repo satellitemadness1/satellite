@@ -461,6 +461,14 @@ inline constexpr WordRow kWords[] = {
     {"satellite.access(name)", {1, 31, 1, 0, 0, 0}, 3},
     {"satellite.statement.break", {1, 13, 5, 0, 0, 0}, 3},
     {"satellite.statement.continue", {1, 13, 6, 0, 0, 0}, 3},
+    {"satellite.variable.program", {1, 6, 23, 0, 0, 0}, 3},
+    {"satellite.variable.program()", {1, 6, 23, 0, 0, 0}, 4},
+    {"satellite.variable.program.start()", {1, 6, 23, 1, 0, 0}, 4},
+    {"satellite.variable.program.ok()", {1, 6, 23, 2, 0, 0}, 4},
+    {"satellite.variable.program.error()", {1, 6, 23, 3, 0, 0}, 4},
+    {"satellite.variable.program.join()", {1, 6, 23, 4, 0, 0}, 4},
+    {"satellite.variable.program.code()", {1, 6, 23, 5, 0, 0}, 4},
+    {"satellite.variable.program.return()", {1, 6, 23, 6, 0, 0}, 4},
 };
 
 // Removed words, with the numbers they had in 003 06.
@@ -518,7 +526,7 @@ inline constexpr NextFree kNextFree[] = {
     {"satellite.console.display", {1, 5, 1, 1, 0, 0, 0}, 4},
     {"satellite.console.width", {1, 5, 6, 1, 0, 0, 0}, 4},
     {"satellite.console.height", {1, 5, 7, 1, 0, 0, 0}, 4},
-    {"satellite.variable", {1, 6, 23, 0, 0, 0, 0}, 3},
+    {"satellite.variable", {1, 6, 24, 0, 0, 0, 0}, 3},
     {"satellite.variable.string", {1, 6, 1, 23, 0, 0, 0}, 4},
     {"satellite.variable.string.size", {1, 6, 1, 1, 1, 0, 0}, 5},
     {"satellite.variable.string.empty", {1, 6, 1, 2, 1, 0, 0}, 5},
@@ -720,6 +728,7 @@ inline constexpr NextFree kNextFree[] = {
     {"satellite.access", {1, 31, 2, 0, 0, 0, 0}, 3},
     {"satellite.statement.break", {1, 13, 5, 1, 0, 0, 0}, 4},
     {"satellite.statement.continue", {1, 13, 6, 1, 0, 0, 0}, 4},
+    {"satellite.variable.program", {1, 6, 23, 7, 0, 0, 0}, 4},
 };
 
 } // namespace satellite004

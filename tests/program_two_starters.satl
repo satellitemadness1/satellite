@@ -1,0 +1,20 @@
+satellite.include(satellite)
+
+// ONE PROGRAM, TWO STARTERS: main's run is claimed before anything is spawned, so the thread's
+// start() is S740 -- never a second run beside it (the review, 2026-10-01).
+satellite.capsule start_it_too(satellite.variable.program p)
+{
+    p.start()
+    satellite.return(0)
+}
+
+satellite.capsule satellite.main(satellite.variable.arguments args)
+{
+    satellite.variable.program sleeper = {"sleep", "2"}
+    sleeper.start()
+    satellite.variable.thread other = satellite.thread.new(start_it_too(sleeper))
+    other.start()
+    other.join()
+    satellite.console.display("never shown")
+    satellite.return(satellite)
+}

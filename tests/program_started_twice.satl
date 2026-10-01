@@ -1,0 +1,10 @@
+satellite.include(satellite)
+
+// start() while it still runs is S740; the run then stops it, and says nothing more about it.
+satellite.capsule satellite.main(satellite.variable.arguments args)
+{
+    satellite.variable.program sleeper = {"sleep", "30"}
+    sleeper.start()
+    sleeper.start()
+    satellite.return(satellite)
+}

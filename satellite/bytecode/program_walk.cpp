@@ -41,6 +41,7 @@
 #include "color_values.hpp"
 #include "float_values.hpp"
 #include "fraction_values.hpp"
+#include "program_calls.hpp"
 #include "hexadecimal_values.hpp"
 
 #include "word_codes.hpp"
@@ -1223,8 +1224,9 @@ signed long long int run_assignment(const std::vector<std::bitset<16>> &row,
     // THE FOUR TYPES OF 2026-09-22 SAY WHAT A VALUE BECOMES IN A NAME OF THEIRS --
     // a number given to a float name, a hex given to a colour name -- each in its
     // own bytecode/<name>_values.cpp, and each answers untouched for a name that is
-    // not its business.
-    for (auto *on_store : {float_on_store, hexadecimal_on_store, color_on_store, fraction_on_store}) {
+    // not its business. A PROGRAM'S IS THE FIFTH (2026-10-01, program_calls.cpp): a
+    // string, or a list of strings, given to a program name becomes the program.
+    for (auto *on_store : {float_on_store, hexadecimal_on_store, color_on_store, fraction_on_store, program_on_store}) {
         std::string refused;
         const signed long long int stored = on_store(holds, value, refused);
         if (stored != success) {
@@ -2055,7 +2057,7 @@ signed long long int run_turn(const BytecodeRegistry &registry,
         // 3.0. It was refused -- "half's x was declared satellite.variable.float, and it
         // holds a number" -- the one place the four on_store rules were never asked (the
         // website writers, 2026-09-24; fixed in the error sweep, 2026-09-25).
-        for (auto *on_store : {float_on_store, hexadecimal_on_store, color_on_store, fraction_on_store}) {
+        for (auto *on_store : {float_on_store, hexadecimal_on_store, color_on_store, fraction_on_store, program_on_store}) {
             const signed long long int stored = on_store(wants[at].declared(), arguments[at], why);
             if (stored != success)
                 return refuse_argument(stored, at, why);

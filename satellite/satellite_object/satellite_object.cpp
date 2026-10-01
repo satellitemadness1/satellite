@@ -15,6 +15,7 @@
 // directly above a call to `number_and_string_add`, so a reader never has to
 // guess which file a pair went to.
 
+#include "../satellite_variable_program/satellite_program.hpp"
 #include "../satellite_variable_thread/satellite_thread.hpp"
 #include "satellite_object.hpp"
 #include "fast_paths.hpp"
@@ -343,6 +344,9 @@ bool operator==(const satelliteObject &l, const satelliteObject &r)
     // AND TWO THREADS THE SAME WAY: the same thread, not two that run the same capsule.
     case satelliteObject::thread:
         return l.as_thread() == r.as_thread();
+    // AND TWO PROGRAMS: the same program, not two that run the same words.
+    case satelliteObject::program:
+        return l.as_program() == r.as_program();
     // THE FOUR OF 2026-09-22 SAY FOR THEMSELVES what makes two of them the same.
     case satelliteObject::floating: return float_same(*l.as_float(), *r.as_float());
     case satelliteObject::hexadecimal: return hexadecimal_same(*l.as_hexadecimal(), *r.as_hexadecimal());
@@ -374,6 +378,7 @@ const char *satelliteObject::kind_name() const
     case color: return "a color";
     case fraction: return "a fraction";
     case thread: return "a thread";
+    case program: return "a program";
     case nothing: break;
     case how_many_kinds: break;
     }
@@ -856,6 +861,13 @@ signed long long int satelliteObject::to_string(satellite_string &out, std::stri
         const satellite_thread *which = as_thread();
         std::size_t bad_offset = 0;
         return satellite_string::from_utf8(which != nullptr ? which->shown() : std::string("(no thread)"), out,
+                                           bad_offset);
+    }
+    // A PROGRAM READS AS WHAT IT RUNS AND HOW FAR IT HAS GOT: (program make -j16, running).
+    case program: {
+        const satellite_program *which = as_program();
+        std::size_t bad_offset = 0;
+        return satellite_string::from_utf8(which != nullptr ? which->shown() : std::string("(no program)"), out,
                                            bad_offset);
     }
     case how_many_kinds: break;

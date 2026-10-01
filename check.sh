@@ -5287,6 +5287,62 @@ expect "lock and unlock are registry rows 0x0B5B-0x0B5C, and token_codes.hpp agr
 expect "start, stop and wait are registry rows 0x0B58-0x0B5A, and token_codes.hpp agrees" "3|3" \
        "$(grep -c '^00001011010110[01][01]  \(start_token\|stop_token\|wait_method_token\) ' REGISTRY.satellite)|$(grep -c 'Code \(start_token = 0x0B58\|stop_token = 0x0B59\|wait_method_token = 0x0B5A\);' satellite/bytecode/token_codes.hpp)"
 
+# satellite.variable.program (2026-10-01): the author's program -- {"name", "argument"} or "name",
+# start() that answers at once while its output is shown between satl's own lines, ok(), error(),
+# and join(), code() and return(), which wait for it and answer its exit code (program_calls.hpp).
+"$interpreter" tests/programs.satl > build/programs.out 2>/dev/null; code=$?
+expect "programs: output between satl's lines, start answers at once, one argument with a space, exit codes, a signal, not found, a list, two names one program" \
+       "0|before|hello from a program|0|after|[my file.cpp]|0|7|true|it ended with code 7|0|[]|false|there is no program named no-such-program-for-satl on the PATH|127|143|it was ended by signal 15 (SIGTERM)|satl went on|the program finished|from a list|(program echo from a list, ended with 0)|true|no end of line|y|0|" \
+       "$code|$(tr '\n' '|' < build/programs.out)"
+"$interpreter" tests/programs_lines_whole.satl > build/programs_lines.out 2>/dev/null; code=$?
+expect "programs: a program's 2,000 lines and satl's 2,000 at the same time, every line whole" "0|2000|2000|4000" \
+       "$code|$(grep -c '^program-line-[0-9]*-abcdefghijklmnopqrstuvwxyz$' build/programs_lines.out)|$(grep -c '^satl-line-[0-9]*-abcdefghijklmnopqrstuvwxyz$' build/programs_lines.out)|$(wc -l < build/programs_lines.out | tr -d ' ')"
+printf 'satellite.include(satellite)\n\nsatellite.capsule satellite.main(satellite.variable.arguments args)\n{\n    satellite.variable.program stack = {"sh", "-c", "ulimit -s"}\n    stack.start()\n    stack.join()\n    satellite.return(satellite)\n}\n' > build/program_stack.satl
+expect "programs: a program is handed the stack satl was given, not satl's widened one (machine/stack_share.hpp)" \
+       "$(ulimit -s)" "$("$interpreter" build/program_stack.satl 2>/dev/null)"
+"$interpreter" tests/program_join_before_start.satl > /dev/null 2> build/program_early.err; code=$?
+expect "programs: join() before start() is S741" "68|1" "$code|$(grep -c 'S741: PROGRAM_NOT_STARTED' build/program_early.err)"
+timeout 20 "$interpreter" tests/program_started_twice.satl > /dev/null 2> build/program_twice.err; code=$?
+expect "programs: start() while it still runs is S740, and the end of the run stops it with no second report" "67|1|1" \
+       "$code|$(grep -c 'S740: PROGRAM_ALREADY_RUNNING' build/program_twice.err)|$(grep -c 'SATELLITE CRITICAL ERROR REPORT' build/program_twice.err)"
+timeout 20 "$interpreter" tests/program_never_joined.satl > build/program_unjoined.out 2> build/program_unjoined.err; code=$?
+expect "programs: one never joined is stopped at the end and fails the run, S742 once -- not for one that could not start" \
+       "69|main ends|1|1" \
+       "$code|$(tr -d '\n' < build/program_unjoined.out)|$(grep -c 'S742: PROGRAM_NEVER_JOINED' build/program_unjoined.err)|$(grep -c 'satellite stopped it' build/program_unjoined.err)"
+"$interpreter" tests/program_not_strings.satl > /dev/null 2> build/program_words.err; code=$?
+expect "programs: a number in the list is refused, and the item named" "27|1" \
+       "$code|$(grep -c 'numbered was declared satellite.variable.program, and item 2 of it is$' build/program_words.err)"
+"$interpreter" tests/program_from_a_number.satl > /dev/null 2> build/program_number.err; code=$?
+expect "programs: = 5 is refused before anything runs" "27|1|1" \
+       "$code|$(grep -c 'counted was declared satellite.variable.program,$' build/program_number.err)|$(grep -c '^and it holds a number$' build/program_number.err)"
+"$interpreter" tests/program_unknown_method.satl > /dev/null 2> build/program_method.err; code=$?
+expect "programs: .size() is refused before anything runs, naming a program's methods" "27|1" \
+       "$code|$(grep -c 'p.size -- a program has .start(), .ok(),$' build/program_method.err)"
+"$interpreter" tests/program_ok_without_brackets.satl > /dev/null 2> build/program_brackets.err; code=$?
+expect "programs: p.ok without its brackets is refused before anything runs" "13|1" \
+       "$code|$(grep -c 'ok() takes nothing, in its brackets' build/program_brackets.err)"
+# THE FIRST REVIEW'S DEFECTS (2026-10-01), each a test of its own.
+started_ns=$(date +%s%N); "$interpreter" tests/program_long_line.satl > build/program_long.out 2>/dev/null; code=$?
+took_ms=$(( ($(date +%s%N) - started_ns) / 1000000 ))
+expect "programs: a 40,000,000-character line with no end comes out whole and in time (searched from its start, it took 5.1 s)" \
+       "0|40000001|yes" "$code|$(wc -c < build/program_long.out | tr -d ' ')|$([ "$took_ms" -lt 3000 ] && echo yes || echo "no, $took_ms ms")"
+rm -f build/program_marker
+"$interpreter" tests/program_left_running.satl > build/program_left.out 2>/dev/null; code=$?
+expect "programs: what a program leaves running writes on after its join, and is not killed by SIGPIPE" \
+       "0|early line|late line|after the wait||reached" "$code|$(tr '\n' '|' < build/program_left.out)|$(cat build/program_marker 2>/dev/null)"
+timeout 20 "$interpreter" tests/program_stopped_whole.satl > /dev/null 2> build/program_whole.err; code=$?
+expect "programs: a program never joined is stopped with everything under it -- sh's own sleep too" "69|1|0" \
+       "$code|$(grep -c 'S742: PROGRAM_NEVER_JOINED' build/program_whole.err)|$(pgrep -fc 'sleep 7\.31')"
+timeout 20 "$interpreter" tests/program_two_starters.satl > build/program_two.out 2> build/program_two.err; code=$?
+expect "programs: a thread starting a program main is running is S740, and joining that thread stops main with it" "67|1|" \
+       "$code|$(grep -c 'S740: PROGRAM_ALREADY_RUNNING' build/program_two.err)|$(cat build/program_two.out)"
+started_ns=$(date +%s%N); timeout 20 "$interpreter" tests/program_join_let_go.satl > build/program_let_go.out 2> build/program_let_go.err; code=$?
+took_ms=$(( ($(date +%s%N) - started_ns) / 1000000 ))
+expect "programs: satellite.return(satellite) on a thread ends a run waiting in a join, quietly, and the program is stopped" \
+       "0|yes||0|0" "$code|$([ "$took_ms" -lt 3000 ] && echo yes || echo "no, $took_ms ms")|$(cat build/program_let_go.out)|$(grep -c 'CRITICAL ERROR REPORT' build/program_let_go.err)|$(pgrep -fc 'sleep 6\.17')"
+expect "code/return is registry row 0x0B67, and token_codes.hpp agrees" "1|1|1" \
+       "$(grep -c '^0000101101100111  code_token  *code/return ' REGISTRY.satellite)|$(grep -c 'Code code_token = 0x0B67;' satellite/bytecode/token_codes.hpp)|$(grep -c 'if (spelling == "return") return code_token;' satellite/bytecode/token_codes.hpp)"
+
 # STRING ESCAPES (the author, 2026-09-24: "let's build an escape code into the string").
 # 003's six are worked out when a literal is READ (string_at, bytecode_registry.cpp),
 # so the lexer and the stored program keep the literal as written; an escape satellite

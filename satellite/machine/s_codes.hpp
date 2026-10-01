@@ -322,6 +322,23 @@ inline SCode s_code_for(signed long long int machine_code)
                 "not be handed one, open one or build one yet (THREADS.md T3). Objects and files ARE "
                 "shared with a thread; an object's .lock() makes writes to it one at a time."};
 
+    // A PROGRAM THE MACHINE RUNS (2026-10-01, bytecode/program_calls.hpp), the author's
+    // `satellite.variable.program` -- "forcing the user to use both .start() and .join() together".
+    // The wording is drafted from his words, and is his to reword.
+    case program_already_running:
+        return {"S740", "PROGRAM_ALREADY_RUNNING",
+                "this program is still running, so it cannot be started again yet. Its .join() waits for "
+                "it to end -- and answers its exit code -- and after that .start() runs it again."};
+    case program_not_started:
+        return {"S741", "PROGRAM_NOT_STARTED",
+                "this program has not been started, so there is nothing to ask it yet: .ok(), .error(), "
+                ".join(), .code() and .return() are all about a run, and .start() is what begins one."};
+    case program_never_joined:
+        return {"S742", "PROGRAM_NEVER_JOINED",
+                "the program finished, and a program it started was never joined. Every .start() is paired "
+                "with a .join() -- or .code() or .return() -- which waits for it to end and answers its exit "
+                "code; one still running when the program finished was stopped."};
+
     // S12xx -- DIRECTORIES AND THE FILES A PROGRAM OPENS.
     case directory_not_found:
         return {"S520", "DIRECTORY_NOT_FOUND", "nothing is at that path."};
