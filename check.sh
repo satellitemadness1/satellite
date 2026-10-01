@@ -5367,6 +5367,13 @@ expect "programs: end and quit are still names a spacesuit's field and capsule m
        "$code|$(tr '\n' '|' < build/program_end_names.out)"
 expect "end/exit/quit/shutdown is registry row 0x0B68, and token_codes.hpp agrees" "1|1|4" \
        "$(grep -c '^0000101101101000  end_token  *end/exit/quit/shutdown ' REGISTRY.satellite)|$(grep -c 'Code end_token = 0x0B68;' satellite/bytecode/token_codes.hpp)|$(grep -c 'return end_token;' satellite/bytecode/token_codes.hpp)"
+# pass() (STEP 4, 2026-10-01): "typed input while the program is running".
+"$interpreter" tests/program_pass.satl > build/program_pass.out 2>/dev/null; code=$?
+expect "programs: pass() types lines in as it runs -- a list one line each, a number its digits; join() closes the input; never waits; false once ended" \
+       "0|true|got first and second|0|apple|fig|pear|n is 42|0|false|passed|1310721|" "$code|$(tr '\n' '|' < build/program_pass.out)"
+"$interpreter" tests/program_pass_nothing.satl > /dev/null 2> build/program_pass_nothing.err; code=$?
+expect "programs: pass() with nothing in it is refused before anything runs" "13|1" \
+       "$code|$(grep -c 'p.pass() takes one thing to type in' build/program_pass_nothing.err)"
 expect "code/return is registry row 0x0B67, and token_codes.hpp agrees" "1|1|1" \
        "$(grep -c '^0000101101100111  code_token  *code/return ' REGISTRY.satellite)|$(grep -c 'Code code_token = 0x0B67;' satellite/bytecode/token_codes.hpp)|$(grep -c 'if (spelling == "return") return code_token;' satellite/bytecode/token_codes.hpp)"
 

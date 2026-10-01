@@ -51,7 +51,7 @@ So, as built:
 | `p.ok()`, `p.error()` | whether it could start, and why not |
 | `p.join()`, `p.code()`, `p.return()` | wait for it to end, and answer its exit code (STEP 1, built 0128) |
 | `p.end()`, `p.exit()`, `p.quit()`, `p.shutdown()` | kill it -- it and everything under it, SIGTERM then SIGKILL five seconds later -- and answer its exit code (STEP 3, built 0131) |
-| `p.pass("text")`, `p.pass({"one", "two"})` | typed into it while it runs (STEP 4) |
+| `p.pass("text")`, `p.pass({"one", "two"})` | typed into it while it runs, a line each; join() and end() close the input (STEP 4, built 0132) |
 | `satellite.variable.bash c = "mkdir ..."` | the same methods, through bash -c (STEP 5) |
 
 ### The seven open questions of 2026-09-26, where they stand

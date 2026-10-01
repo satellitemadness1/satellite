@@ -457,3 +457,4 @@
 1 6 23 9	satellite.variable.program.exit()	
 1 6 23 10	satellite.variable.program.quit()	
 1 6 23 11	satellite.variable.program.shutdown()	
+1 6 23 12	satellite.variable.program.pass(text)	

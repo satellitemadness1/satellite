@@ -60,6 +60,13 @@ public:
     pid_t pid = 0;                            // while it runs
     int pidfd = -1;                           // while it runs: a signal sent through it can never reach
                                               // another process that was handed the same pid later
+    // WHAT pass() HAS TYPED IN AND THE PROGRAM HAS NOT TAKEN YET (STEP 4) -- "typed input while the
+    // program is running" (the author). The run's watcher writes it as the program reads; join() and
+    // end() close the input once it is all written, so a program reading to the end finishes.
+    std::string input_waiting;
+    bool input_closing = false;               // join() or end() was reached: close it once written
+    bool input_gone = false;                  // closed, by that or by the program: pass() answers false
+    int input_wake = -1;                      // the run's eventfd: pass() and join() say "look again"
     std::string name;                         // the variable, as start() was written on it
     CriticalReport started_at;                // where that start() was, for the report at the end
 

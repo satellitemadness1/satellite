@@ -1,6 +1,7 @@
 // satellite/bytecode/program_calls.cpp -- the header says what these are for, the author's words
 // for each, and which choices are mine. A fresh reader found twelve defects in the first version
-// (2026-10-01); each fix says where it is made what it answers.
+// (2026-10-01); each fix says where it is made what it answers. The watcher -- the thread a run
+// has -- is satellite_variable_program/program_watch.cpp.
 
 #include "program_calls.hpp"
 
@@ -12,6 +13,7 @@
 #include "../machine/thread_stop.hpp"
 #include "../satellite_object/satellite_list.hpp"
 #include "../satellite_variable_program/program_spawn.hpp"
+#include "../satellite_variable_program/program_watch.hpp"
 
 #include <algorithm>
 #include <atomic>
@@ -33,8 +35,6 @@
 namespace satellite004 {
 namespace {
 
-constexpr int kQuietBeforeAHalfLine = 50;                       // ms: a prompt with no end yet is shown then
-constexpr std::size_t kLongestLineHeld = 64 * 1024;             // a longer line is shown in pieces this size
 constexpr auto kStopGrace = std::chrono::seconds(5);            // SIGTERM, this long, then SIGKILL
 constexpr int kLongestStopWait = 200;                           // ms a process is given to show it has stopped
 constexpr auto kJoinLooksUp = std::chrono::milliseconds(100);   // how often a waiting join() looks up
@@ -69,181 +69,6 @@ Watchers &watchers()
 {
     static Watchers one;
     return one;
-}
-
-// THE RUN IS CLOSING: readable from the moment close_every_program begins until it has joined
-// every watcher, so a watcher still showing what a program left running stops there.
-int closing_fd()
-{
-    static const int fd = eventfd(0, EFD_CLOEXEC | EFD_NONBLOCK);
-    return fd;
-}
-
-// WHAT A WATCHER IS HANDED.
-struct Watch {
-    ProgramHandle program;
-    std::uint64_t run;                          // which run of it this is
-    int out;                                    // the read end of its output
-    int pidfd;
-    pid_t pid;
-    std::shared_ptr<std::atomic<bool>> finished;
-};
-
-// A PIECE OF THE PROGRAM'S OUTPUT, onto the screen in turn with satl's own lines -- through the
-// printing satellite's ring, as satl's own words go (display/printing_satellite.hpp).
-void to_the_screen(std::string &piece)
-{
-    if (piece.empty())
-        return;
-    const ConsoleHold one_piece;
-    display_bytes(std::move(piece));
-    piece.clear();
-}
-
-// WHAT HAS COME, ONTO THE SCREEN UP TO ITS LAST END OF LINE. Only the new bytes are searched, so a
-// line with no end costs what its bytes cost (the review: an 80 MB line took 20.8 s searched from
-// its start every time), and one longer than kLongestLineHeld goes in pieces of that size.
-void new_output(std::string &waiting, const char *bytes, std::size_t size)
-{
-    const void *last = memrchr(bytes, '\n', size);
-    if (last == nullptr) {
-        waiting.append(bytes, size);
-    } else {
-        const std::size_t through = static_cast<std::size_t>(static_cast<const char *>(last) - bytes) + 1;
-        waiting.append(bytes, through);
-        to_the_screen(waiting);
-        waiting.assign(bytes + through, size - through);
-    }
-    if (waiting.size() >= kLongestLineHeld)
-        to_the_screen(waiting);
-}
-
-// THE PROGRAM'S OUTPUT WHILE IT RUNS. Answers whether the pipe is still open after it has ended --
-// something it started may hold the pipe for longer than it lives.
-bool read_while_it_runs(const Watch &watch, std::string &waiting, std::string &chunk)
-{
-    for (;;) {
-        pollfd ready[2] = {{watch.out, POLLIN, 0}, {watch.pidfd, POLLIN, 0}};
-        const nfds_t count = watch.pidfd >= 0 ? 2 : 1;
-        const int seen = poll(ready, count, waiting.empty() ? -1 : kQuietBeforeAHalfLine);
-        if (seen < 0) {
-            if (errno == EINTR)
-                continue;
-            return false;
-        }
-        if (seen == 0) {
-            to_the_screen(waiting);   // quiet, with a line half written: a prompt waiting for an answer
-            continue;
-        }
-        if (ready[0].revents != 0) {
-            const ssize_t got = read(watch.out, chunk.data(), chunk.size());
-            if (got > 0)
-                new_output(waiting, chunk.data(), static_cast<std::size_t>(got));
-            else if (got == 0 || (errno != EINTR && errno != EAGAIN))
-                return false;   // every writer has closed it
-        }
-        // IT HAS ENDED. What is in the pipe NOW is read -- exactly that much, so a writer it left
-        // behind cannot keep this here (the review: a drain read forty pipes' worth after sh had gone).
-        if (count == 2 && (ready[1].revents & POLLIN) != 0) {
-            int in_the_pipe = 0;
-            if (ioctl(watch.out, FIONREAD, &in_the_pipe) == 0) {
-                while (in_the_pipe > 0) {
-                    const std::size_t want = std::min(chunk.size(), static_cast<std::size_t>(in_the_pipe));
-                    const ssize_t got = read(watch.out, chunk.data(), want);
-                    if (got < 0 && errno == EINTR)
-                        continue;
-                    if (got <= 0)
-                        break;
-                    new_output(waiting, chunk.data(), static_cast<std::size_t>(got));
-                    in_the_pipe -= static_cast<int>(got);
-                }
-            }
-            return true;
-        }
-    }
-}
-
-// WHAT THE PROGRAM LEFT RUNNING WRITES AFTER IT HAS ENDED is shown as a terminal would show it,
-// until the pipe closes or the run does (the review: closing the pipe at the program's end killed
-// what it left behind with SIGPIPE, and lost its last lines).
-void read_what_it_left(const Watch &watch, std::string &waiting, std::string &chunk)
-{
-    for (;;) {
-        pollfd ready[2] = {{watch.out, POLLIN, 0}, {closing_fd(), POLLIN, 0}};
-        const int seen = poll(ready, 2, waiting.empty() ? -1 : kQuietBeforeAHalfLine);
-        if (seen < 0) {
-            if (errno == EINTR)
-                continue;
-            return;
-        }
-        if (seen == 0) {
-            to_the_screen(waiting);
-            continue;
-        }
-        if (ready[0].revents != 0) {
-            const ssize_t got = read(watch.out, chunk.data(), chunk.size());
-            if (got > 0)
-                new_output(waiting, chunk.data(), static_cast<std::size_t>(got));
-            else if (got == 0 || (errno != EINTR && errno != EAGAIN))
-                return;
-        }
-        if (ready[1].revents != 0)
-            return;
-    }
-}
-
-std::string signal_named(int signal)
-{
-    const char *short_name = sigabbrev_np(signal);
-    return std::to_string(signal) + (short_name != nullptr ? std::string(" (SIG") + short_name + ")" : std::string());
-}
-
-// THE WATCHER: one OS thread a run, as a satellite thread has (thread_calls.hpp says why a pool
-// would not do). It is the only thing that reaps the program, so the pid cannot be handed to
-// another process while the run is going.
-void *watch_the_program(void *given)
-{
-    std::unique_ptr<Watch> watch(static_cast<Watch *>(given));
-    satellite_program &program = *watch->program;
-    std::string waiting;
-    std::string chunk;
-    bool still_open = false;
-    if (watch->out >= 0) {
-        chunk.assign(64 * 1024, '\0');
-        still_open = read_while_it_runs(*watch, waiting, chunk);
-        to_the_screen(waiting);   // its last line, without the end it never wrote
-    }
-    int status = 0;
-    while (waitpid(watch->pid, &status, 0) < 0 && errno == EINTR) {
-    }
-    {
-        const std::lock_guard<std::mutex> hold(program.lock);
-        if (WIFSIGNALED(status)) {
-            program.code = 128 + WTERMSIG(status);
-            program.why = "it was ended by signal " + signal_named(WTERMSIG(status));
-        } else {
-            program.code = WEXITSTATUS(status);
-            program.why = program.code == 0 ? std::string() : "it ended with code " + std::to_string(program.code);
-        }
-        if (watch->pidfd >= 0)
-            close(watch->pidfd);
-        program.pidfd = -1;
-        program.pid = 0;
-        program.runs_ended = watch->run;
-    }
-    program.ended_signal.notify_all();
-    if (still_open && closing_fd() >= 0) {
-        read_what_it_left(*watch, waiting, chunk);
-        to_the_screen(waiting);
-    }
-    if (watch->out >= 0)
-        close(watch->out);
-    watch->finished->store(true, std::memory_order_release);
-    // ONE WRITER FEWER, AFTER ITS LAST HAND-OFF (machine/console_lock.hpp's programs_watched) -- a
-    // hidden run, with no output to hand, was never counted.
-    if (watch->out >= 0)
-        programs_watched().fetch_sub(1, std::memory_order_acq_rel);
-    return nullptr;
 }
 
 // WATCHERS THAT HAVE FINISHED, joined now, so a run that starts a program a million times keeps
@@ -414,6 +239,10 @@ Value start(const ProgramHandle &which, const std::string &name, bool hidden, Ex
         program.code = 0;
         program.name = name;
         program.started_at = where;
+        program.input_waiting.clear();
+        program.input_closing = false;
+        program.input_gone = false;
+        program.input_wake = -1;
     }
     remember(which);
     join_finished_watchers();
@@ -434,34 +263,51 @@ Value start(const ProgramHandle &which, const std::string &name, bool hidden, Ex
         if (!hidden)
             programs_watched().fetch_sub(1, std::memory_order_acq_rel);
     };
-    int pipe_ends[2] = {-1, -1};
+    // ITS INPUT IS A PIPE satl HOLDS (STEP 4): what pass() types goes in it, and join() or end() closes
+    // it. The write end never blocks -- the watcher writes as the program reads -- and the wake is how
+    // pass() and join() tell the watcher to look again.
+    int output_ends[2] = {-1, -1};
+    int input_ends[2] = {-1, -1};
+    const int wake = eventfd(0, EFD_CLOEXEC | EFD_NONBLOCK);
     ProgramStart begun;
-    if (hidden) {
-        begun = start_a_program(program.words, -1);
-    } else if (pipe2(pipe_ends, O_CLOEXEC) != 0) {
+    std::string the_machine_said;
+    if (wake < 0 || pipe2(input_ends, O_CLOEXEC) != 0)
+        the_machine_said = std::string("the machine would not make a pipe for its input: ") + std::strerror(errno);
+    else if (!hidden && pipe2(output_ends, O_CLOEXEC) != 0)
+        the_machine_said = std::string("the machine would not make a pipe for its output: ") + std::strerror(errno);
+    if (!the_machine_said.empty()) {
         begun.code = 126;
-        begun.why = std::string("the machine would not make a pipe for its output: ") + std::strerror(errno);
+        begun.why = the_machine_said;
     } else {
-        begun = start_a_program(program.words, pipe_ends[1]);
-        close(pipe_ends[1]);
+        begun = start_a_program(program.words, hidden ? -1 : output_ends[1], input_ends[0]);
     }
+    for (const int end : {output_ends[1], input_ends[0]})
+        if (end >= 0)
+            close(end);   // the program's ends, which it has now
+    const auto close_satls_ends = [&output_ends, &input_ends, wake] {
+        for (const int end : {output_ends[0], input_ends[1], wake})
+            if (end >= 0)
+                close(end);
+    };
     if (begun.pid <= 0) {
-        if (pipe_ends[0] >= 0)
-            close(pipe_ends[0]);
+        close_satls_ends();
         never_ran(program, run, begun.code, begun.why);
         forget(which);
         a_writer_fewer();
         return Value::of_program(which);
     }
+    fcntl(input_ends[1], F_SETFL, fcntl(input_ends[1], F_GETFL) | O_NONBLOCK);
     {
         const std::lock_guard<std::mutex> hold(program.lock);
         program.could_start = true;
         program.pid = begun.pid;
         program.pidfd = begun.pidfd;
+        program.input_wake = wake;
     }
     program.ended_signal.notify_all();   // a stop_it() waiting for the pid
     auto finished = std::make_shared<std::atomic<bool>>(false);
-    auto watch = std::make_unique<Watch>(Watch{which, run, pipe_ends[0], begun.pidfd, begun.pid, finished});
+    auto watch = std::make_unique<Watch>(
+        Watch{which, run, output_ends[0], input_ends[1], wake, begun.pidfd, begun.pid, finished});
     // THE WATCHER TAKES NO SIGNAL (the review: one could take a process-wide SIGWINCH meant for the
     // prompt): every signal is blocked while it is made, and a thread starts with its maker's mask.
     sigset_t all, before;
@@ -483,13 +329,13 @@ Value start(const ProgramHandle &which, const std::string &name, bool hidden, Ex
         int status = 0;
         while (waitpid(begun.pid, &status, 0) < 0 && errno == EINTR) {
         }
-        if (pipe_ends[0] >= 0)
-            close(pipe_ends[0]);
-        if (begun.pidfd >= 0)
-            close(begun.pidfd);
         {
             const std::lock_guard<std::mutex> hold(program.lock);
+            close_satls_ends();
+            if (begun.pidfd >= 0)
+                close(begun.pidfd);
             program.pidfd = -1;
+            program.input_wake = -1;
         }
         never_ran(program, run, 126,
                   std::string("the machine would not make a thread to watch it: ") + std::strerror(refused));
@@ -516,6 +362,61 @@ Value a_string(const std::string &text)
     return out;
 }
 
+// UNDER program.lock: the input closes once the watcher has written everything pass() typed --
+// so a program reading to its end (sort, cat, wc) gets that end and finishes.
+void close_the_input(satellite_program &program)
+{
+    if (program.input_closing)
+        return;
+    program.input_closing = true;
+    if (program.input_wake >= 0) {
+        const std::uint64_t one = 1;
+        [[maybe_unused]] const ssize_t said = write(program.input_wake, &one, sizeof one);
+    }
+}
+
+// ONE TYPED LINE: a value's text and an end of line, as a person would type it and press Enter.
+bool typed_line(const Value &value, std::string &typed, std::string &why)
+{
+    satellite_string text;
+    if (value.to_string(text, why) != success)
+        return false;
+    typed += text.to_utf8();
+    typed += '\n';
+    return true;
+}
+
+// pass(text) and pass({"one", "two"}) -- "typed input while the program is running" (the author,
+// 2026-10-01): each a line, written to the program's input as it reads, never waited on here. It
+// answers true when the program was running and could still take input, and false when it had
+// ended, its input had been closed by join() or end(), or the program closed it.
+Value pass(const ProgramHandle &which, const Value &given, const std::string &name, ExpressionContext &context)
+{
+    std::string typed;
+    std::string why;
+    bool made = true;
+    if (const ListHandle *list = given.as_list(); list != nullptr && *list != nullptr) {
+        for (const Value &item : (*list)->items)
+            made = made && typed_line(item, typed, why);
+    } else {
+        made = typed_line(given, typed, why);
+    }
+    if (!made) {
+        context.refuse(types_do_not_meet, name + ".pass() was given something with no text to type -- " + why);
+        return Value();
+    }
+    satellite_program &program = *which;
+    const std::lock_guard<std::mutex> hold(program.lock);
+    if (!program.running() || program.input_closing || program.input_gone)
+        return Value::of_bool(false);
+    program.input_waiting += typed;
+    if (program.input_wake >= 0) {
+        const std::uint64_t one = 1;
+        [[maybe_unused]] const ssize_t said = write(program.input_wake, &one, sizeof one);
+    }
+    return Value::of_bool(true);
+}
+
 // join(), code() and return(): "wait for the program to finish ... and return the error code".
 // IT WAITS FOR THE RUN THAT WAS GOING WHEN IT WAS REACHED, and it looks up every tenth of a second:
 // a thread asked to stop, and satellite.return(satellite) on another thread, end its statement
@@ -528,6 +429,7 @@ Value join(const ProgramHandle &which, ExpressionContext &context)
         std::unique_lock<std::mutex> hold(program.lock);
         const std::uint64_t run = program.runs_started;
         program.joined = true;   // "both .start() and .join()": this run's join was written, and reached
+        close_the_input(program);
         while (program.runs_ended < run) {
             program.ended_signal.wait_for(hold, kJoinLooksUp);
             if (stop_of_this_thread != nullptr && stop_of_this_thread->load(std::memory_order_relaxed)) {
@@ -559,6 +461,7 @@ Value end(const ProgramHandle &which)
     {
         const std::lock_guard<std::mutex> hold(program.lock);
         program.joined = true;
+        close_the_input(program);
     }
     stop_it(program);
     long long code = 0;
@@ -612,23 +515,30 @@ signed long long int program_on_store(token::Code holds, Value &value, std::stri
 
 int program_method_arity(token::Code method)
 {
-    if (method == token::start_token)
-        return 1;                        // start() or start("hide")
+    if (method == token::start_token || method == token::pass_token)
+        return 1;                        // start() or start("hide"); pass(text)
     if (method == token::ok_token || method == token::error_text_token || method == token::join_token ||
         method == token::code_token || method == token::end_token)
         return 0;
     return -1;
 }
 
+int program_method_least(token::Code method)
+{
+    return method == token::pass_token ? 1 : 0;
+}
+
 std::string program_method_takes(token::Code method)
 {
+    if (method == token::pass_token)
+        return "() takes one thing to type in: a string, or a list of them, one line each";
     return method == token::start_token ? "() takes nothing, or \"hide\"" : "() takes nothing, in its brackets";
 }
 
 std::string program_methods_are()
 {
-    return "a program has .start(), .ok(), .error(), .join(), .code(), .return(), .end(), .exit(), .quit() and "
-           ".shutdown()";
+    return "a program has .start(), .ok(), .error(), .join(), .code(), .return(), .end(), .exit(), .quit(), "
+           ".shutdown() and .pass()";
 }
 
 Value call_program_method(token::Code method, const ProgramHandle &which, const std::vector<Value> &arguments,
@@ -639,7 +549,8 @@ Value call_program_method(token::Code method, const ProgramHandle &which, const 
         context.refuse(types_do_not_meet, name + "." + spelling + " -- " + program_methods_are());
         return Value();
     }
-    if (!had_parentheses || arguments.size() > static_cast<std::size_t>(program_method_arity(method))) {
+    if (!had_parentheses || arguments.size() > static_cast<std::size_t>(program_method_arity(method)) ||
+        arguments.size() < static_cast<std::size_t>(program_method_least(method))) {
         context.refuse(satl_line_not_understood, name + "." + spelling + program_method_takes(method));
         return Value();
     }
@@ -683,6 +594,8 @@ Value call_program_method(token::Code method, const ProgramHandle &which, const 
         return a_string(why);
     if (method == token::end_token)
         return end(which);
+    if (method == token::pass_token)
+        return pass(which, arguments.front(), name, context);
     return join(which, context);
 }
 

@@ -14,6 +14,7 @@
 //     my_program.return()      the same as join()
 //     my_program.end()         stops it and everything under it, and answers its exit code (STEP 3);
 //     my_program.exit()        .exit(), .quit() and .shutdown() are the same
+//     my_program.pass(text)    typed into it while it runs, a line each -- a string, or a list (STEP 4)
 //
 // THE AUTHOR'S WORDS, 2026-10-01, in order: "satellite.variable.program my_program = {"/dir/program",
 // "arg1", "arg2"} // or a list of str could optionally be put here, or just the name of the program
@@ -69,6 +70,7 @@ signed long long int program_on_store(token::Code holds, Value &value, std::stri
 // The most arguments each method takes: start 1 (start() or start("hide")), every other 0. Any
 // other method: -1. program_method_takes says it in words, for a refusal.
 int program_method_arity(token::Code method);
+int program_method_least(token::Code method);   // pass 1, every other 0
 std::string program_method_takes(token::Code method);
 
 // For a refusal: the methods a program has.

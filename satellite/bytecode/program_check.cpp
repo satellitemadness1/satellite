@@ -650,7 +650,7 @@ signed long long int method_judged(const std::vector<std::bitset<16>> &row, std:
         }
         std::size_t close = k + 2, given = 0;
         if (code_at(row, k + 2) != token::left_parenthesis_token || !brackets_at(row, k + 2, close, given) ||
-            given > static_cast<std::size_t>(most)) {
+            given > static_cast<std::size_t>(most) || given < static_cast<std::size_t>(program_method_least(method))) {
             why = spelling + program_method_takes(method);
             return satl_line_not_understood;
         }

@@ -150,7 +150,7 @@ void say_why(ProgramStart &start, const std::string &program, bool looked_up)
 
 } // namespace
 
-ProgramStart start_a_program(const std::vector<std::string> &words, int out)
+ProgramStart start_a_program(const std::vector<std::string> &words, int out, int in)
 {
     bind_the_childs_calls_once();
     ProgramStart start;
@@ -194,7 +194,8 @@ ProgramStart start_a_program(const std::vector<std::string> &words, int out)
         return start;
     }
     const int stream = out > 2 ? out : out >= 0 ? fcntl(out, F_DUPFD_CLOEXEC, 3) : nothing;
-    ChildPlan plan{path.c_str(), arguments.data(), nothing, stream, 0};
+    const int input = in > 2 ? in : in >= 0 ? fcntl(in, F_DUPFD_CLOEXEC, 3) : nothing;
+    ChildPlan plan{path.c_str(), arguments.data(), input, stream, 0};
 
     // EVERY SIGNAL BLOCKED FOR THE CLONE, as glibc's posix_spawn does: the child shares this
     // memory until it execs, and a handler run in it would run on satl's data.
@@ -216,7 +217,9 @@ ProgramStart start_a_program(const std::vector<std::string> &words, int out)
     pthread_sigmask(SIG_SETMASK, &before, nullptr);
     close(nothing);
     if (stream != out && stream != nothing)
-        close(stream);   // the copy made above; the caller still holds `out` itself
+        close(stream);   // the copies made above; the caller still holds `out` and `in` itself
+    if (input != in && input != nothing)
+        close(input);
 
     if (pid < 0) {
         start.error = clone_error;

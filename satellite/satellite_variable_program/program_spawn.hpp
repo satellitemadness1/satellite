@@ -14,8 +14,9 @@
 //     fork + the hook (prompt_run.cpp's)  8,481 us        8,192 KiB
 //     this                                  594 us        8,192 KiB
 //
-// WHAT THE PROGRAM IS GIVEN: its input is /dev/null; its output and its errors are ONE stream
-// (`out`, or /dev/null), in the order it wrote them, as `2>&1` makes them; every other file satl
+// WHAT THE PROGRAM IS GIVEN: its input is `in` (the pipe pass() types into), or /dev/null; its
+// output and its errors are ONE stream (`out`, or /dev/null), in the order it wrote them, as
+// `2>&1` makes them; every other file satl
 // has open is closed; every signal satl catches, and the SIGPIPE it ignores, are back to what a
 // program starts with; nothing is blocked. It stays in satl's session and process group, so it
 // has satl's terminal: sudo asks for its password there, as it would under bash.
@@ -35,7 +36,8 @@ struct ProgramStart {
 };
 
 // Starts words[0] -- a path, or a name looked up on the PATH -- with every word as an argument.
-ProgramStart start_a_program(const std::vector<std::string> &words, int out);
+// `out` and `in` are -1 for /dev/null.
+ProgramStart start_a_program(const std::vector<std::string> &words, int out, int in);
 
 // A PROCESS AS /proc NAMES IT: its pid, and the moment it started -- so a pid the machine has
 // handed to another process since is never taken for it.

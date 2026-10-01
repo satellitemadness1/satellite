@@ -31,7 +31,7 @@ namespace word {
 inline constexpr token::Code kBase = 4096;       // reserved: no word has it
 inline constexpr token::Code kFirst = 4097;      // satellite
 inline constexpr token::Code kLast = 8191;       // the end of the range
-inline constexpr unsigned int kWordsInTable = 459;
+inline constexpr unsigned int kWordsInTable = 460;
 inline constexpr unsigned int kMaxDepth = 7;
 
 inline constexpr bool is_word_code(token::Code code) { return code >= kBase && code <= kLast; }
@@ -404,6 +404,7 @@ inline constexpr KeyedWord kKeyedWords[] = {
     {0x0401061709000000ULL, 4553},  // 1 6 23 9 -- satellite.variable.program.exit()
     {0x040106170A000000ULL, 4554},  // 1 6 23 10 -- satellite.variable.program.quit()
     {0x040106170B000000ULL, 4555},  // 1 6 23 11 -- satellite.variable.program.shutdown()
+    {0x040106170C000000ULL, 4556},  // 1 6 23 12 -- satellite.variable.program.pass(text)
     {0x04010E0100000000ULL, 4330},  // 1 14 1 0 -- satellite.library.main()
     {0x04010E0101000000ULL, 4331},  // 1 14 1 1 -- satellite.library.main.arguments
     {0x04010E0200000000ULL, 4383},  // 1 14 2 0 -- satellite.library.system()
@@ -978,6 +979,7 @@ inline constexpr WordFacts kWordFacts[] = {
     {"satellite.variable.program.exit()", {1, 6, 23, 9, 0, 0, 0}, 4},
     {"satellite.variable.program.quit()", {1, 6, 23, 10, 0, 0, 0}, 4},
     {"satellite.variable.program.shutdown()", {1, 6, 23, 11, 0, 0, 0}, 4},
+    {"satellite.variable.program.pass(text)", {1, 6, 23, 12, 0, 0, 0}, 4},
 };
 
 inline constexpr std::size_t kWordFactsCount = sizeof kWordFacts / sizeof kWordFacts[0];
@@ -1383,6 +1385,7 @@ inline constexpr SpelledWord kSpelledWords[] = {
     {"satellite.variable.program.exit()", 4553},
     {"satellite.variable.program.join()", 4548},
     {"satellite.variable.program.ok()", 4546},
+    {"satellite.variable.program.pass(text)", 4556},
     {"satellite.variable.program.quit()", 4554},
     {"satellite.variable.program.return()", 4550},
     {"satellite.variable.program.shutdown()", 4555},
