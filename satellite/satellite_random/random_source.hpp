@@ -50,8 +50,11 @@ public:
 LimbSource &random_source();
 
 // A generator seeded from one number: the same seed gives the same limbs in the same order,
-// every run and every machine. The harness drives the sampler through this;
-// satellite.random.seeded, when the author shapes it, is this behind a word.
+// every run, every machine and every compiler -- the table, state and stream are built from
+// the seed in a defined order and handed to pcg whole (random_source.cpp says why not pcg's
+// own one-number constructor). The harness drives the sampler through this and pins the
+// first limb of one seed; satellite.random.seeded, when the author shapes it, is this
+// behind a word.
 std::unique_ptr<LimbSource> seeded_random_source(unsigned long long int seed);
 
 // What the generator is made of, for the doc, --debug and the harness: read from the type,
@@ -59,7 +62,8 @@ std::unique_ptr<LimbSource> seeded_random_source(unsigned long long int seed);
 struct RandomGeneratorFacts {
     const char *generator;      // "pcg512_k16384"
     unsigned output_bits;       // what one call of the generator answers: 512
-    std::size_t period_pow2;    // log2 of the period, as pcg computes it
+    std::size_t period_pow2;    // log2 of the period: the joint one, 16 + 16384 * 512 (pcg_512.hpp says why
+                                // pcg's own period_pow2() states 1024 + 16384 * 512 and overcounts)
     std::size_t state_bytes;    // sizeof the generator
 };
 RandomGeneratorFacts random_generator_facts();

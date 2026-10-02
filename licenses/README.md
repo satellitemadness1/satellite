@@ -106,7 +106,7 @@ is already LGPL-2.1-or-later.
 ## pcg-cpp, added 2026-10-02 -- the one licence in a build WITHOUT GTK
 
 Every other folder here is compiled in by `make GTK=vendor`. **pcg-cpp is compiled
-into every build of satl**, window or none: `satellite.random`'s three generators are
+into every build of satl**, window or none: `satellite.random`'s generator is
 its templates, instantiated (`satellite/satellite_random/pcg_512.hpp`, `random_source.cpp`),
 and header-only code that is instantiated is distributed in the binary as surely as a
 static library is.
@@ -172,7 +172,8 @@ for fontconfig -- it emits a hash function and contributes nothing to the binary
 the question should disappear. **Confirm it with `utility/linking` once the new stack
 links**, rather than assuming.
 
-**meson and pcg-cpp are in `vendor/` but not in the binary.** meson (Apache-2.0) is a
-build tool; pcg-cpp is not part of the GTK stack. Neither is linked, so neither carries
-a distribution obligation, and neither has a folder here. If pcg-cpp ever ends up inside
-satl, it needs one.
+**meson is in `vendor/` but not in the binary.** meson (Apache-2.0) is a build tool;
+it is not linked, carries no distribution obligation, and has no folder here. **pcg-cpp
+WAS in the same position until 2026-10-02**, when satellite.random put its templates
+inside every satl -- so it has a folder now, and the section above says what that
+obliges.

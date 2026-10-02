@@ -14,6 +14,7 @@
 #include <fcntl.h>
 #include <sys/random.h>
 #include <unistd.h>
+#include <vector>
 
 namespace satellite004 {
 
@@ -36,7 +37,7 @@ void urandom_bytes(char *into, std::size_t count)
             const ssize_t got = read(fd, into + have, count - have);
             if (got > 0)
                 have += static_cast<std::size_t>(got);
-            else if (got < 0 && errno != EINTR)
+            else if (got == 0 || errno != EINTR)
                 break;   // reopen and carry on from where this stopped
         }
         close(fd);
@@ -90,12 +91,46 @@ struct KernelSeed {
     }
 };
 
+// A SEEDED GENERATOR IS BUILT FROM ITS SEED IN A DEFINED ORDER -- the table, then the
+// state, then the stream, each limb the next word of a splitmix64 run from the seed --
+// and handed to pcg's constructor that takes all three (extended(data, seed, stream)).
+// NOT pcg's one-number constructor: that one fills the table through selfinit(), whose
+// first line is `baseclass::operator()() - baseclass::operator()()`, two calls as the
+// operands of one `-`, which C++ leaves unsequenced; clang and g++ evaluate them in
+// opposite orders for a class type, and the review of 0b6fe8f measured two different
+// sequences for one seed from the two compilers. The kernel path never meets this: it
+// seeds through generate_to, which is a loop. Splitmix64 is Steele, Lea and Flood's
+// (2014) mixer, the one Java's SplittableRandom and every seed expander since use.
+struct SeededParts {
+    std::vector<uint512> table;
+    uint1024 state, stream;
+
+    explicit SeededParts(unsigned long long int seed) : table(1u << 14)
+    {
+        unsigned long long int next = seed;
+        const auto mixed = [&next] {
+            next += 0x9E3779B97F4A7C15ull;
+            unsigned long long int z = next;
+            z = (z ^ (z >> 30)) * 0xBF58476D1CE4E5B9ull;
+            z = (z ^ (z >> 27)) * 0x94D049BB133111EBull;
+            return z ^ (z >> 31);
+        };
+        for (uint512 &cell : table)
+            for (unsigned long long int &limb : cell.limb)
+                limb = mixed();
+        for (unsigned long long int &limb : state.limb)
+            limb = mixed();
+        for (unsigned long long int &limb : stream.limb)
+            limb = mixed();
+    }
+};
+
 // pcg512_k16384, 512 bits a call, handed out as eight limbs, least significant first,
 // before the next call -- the generator's own stream, a limb at a time.
 class Source final : public LimbSource {
 public:
     Source() : rng_(KernelSeed{}) {}
-    explicit Source(unsigned long long int seed) : rng_(uint1024(seed)) {}
+    explicit Source(unsigned long long int seed) : Source(SeededParts(seed)) {}
     unsigned long long int next_limb() override
     {
         if (left_ == 0) {
@@ -106,6 +141,8 @@ public:
     }
 
 private:
+    explicit Source(const SeededParts &parts) : rng_(parts.table.data(), parts.state, parts.stream) {}
+
     pcg512_k16384 rng_;
     uint512 held_;
     unsigned left_ = 0;
@@ -131,7 +168,7 @@ std::unique_ptr<LimbSource> seeded_random_source(unsigned long long int seed)
 
 RandomGeneratorFacts random_generator_facts()
 {
-    return {"pcg512_k16384", 512, pcg512_k16384::period_pow2(), sizeof(pcg512_k16384)};
+    return {"pcg512_k16384", 512, kJointPeriodPow2, sizeof(pcg512_k16384)};
 }
 
 } // namespace satellite004

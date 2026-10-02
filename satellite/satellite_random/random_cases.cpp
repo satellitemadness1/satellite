@@ -37,6 +37,9 @@ using namespace satellite004;
 
 namespace {
 
+// seeded(12345)'s first limb -- set from the build's own note line once, then held.
+constexpr unsigned long long int kPinnedFirstLimb = 0x81278c2271a7a249ull;
+
 int cases = 0, failed = 0;
 
 void expect(const std::string &what, bool ok)
@@ -154,7 +157,7 @@ void wide_512()
                                static_cast<u128>(to128(wide_unsigned<2>(a)) * to128(wide_unsigned<2>(b)));
         const unsigned s = rng() % 512u;
         shifts = shifts && ((a << s) >> s) == (a & (~uint512() >> s)) && ((a >> s) << s) == (a & (~uint512() << s));
-        const unsigned shift = 1 + rng() % 300u;
+        const unsigned shift = 1 + rng() % 511u;
         const uint512 shifted = a ^ (a >> shift);
         unx = unx && satellite004::unxorshift(shifted, 512u, shift) == pcg_extras::unxorshift(shifted, 512u, shift);
         roundtrip = roundtrip && satellite004::unxorshift(shifted, 512u, shift) == a;
@@ -164,7 +167,7 @@ void wide_512()
     expect("wide_unsigned<8>: a product's low 128 bits are the low limbs' __int128 product", low128);
     expect("... and a shift up then down keeps exactly the bits that fit, either way round", shifts);
     expect("the cells' inverse multiplier, worked out by the compiler, multiplies back to 1", inverse);
-    expect("the doubling unxorshift answers what pcg's own recursive unxorshift answers, shifts 1 to 300", unx);
+    expect("the doubling unxorshift answers what pcg's own recursive unxorshift answers, shifts 1 to 511", unx);
     expect("... and undoes x ^= x >> s exactly", roundtrip);
 }
 
@@ -219,10 +222,11 @@ void generator_512()
     expect(said("... and its 1,280,000 bytes take every value evenly: chi-square %.0f over 255 degrees, under 400", chi),
            chi < 400);
     const RandomGeneratorFacts facts = random_generator_facts();
-    expect(said("the generator is %s: %u bits a call, period 2^%zu, %zu bytes of state", facts.generator, facts.output_bits,
-                facts.period_pow2, facts.state_bytes),
+    expect(said("the generator is %s: %u bits a call, %zu bytes of state (period 2^%zu; pcg's period_pow2() says 2^%zu and "
+                "overcounts, pcg_512.hpp)",
+                facts.generator, facts.output_bits, facts.state_bytes, facts.period_pow2, pcg512_k16384::period_pow2()),
            std::strcmp(facts.generator, "pcg512_k16384") == 0 && facts.output_bits == 512 &&
-               facts.period_pow2 == 1024 + 16384 * 512 && facts.state_bytes == sizeof(pcg512_k16384));
+               facts.state_bytes == sizeof(pcg512_k16384) && facts.period_pow2 < pcg512_k16384::period_pow2());
 }
 
 // ---- 5. seeding ---------------------------------------------------------------------
@@ -246,6 +250,12 @@ void seeding()
         differ = differ || x != other->next_limb();
     }
     expect("seeded from 12345 twice gives the same 1000 limbs; from 12346, other limbs", same && differ);
+    // PINNED: the first limb of seed 12345, as this build makes it. A seeded sequence is built
+    // from its seed in a defined order and must be the same on every compiler and machine
+    // (random_source.cpp), so this number may never change without this line saying so.
+    const unsigned long long int first = seeded_random_source(12345)->next_limb();
+    std::printf("note  seeded(12345)'s first limb is 0x%016llx\n", first);
+    expect("the first limb of seed 12345 is the pinned one", first == kPinnedFirstLimb);
 }
 
 // ---- 6. the sampler -------------------------------------------------------------------

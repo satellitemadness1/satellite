@@ -18,7 +18,19 @@
 // "split across registers", as pcg64's is) is XORed with one of 16384 512-bit words. The
 // table is 16384, not 16386: PCG indexes it with the state's low 14 bits, so it is a power
 // of two by construction. State: 128 bytes of LCG, 128 of stream, 1 MiB of table.
-// Period, by pcg's own period_pow2(): 2^(1024 + 16384 * 512) = 2^8389632.
+//
+// THE PERIOD IS 2^(16 + 16384 * 512) = 2^8388624, NOT THE 2^8389632 pcg's period_pow2() STATES.
+// pcg adds the base's 1024 bits to the table's as if the two cycled independently; they do
+// not. The table steps exactly once every 2^16 base steps (the "tick", when the state's low
+// 16 bits are 0), so over the base's 2^1024 cycle the table takes 2^1008 steps -- an even
+// number, which lands it back where it started on the table's own cycle of 2^(16384 * 512);
+// pcg's extra "tock" step, the one that makes that count odd, exists only for states under
+// 64 bits (tick_limit_pow2 = 64, may_tock = stypebits < 64). So the joint period is the
+// least common multiple of 2^1024 and 2^16 * 2^(16384 * 512): 2^(16 + 16384 * 512). The
+// review of 0b6fe8f measured this on a small replica (b = 10, t = 4: 2^12 without the tock
+// where the formula says 2^18); upstream's pcg32_k16384 (64-bit state, no tock) has the same
+// overcount, 2^524352 for 2^(16 + 16384 * 32). The static_assert below keeps pcg's figure
+// as what pcg computes; kJointPeriodPow2 is the true one, and what the facts report.
 //
 // ONLY ONE TRANSLATION UNIT INCLUDES THIS (random_source.cpp), plus the harness. It pulls
 // in the Apache-2.0 header, and 003's rule carries over: nothing above the generator names
@@ -49,6 +61,8 @@
 
 #include "random_constants.hpp"
 #include "wide_unsigned.hpp"
+
+#include <cstddef>
 
 namespace satellite004 {
 
@@ -140,7 +154,10 @@ using pcg_oneseq_rxs_m_xs_512_512 = pcg_detail::oneseq_base<uint512, uint512, pc
 // pcg32_k16384, at 512 bits.
 using pcg512_k16384 = pcg_detail::extended<14, 16, pcg_setseq_xsl_rr_1024_512, pcg_oneseq_rxs_m_xs_512_512, true>;
 
-static_assert(sizeof(pcg512_k16384::result_type) == 64, "ultra answers 512 bits");
-static_assert(pcg512_k16384::period_pow2() == 1024 + 16384 * 512, "the period pcg computes for it");
+static_assert(sizeof(pcg512_k16384::result_type) == 64, "the generator answers 512 bits");
+static_assert(pcg512_k16384::period_pow2() == 1024 + 16384 * 512, "the period pcg computes for it (an overcount, above)");
+
+// The joint period's log2: the tick every 2^16 base steps, times the table's own cycle.
+inline constexpr std::size_t kJointPeriodPow2 = 16 + 16384 * 512;
 
 } // namespace satellite004

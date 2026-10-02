@@ -57,9 +57,13 @@ that line). Three things upstream never wrote are supplied beside the template:
 
 The table is **16384, not 16386**: pcg indexes it with the state's low 14 bits, a power of two
 by construction. State: 128 bytes of LCG + 128 of stream + 1 MiB of table = 1,048,832 bytes.
-Period, as pcg's own `period_pow2()` computes it: 2^(1024 + 16384·512) = 2^8,389,632. Seeded
-from the kernel through getrandom(2), the WHOLE state — 1,049,088 bytes read — one generator
-a thread, made the first time that thread draws (`random_source.hpp`).
+**Period 2^(16 + 16384·512) = 2^8,388,624** — not the 2^8,389,632 pcg's own `period_pow2()`
+states, which adds the base's 1024 bits as if base and table cycled independently; the table
+steps once per 2^16 base steps and the "tock" that would make the count odd exists only for
+states under 64 bits (`pcg_512.hpp` has the derivation; the review measured it on a replica;
+upstream's pcg32_k16384 carries the same overcount). Seeded from the kernel through
+getrandom(2), the WHOLE state — 1,049,088 bytes read — one generator a thread, made the first
+time that thread draws (`random_source.hpp`).
 
 **The grades are his windows** (`random_spin.hpp`). A call, in order: every check; then it
 draws HOW LONG, uniform inside its window, both ends in, from the same stream the answer will
@@ -122,6 +126,33 @@ pcg's `unxorshift` undoes `x ^= x >> s` by recursion, one level per `s` bits of 
 **about 315 ns**, 43 ns a limb through the seam. The harness prints the figures of the day,
 and how many draws each grade's spin threw away.
 
+### The review of 0b6fe8f (one fresh reader, 2026-10-02) and what it changed
+
+No HIGH. Confirmed with its own probes: every `wide_unsigned` operator against Python big
+ints (196,472 results, 0 off); an independent Python model of the 1024-bit generator
+reproducing the C++ outputs; the doubling `unxorshift` against pcg's for every shift; the
+sampler under ASan and UBSan over thirteen bounds; every word shape and refusal through satl.
+Found, and fixed in the commit after 0b6fe8f:
+
+- **MEDIUM — a seeded sequence differed between clang and g++.** pcg's one-number constructor
+  fills the table through `selfinit()`, whose first line is `operator()() - operator()()`,
+  two calls unsequenced; for a class type the compilers evaluate them in opposite orders.
+  Now a seeded generator is built from its seed in a defined order (splitmix64: table, state,
+  stream) and handed to pcg's three-argument constructor; the harness pins seed 12345's first
+  limb. The kernel path never met this (it seeds through a loop).
+- **LOW — the period** (above): pcg's `period_pow2()` overcounts by 2^1008; the texts and
+  the facts say the joint period now.
+- **LOW — a vendor header edit raised the build number without recompiling the generator's
+  folder**: `$(PCG_HEADERS)` are prerequisites of its compile rule now.
+- **LOW — the carried notices** still held 003's paragraph saying no binary contained pcg-cpp
+  code (`LICENSE`, its copy under `licenses/satellite/`, and so `THIRD-PARTY-NOTICES.txt`);
+  rewritten to today's facts, and the README paragraph that said pcg-cpp needs no folder.
+- NOTEs taken: the harness tests shifts 1 to 511; a tautological assertion went; `read()`
+  returning 0 on the /dev/urandom road reopens instead of spinning. Left as is: a shape past
+  one limb allocates a few times per throwaway on the spin's hot path (correct; the one-limb
+  shapes are allocation-free), and the `+100 ms` tolerance in the spin cases could flake on
+  a very loaded machine.
+
 ### My choices, each reversible
 
 1. **The bare shape refuses** (S430) — his 2026-09-04 ruling in 003, kept. If he would rather
@@ -160,10 +191,13 @@ and how many draws each grade's spin threw away.
   (`seeded_random_source`, the harness drives it); the words wait for his shape.
 - Whether a grade should ever be able to carry the word "secure". None does, and the help page
   says so; getrandom(2) straight through is the only route there, as 001's DESIGN §18 recorded.
-- Ctrl-C during a spin: the stop flag is read between statements, so a Ctrl-C lands after the
-  call's window ends (at most three seconds), as it does for any long statement.
+- Ctrl-C during a spin: in a FILE run SIGINT keeps its default and satl dies at once, as for
+  any program (the review measured 412 ms into an ultra call, no output, no destructor); at
+  the prompt the session's flag is read between statements, so the Ctrl-C lands after the
+  call's window ends, at most three seconds.
 - What `satellite.random.fast` written **without** brackets should say: today the lexer reads
-  `satellite.random` and then `.fast` as a name nobody declared (S201).
+  `satellite.random` and then `.fast` as a name nobody declared (S201, before anything runs);
+  `satellite.random` alone as a value is refused when the line runs (S110), as any bare word is.
 
 ---
 

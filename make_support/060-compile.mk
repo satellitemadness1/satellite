@@ -28,9 +28,11 @@ $(OBJECTS)/%.o: %.cpp $(COMPILE_STAMP) $(PGO_PROFILE) | $(BUILD_STAMP)
 # PCG_INCLUDE): -isystem, so pcg-cpp's 2014 code is read as a system header -- its one
 # -Wunused-but-set-parameter would otherwise be a warning in every build -- and so -MMD
 # leaves it out of the .d files, as it leaves out every system header; 040-sources.mk names
-# the three headers as build inputs instead. The same more-specific stem as the window
-# rule below, so this one wins for that folder.
-$(OBJECTS)/$(RANDOM_DIR)/%.o: $(RANDOM_DIR)/%.cpp $(COMPILE_STAMP) $(PGO_PROFILE) | $(BUILD_STAMP)
+# the three headers as build inputs, AND they are prerequisites here, so a new pcg-cpp
+# release recompiles this folder as well as raising the build number (the review of
+# 0b6fe8f: without them it raised the number and linked the old objects). The same
+# more-specific stem as the window rule below, so this one wins for that folder.
+$(OBJECTS)/$(RANDOM_DIR)/%.o: $(RANDOM_DIR)/%.cpp $(PCG_HEADERS) $(COMPILE_STAMP) $(PGO_PROFILE) | $(BUILD_STAMP)
 	@mkdir -p $(dir $@)
 	$(CXX) $(CXXFLAGS) $(OPTIMISE_FLAGS) $(OS_DEFINE) $(WINDOW_DEFINE) -isystem $(PCG_INCLUDE) $(DEPENDENCY_FLAGS) -c $< -o $@
 
