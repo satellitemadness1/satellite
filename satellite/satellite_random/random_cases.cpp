@@ -256,6 +256,17 @@ void seeding()
     const unsigned long long int first = seeded_random_source(12345)->next_limb();
     std::printf("note  seeded(12345)'s first limb is 0x%016llx\n", first);
     expect("the first limb of seed 12345 is the pinned one", first == kPinnedFirstLimb);
+    // satellite.random.seed(n), on this thread: the most recent seed wins, and again.
+    reseed_random_source(satellite_number(12345ull));
+    expect("seeding this thread with 12345 makes its next limb that seed's first", random_source().next_limb() == kPinnedFirstLimb);
+    (void)random_source().next_limb();
+    reseed_random_source(satellite_number(12345ull));
+    expect("... and seeding again starts the same stream again", random_source().next_limb() == kPinnedFirstLimb);
+    expect("a seed past one limb, and a negative seed, start other streams",
+           seeded_random_source(power_of(10, 30))->next_limb() != kPinnedFirstLimb &&
+               seeded_random_source(satellite_number::from_signed(-12345))->next_limb() != kPinnedFirstLimb &&
+               seeded_random_source(satellite_number::from_signed(-12345))->next_limb() ==
+                   seeded_random_source(satellite_number::from_signed(-12345))->next_limb());
 }
 
 // ---- 6. the sampler -------------------------------------------------------------------

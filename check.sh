@@ -6832,8 +6832,18 @@ expect "random: a count of digits below 0 is S431" "72|1" "$code|$(tr '\n' ' ' <
 expect "random: four arguments are refused by the word before anything runs, naming the three shapes" "13|0|1" \
        "$code|$(wc -l < build/random_many.out | tr -d ' ')|$(tr '\n' ' ' < build/random_many.err | grep -c 'two (a min and a max) or three (a min, a max and a step), and was given 4')"
 "$interpreter" tests/random_seeded.satl > build/random_seeded.out 2> build/random_seeded.err; code=$?
-expect "random: seeded is numbered and not built, said before anything runs" "14|0|1" \
-       "$code|$(wc -l < build/random_seeded.out | tr -d ' ')|$(tr '\n' ' ' < build/random_seeded.err | grep -c 'satellite.random.seeded is not built yet')"
+expect "random: 003's seeded rows refuse by name, pointing at seed(n), before anything runs" "14|0|1" \
+       "$code|$(wc -l < build/random_seeded.out | tr -d ' ')|$(tr '\n' ' ' < build/random_seeded.err | grep -c 'is a 003 word that was never built -- 004.s word is satellite.random.seed(n)')"
+# satellite.random.seed(n) (the author, 2026-10-02): a statement, a value that answers the seed back,
+# a seed past one limb and a negative one, and the grades drawing after it.
+"$interpreter" tests/random_seed.satl > build/random_seed.out 2> build/random_seed.err; code=$?
+expect "random: seed(n) as a statement and as a value, seeds past one limb and below zero, and a draw after" "0|seeded 7|yes|done" \
+       "$code|$(sed -n 1p build/random_seed.out)|$(sed -n 2p build/random_seed.out | awk '$3 >= 1 && $3 <= 6 {print "yes"}')|$(sed -n 3p build/random_seed.out)"
+"$interpreter" tests/random_seed_not_whole.satl > /dev/null 2> build/random_seed_whole.err; code=$?
+expect "random: a string for a seed is S431" "72|1" "$code|$(tr '\n' ' ' < build/random_seed_whole.err | grep -c 'satellite.random.seed(seed) takes whole numbers, and was given a string')"
+"$interpreter" tests/random_seed_empty.satl > build/random_seed_empty.out 2> build/random_seed_empty.err; code=$?
+expect "random: seed() with nothing is refused before anything runs, naming what it takes" "13|0|1" \
+       "$code|$(wc -l < build/random_seed_empty.out | tr -d ' ')|$(tr '\n' ' ' < build/random_seed_empty.err | grep -c 'satellite.random.seed takes one number, the seed, and was given 0')"
 "$interpreter" tests/random_itself.satl > build/random_itself.out 2> build/random_itself.err; code=$?
 expect "random: satellite.random(5) is not a call on its own, said before anything runs" "13|0|1" \
        "$code|$(wc -l < build/random_itself.out | tr -d ' ')|$(tr '\n' ' ' < build/random_itself.err | grep -c 'pick a grade and call that')"

@@ -22,8 +22,12 @@ constexpr Code kSeededBare = word::fixed_code<1, 7, 16>;
 static_assert(kSeededBare - kRandom == 17, "satellite.random's eighteen rows are one run of codes");
 static_assert(word::fixed_code<1, 7, 1> == kRandom + 2 && word::fixed_code<1, 7, 12> == kRandom + 13,
               "1 7 n is kRandom + 1 + n");
+// satellite.random.seed(seed), 1 7 17 -- 004's own word (the author, 2026-10-02), appended to
+// words_004.tsv and so a code of its own, past the run.
+constexpr Code kSeed = word::fixed_code<1, 7, 17>;
+static_assert(kSeed != 0, "satellite.random.seed(seed) is in words.tsv");
 
-enum class Shape { word, bare, digits, range, stepped, seeded };
+enum class Shape { word, bare, digits, range, stepped, seeded, seed };
 
 struct RandomWord {
     RandomTier tier;
@@ -39,6 +43,8 @@ struct RandomWord {
 // same word with two IS the range row, whatever the numbers are -- literals or names.
 RandomWord random_word_of(Code code)
 {
+    if (code == kSeed)
+        return {RandomTier::fast, Shape::seed, 1};
     const unsigned index = static_cast<unsigned>(code - kRandom);
     if (index < 2)
         return {RandomTier::fast, Shape::word, 0};
@@ -59,7 +65,15 @@ std::string grade_spelled(RandomTier tier)
 
 const char *shape_spelled(Shape shape)
 {
-    return shape == Shape::digits ? "(digits)" : shape == Shape::range ? "(min, max)" : "(min, max, step)";
+    return shape == Shape::digits ? "(digits)" : shape == Shape::range ? "(min, max)"
+                                              : shape == Shape::seed    ? "(seed)"
+                                                                        : "(min, max, step)";
+}
+
+// "satellite.random.fast", or "satellite.random.seed" for the seed.
+std::string word_spelled(const RandomWord &word)
+{
+    return word.shape == Shape::seed ? std::string("satellite.random.seed") : grade_spelled(word.tier);
 }
 
 // What the spin throws away: one draw of the very shape the answer will have.
@@ -78,7 +92,7 @@ void throw_one_away(void *at)
 
 bool is_random_word(Code code)
 {
-    return code >= kRandom && code <= kSeededBare;
+    return (code >= kRandom && code <= kSeededBare) || code == kSeed;
 }
 
 signed long long int random_word_refused(Code code, std::size_t given, std::string &why)
@@ -93,9 +107,16 @@ signed long long int random_word_refused(Code code, std::size_t given, std::stri
               "satellite.random.fast(1, 6), satellite.random.normal(20) or satellite.random.ultra(0, 100, 5)";
         return satl_line_not_understood;
     case Shape::seeded:
-        why = "satellite.random.seeded is not built yet -- its shape is the author's to settle "
-              "(SCRATCH.md/RANDOM.md); satellite.random.fast, normal and ultra draw";
+        // 003's rows, never built there or here; 004's word is seed(n) (the author, 2026-10-02).
+        why = "satellite.random.seeded is a 003 word that was never built -- 004's word is "
+              "satellite.random.seed(n), which seeds the generator fast, normal and ultra draw from";
         return not_built_yet;
+    case Shape::seed:
+        if (given != 1) {
+            why = "satellite.random.seed takes one number, the seed, and was given " + std::to_string(given);
+            return satl_line_not_understood;
+        }
+        return success;
     case Shape::bare:
         // 003's ruling (2026-09-04), in its help line's words.
         why = grade + "() draws nothing -- a random number with no width and no bounds is not a question with "
@@ -121,7 +142,7 @@ Value call_random_word(Code code, const std::vector<Value> &arguments, Expressio
         return Value();
     }
     const RandomWord word = random_word_of(code);
-    const std::string spelled = grade_spelled(word.tier) + shape_spelled(word.shape);
+    const std::string spelled = word_spelled(word) + shape_spelled(word.shape);
 
     // EVERY ARGUMENT A WHOLE NUMBER. A float or a fraction is refused and told why in the
     // S431 sentence; a binary or a hex holds a whole number and is told the word for it.
@@ -135,6 +156,13 @@ Value call_random_word(Code code, const std::vector<Value> &arguments, Expressio
                                (holds_one ? " -- its .number is the whole number it holds" : ""));
             return Value();
         }
+    }
+
+    // THE SEED: this thread's generator starts again from the number, which is answered back.
+    // No spin -- it is not a draw -- and the three grades draw from it from here on.
+    if (word.shape == Shape::seed) {
+        reseed_random_source(*given[0]);
+        return Value::of_number(*given[0]);
     }
 
     // THE SHAPE, WORKED OUT ONCE, after every check it needs (random_draw.hpp).

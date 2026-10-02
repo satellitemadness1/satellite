@@ -4,10 +4,14 @@
 //     satellite.random.fast(20)            twenty digits: uniform over 0 .. 10^20 - 1
 //     satellite.random.normal(1, 6)        a die: 1 to 6, both ends in
 //     satellite.random.ultra(0, 100, 5)    one of 0, 5, 10 ... 100
+//     satellite.random.seed(42)            this thread's generator starts again from 42, and
+//                                          the three grades draw from it from then on
 //
 // THE WORDS AND THEIR NUMBERS ARE 003'S, whole: `1 7 1` to `1 7 16` in words/words.tsv,
 // the author's table of 2026-09-04 (003's words.def) -- three grades by four shapes, and
-// a fourth grade, seeded, that is not built here (SCRATCH.md/RANDOM.md).
+// four `seeded` rows a 003 build minted and nobody built; those refuse by name. 004 added
+// `satellite.random.seed(seed)`, `1 7 17` (the author, 2026-10-02: "make .fast(), normal()
+// and ultra() throw away random numbers from the most recent seed").
 //
 // ONE GENERATOR, THREE WINDOWS. Every grade draws from pcg512_k16384 -- the generator the
 // author asked for on 2026-10-02, pcg32_k16384 at 512 bits (satellite_random/pcg_512.hpp),
@@ -39,8 +43,8 @@
 
 namespace satellite004 {
 
-// satellite.random `1 7`, satellite.random() `1 7 0`, and every word under it, `1 7 1` to
-// `1 7 16`: one run of codes, which is why it is one comparison.
+// satellite.random `1 7`, satellite.random() `1 7 0`, every word under it, `1 7 1` to
+// `1 7 16` -- one run of codes -- and `1 7 17`, seed, appended later.
 bool is_random_word(token::Code code);
 
 // WHAT THE CHECKER REFUSES BEFORE ANYTHING RUNS, and the walker asks again on its way in:

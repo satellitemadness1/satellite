@@ -31,7 +31,7 @@ namespace word {
 inline constexpr token::Code kBase = 4096;       // reserved: no word has it
 inline constexpr token::Code kFirst = 4097;      // satellite
 inline constexpr token::Code kLast = 8191;       // the end of the range
-inline constexpr unsigned int kWordsInTable = 474;
+inline constexpr unsigned int kWordsInTable = 475;
 inline constexpr unsigned int kMaxDepth = 7;
 
 inline constexpr bool is_word_code(token::Code code) { return code >= kBase && code <= kLast; }
@@ -152,6 +152,7 @@ inline constexpr KeyedWord kKeyedWords[] = {
     {0x0301070E00000000ULL, 4299},  // 1 7 14 -- satellite.random.seeded(min, max)
     {0x0301070F00000000ULL, 4300},  // 1 7 15 -- satellite.random.seeded(min, max, step)
     {0x0301071000000000ULL, 4301},  // 1 7 16 -- satellite.random.seeded()
+    {0x0301071100000000ULL, 4571},  // 1 7 17 -- satellite.random.seed(seed)
     {0x0301080000000000ULL, 4303},  // 1 8 0 -- satellite.file()
     {0x0301080100000000ULL, 4304},  // 1 8 1 -- satellite.file.new(path)
     {0x0301080200000000ULL, 4305},  // 1 8 2 -- satellite.file.open(path, mode)
@@ -1008,6 +1009,7 @@ inline constexpr WordFacts kWordFacts[] = {
     {"satellite.variable.bash.quit()", {1, 6, 24, 10, 0, 0, 0}, 4},
     {"satellite.variable.bash.shutdown()", {1, 6, 24, 11, 0, 0, 0}, 4},
     {"satellite.variable.bash.pass(text)", {1, 6, 24, 12, 0, 0, 0}, 4},
+    {"satellite.random.seed(seed)", {1, 7, 17, 0, 0, 0, 0}, 3},
 };
 
 inline constexpr std::size_t kWordFactsCount = sizeof kWordFacts / sizeof kWordFacts[0];
@@ -1239,6 +1241,7 @@ inline constexpr SpelledWord kSpelledWords[] = {
     {"satellite.random.normal(digits)", 4292},
     {"satellite.random.normal(min, max)", 4293},
     {"satellite.random.normal(min, max, step)", 4294},
+    {"satellite.random.seed(seed)", 4571},
     {"satellite.random.seeded()", 4301},
     {"satellite.random.seeded(min, max)", 4299},
     {"satellite.random.seeded(min, max, step)", 4300},

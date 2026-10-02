@@ -105,9 +105,13 @@ struct SeededParts {
     std::vector<uint512> table;
     uint1024 state, stream;
 
-    explicit SeededParts(unsigned long long int seed) : table(1u << 14)
+    explicit SeededParts(const satellite_number &seed) : table(1u << 14)
     {
-        unsigned long long int next = seed;
+        // THE SEED IS ANY WHOLE NUMBER. Its lowest limb is the splitmix state; every limb
+        // above it is folded in, one step each; a negative seed is the complement of a
+        // positive one's state. A seed that fits one limb and is not negative is that limb,
+        // exactly, which is what the harness's pinned first limb of 12345 holds to.
+        unsigned long long int next = seed.limb(0);
         const auto mixed = [&next] {
             next += 0x9E3779B97F4A7C15ull;
             unsigned long long int z = next;
@@ -115,6 +119,10 @@ struct SeededParts {
             z = (z ^ (z >> 27)) * 0x94D049BB133111EBull;
             return z ^ (z >> 31);
         };
+        for (std::size_t i = 1; i < seed.limb_count(); ++i)
+            next = mixed() ^ seed.limb(i);
+        if (seed.negative())
+            next = ~next;
         for (uint512 &cell : table)
             for (unsigned long long int &limb : cell.limb)
                 limb = mixed();
@@ -130,7 +138,7 @@ struct SeededParts {
 class Source final : public LimbSource {
 public:
     Source() : rng_(KernelSeed{}) {}
-    explicit Source(unsigned long long int seed) : Source(SeededParts(seed)) {}
+    explicit Source(const satellite_number &seed) : Source(SeededParts(seed)) {}
     unsigned long long int next_limb() override
     {
         if (left_ == 0) {
@@ -153,15 +161,32 @@ private:
 // ONE A THREAD, MADE ON FIRST USE, and a unique_ptr so that a thread which never draws
 // never holds the table: a thread_local pcg512_k16384 would put 1 MiB into every thread satl
 // starts, 1024 of them at start-up alone. The object is a megabyte, so it lives on the heap.
-LimbSource &random_source()
+namespace {
+
+std::unique_ptr<LimbSource> &this_threads_source()
 {
     thread_local std::unique_ptr<LimbSource> source;
+    return source;
+}
+
+} // namespace
+
+LimbSource &random_source()
+{
+    std::unique_ptr<LimbSource> &source = this_threads_source();
     if (source == nullptr)
         source = std::make_unique<Source>();
     return *source;
 }
 
-std::unique_ptr<LimbSource> seeded_random_source(unsigned long long int seed)
+// THE MOST RECENT SEED WINS, whatever this thread had: a kernel-seeded generator, or an
+// earlier seed's. The old one is freed; the new one costs one pass of splitmix over 1 MiB.
+void reseed_random_source(const satellite_number &seed)
+{
+    this_threads_source() = std::make_unique<Source>(seed);
+}
+
+std::unique_ptr<LimbSource> seeded_random_source(const satellite_number &seed)
 {
     return std::make_unique<Source>(seed);
 }

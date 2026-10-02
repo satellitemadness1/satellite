@@ -69,5 +69,24 @@ before the program runs, naming the three shapes. So is this, refused today:
 Refused when the line runs, before any spin: a bound or a step that is not a
 whole number (there is no even way to pick from every number between two
 fractions), a count of digits below 0, min above max, a step below 1, and a
-step that misses max. satellite.random.seeded, which would draw the same
-numbers from the same seed every run, is numbered and not built yet.
+step that misses max.
+
+Seeding. satellite.random.seed(n) starts this thread's generator again from
+the whole number n -- any whole number, however large, negative too -- and
+from then on fast, normal and ultra draw, and throw away, from that stream. It
+answers the seed back. The numbers that come out still differ from run to run,
+because how many draws a spin throws away follows the clock and not the seed:
+the seed decides the stream, not the answer. A thread the program starts keeps
+its own generator until it seeds itself.
+
+    satellite.include(satellite)
+
+    satellite.capsule satellite.main()
+    {
+        satellite.random.seed(42)
+        satellite.console.display(satellite.random.fast(1, 6))
+        satellite.return(satellite)
+    }
+
+The word satellite.random.seeded is 003's and was never built; seed is the
+word.

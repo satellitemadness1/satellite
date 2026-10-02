@@ -37,6 +37,19 @@ keyed by its word and its arity); the lexer picks the row by the call's own comm
 program never writes those names. The refusal sentences and the help page say the rule in his
 words.
 
+And on seeding, after I explained that 003's `seeded` rows were a previous build's and that a
+seed cannot replay a draw whose throwaway count follows the clock:
+
+> *"Just make .fast(), normal() and ultra() throw away random numbers from the most recent seed
+> then"*
+
+So **`satellite.random.seed(n)`, `1 7 17`**, 004's own row: it replaces this thread's generator
+with one built from n -- any whole number, negative or past one limb -- and the three grades
+spin and draw from that stream from then on. It answers the seed back. The answers still
+differ run to run (the clock decides how many draws a spin throws away); the seed decides the
+stream, not the answer, and the help page says so. 003's four `seeded` rows stay in the table
+as numbers and refuse by name, pointing at `seed(n)`.
+
 ### What is built
 
 **The generator he asked for, once, behind all three words.** `pcg32_k16384` is pcg-cpp's
@@ -87,7 +100,8 @@ minimum, not a budget); then it draws the answer.
 | `fast(0, 100, 5)` | one of 0, 5, 10 … 100 | a step below 1 (S433); a step that misses max, naming the last value reached (S434) |
 | `fast()` | **nothing** — refused before anything runs (S430) | 003's ruling, 2026-09-04: "not a question with an answer" |
 | `satellite.random(...)` | refused: "pick a grade" (13) | |
-| `seeded(...)` | not built (14) | his to shape — see *Open* |
+| `seed(42)` | this thread's generator starts again from 42; answers 42 | not a whole number (S431); not one number (13) |
+| `seeded(...)` | 003's rows, never built: refused by name, pointing at `seed(n)` (14) | |
 
 and the same for `normal` and `ultra`. The sampler (`random_draw.cpp`) draws exactly as many
 bits as the largest value it may be and draws again past the bound — rejection, never a
@@ -108,7 +122,8 @@ under it.
 | `satellite/satellite_random/random_draw.hpp/.cpp` | the uniform draw at any size, and the three shapes as one |
 | `satellite/satellite_random/random_spin.hpp/.cpp` | his windows, and the throwaway |
 | `satellite/satellite_random/random_cases.cpp` | the harness, `build/random_cases` |
-| `satellite/bytecode/random_calls.hpp/.cpp` | the words: the checker's refusals, the shape, the spin, the call |
+| `satellite/bytecode/random_calls.hpp/.cpp` | the words: the checker's refusals, the shape, the spin, the call, the seed |
+| `words/words_004.tsv` | `1 7 17 satellite.random.seed(seed)`, 004's own row |
 | `satellite/machine/machine_codes.hpp` 71–75, `s_codes.hpp` S430–S434 | the refusals |
 | `satellite/satellite_variable_number/satellite_number.hpp` | `from_limbs`, the one addition to the number |
 | `make_support/030, 040, 050, 060, 065` | `RANDOM_DIR`, `PCG_INCLUDE` (−isystem, the generator's folder only), the harness |
@@ -184,11 +199,10 @@ Found, and fixed in the commit after 0b6fe8f:
 
 ### Open — his
 
-- **seeded** (`1 7 13`–`1 7 16`): 003's help lines gave it a shape — `seeded(seed)` sets the
-  stream and answers nothing, `seeded(min, max)` may answer a FRACTION, `seeded(min, max, step)`
-  takes a fractional step, and it does not spin — which 004's number model does not fit as it
-  stands (a satellite number is whole; a fraction is its own type). The generator side exists
-  (`seeded_random_source`, the harness drives it); the words wait for his shape.
+- **A seed is this thread's.** `seed(n)` reseeds the generator of the thread that calls it; a
+  thread the program starts keeps its kernel-seeded one until it seeds itself. If he wants one
+  seed to reach every thread, the choice is a process-wide seed that each thread folds its own
+  index into (so two threads never draw one stream) -- `reseed_random_source` is the one place.
 - Whether a grade should ever be able to carry the word "secure". None does, and the help page
   says so; getrandom(2) straight through is the only route there, as 001's DESIGN §18 recorded.
 - Ctrl-C during a spin: in a FILE run SIGINT keeps its default and satl dies at once, as for

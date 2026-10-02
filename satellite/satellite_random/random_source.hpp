@@ -33,6 +33,8 @@
 //
 // Written 2026-10-02.
 
+#include "../satellite_variable_number/satellite_number.hpp"
+
 #include <cstddef>
 #include <memory>
 
@@ -49,13 +51,24 @@ public:
 // kept until the thread ends.
 LimbSource &random_source();
 
-// A generator seeded from one number: the same seed gives the same limbs in the same order,
-// every run, every machine and every compiler -- the table, state and stream are built from
-// the seed in a defined order and handed to pcg whole (random_source.cpp says why not pcg's
-// own one-number constructor). The harness drives the sampler through this and pins the
-// first limb of one seed; satellite.random.seeded, when the author shapes it, is this
-// behind a word.
-std::unique_ptr<LimbSource> seeded_random_source(unsigned long long int seed);
+// THE AUTHOR'S SEED (2026-10-02: "make .fast(), normal() and ultra() throw away random numbers
+// from the most recent seed"): satellite.random.seed(n) replaces THIS THREAD's generator with
+// one built from n, and the three grades draw -- and throw away -- from it from then on. Any
+// whole number is a seed, negative or past one limb; the table, state and stream are built
+// from it in a defined order and handed to pcg whole (random_source.cpp says why not pcg's
+// own one-number constructor), so the same seed starts the same stream on every run, machine
+// and compiler. What comes OUT after a spin still differs run to run, because how many draws
+// the spin throws away follows the clock -- the seed decides the stream, not the answer.
+// Another thread keeps the generator it has until it seeds itself.
+void reseed_random_source(const satellite_number &seed);
+
+// The same generator, as its own object: the harness drives the sampler through this and pins
+// the first limb of seed 12345.
+std::unique_ptr<LimbSource> seeded_random_source(const satellite_number &seed);
+inline std::unique_ptr<LimbSource> seeded_random_source(unsigned long long int seed)
+{
+    return seeded_random_source(satellite_number(seed));
+}
 
 // What the generator is made of, for the doc, --debug and the harness: read from the type,
 // never typed twice.

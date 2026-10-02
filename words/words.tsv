@@ -472,3 +472,4 @@
 1 6 24 10	satellite.variable.bash.quit()	
 1 6 24 11	satellite.variable.bash.shutdown()	
 1 6 24 12	satellite.variable.bash.pass(text)	
+1 7 17	satellite.random.seed(seed)	

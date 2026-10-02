@@ -489,6 +489,7 @@ inline constexpr WordRow kWords[] = {
     {"satellite.variable.bash.quit()", {1, 6, 24, 10, 0, 0}, 4},
     {"satellite.variable.bash.shutdown()", {1, 6, 24, 11, 0, 0}, 4},
     {"satellite.variable.bash.pass(text)", {1, 6, 24, 12, 0, 0}, 4},
+    {"satellite.random.seed(seed)", {1, 7, 17, 0, 0, 0}, 3},
 };
 
 // Removed words, with the numbers they had in 003 06.
@@ -620,7 +621,7 @@ inline constexpr NextFree kNextFree[] = {
     {"satellite.variable.variant.held", {1, 6, 14, 3, 1, 0, 0}, 5},
     {"satellite.variable.variant.clear", {1, 6, 14, 4, 1, 0, 0}, 5},
     {"satellite.variable.capsule", {1, 6, 15, 1, 0, 0, 0}, 4},
-    {"satellite.random", {1, 7, 17, 0, 0, 0, 0}, 3},
+    {"satellite.random", {1, 7, 18, 0, 0, 0, 0}, 3},
     {"satellite.file", {1, 8, 7, 0, 0, 0, 0}, 3},
     {"satellite.time", {1, 9, 5, 0, 0, 0, 0}, 3},
     {"satellite.time.now", {1, 9, 1, 1, 0, 0, 0}, 4},

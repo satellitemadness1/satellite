@@ -1,0 +1,9 @@
+// seed() with nothing in it: refused before anything runs (13), naming what it takes.
+satellite.include(satellite)
+
+satellite.capsule satellite.main()
+{
+    satellite.console.display("never printed")
+    satellite.random.seed()
+    satellite.return(satellite)
+}
