@@ -1,0 +1,73 @@
+--------------------------------------------------------------------------------
+SATELLITE 004: satellite.random
+--------------------------------------------------------------------------------
+
+Random whole numbers, in three grades: fast, normal and ultra. How many
+numbers you give decides what you asked for -- one number is a count of
+digits, two numbers are a min and a max, three are a min, a max and a step --
+and each may be written out or be a variable:
+
+    satellite.random.normal(20)            twenty digits: 0 up to twenty nines
+    satellite.random.normal(1, 6)          a die: 1 to 6, both ends included
+    satellite.random.normal(0, 100, 5)     one of 0, 5, 10 ... 100
+
+    satellite.variable.number my_random_number = satellite.random.fast(20)
+    satellite.variable.number my_die = satellite.random.fast(1, 6)
+
+A count of digits is uniform over every number of up to that many digits, so
+about one draw in ten of normal(20) prints 19 digits or fewer -- a leading zero
+is not printed. That is what uniform means. A range includes both ends; a
+step lands on min, min + step, and so on up to max, and max must be a value
+the step lands on or the call is refused and names the last value it reaches.
+
+The numbers are exact at any size: ultra(1000) is a thousand digits, and
+normal(10 ^ 40, 10 ^ 41) draws between those two, every value as likely.
+
+    satellite.include(satellite)
+
+    satellite.capsule satellite.main()
+    {
+        satellite.variable.number die = satellite.random.fast(1, 6)
+        satellite.console.display(die)
+        satellite.console.display(satellite.random.normal(20))
+        satellite.console.display(satellite.random.ultra(0, 100, 5))
+        satellite.return(satellite)
+    }
+
+What makes the grades. Every call first draws how long it will take, inside
+its grade's window, then throws away random numbers of the size it was asked
+for until that long has passed, and only then answers:
+
+    fast      500 to 1000 ms
+    normal    1000 to 2000 ms
+    ultra     2000 to 3000 ms
+
+So a draw takes at least half a second, by design, and the length of any one
+is itself random. A call that is refused never spins: every check comes first.
+
+What the generator is. All three grades draw from one generator,
+pcg512_k16384: the PCG generator pcg32_k16384 (pcg-random.org) at 512 bits --
+a 1024-bit state, a table of 16384 words of 512 bits folded over its output,
+1 MiB in all, seeded whole from the kernel. Every thread of a program has a
+generator of its own, made and seeded the first time that thread draws, so
+threads never share a stream and a thread that never draws costs nothing. It
+is not a secret-keeping generator: PCG makes no cryptographic claim and this
+page makes none.
+
+The bare shape, satellite.random.fast(), draws nothing: a random number with
+no width and no bounds is not a question with an answer, and it is refused
+before the program runs, naming the three shapes. So is this, refused today:
+
+    satellite.include(satellite)
+
+    satellite.capsule satellite.main()
+    {
+        satellite.console.display(satellite.random.ultra())
+        satellite.return(satellite)
+    }
+
+Refused when the line runs, before any spin: a bound or a step that is not a
+whole number (there is no even way to pick from every number between two
+fractions), a count of digits below 0, min above max, a step below 1, and a
+step that misses max. satellite.random.seeded, which would draw the same
+numbers from the same seed every run, is numbered and not built yet.

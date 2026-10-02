@@ -6781,5 +6781,64 @@ expect "the display buffer: past 1000 waiting, the program stops with S840 DISPL
 expect "the display buffer: ... holding no more than the buffer: under 256 MiB at its peak (${overrun_peak} KiB)" "yes" \
        "$([ "${overrun_peak:-999999999}" -lt 262144 ] && echo yes)"
 
+# satellite.random (2026-10-02, SCRATCH.md/RANDOM.md): one generator -- pcg32_k16384 at 512 bits,
+# the author's "512_16386" -- behind three grades that differ in how long they throw draws away
+# first (his windows: fast 500-1000 ms, normal 1000-2000, ultra 2000-3000), each with 003's three
+# shapes. The harness first: upstream's own expected output, the 512-bit integer against unsigned
+# __int128, the generator's balance, the sampler's uniformity, the spin's windows
+# (build/random_cases says what each case is).
+if [ ! -x build/random_cases ]; then expect "build/random_cases is built (make)" built missing
+elif ! make -sq build/random_cases 2>/dev/null; then
+    expect "build/random_cases is as new as its sources (make build/random_cases)" current stale
+else
+    build/random_cases > build/random_cases.out 2>&1; code=$?
+    expect "random_cases: pcg32 and pcg32_k16384 answer upstream's own output, wide_unsigned matches __int128, pcg512_k16384 repeats and is balanced, the sampler is uniform, each grade spins inside its window ($(grep -c '^ok' build/random_cases.out) cases)" 0 $code
+fi
+expect "random_constants.hpp is what make_random_constants.py writes: pi's digits, the low bits set" 0 \
+       "$(python3 satellite/satellite_random/make_random_constants.py --check > /dev/null 2>&1; echo $?)"
+expect "vendor/pcg-cpp is unedited -- its journal still says so -- and its licence is carried verbatim and known to satl --license" "1|0|1" \
+       "$(grep -c '^## No edits.' vendor/edit_journal/pcg-cpp/EDITS.md)|$(cmp -s vendor/pcg-cpp/pcg-cpp-0.98/LICENSE.txt licenses/pcg-cpp/license.txt; echo $?)|$("$interpreter" --license pcg-cpp 2>/dev/null | grep -cx 'pcg-cpp')"
+# THE WORDS THROUGH A PROGRAM: every draw inside its bounds and on its step, each shape once
+# (each call spins half a second to three), and the two 20-digit draws not one number
+# (utility/check_random_output.py).
+"$interpreter" tests/random.satl > build/random.out 2> build/random.err; code=$?
+expect "random: the nine drawing shapes, every draw inside its bounds and on its step; a range of one, zero digits, a range of two past 10^40" "0|yes" \
+       "$code|$(python3 utility/check_random_output.py build/random.out)"
+# THE SPIN IS REAL, through satl: one fast(1, 6) takes its window -- the author's 500 to 1000 ms --
+# before it answers. The ceiling is loose, for a loaded machine; the harness holds the windows.
+printf 'satellite.include(satellite)\n\nsatellite.capsule satellite.main()\n{\n    satellite.console.display(satellite.random.fast(1, 6))\n    satellite.return(satellite)\n}\n' > build/random_spin.satl
+spin_start=$(date +%s%N); "$interpreter" build/random_spin.satl > build/random_spin.out 2>/dev/null; code=$?
+spin_ms=$(( ($(date +%s%N) - spin_start) / 1000000 ))
+expect "random: one fast(1, 6) spins for its window, 500 to 1000 ms, before it answers (${spin_ms} ms)" "0|yes|yes" \
+       "$code|$([ "$spin_ms" -ge 500 ] && echo yes)|$([ "$spin_ms" -le 2500 ] && echo yes)"
+"$interpreter" tests/random_bare.satl > build/random_bare.out 2> build/random_bare.err; code=$?
+expect "random: fast(), normal() and ultra() draw nothing -- S430 before anything runs (003's ruling)" "71|0|1" \
+       "$code|$(wc -l < build/random_bare.out | tr -d ' ')|$(grep -c 'S430: RANDOM_NEEDS_A_SHAPE' build/random_bare.err)"
+"$interpreter" tests/random_backwards.satl > build/random_backwards.out 2> build/random_backwards.err; code=$?
+expect "random: min above max is S432 when the line runs, after the line before it" "73|before|1" \
+       "$code|$(tr -d '\n' < build/random_backwards.out)|$(grep -c 'S432: RANDOM_RANGE_EMPTY' build/random_backwards.err)"
+# A REPORT'S SENTENCE WRAPS AT 80 COLUMNS, so a phrase is looked for with the lines joined.
+"$interpreter" tests/random_step_misses.satl > build/random_step.out 2> build/random_step.err; code=$?
+expect "random: a step that misses max is S434, naming the last value it reaches" "75|1|1" \
+       "$code|$(grep -c 'S434: RANDOM_STEP_MISSES' build/random_step.err)|$(tr '\n' ' ' < build/random_step.err | grep -c 'reaches 98 and then passes 100')"
+"$interpreter" tests/random_step_zero.satl > /dev/null 2> build/random_step0.err; code=$?
+expect "random: a step of 0 is S433" "74|1" "$code|$(grep -c 'S433: RANDOM_STEP_NOT_A_STEP' build/random_step0.err)"
+"$interpreter" tests/random_not_whole.satl > /dev/null 2> build/random_whole.err; code=$?
+expect "random: a string for a bound is S431, naming the kind" "72|1|1" \
+       "$code|$(grep -c 'S431: RANDOM_WANTS_WHOLE_NUMBERS' build/random_whole.err)|$(tr '\n' ' ' < build/random_whole.err | grep -c 'was given a string')"
+"$interpreter" tests/random_negative_digits.satl > /dev/null 2> build/random_negative.err; code=$?
+expect "random: a count of digits below 0 is S431" "72|1" "$code|$(tr '\n' ' ' < build/random_negative.err | grep -c 'a count of digits is 0 or more')"
+"$interpreter" tests/random_too_many.satl > build/random_many.out 2> build/random_many.err; code=$?
+expect "random: four arguments are refused by the word before anything runs, naming the three shapes" "13|0|1" \
+       "$code|$(wc -l < build/random_many.out | tr -d ' ')|$(tr '\n' ' ' < build/random_many.err | grep -c 'two (a min and a max) or three (a min, a max and a step), and was given 4')"
+"$interpreter" tests/random_seeded.satl > build/random_seeded.out 2> build/random_seeded.err; code=$?
+expect "random: seeded is numbered and not built, said before anything runs" "14|0|1" \
+       "$code|$(wc -l < build/random_seeded.out | tr -d ' ')|$(tr '\n' ' ' < build/random_seeded.err | grep -c 'satellite.random.seeded is not built yet')"
+"$interpreter" tests/random_itself.satl > build/random_itself.out 2> build/random_itself.err; code=$?
+expect "random: satellite.random(5) is not a call on its own, said before anything runs" "13|0|1" \
+       "$code|$(wc -l < build/random_itself.out | tr -d ' ')|$(tr '\n' ' ' < build/random_itself.err | grep -c 'pick a grade and call that')"
+printf 'satellite.help(random)\n' | "$interpreter" --repl > build/repl_help_random.out 2>&1
+expect "satellite.help(random) is the page" 1 "$(grep -c '^SATELLITE 004: satellite.random$' build/repl_help_random.out)"
+
 echo "$passed passed, $failed failed"
 [ "$failed" = 0 ]

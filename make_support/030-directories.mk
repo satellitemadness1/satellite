@@ -23,6 +23,10 @@ COLOR_DIR  = $(SATELLITE)/satellite_variable_color
 FRACTION_DIR = $(SATELLITE)/satellite_variable_fraction
 INFINITY   = $(SATELLITE)/satellite_variable_infinity
 WINDOW_DIR = $(SATELLITE)/satellite_variable_window
+RANDOM_DIR = $(SATELLITE)/satellite_random
+# THE VENDORED PCG, header-only, read by the generator's folder alone (060-compile.mk) and
+# never edited (vendor/README_FIRST.md): a new upstream release is a new folder name here.
+PCG_INCLUDE = vendor/pcg-cpp/pcg-cpp-0.98/include
 VERSION_DIR = $(SATELLITE)/version
 PROMPT     = $(SATELLITE)/prompt
 STRINGS32  = strings

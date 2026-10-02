@@ -32,6 +32,7 @@
 #include "hexadecimal_values.hpp"
 #include "infinity_calls.hpp"
 #include "library_values.hpp"
+#include "random_calls.hpp"
 #include "window_calls.hpp"
 #include "../machine/stop_flag.hpp"
 #include "../display/printing_satellite.hpp"
@@ -1850,6 +1851,10 @@ Value call_word(const std::vector<std::bitset<16>> &row, std::size_t &at, Expres
         // ...and so does satellite.infinity() (infinity_calls.hpp).
         if (is_infinity_word(code))
             return call_infinity_word(code, arguments, context);
+        // ...and satellite.random's grades answer a number no library draws: the generator
+        // is the interpreter's own, one a thread (random_calls.hpp).
+        if (is_random_word(code))
+            return call_random_word(code, arguments, context);
         // ...and so does satellite.window.new() (window_calls.hpp). Three word
         // families now, which is why that header stops calling it a departure.
         //

@@ -153,6 +153,15 @@ enum MachineCode : signed long long int {
     // 70, 2026-10-01, the review of steps 2-5: a program satl may not signal -- it runs as another
     // user, as sudo and pkexec make it -- cannot be stopped, and is waited for. A notice, not a failure.
     program_not_stopped = 70,           // end(), or the end of the run, could not stop a program
+    // 71-75, 2026-10-02, with satellite.random (bytecode/random_calls.hpp): the three grades'
+    // shapes, and the ways a call asks for a number that does not exist. The bare shape
+    // drawing nothing and the step having to land on max are 003's rulings of 2026-09-04,
+    // kept; a whole-number argument is what a uniform draw over whole numbers needs.
+    random_needs_a_shape = 71,          // fast(), normal(), ultra(): no width and no bounds
+    random_wants_whole_numbers = 72,    // a digit count, a bound or a step that is not a whole number, or a count below 0
+    random_range_empty = 73,            // min above max: nothing between them to draw
+    random_step_not_a_step = 74,        // a step below 1
+    random_step_misses = 75,            // from min, the step never lands on max
 
     // 130 AND NOT 32, ON PURPOSE (PLAN M0.6): 128 + SIGINT is what a shell and 003
     // both answer for Ctrl-C, and exit_status_of passes a code under 255 through as
@@ -223,6 +232,11 @@ inline const char *machine_code_name(signed long long int code)
     case program_not_started: return "program_not_started";
     case program_never_joined: return "program_never_joined";
     case program_not_stopped: return "program_not_stopped";
+    case random_needs_a_shape: return "random_needs_a_shape";
+    case random_wants_whole_numbers: return "random_wants_whole_numbers";
+    case random_range_empty: return "random_range_empty";
+    case random_step_not_a_step: return "random_step_not_a_step";
+    case random_step_misses: return "random_step_misses";
     case out_of_memory: return "out_of_memory";
     case libraries_not_understood: return "libraries_not_understood";
     case file_not_found: return "file_not_found";

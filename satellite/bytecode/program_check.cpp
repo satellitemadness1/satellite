@@ -43,6 +43,7 @@
 #include "hexadecimal_values.hpp"
 #include "infinity_calls.hpp"
 #include "library_values.hpp"
+#include "random_calls.hpp"
 #include "window_calls.hpp"
 #include "thread_calls.hpp"
 #include "program_calls.hpp"
@@ -1522,7 +1523,8 @@ signed long long int names_in_statement(const std::vector<std::bitset<16>> &row,
         // make.
         if (word::is_word_code(code) && code_at(row, at + 1) == token::left_parenthesis_token &&
             functions[code] == nullptr && !is_file_word(code) && !is_infinity_word(code) &&
-            !is_window_word(code) && !is_container_word(code) && !is_console_word(code) && !is_info_word(code)) {
+            !is_window_word(code) && !is_container_word(code) && !is_console_word(code) && !is_info_word(code) &&
+            !is_random_word(code)) {
             why = std::string(word::spelling_of(code)) + " has no library built for it yet";
             return not_built_yet;
         }
@@ -1575,6 +1577,15 @@ signed long long int names_in_statement(const std::vector<std::bitset<16>> &row,
                     why = no_arguments;
                     return satl_line_not_understood;
                 }
+                // satellite.random's words take their own counts (random_calls.hpp), and
+                // the bare grades -- fast(), normal(), ultra() -- draw nothing: S430 here,
+                // before anything runs, as 003 ruled it; seeded is not built; and
+                // satellite.random itself is not a call.
+                if (is_random_word(code)) {
+                    const signed long long int refused = random_word_refused(code, given, why);
+                    if (refused != success)
+                        return refused;
+                }
                 if (is_file_word(code) && given != file_word_arity(code)) {
                     why = file_word_takes(code) + ", and was given " + std::to_string(given) + " arguments";
                     return satl_line_not_understood;
@@ -1592,7 +1603,7 @@ signed long long int names_in_statement(const std::vector<std::bitset<16>> &row,
                           (given == 1 ? " argument" : " arguments");
                     return satl_line_not_understood;
                 }
-                if (!is_file_word(code) && !is_window_word(code)) {
+                if (!is_file_word(code) && !is_window_word(code) && !is_random_word(code)) {
                     const std::string spelled(word::spelling_of(code));
                     // A WORD THAT TAKES ONE, GIVEN NONE (GTK-12). Since the lexer
                     // stopped answering nothing for empty brackets, `display()`

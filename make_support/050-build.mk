@@ -13,7 +13,7 @@
 # make or an install. They do not depend on the build stamp and raise no number.
 ALL_TARGETS = $(BUILD)/satl libraries $(BUILD)/satellite-004 $(BUILD)/exit_status_cases $(BUILD)/arguments_cases \
               $(BUILD)/count_cases $(BUILD)/prompt_cases $(BUILD)/prompt_reader $(BUILD)/directory_cases \
-              $(BUILD)/file_cases $(BUILD)/infinity_cases $(BUILD)/satl-cpu-level
+              $(BUILD)/file_cases $(BUILD)/infinity_cases $(BUILD)/random_cases $(BUILD)/satl-cpu-level
 
 # AN EARLIER BUILD'S satl-term IS REMOVED, with its objects: it would run the
 # newer satl beside it and be installed with it, and its .d files would name

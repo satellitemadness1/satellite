@@ -96,11 +96,30 @@ is already LGPL-2.1-or-later.
 | libtiff | 4.7.2 | `LICENSE.md` |
 | libxkbcommon | 1.13.2 | `LICENSE` |
 | pango | 1.58.2 | `COPYING` |
+| pcg-cpp | 0.98 | `LICENSE.txt` (Apache-2.0; in EVERY build, see below) |
 | pcre2 | 10.48 | `LICENCE.md` |
 | pixman | 0.46.4 | `COPYING` |
 | wayland-protocols | 1.49 | `COPYING` |
 | xkeyboard-config | 2.48 | `COPYING` |
 | zlib | 1.3.2 | `LICENSE` |
+
+## pcg-cpp, added 2026-10-02 -- the one licence in a build WITHOUT GTK
+
+Every other folder here is compiled in by `make GTK=vendor`. **pcg-cpp is compiled
+into every build of satl**, window or none: `satellite.random`'s three generators are
+its templates, instantiated (`satellite/satellite_random/pcg_512.hpp`, `random_source.cpp`),
+and header-only code that is instantiated is distributed in the binary as surely as a
+static library is.
+
+It is **Apache-2.0**, upstream's `LICENSE.txt`, copied verbatim. Section 4 asks that a
+redistribution carry the licence text -- `satl --license pcg-cpp` and
+`THIRD-PARTY-NOTICES.txt` do -- and 4(d) would ask for a NOTICE file's contents, but
+pcg-cpp 0.98 ships none, so there is nothing to carry. Nothing under
+`vendor/pcg-cpp/` is modified (`vendor/edit_journal/pcg-cpp/EDITS.md` says "No edits",
+and check.sh reads that line), so 4(b)'s "prominent notices stating that You changed
+the files" has nothing to attach to either. The 512-bit generator is satellite's own
+instantiation of upstream's templates with satellite's own types and constants, in
+satellite's own files, under satellite's MIT.
 
 ## Almost every tree is MIXED, and the mixing reaches the binary
 

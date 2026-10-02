@@ -50,6 +50,15 @@ public:
         return value < 0 ? satellite_number(0ull - (unsigned long long int)value, true)
                          : satellite_number((unsigned long long int)value, false);
     }
+    // FROM LIMBS, least significant first -- how satellite.random hands a draw over
+    // (satellite_random/random_draw.cpp). Zero limbs above the top are dropped, one limb
+    // comes back inline, and a zero is never negative, as adopt() keeps for every number.
+    static satellite_number from_limbs(std::vector<unsigned long long int> &&limbs, bool negative = false)
+    {
+        satellite_number out;
+        out.adopt(std::move(limbs), negative);
+        return out;
+    }
 
     satellite_number(const satellite_number &other) : small_(other.small_), negative_(other.negative_)
     {

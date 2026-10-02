@@ -49,6 +49,8 @@ INTERPRETER_SOURCES = $(SATELLITE)/structured-library.cpp \
                       $(BYTECODE)/program_calls.cpp $(SATELLITE)/satellite_variable_program/program_spawn.cpp \
                       $(SATELLITE)/satellite_variable_program/program_watch.cpp \
                       $(SATELLITE)/satellite_variable_program/program_stop.cpp \
+                      $(BYTECODE)/random_calls.cpp $(RANDOM_DIR)/random_source.cpp $(RANDOM_DIR)/random_draw.cpp \
+                      $(RANDOM_DIR)/random_spin.cpp \
                       $(BYTECODE)/window_calls.cpp $(BYTECODE)/window_readers.cpp $(BYTECODE)/window_shapes.cpp \
                       $(BYTECODE)/window_questions.cpp $(BYTECODE)/window_methods.cpp $(BYTECODE)/window_run.cpp \
                       $(OBJECT)/satellite_object.cpp \
@@ -94,6 +96,8 @@ HEADERS = $(ARGUMENTS)/arguments.hpp $(ARGUMENTS)/command_line.hpp $(ARGUMENTS)/
           $(SATELLITE)/satellite_variable_program/program_spawn.hpp \
           $(SATELLITE)/satellite_variable_program/program_watch.hpp \
           $(SATELLITE)/satellite_variable_program/program_stop.hpp \
+          $(BYTECODE)/random_calls.hpp $(RANDOM_DIR)/random_source.hpp $(RANDOM_DIR)/random_draw.hpp $(RANDOM_DIR)/random_spin.hpp \
+          $(RANDOM_DIR)/pcg_512.hpp $(RANDOM_DIR)/wide_unsigned.hpp $(RANDOM_DIR)/random_constants.hpp \
           $(MACHINE)/console_lock.hpp $(MACHINE)/thread_stop.hpp $(OBJECT)/object_lock.hpp \
           $(BYTECODE)/file_calls.hpp $(BYTECODE)/info_calls.hpp $(BYTECODE)/access_calls.hpp $(BYTECODE)/access_words.hpp $(BYTECODE)/container_calls.hpp \
           $(BYTECODE)/string_calls.hpp $(OBJECT)/string_pieces.hpp \
@@ -146,5 +150,11 @@ MAKE_FRAGMENTS = make_support/005-jobs.mk make_support/010-compiler.mk make_supp
                  make_support/030-directories.mk make_support/040-sources.mk make_support/045-optimise.mk make_support/047-window.mk \
                  make_support/048-link.mk make_support/050-build.mk make_support/060-compile.mk \
                  make_support/065-tests.mk make_support/070-clean.mk
+#
+# AND THE VENDORED PCG HEADERS satl's generators are compiled from (030-directories.mk):
+# a system include to the compiler, so -MMD leaves them out of the .d files and check.sh's
+# fingerprint row never asks for them -- they are named here instead, so that the next
+# upstream release is a new build and not the same number over different code.
+PCG_HEADERS = $(PCG_INCLUDE)/pcg_random.hpp $(PCG_INCLUDE)/pcg_extras.hpp $(PCG_INCLUDE)/pcg_uint128.hpp
 BUILD_INPUTS = $(INTERPRETER_SOURCES) $(HEADERS) $(GTK_SOURCES) Makefile $(MAKE_FRAGMENTS) $(TRAINING) \
-               $(SATELLITE)/config/build_number.py words/words.tsv $(NUMBERS)/build_libraries.py
+               $(SATELLITE)/config/build_number.py words/words.tsv $(NUMBERS)/build_libraries.py $(PCG_HEADERS)

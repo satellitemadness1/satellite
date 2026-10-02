@@ -194,6 +194,11 @@ nothing at all.
 | **S0802** | `ANSWER_IS_NOT_WHOLE` | 24 `answer_is_not_whole` | `machine/s_codes.hpp` |
 | **S016** | `CONFIG_ROW_NOT_UNDERSTOOD` | *(notice -- the run carries on; 2026-09-25, the author's A9: each unknown `config.ini` row and each line that is not key = value, by line)* | `structured-library.cpp` |
 | **S020** | `NUMBER_TAKEN_AS_TEXT` | *(warning, satellite.log only -- the run carries on; M5, 2026-09-25, in the Part 4 numbering the rows above predate)* | `machine/s_codes.hpp` |
+| **S430** | `RANDOM_NEEDS_A_SHAPE` | 71 `random_needs_a_shape` -- `fast()`, `normal()`, `ultra()` draw nothing (003's ruling, 2026-09-04); the checker, before anything runs | `machine/s_codes.hpp`, `bytecode/random_calls.cpp` |
+| **S431** | `RANDOM_WANTS_WHOLE_NUMBERS` | 72 `random_wants_whole_numbers` -- a count, a bound or a step that is not a whole number, or a count below 0 | `bytecode/random_calls.cpp` |
+| **S432** | `RANDOM_RANGE_EMPTY` | 73 `random_range_empty` -- min above max | `bytecode/random_calls.cpp` |
+| **S433** | `RANDOM_STEP_NOT_A_STEP` | 74 `random_step_not_a_step` -- a step below 1 | `bytecode/random_calls.cpp` |
+| **S434** | `RANDOM_STEP_MISSES` | 75 `random_step_misses` -- from min, the step never lands on max; the report names the last value it reaches (003's rule, 2026-09-04) | `bytecode/random_calls.cpp` |
 
 **SINCE 2026-09-25, S0203/S103 IS ALSO "main's last line is not satellite.return(satellite)"**, said
 with a caret on main's last statement (program_check.cpp); and machine code 64

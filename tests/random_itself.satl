@@ -1,0 +1,9 @@
+// satellite.random is not a call on its own: 13, before anything runs, naming the grades.
+satellite.include(satellite)
+
+satellite.capsule satellite.main()
+{
+    satellite.console.display("never printed")
+    satellite.console.display(satellite.random(5))
+    satellite.return(satellite)
+}

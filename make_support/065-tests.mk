@@ -153,6 +153,20 @@ $(BUILD)/infinity_cases: $(INFINITY_CASES_SOURCES) $(INFINITY)/satellite_infinit
 	@mkdir -p $(BUILD)
 	$(LINK_ENV) $(CXX) $(CXXFLAGS) $(LDFLAGS) $(INFINITY_CASES_SOURCES) -o $@
 
+# satellite.random with no interpreter around it (SCRATCH.md/RANDOM.md): the vendored
+# generators against upstream's own expected output, the 512-bit one's integer against
+# unsigned __int128 and its inverse xorshift against pcg's own, the generator's balance,
+# and the sampler's uniformity -- check.sh runs it, and refuses one older than these
+# prerequisites. It reads the PCG headers the way the generator's folder does
+# (060-compile.mk).
+RANDOM_CASES_SOURCES = $(RANDOM_DIR)/random_cases.cpp $(RANDOM_DIR)/random_source.cpp $(RANDOM_DIR)/random_draw.cpp \
+                       $(RANDOM_DIR)/random_spin.cpp $(NUMBER_SOURCES)
+RANDOM_HEADERS = $(RANDOM_DIR)/random_source.hpp $(RANDOM_DIR)/random_draw.hpp $(RANDOM_DIR)/random_spin.hpp $(RANDOM_DIR)/pcg_512.hpp \
+                 $(RANDOM_DIR)/wide_unsigned.hpp $(RANDOM_DIR)/random_constants.hpp $(PCG_HEADERS)
+$(BUILD)/random_cases: $(RANDOM_CASES_SOURCES) $(RANDOM_HEADERS) $(NUMBER_HEADERS)
+	@mkdir -p $(BUILD)
+	$(LINK_ENV) $(CXX) $(CXXFLAGS) $(LDFLAGS) -isystem $(PCG_INCLUDE) $(RANDOM_CASES_SOURCES) -o $@
+
 $(BUILD)/number_race: $(NUMBER)/number_race.cpp $(NUMBER_SOURCES) $(NUMBER_HEADERS)
 	@mkdir -p $(BUILD)
 	$(LINK_ENV) $(CXX) $(CXXFLAGS) $(LDFLAGS) $(NUMBER)/number_race.cpp $(NUMBER_SOURCES) -o $@

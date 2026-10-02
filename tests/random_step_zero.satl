@@ -1,0 +1,9 @@
+// A step of 0 is not a step: S433.
+satellite.include(satellite)
+
+satellite.capsule satellite.main()
+{
+    satellite.console.display("before")
+    satellite.console.display(satellite.random.ultra(0, 10, 0))
+    satellite.return(satellite)
+}

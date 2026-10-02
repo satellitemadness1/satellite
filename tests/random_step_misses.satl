@@ -1,0 +1,9 @@
+// From 0 a step of 7 reaches 98 and passes 100 (003's rule, 2026-09-04): S434, naming 98.
+satellite.include(satellite)
+
+satellite.capsule satellite.main()
+{
+    satellite.console.display("before")
+    satellite.console.display(satellite.random.normal(0, 100, 7))
+    satellite.return(satellite)
+}

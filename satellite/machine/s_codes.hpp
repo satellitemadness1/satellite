@@ -245,6 +245,33 @@ inline SCode s_code_for(signed long long int machine_code)
         return {"S421", "EMPTY_SEARCH_TEXT",
                 "there is nothing to look for -- an empty search matches everywhere and means nothing."};
 
+    // S43x -- satellite.random (2026-10-02, bytecode/random_calls.hpp): a draw that was asked
+    // for and does not exist, in the band with division by zero. The bare shape and the step
+    // rule are 003's rulings of 2026-09-04, and its sentences are drafted from 003's help lines.
+    case random_needs_a_shape:
+        return {"S430", "RANDOM_NEEDS_A_SHAPE",
+                "a random number with no width and no bounds is not a question with an answer, so the "
+                "bare shape draws nothing. One number is a count of digits, two are a min and a max, "
+                "three are a min, a max and a step: fast(20), fast(1, 6) or fast(0, 100, 5) -- the same "
+                "for normal and ultra."};
+    case random_wants_whole_numbers:
+        return {"S431", "RANDOM_WANTS_WHOLE_NUMBERS",
+                "satellite.random draws whole numbers, so a count of digits, a bound and a step are whole "
+                "numbers, and a count of digits is 0 or more. There is no even way to pick from every "
+                "number between two fractions, so a fraction here is refused rather than rounded."};
+    case random_range_empty:
+        return {"S432", "RANDOM_RANGE_EMPTY",
+                "min is above max, so there is nothing between them to draw. Both ends are included, so "
+                "min equal to max is a range of one and is fine; backwards is empty."};
+    case random_step_not_a_step:
+        return {"S433", "RANDOM_STEP_NOT_A_STEP",
+                "a step is 1 or more: it is the distance between two values the draw may land on."};
+    case random_step_misses:
+        return {"S434", "RANDOM_STEP_MISSES",
+                "counting from min, the step never lands on max -- the last value it reaches is named "
+                "above -- so max would never be drawn while the call says it may. Make max a value the "
+                "step lands on, or change the step."};
+
     // S10xx -- INPUT AND THE CONSOLE.
     case display_error:
         return {"S820", "DISPLAY_REFUSED",
