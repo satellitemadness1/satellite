@@ -338,6 +338,11 @@ inline SCode s_code_for(signed long long int machine_code)
                 "the program finished, and a program it started was never joined. Every .start() is paired "
                 "with a .join() -- or .code() or .return() -- which waits for it to end and answers its exit "
                 "code; one still running when the program finished was stopped."};
+    case program_not_stopped:
+        return {"S743", "PROGRAM_NOT_STOPPED",
+                "a program satellite was to stop runs as another user -- sudo and pkexec do that -- and "
+                "satellite may not signal it, so it is waited for until it ends by itself. Ctrl-C at the "
+                "terminal still reaches it."};
 
     // S12xx -- DIRECTORIES AND THE FILES A PROGRAM OPENS.
     case directory_not_found:

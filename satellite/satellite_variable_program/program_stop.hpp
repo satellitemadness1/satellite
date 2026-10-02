@@ -33,11 +33,12 @@ void keep_watcher(pthread_t id, const ProgramHandle &program, std::shared_ptr<st
 void join_finished_watchers();
 
 // UNDER program.lock: through the pidfd, which can never reach a process given this pid later.
-void signal_the_program(satellite_program &program, int signal);
+// Answers 0, or the machine's reason for refusing (EPERM: it runs as another user).
+int signal_the_program(satellite_program &program, int signal);
 
 // ASKED TO STOP -- the program and everything it started -- and killed if it has not a little
-// later. Answers once the run has ended.
-void stop_it(satellite_program &program);
+// later. Answers once the run has ended. `only` is the run end() means; 0 is whichever is going.
+void stop_it(satellite_program &program, std::uint64_t only = 0);
 
 // THE END OF THE RUN (structured-library.cpp): every program the run started and nobody joined is
 // stopped, and reported -- when `run_ended_with` is success, the run's own ending. Answers

@@ -112,6 +112,21 @@ And for a bash line (STEP 5), also mine:
   is -- both are programs, so a capsule taking `satellite.variable.program` takes both;
 - displayed, it reads as its line: `(bash echo one two three | wc -w, ended with 0)`.
 
+After the review of steps 2-5 (2026-10-01), also mine:
+
+- end() answers for the run it ended, and only that run counts as joined: one another thread starts
+  the moment it has ended is that thread's to join, and S742 reports it if nothing does;
+- `.exit()`, `.quit()`, `.shutdown()` and `.return()` each have a code of their own (0x0B6A-0x0B6D),
+  so they stay a spacesuit's own names too -- one code for the four made `m.quit()` run a
+  spacesuit's `shutdown()`;
+- a program satl may not signal -- it runs as another user, as sudo and pkexec make it -- is waited
+  for until it ends by itself, and S743 PROGRAM_NOT_STOPPED says so once on the screen (a notice,
+  not a failure); before, the wait was silent and looked like a hang;
+- a program started from satl's own console is handed the machine's environment, not the four
+  names satl sets for the GTK it carries (machine/own_environment.hpp): with them, `fc-match sans`
+  answered satl's IBM Plex Mono instead of the machine's Noto Sans;
+- start("hdie"), a word in quotes that is not "hide", is refused before anything runs.
+
 ### What is not built, and is his
 
 - Ctrl-C (question 7 above);
@@ -119,6 +134,17 @@ And for a bash line (STEP 5), also mine:
   the lines of a script, `{"cd /tmp", "make"}`, or a line and the words bash hands it as `$1`, `$2`
   -- `{"cp \"$1\" \"$2\"", "my file", "backup"}`, which is the safe way to pass a file name with
   spaces into a bash line;
+- what end() does with a program satl MAY NOT stop (sudo, pkexec: it runs as another user, so
+  every signal is refused): it waits for it to end by itself, saying so with S743, and Ctrl-C at
+  the terminal still reaches it. Giving up instead -- leaving it running -- is the other choice;
+- the PRIORITY a program gets from satl's own console: that console runs satl's interpreter at
+  nice 19 (console_launch.cpp, so the desktop stays answering), and a program it starts inherits
+  it -- `make -j16` from there runs at the lowest priority. A process may not lower its own nice
+  value, so giving programs 0 means starting them from a thread that was never niced;
+- what a program leaves behind by `(command &)` -- a subshell that ends at once, handing its
+  child to the machine's reaper -- is no longer under the program, so end() and the end of the
+  run do not reach it. A process group or a cgroup per program would, and either touches Ctrl-C
+  (question 7);
 - keeping a program's output as a string;
 - a working directory or environment for one run;
 - whether a program started at the satl prompt and never joined should be reported: it is stopped

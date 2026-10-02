@@ -1,8 +1,10 @@
 satellite.include(satellite)
 
-// "hide" is the one word start() takes: start("loud") is refused when it is reached.
+// "hide" is the one word start() takes: start("loud"), written in quotes, is refused before anything
+// runs -- the checker reads the word, as it reads .sort's (the review of steps 2-5).
 satellite.capsule satellite.main(satellite.variable.arguments args)
 {
+    satellite.console.display("before")
     satellite.variable.program p = "true"
     p.start("loud")
     p.join()

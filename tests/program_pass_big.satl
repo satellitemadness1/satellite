@@ -1,0 +1,22 @@
+satellite.include(satellite)
+
+// 80 MB PASSED TO A PROGRAM, timed by the machine's clock either side: taken from the front a pipe's
+// 64 KiB at a time by an erase, it took 8.1 s (the review of steps 2-5); by an index it is linear.
+satellite.capsule satellite.main(satellite.variable.arguments args)
+{
+    satellite.variable.string lot = "0123456789"
+    satellite.statement.for (satellite.variable.number i = 1; i < 24; i++)
+    {
+        lot = lot + lot
+    }
+    satellite.variable.bash clock = "date +%s.%N"
+    clock.start()
+    clock.join()                                             // the time before
+    satellite.variable.program counter = {"wc", "-c"}
+    counter.start()
+    counter.pass(lot)
+    counter.join()                                           // 83886081: 10 x 2^23, and its end of line
+    clock.start()
+    clock.join()                                             // the time after
+    satellite.return(satellite)
+}

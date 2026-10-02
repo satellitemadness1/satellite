@@ -5,6 +5,8 @@
 
 #include "window_spill.hpp"
 
+#include "../machine/own_environment.hpp"
+
 #include <gio/gio.h>
 #include <glib.h>
 #include <glib/gstdio.h>
@@ -196,6 +198,10 @@ bool spill_what_gtk_needs(std::string &why)
     // OVERWRITE IS TRUE for all three. A machine that HAS xkb data still gets
     // ours, because ours is the version this GTK was built against -- and the
     // build deliberately compiled in a nonexistent default so a miss is loud.
+    // AND A PROGRAM satl STARTS IS HANDED THE MACHINE'S, NOT THESE (machine/own_environment.hpp, the
+    // review of steps 2-5): this fonts.conf names no system fonts at all.
+    for (const char *name : {"XKB_CONFIG_ROOT", "FONTCONFIG_FILE", "FONTCONFIG_PATH", "GSETTINGS_SCHEMA_DIR"})
+        keep_the_machines(name);
     g_setenv("XKB_CONFIG_ROOT", (home + "/xkb").c_str(), TRUE);
     g_setenv("FONTCONFIG_FILE", (home + "/fonts.conf").c_str(), TRUE);
     g_setenv("FONTCONFIG_PATH", home.c_str(), TRUE);

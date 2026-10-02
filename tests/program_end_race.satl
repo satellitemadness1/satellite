@@ -1,0 +1,26 @@
+satellite.include(satellite)
+
+// end() ANSWERS FOR THE RUN IT ENDED, even when another thread starts the program again the moment that
+// run is over; and the restarted run is that thread's, never joined, so the end of the run reports it
+// (S742). The review of steps 2-5 found end() answering the restarted run's 0, and losing the S742.
+satellite.capsule restart(satellite.variable.program p)
+{
+    p.join()
+    p.start()
+    satellite.return(0)
+}
+
+satellite.capsule satellite.main(satellite.variable.arguments args)
+{
+    satellite.variable.program p = {"sleep", "8.27"}
+    p.start()
+    satellite.variable.thread t = satellite.thread.new(restart(p))
+    t.start()
+    satellite.variable.program settle = {"sleep", "0.3"}
+    settle.start()
+    settle.join()
+    satellite.console.display(p.end())                       // 143
+    t.join()
+    satellite.console.display("main ends")                   // main ends -- then S742 for the thread's run
+    satellite.return(satellite)
+}

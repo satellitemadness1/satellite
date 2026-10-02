@@ -3,6 +3,7 @@
 
 #include "program_spawn.hpp"
 
+#include "../machine/own_environment.hpp"
 #include "../machine/stack_share.hpp"
 
 #include <cerrno>
@@ -33,6 +34,7 @@ namespace {
 struct ChildPlan {
     const char *path;
     char *const *arguments;
+    char *const *environment;   // the machine's, not what satl set for itself (own_environment.hpp)
     int input;
     int out;
     volatile int error;
@@ -72,7 +74,7 @@ int the_child(void *given)
     sigset_t none;
     sigemptyset(&none);
     sigprocmask(SIG_SETMASK, &none, nullptr);
-    execve(plan->path, plan->arguments, environ);
+    execve(plan->path, plan->arguments, plan->environment);
     plan->error = errno;
     syscall(SYS_exit_group, 127);
     return 127;
@@ -195,7 +197,10 @@ ProgramStart start_a_program(const std::vector<std::string> &words, int out, int
     }
     const int stream = out > 2 ? out : out >= 0 ? fcntl(out, F_DUPFD_CLOEXEC, 3) : nothing;
     const int input = in > 2 ? in : in >= 0 ? fcntl(in, F_DUPFD_CLOEXEC, 3) : nothing;
-    ChildPlan plan{path.c_str(), arguments.data(), input, stream, 0};
+    std::vector<std::string> environment_held;
+    std::vector<char *> environment_pointers;
+    char *const *environment = environment_for_a_program(environment_held, environment_pointers);
+    ChildPlan plan{path.c_str(), arguments.data(), environment, input, stream, 0};
 
     // EVERY SIGNAL BLOCKED FOR THE CLONE, as glibc's posix_spawn does: the child shares this
     // memory until it execs, and a handler run in it would run on satl's data.

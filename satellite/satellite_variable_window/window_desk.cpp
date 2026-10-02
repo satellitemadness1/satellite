@@ -8,6 +8,7 @@
 #include "window_desk.hpp"
 
 #include "window_spill.hpp"
+#include "../machine/own_environment.hpp"
 
 #include <gtk/gtk.h>
 
@@ -122,6 +123,7 @@ void be_the_desk()
     // environment is the same bit, APPENDED to whatever GDK_DEBUG already says
     // so that a person's own flags survive.
     {
+        keep_the_machines("GDK_DEBUG");   // a program satl starts gets the machine's (own_environment.hpp)
         const char *already = g_getenv("GDK_DEBUG");
         const std::string with = already == nullptr || *already == '\0'
                                      ? std::string("no-portals")

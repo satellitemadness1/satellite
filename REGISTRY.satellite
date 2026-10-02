@@ -421,10 +421,14 @@ bits              name                         what it is
 0000101101100100  trim_token                   trim  [METHOD] string.trim -- the text without space, tab, carriage return or newline at either end (M16, word 1 6 1 11)
 0000101101100101  at_token                     at  [METHOD] string.at(n) -- character n, counting from 1, as a string of one character; the same as string[n] (M16, word 1 6 1 16)
 0000101101100110  resolved_token               resolved  [METHOD] string.resolved -- the string with its live escapes resolved; 004 has none yet, so it answers itself (M16, word 1 6 1 17)
-0000101101100111  code_token                   code/return  [METHOD] program.code() -- waits for the program to end and answers its exit code; .return() is its second name (the author, 2026-10-01: ".code() .return() ... will be for the return")
-0000101101101000  end_token                    end/exit/quit/shutdown  [METHOD] program.end() -- stops the program and everything under it, and answers its exit code; .exit(), .quit() and .shutdown() are its other names (the author, 2026-10-01: ".end() .exit() and .quit() and shutdown() all do the same thing")
+0000101101100111  code_token                   code  [METHOD] program.code() -- waits for the program to end and answers its exit code; .return() is the same, with a code of its own (the author, 2026-10-01: ".code() .return() ... will be for the return")
+0000101101101000  end_token                    end  [METHOD] program.end() -- stops the program and everything under it, and answers its exit code; .exit(), .quit() and .shutdown() are the same, each with a code of its own (the author, 2026-10-01: ".end() .exit() and .quit() and shutdown() all do the same thing")
 0000101101101001  pass_token                   pass  [METHOD] program.pass(text) -- typed into the running program, a line for a string and one for each item of a list (the author, 2026-10-01: "typed input while the program is running")
-0000101101101010  free                         to 0000101111111111, free for this family
+0000101101101010  return_token                 return  [METHOD] program.return() -- the same as program.code(), with its own code: one code for both spellings made a spacesuit's field `code` and its capsule `return` one name (the review of steps 2-5, 2026-10-01)
+0000101101101011  exit_token                   exit  [METHOD] program.exit() -- the same as program.end(), with its own code: one code for the four spellings ran a spacesuit's shutdown() for m.quit() (the review of steps 2-5, 2026-10-01)
+0000101101101100  quit_token                   quit  [METHOD] program.quit() -- the same as program.end(), with its own code, as exit's
+0000101101101101  shutdown_token               shutdown  [METHOD] program.shutdown() -- the same as program.end(), with its own code, as exit's
+0000101101101110  free                         to 0000101111111111, free for this family
 
 0001000000000000  word_base                    reserved: no word has this code
 0001000000000001  the first word               satellite -- and every satellite.something.something after it

@@ -1,0 +1,16 @@
+satellite.include(satellite)
+
+// pass() TO A PROGRAM THAT HAS CLOSED ITS OWN INPUT answers false at once, as its comment says -- it
+// answered true the first time before the review of steps 2-5, and the line went nowhere.
+satellite.capsule satellite.main(satellite.variable.arguments args)
+{
+    satellite.variable.bash closer = "exec 0<&-; sleep 0.6; echo closer done"
+    closer.start()
+    satellite.variable.program settle = {"sleep", "0.2"}
+    settle.start()
+    settle.join()
+    satellite.console.display(closer.pass("one"))            // false
+    satellite.console.display(closer.pass("two"))            // false
+    satellite.console.display(closer.join())                 // closer done, then 0
+    satellite.return(satellite)
+}

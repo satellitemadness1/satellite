@@ -11,6 +11,7 @@
 
 #include <algorithm>
 #include <atomic>
+#include <cerrno>
 #include <chrono>
 #include <csignal>
 #include <cstdint>
@@ -86,16 +87,16 @@ void join_finished_watchers()
 }
 
 // UNDER program.lock: through the pidfd, which can never reach a process given this pid later.
-void signal_the_program(satellite_program &program, int signal)
+// Answers 0, or the machine's reason for refusing -- EPERM for a program that runs as another user.
+int signal_the_program(satellite_program &program, int signal)
 {
 #ifdef SYS_pidfd_send_signal
-    if (program.pidfd >= 0) {
-        syscall(SYS_pidfd_send_signal, program.pidfd, signal, nullptr, 0U);
-        return;
-    }
+    if (program.pidfd >= 0)
+        return syscall(SYS_pidfd_send_signal, program.pidfd, signal, nullptr, 0U) == 0 ? 0 : errno;
 #endif
     if (program.pid > 0)
-        kill(program.pid, signal);
+        return kill(program.pid, signal) == 0 ? 0 : errno;
+    return 0;
 }
 
 // ASKED TO STOP -- the program and everything it started -- and killed if it has not a little
@@ -109,24 +110,35 @@ void signal_the_program(satellite_program &program, int signal)
 // program is SIGSTOPped, everything under it is found and SIGSTOPped too, again until a pass finds
 // nothing new -- a stopped process starts nothing -- and only then is all of it sent SIGTERM and
 // SIGCONT together.
-void stop_it(satellite_program &program)
+//
+// ONE THE MACHINE WILL NOT LET satl SIGNAL -- it runs as another user, as sudo and pkexec make it --
+// is waited for until it ends by itself, and S743 says so once on the screen: before the review of
+// steps 2-5 the signals failed in silence and the wait looked like satl had hung.
+void stop_it(satellite_program &program, std::uint64_t only)
 {
     std::vector<ProcessSeen> under;
     std::uint64_t run = 0;
+    bool not_permitted = false;
+    CriticalReport report;
     {
         std::unique_lock<std::mutex> hold(program.lock);
+        // ONLY THE RUN ASKED ABOUT, when one was -- end()'s: once that run has ended, one another
+        // thread started since is not this call's to stop (the review of steps 2-5).
+        const auto its_run_ended = [&program, only] { return only != 0 && program.runs_ended >= only; };
         // A RUN CLAIMED AND NOT SPAWNED YET -- another thread is inside start() -- has no pid for
         // a moment; it is waited for, briefly.
-        while (program.running() && program.pid <= 0)
+        while (!its_run_ended() && program.running() && program.pid <= 0)
             program.ended_signal.wait_for(hold, std::chrono::milliseconds(10));
-        if (!program.running())
+        if (its_run_ended() || !program.running())
             return;
         run = program.runs_started;
         // EACH ONE WAITED FOR UNTIL IT HAS STOPPED: a SIGSTOP lands when the process next runs, and
         // a scan made before that missed the sleep sh forked in between (found 2026-10-01 by
         // tests/program_end.satl, a tree ended at once after its start()).
-        signal_the_program(program, SIGSTOP);
-        wait_until_stopped(seen_now(program.pid), kLongestStopWait);
+        not_permitted = signal_the_program(program, SIGSTOP) == EPERM;
+        if (not_permitted)
+            report = program.started_at;
+        wait_until_stopped(seen_now(program.pid), not_permitted ? 0 : kLongestStopWait);
         for (int pass = 0; pass < 64; ++pass) {
             bool more = false;
             for (const ProcessSeen &found : processes_under(program.pid)) {
@@ -150,6 +162,14 @@ void stop_it(satellite_program &program)
     }
     for (const ProcessSeen &each : under)
         signal_if_still_there(each, SIGCONT);
+    // SAID AFTER THE PROGRAM'S LOCK IS LET GO: nothing takes the console's lock while it holds one.
+    if (not_permitted) {
+        const SCode named = s_code_for(program_not_stopped);
+        report.code = named.code;
+        report.name = named.name;
+        report.description = named.means;
+        print_notice(report);
+    }
     const auto ended = [&program, run] {
         const std::lock_guard<std::mutex> hold(program.lock);
         return program.runs_ended >= run;
@@ -227,6 +247,7 @@ signed long long int close_every_program(signed long long int run_ended_with)
             stop_it(program);
             CriticalReport report;
             long long code = 0;
+            std::string name;
             {
                 const std::lock_guard<std::mutex> hold(program.lock);
                 // ONE THAT COULD NOT START NEVER RAN, so there was nothing to wait for; and a run that is
@@ -235,15 +256,16 @@ signed long long int close_every_program(signed long long int run_ended_with)
                     continue;
                 report = program.started_at;
                 code = program.code;
+                name = program.name;   // under the lock: a thread still running may be in a start()
             }
             const SCode named = s_code_for(program_never_joined);
             report.code = named.code;
             report.name = named.name;
             report.description = named.means;
-            report.notes.push_back(program.name + " was started here, and nothing waited for it: " +
+            report.notes.push_back(name + " was started here, and nothing waited for it: " +
                                    (was_running ? std::string("it was still running, so satellite stopped it")
                                                 : "it had ended, with code " + std::to_string(code)));
-            report.notes.push_back("write " + program.name + ".join() -- or .code() or .return() -- after its start()");
+            report.notes.push_back("write " + name + ".join() -- or .code() or .return() -- after its start()");
             print_critical(report);
             answer = program_never_joined;
         }

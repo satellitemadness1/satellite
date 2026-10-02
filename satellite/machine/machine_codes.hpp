@@ -150,6 +150,9 @@ enum MachineCode : signed long long int {
     program_already_running = 67,       // .start() on a program that is still running
     program_not_started = 68,           // .ok(), .error(), .join(), .code() on one never started
     program_never_joined = 69,          // the run ended, and a program it started was never joined
+    // 70, 2026-10-01, the review of steps 2-5: a program satl may not signal -- it runs as another
+    // user, as sudo and pkexec make it -- cannot be stopped, and is waited for. A notice, not a failure.
+    program_not_stopped = 70,           // end(), or the end of the run, could not stop a program
 
     // 130 AND NOT 32, ON PURPOSE (PLAN M0.6): 128 + SIGINT is what a shell and 003
     // both answer for Ctrl-C, and exit_status_of passes a code under 255 through as
@@ -219,6 +222,7 @@ inline const char *machine_code_name(signed long long int code)
     case program_already_running: return "program_already_running";
     case program_not_started: return "program_not_started";
     case program_never_joined: return "program_never_joined";
+    case program_not_stopped: return "program_not_stopped";
     case out_of_memory: return "out_of_memory";
     case libraries_not_understood: return "libraries_not_understood";
     case file_not_found: return "file_not_found";

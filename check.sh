@@ -5345,12 +5345,12 @@ expect "programs: satellite.return(satellite) on a thread ends a run waiting in 
 expect "programs: start(\"hide\") throws the output and the errors away, and answers the same -- the word from a name too" \
        "0|before|4|it ended with code 4|4|shown|after||0" \
        "$code|$(tr '\n' '|' < build/program_hidden.out)|$(grep -c 'must not show\|nor this' build/program_hidden.err)"
-"$interpreter" tests/program_start_loud.satl > /dev/null 2> build/program_loud.err; code=$?
-expect "programs: start(\"loud\") is refused when it is reached -- start takes nothing, or \"hide\"" "13|1" \
-       "$code|$(grep -c 'start() takes nothing, or "hide" to run it' build/program_loud.err)"
+"$interpreter" tests/program_start_loud.satl > build/program_loud.out 2> build/program_loud.err; code=$?
+expect "programs: start(\"loud\") in quotes is refused before anything runs -- start takes nothing, or \"hide\"" "13||1|1" \
+       "$code|$(tr -d '\n' < build/program_loud.out)|$(tr '\n' ' ' < build/program_loud.err | grep -c 'p.start(loud) -- start() takes nothing, or "hide" to run it')|$(grep -c 'satl(check)' build/program_loud.err)"
 "$interpreter" tests/program_start_two.satl > /dev/null 2> build/program_start_two.err; code=$?
-expect "programs: start with two words is refused before anything runs" "13|1" \
-       "$code|$(grep -c 'p.start() takes nothing, or "hide"' build/program_start_two.err)"
+expect "programs: start with two words is refused before anything runs" "13|1|1" \
+       "$code|$(grep -c 'p.start() takes nothing, or "hide"' build/program_start_two.err)|$(grep -c 'satl(check)' build/program_start_two.err)"
 # end(), exit(), quit() and shutdown() (STEP 3, 2026-10-01): ".shutdown() kill the process ... all do the same thing".
 started_ns=$(date +%s%N); timeout 20 "$interpreter" tests/program_end.satl > build/program_end.out 2>/dev/null; code=$?
 took_ms=$(( ($(date +%s%N) - started_ns) / 1000000 ))
@@ -5363,19 +5363,32 @@ expect "programs: one that ignores SIGTERM is killed five seconds later, and ans
        "0|137|it was ended by signal 9 (SIGKILL)||yes" \
        "$code|$(tr '\n' '|' < build/program_stubborn.out)|$([ "$took_ms" -ge 5000 ] && [ "$took_ms" -lt 9000 ] && echo yes || echo "no, $took_ms ms")"
 "$interpreter" tests/program_end_names.satl > build/program_end_names.out 2>/dev/null; code=$?
-expect "programs: end and quit are still names a spacesuit's field and capsule may have" "0|quit of a trip, end 5|" \
+expect "programs: end, exit, quit, shutdown, code and return are still a spacesuit's own names, each its own" \
+       "0|quit of a trip, end 5|shutdown of a trip, exit 7|return of a trip, code 9|" \
        "$code|$(tr '\n' '|' < build/program_end_names.out)"
-expect "end/exit/quit/shutdown is registry row 0x0B68, and token_codes.hpp agrees" "1|1|4" \
-       "$(grep -c '^0000101101101000  end_token  *end/exit/quit/shutdown ' REGISTRY.satellite)|$(grep -c 'Code end_token = 0x0B68;' satellite/bytecode/token_codes.hpp)|$(grep -c 'return end_token;' satellite/bytecode/token_codes.hpp)"
+expect "end, exit, quit and shutdown are registry rows 0x0B68 and 0x0B6B-0x0B6D, one spelling each, and token_codes.hpp agrees" "4|4|4" \
+       "$(grep -c '^\(0000101101101000  end_token  *end \|0000101101101011  exit_token  *exit \|0000101101101100  quit_token  *quit \|0000101101101101  shutdown_token  *shutdown \)' REGISTRY.satellite)|$(grep -c 'Code \(end_token = 0x0B68\|exit_token = 0x0B6B\|quit_token = 0x0B6C\|shutdown_token = 0x0B6D\);' satellite/bytecode/token_codes.hpp)|$(grep -c 'if (spelling == "\(end\|exit\|quit\|shutdown\)") return \(end\|exit\|quit\|shutdown\)_token;' satellite/bytecode/token_codes.hpp)"
+# THE REVIEW OF STEPS 2-5 (2026-10-01), each a test of its own.
+started_ns=$(date +%s%N); timeout 30 "$interpreter" tests/program_end_race.satl > build/program_end_race.out 2> build/program_end_race.err; code=$?
+took_ms=$(( ($(date +%s%N) - started_ns) / 1000000 ))
+expect "programs: end() racing a restart on another thread answers for its own run, and the restarted run is S742's" \
+       "69|143|main ends|1|0|yes" \
+       "$code|$(tr '\n' '|' < build/program_end_race.out)$(grep -c 'S742: PROGRAM_NEVER_JOINED' build/program_end_race.err)|$(pgrep -fc 'sleep 8\.27')|$([ "$took_ms" -lt 6000 ] && echo yes || echo "no, $took_ms ms")"
+timeout 20 "$interpreter" tests/program_pass_closed.satl > build/program_pass_closed.out 2>/dev/null; code=$?
+expect "programs: pass() to a program that closed its own input answers false at once" "0|false|false|closer done|0|" \
+       "$code|$(tr '\n' '|' < build/program_pass_closed.out)"
+timeout 60 "$interpreter" tests/program_pass_big.satl > build/program_pass_big.out 2>/dev/null; code=$?
+expect "programs: 80 MB passed to a program in under 2 s by the machine's clock (an erase a write took 8.1 s)" "0|83886081|yes" \
+       "$code|$(sed -n 2p build/program_pass_big.out)|$(awk 'NR == 1 { a = $1 } NR == 3 { b = $1 } END { print (b - a < 2 ? "yes" : "no, " b - a " s") }' build/program_pass_big.out)"
 # pass() (STEP 4, 2026-10-01): "typed input while the program is running".
-"$interpreter" tests/program_pass.satl > build/program_pass.out 2>/dev/null; code=$?
-expect "programs: pass() types lines in as it runs -- a list one line each, a number its digits; join() closes the input; never waits; false once ended" \
-       "0|true|got first and second|0|apple|fig|pear|n is 42|0|false|passed|1310721|" "$code|$(tr '\n' '|' < build/program_pass.out)"
+timeout 20 "$interpreter" tests/program_pass.satl > build/program_pass.out 2>/dev/null; code=$?
+expect "programs: pass() types lines in as it runs -- a list one line each, a number its digits; join() closes the input; never waits (satl's passed before the program's reading); false once ended" \
+       "0|true|got first and second|0|apple|fig|pear|n is 42|0|false|passed|reading|1310721|" "$code|$(tr '\n' '|' < build/program_pass.out)"
 "$interpreter" tests/program_pass_nothing.satl > /dev/null 2> build/program_pass_nothing.err; code=$?
-expect "programs: pass() with nothing in it is refused before anything runs" "13|1" \
-       "$code|$(grep -c 'p.pass() takes one thing to type in' build/program_pass_nothing.err)"
-expect "code/return is registry row 0x0B67, and token_codes.hpp agrees" "1|1|1" \
-       "$(grep -c '^0000101101100111  code_token  *code/return ' REGISTRY.satellite)|$(grep -c 'Code code_token = 0x0B67;' satellite/bytecode/token_codes.hpp)|$(grep -c 'if (spelling == "return") return code_token;' satellite/bytecode/token_codes.hpp)"
+expect "programs: pass() with nothing in it is refused before anything runs" "13|1|1" \
+       "$code|$(grep -c 'p.pass() takes one thing to type in' build/program_pass_nothing.err)|$(grep -c 'satl(check)' build/program_pass_nothing.err)"
+expect "code and return are registry rows 0x0B67 and 0x0B6A, one spelling each, and token_codes.hpp agrees" "2|2|2" \
+       "$(grep -c '^\(0000101101100111  code_token  *code \|0000101101101010  return_token  *return \)' REGISTRY.satellite)|$(grep -c 'Code \(code_token = 0x0B67\|return_token = 0x0B6A\);' satellite/bytecode/token_codes.hpp)|$(grep -c 'if (spelling == "\(code\|return\)") return \(code\|return\)_token;' satellite/bytecode/token_codes.hpp)"
 
 # satellite.variable.bash (STEP 5, 2026-10-01): "running a program on a machine, and running a bash
 # commnand are two different things" -- a line bash reads, run as `bash -c -- "the line"`, with every

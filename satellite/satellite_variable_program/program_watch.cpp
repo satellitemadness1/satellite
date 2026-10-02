@@ -23,6 +23,7 @@ namespace {
 constexpr int kQuietBeforeAHalfLine = 50;              // ms: a prompt with no end yet is shown then
 constexpr std::size_t kLongestLineHeld = 64 * 1024;    // a longer line is shown in pieces this size
 constexpr int kLookForTheEnd = 100;                    // ms between looks, on a kernel with no pidfd
+constexpr std::size_t kInputKeptWritten = 1024 * 1024; // written input dropped from the front past this
 
 // A PIECE OF THE PROGRAM'S OUTPUT, onto the screen in turn with satl's own lines -- through the
 // printing satellite's ring, as satl's own words go (display/printing_satellite.hpp).
@@ -76,29 +77,44 @@ void read_what_is_there(int out, std::string &waiting, std::string &chunk)
 // read cannot hold satl in pass(). Under program.lock, which a write to a full pipe does not keep --
 // it answers at once. The input closes once everything is written and join() or end() was reached,
 // or when the program closed its own.
+//
+// TAKEN FROM THE FRONT BY AN INDEX, input_from, and the written part dropped only once it is over a
+// mebibyte and half of what is held: erasing the front after every write of a pipe's 64 KiB made
+// passing 80 MB take 8.1 s (the review of steps 2-5), each erase moving everything behind it.
 void write_what_was_passed(satellite_program &program, int &in)
 {
     const std::lock_guard<std::mutex> hold(program.lock);
-    while (in >= 0 && !program.input_waiting.empty()) {
-        const ssize_t wrote = write(in, program.input_waiting.data(), program.input_waiting.size());
+    std::string &waiting = program.input_waiting;
+    while (in >= 0 && program.input_from < waiting.size()) {
+        const ssize_t wrote = write(in, waiting.data() + program.input_from, waiting.size() - program.input_from);
         if (wrote > 0) {
-            program.input_waiting.erase(0, static_cast<std::size_t>(wrote));
+            program.input_from += static_cast<std::size_t>(wrote);
             continue;
         }
         if (wrote < 0 && errno == EINTR)
             continue;
         if (wrote < 0 && errno == EAGAIN)
-            return;   // full: POLLOUT says when there is room
+            break;    // full: POLLOUT says when there is room
         // THE PROGRAM CLOSED ITS INPUT (EPIPE): what was passed can go nowhere now.
         close(in);
         in = -1;
-        program.input_waiting.clear();
+        program.input_fd = -1;
+        waiting.clear();
+        program.input_from = 0;
         program.input_gone = true;
         return;
     }
-    if (in >= 0 && program.input_closing) {
+    if (program.input_from == waiting.size()) {
+        waiting.clear();
+        program.input_from = 0;
+    } else if (program.input_from > kInputKeptWritten && program.input_from * 2 > waiting.size()) {
+        waiting.erase(0, program.input_from);
+        program.input_from = 0;
+    }
+    if (in >= 0 && program.input_closing && waiting.empty()) {
         close(in);
         in = -1;
+        program.input_fd = -1;
         program.input_gone = true;
     }
 }
@@ -106,14 +122,14 @@ void write_what_was_passed(satellite_program &program, int &in)
 bool something_to_write(satellite_program &program, int in)
 {
     const std::lock_guard<std::mutex> hold(program.lock);
-    return in >= 0 && !program.input_waiting.empty();
+    return in >= 0 && program.input_from < program.input_waiting.size();
 }
 
 // THE RUN, UNTIL THE PROGRAM HAS ENDED: its output to the screen, what was passed to its input, and
-// the end itself. Answers whether the output pipe is still open after it -- something the program
-// started may hold it for longer than the program lives. `reaped` is set when the end was found by
-// waitpid here, on a kernel with no pidfd.
-bool watch_while_it_runs(Watch &watch, std::string &waiting, std::string &chunk, int &status, bool &reaped)
+// the end itself -- found, never reaped, here: the reaping is done under the program's lock. Answers
+// whether the output pipe is still open after it -- something the program started may hold it for
+// longer than the program lives.
+bool watch_while_it_runs(Watch &watch, std::string &waiting, std::string &chunk)
 {
     satellite_program &program = *watch.program;
     bool out_open = watch.out >= 0;
@@ -145,9 +161,11 @@ bool watch_while_it_runs(Watch &watch, std::string &waiting, std::string &chunk,
                 continue;
             return out_open;   // poll itself failed: the end is waited for after this, with nothing more shown
         }
-        // NO PIDFD (a kernel before 5.3): the end is looked for every tenth of a second.
-        if (watch.pidfd < 0 && waitpid(watch.pid, &status, WNOHANG) == watch.pid) {
-            reaped = true;
+        // NO PIDFD (a kernel before 5.3): the end is looked for every tenth of a second -- WNOWAIT, so
+        // it is seen and left to be reaped under the lock.
+        siginfo_t ended{};
+        if (watch.pidfd < 0 && waitid(P_PID, static_cast<id_t>(watch.pid), &ended, WEXITED | WNOHANG | WNOWAIT) == 0 &&
+            ended.si_pid == watch.pid) {
             if (out_open)
                 read_what_is_there(watch.out, waiting, chunk);
             return out_open;
@@ -224,27 +242,35 @@ void *watch_the_program(void *given)
     satellite_program &program = *watch->program;
     std::string waiting;
     std::string chunk(64 * 1024, '\0');
-    int status = 0;
-    bool reaped = false;
-    const bool still_open = watch_while_it_runs(*watch, waiting, chunk, status, reaped);
+    const bool still_open = watch_while_it_runs(*watch, waiting, chunk);
     to_the_screen(waiting);   // its last line, without the end it never wrote
-    if (!reaped)
-        while (waitpid(watch->pid, &status, 0) < 0 && errno == EINTR) {
-        }
+    // WAITED FOR WITHOUT BEING REAPED, then reaped under the lock: while program.pid names it, the pid is
+    // the program's or its zombie's, never one the machine has handed to another process (the review of
+    // steps 2-5: stop_it read a pid the moment after it was reaped here, outside the lock).
+    siginfo_t ended{};
+    while (waitid(P_PID, static_cast<id_t>(watch->pid), &ended, WEXITED | WNOWAIT) < 0 && errno == EINTR) {
+    }
     {
         const std::lock_guard<std::mutex> hold(program.lock);
+        int status = 0;
+        while (waitpid(watch->pid, &status, 0) < 0 && errno == EINTR) {
+        }
+        long long code = 0;
+        std::string why;
         if (WIFSIGNALED(status)) {
-            program.code = 128 + WTERMSIG(status);
-            program.why = "it was ended by signal " + signal_named(WTERMSIG(status));
+            code = 128 + WTERMSIG(status);
+            why = "it was ended by signal " + signal_named(WTERMSIG(status));
         } else {
-            program.code = WEXITSTATUS(status);
-            program.why = program.code == 0 ? std::string() : "it ended with code " + std::to_string(program.code);
+            code = WEXITSTATUS(status);
+            why = code == 0 ? std::string() : "it ended with code " + std::to_string(code);
         }
         // ITS INPUT AND ITS WAKE GO WITH IT, under the lock pass() writes the wake under -- so pass()
         // never writes to a descriptor this has closed, or one the machine handed out again since.
         if (watch->in >= 0)
             close(watch->in);
+        program.input_fd = -1;
         program.input_waiting.clear();
+        program.input_from = 0;
         program.input_gone = true;
         if (watch->wake >= 0)
             close(watch->wake);
@@ -253,7 +279,7 @@ void *watch_the_program(void *given)
             close(watch->pidfd);
         program.pidfd = -1;
         program.pid = 0;
-        program.runs_ended = watch->run;
+        program.run_ended(watch->run, code, std::move(why));
     }
     program.ended_signal.notify_all();
     if (still_open && closing_fd() >= 0) {

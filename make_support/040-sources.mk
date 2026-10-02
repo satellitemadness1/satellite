@@ -25,7 +25,7 @@ FRACTION_HEADERS = $(FRACTION_DIR)/satellite_fraction.hpp $(OBJECT)/object_fract
 INTERPRETER_SOURCES = $(SATELLITE)/structured-library.cpp \
                       $(ARGUMENTS)/arguments.cpp $(ARGUMENTS)/command_line.cpp \
                       $(SATELLITE)/licenses/licenses.cpp \
-                      $(MACHINE)/machine_state.cpp $(MACHINE)/stack_share.cpp $(SATELLITE)/satl/satl_file.cpp \
+                      $(MACHINE)/machine_state.cpp $(MACHINE)/stack_share.cpp $(MACHINE)/own_environment.cpp $(SATELLITE)/satl/satl_file.cpp \
                       $(SATELLITE)/satl/session.cpp $(SATELLITE)/satl/listing.cpp $(SATELLITE)/satl/listing_counts.cpp \
                       $(SATELLITE)/satl/listing_progress.cpp $(SATELLITE)/satl/drives.cpp \
                       $(SATELLITE)/display/printing_satellite.cpp $(SATELLITE)/display/display_stream.cpp \
@@ -70,7 +70,7 @@ HEADERS = $(ARGUMENTS)/arguments.hpp $(ARGUMENTS)/command_line.hpp $(ARGUMENTS)/
           $(SATELLITE)/config/run_feedback.hpp $(NUMBERS)/feedback_book.hpp \
           $(MACHINE)/critical_report.hpp $(MACHINE)/satellite_log.hpp $(MACHINE)/source_position.hpp $(MACHINE)/s_codes.hpp \
           $(MACHINE)/machine_codes.hpp $(MACHINE)/machine_state.hpp $(MACHINE)/exit_status.hpp $(MACHINE)/shown.hpp \
-          $(MACHINE)/stop_flag.hpp $(MACHINE)/input_source.hpp $(MACHINE)/stack_share.hpp $(MACHINE)/stack_segments.hpp $(MACHINE)/run_state.hpp $(SATELLITE)/satl/session.hpp $(SATELLITE)/satl/listing.hpp $(SATELLITE)/satl/listing_counts.hpp \
+          $(MACHINE)/stop_flag.hpp $(MACHINE)/input_source.hpp $(MACHINE)/stack_share.hpp $(MACHINE)/own_environment.hpp $(MACHINE)/stack_segments.hpp $(MACHINE)/run_state.hpp $(SATELLITE)/satl/session.hpp $(SATELLITE)/satl/listing.hpp $(SATELLITE)/satl/listing_counts.hpp \
           $(SATELLITE)/satl/listing_progress.hpp $(SATELLITE)/satl/drives.hpp $(MACHINE)/filesystems.hpp \
           $(SATELLITE)/display/printing_satellite.hpp \
           $(SATELLITE)/satl/prompt_run.hpp $(SATELLITE)/satl/prompt_help.hpp \

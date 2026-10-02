@@ -656,6 +656,18 @@ signed long long int method_judged(const std::vector<std::bitset<16>> &row, std:
             why = spelling + program_method_takes(method);
             return satl_line_not_understood;
         }
+        // start() GIVEN ITS WORD IN QUOTES is judged here, as .sort's is, in the walker's sentence: a word
+        // that is not "hide" -- start("hdie") -- is refused before anything runs, not after the programs
+        // above it have run (the review of steps 2-5). A word worked out by the run waits for the run.
+        if (method == token::start_token && given == 1 && code_at(row, k + 3) == token::string_token) {
+            std::size_t at = k + 3;
+            const std::string written = text_at(row, at);
+            if (code_at(row, at) == token::right_parenthesis_token && written != "hide") {
+                why = spelling + "(" + written + ") -- start() takes nothing, or \"hide\" to run it with its output "
+                                                 "thrown away";
+                return satl_line_not_understood;
+            }
+        }
         return success;
     }
     if (a_container) {

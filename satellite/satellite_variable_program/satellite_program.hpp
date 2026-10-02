@@ -38,6 +38,7 @@
 
 #include <condition_variable>
 #include <cstdint>
+#include <map>
 #include <mutex>
 #include <pthread.h>
 #include <string>
@@ -64,16 +65,21 @@ public:
     std::string why;                          // why it could not start, or how it ended -- error()
     long long code = 0;                       // its exit code: 0-255, 128 + N for signal N, 126 or 127
                                               // when it could not start (a shell's numbers for both)
-    pid_t pid = 0;                            // while it runs
+    pid_t pid = 0;                            // while it runs, and until its watcher reaps it under `lock`
     int pidfd = -1;                           // while it runs: a signal sent through it can never reach
                                               // another process that was handed the same pid later
     // WHAT pass() HAS TYPED IN AND THE PROGRAM HAS NOT TAKEN YET (STEP 4) -- "typed input while the
     // program is running" (the author). The run's watcher writes it as the program reads; join() and
     // end() close the input once it is all written, so a program reading to the end finishes.
     std::string input_waiting;
+    std::size_t input_from = 0;               // how much of input_waiting is written already: taken from
+                                              // the front by an index, not an erase (the review of steps
+                                              // 2-5: erasing each 64 KiB written took 80 MB to 8.1 s)
     bool input_closing = false;               // join() or end() was reached: close it once written
     bool input_gone = false;                  // closed, by that or by the program: pass() answers false
     int input_wake = -1;                      // the run's eventfd: pass() and join() say "look again"
+    int input_fd = -1;                        // the input's write end, while the watcher holds it open --
+                                              // pass() asks it whether the program closed its own end
     std::string name;                         // the variable, as start() was written on it
     CriticalReport started_at;                // where that start() was, for the report at the end
 
@@ -81,6 +87,48 @@ public:
     bool listed = false;
 
     bool running() const { return runs_started > runs_ended; }   // under `lock`
+
+    // HOW A RUN ENDED, for each join() and end() still waiting on it -- kept apart from `code` and `why`,
+    // which the next start() clears. Another thread may start the program again the moment a run ends
+    // (the review of steps 2-5: an end() raced a restart and answered the new run's 0, not its 143).
+    struct Ending {
+        unsigned waiting = 0;                 // the join()s and end()s waiting on this run
+        bool ended = false;
+        long long code = 0;
+        std::string why;
+    };
+    std::map<std::uint64_t, Ending> endings;  // only runs something waits on, under `lock`
+
+    // UNDER `lock`, by whatever ends a run -- its watcher, or start() when it could not start: how it
+    // ended, for error() and for every join() and end() waiting on it.
+    void run_ended(std::uint64_t run, long long ended_code, std::string ended_why)
+    {
+        code = ended_code;
+        why = std::move(ended_why);
+        runs_ended = run;
+        if (const auto waited = endings.find(run); waited != endings.end()) {
+            waited->second.ended = true;
+            waited->second.code = code;
+            waited->second.why = why;
+        }
+    }
+
+    // UNDER `lock`: a join() or end() waits on `run`, which has not ended yet. Answers its slot, which
+    // stays where it is in the map however many others come and go.
+    Ending &wait_on(std::uint64_t run)
+    {
+        Ending &slot = endings[run];
+        ++slot.waiting;
+        return slot;
+    }
+
+    // UNDER `lock`: a waiter on `run` is done with it -- the last one takes the slot away.
+    void done_waiting(std::uint64_t run)
+    {
+        const auto waited = endings.find(run);
+        if (waited != endings.end() && --waited->second.waiting == 0)
+            endings.erase(waited);
+    }
 
     // For satellite.console.display(p): what it runs and how far it has got --
     // (program /usr/bin/make -j16, running), and a bash line as its line: (bash mkdir x, running).

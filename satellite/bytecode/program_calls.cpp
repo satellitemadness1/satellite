@@ -25,6 +25,7 @@
 #include <fcntl.h>
 #include <memory>
 #include <mutex>
+#include <poll.h>
 #include <sys/eventfd.h>
 #include <sys/wait.h>
 #include <unistd.h>
@@ -40,10 +41,8 @@ void never_ran(satellite_program &program, std::uint64_t run, long long code, co
     {
         const std::lock_guard<std::mutex> hold(program.lock);
         program.could_start = false;
-        program.code = code;
-        program.why = why;
         program.pid = 0;
-        program.runs_ended = run;
+        program.run_ended(run, code, why);
     }
     program.ended_signal.notify_all();
 }
@@ -72,9 +71,11 @@ Value start(const ProgramHandle &which, const std::string &name, bool hidden, Ex
         program.name = name;
         program.started_at = where;
         program.input_waiting.clear();
+        program.input_from = 0;
         program.input_closing = false;
         program.input_gone = false;
         program.input_wake = -1;
+        program.input_fd = -1;
     }
     remember(which);
     join_finished_watchers();
@@ -103,7 +104,10 @@ Value start(const ProgramHandle &which, const std::string &name, bool hidden, Ex
     const int wake = eventfd(0, EFD_CLOEXEC | EFD_NONBLOCK);
     ProgramStart begun;
     std::string the_machine_said;
-    if (wake < 0 || pipe2(input_ends, O_CLOEXEC) != 0)
+    if (wake < 0)
+        the_machine_said = std::string("the machine would not make the event its input is woken by: ") +
+                           std::strerror(errno);
+    else if (pipe2(input_ends, O_CLOEXEC) != 0)
         the_machine_said = std::string("the machine would not make a pipe for its input: ") + std::strerror(errno);
     else if (!hidden && pipe2(output_ends, O_CLOEXEC) != 0)
         the_machine_said = std::string("the machine would not make a pipe for its output: ") + std::strerror(errno);
@@ -135,6 +139,7 @@ Value start(const ProgramHandle &which, const std::string &name, bool hidden, Ex
         program.pid = begun.pid;
         program.pidfd = begun.pidfd;
         program.input_wake = wake;
+        program.input_fd = input_ends[1];
     }
     program.ended_signal.notify_all();   // a stop_it() waiting for the pid
     auto finished = std::make_shared<std::atomic<bool>>(false);
@@ -158,16 +163,23 @@ Value start(const ProgramHandle &which, const std::string &name, bool hidden, Ex
             const std::lock_guard<std::mutex> hold(program.lock);
             signal_the_program(program, SIGKILL);
         }
-        int status = 0;
-        while (waitpid(begun.pid, &status, 0) < 0 && errno == EINTR) {
+        // WAITED FOR WITHOUT BEING REAPED, then reaped under the lock, as the watcher does: while
+        // program.pid names it, the pid is its own or its zombie's, never one handed out again.
+        siginfo_t gone{};
+        while (waitid(P_PID, static_cast<id_t>(begun.pid), &gone, WEXITED | WNOWAIT) < 0 && errno == EINTR) {
         }
         {
             const std::lock_guard<std::mutex> hold(program.lock);
+            int status = 0;
+            while (waitpid(begun.pid, &status, 0) < 0 && errno == EINTR) {
+            }
+            program.pid = 0;
             close_satls_ends();
             if (begun.pidfd >= 0)
                 close(begun.pidfd);
             program.pidfd = -1;
             program.input_wake = -1;
+            program.input_fd = -1;
         }
         never_ran(program, run, 126,
                   std::string("the machine would not make a thread to watch it: ") + std::strerror(refused));
@@ -238,6 +250,18 @@ Value pass(const ProgramHandle &which, const Value &given, const std::string &na
     const std::lock_guard<std::mutex> hold(program.lock);
     if (!program.running() || program.input_closing || program.input_gone)
         return Value::of_bool(false);
+    // A PROGRAM THAT HAS CLOSED ITS OWN INPUT is seen here, and not only once a write to it fails (the
+    // review of steps 2-5: after `exec 0<&-`, pass() answered true and the line went nowhere). A pipe
+    // whose reading end has gone says POLLERR to its writer.
+    if (program.input_fd >= 0) {
+        pollfd input{program.input_fd, 0, 0};
+        if (poll(&input, 1, 0) > 0 && (input.revents & POLLERR) != 0) {
+            program.input_gone = true;
+            program.input_waiting.clear();
+            program.input_from = 0;
+            return Value::of_bool(false);
+        }
+    }
     program.input_waiting += typed;
     if (program.input_wake >= 0) {
         const std::uint64_t one = 1;
@@ -259,20 +283,30 @@ Value join(const ProgramHandle &which, ExpressionContext &context)
         const std::uint64_t run = program.runs_started;
         program.joined = true;   // "both .start() and .join()": this run's join was written, and reached
         close_the_input(program);
-        while (program.runs_ended < run) {
-            program.ended_signal.wait_for(hold, kJoinLooksUp);
-            if (stop_of_this_thread != nullptr && stop_of_this_thread->load(std::memory_order_relaxed)) {
-                context.refuse(thread_stopped, "a join() on a thread asked to stop");
-                context.reported = true;
-                return Value();
+        if (program.runs_ended >= run) {
+            code = program.code;   // it had ended, and nothing has started since: the code is its own
+        } else {
+            // ITS OWN ENDING, written by whatever ends this run -- not `code`, which a start() on another
+            // thread may clear before this wakes (the review of steps 2-5).
+            const satellite_program::Ending &mine = program.wait_on(run);
+            while (!mine.ended) {
+                program.ended_signal.wait_for(hold, kJoinLooksUp);
+                if (stop_of_this_thread != nullptr && stop_of_this_thread->load(std::memory_order_relaxed)) {
+                    program.done_waiting(run);
+                    context.refuse(thread_stopped, "a join() on a thread asked to stop");
+                    context.reported = true;
+                    return Value();
+                }
+                if (program_quit().load(std::memory_order_relaxed)) {
+                    program.done_waiting(run);
+                    context.refuse(program_returned, "a join() when satellite.return(satellite) was reached");
+                    context.reported = true;
+                    return Value();
+                }
             }
-            if (program_quit().load(std::memory_order_relaxed)) {
-                context.refuse(program_returned, "a join() when satellite.return(satellite) was reached");
-                context.reported = true;
-                return Value();
-            }
+            code = mine.code;
+            program.done_waiting(run);
         }
-        code = program.code;
     }
     forget(which);
     return Value::of_number(satellite_number::from_signed(code));
@@ -284,23 +318,50 @@ Value join(const ProgramHandle &which, ExpressionContext &context)
 // killed five seconds later if it has not gone -- and then answered as join() answers, with its
 // exit code: 143 for SIGTERM, 137 for SIGKILL, its own when it had already ended. It counts as
 // joined: a program ended on purpose is not one nothing waited for.
+//
+// THE RUN GOING WHEN IT WAS REACHED, and that one alone. A run another thread starts once this one has
+// ended is that thread's to join -- the end of the run reports it if nothing does -- and its code is
+// not this one's (the review of steps 2-5: an end() that raced a restart answered 0, and the restarted
+// run counted as joined).
 Value end(const ProgramHandle &which)
 {
     satellite_program &program = *which;
+    std::uint64_t run = 0;
+    long long code = 0;
+    bool had_ended = false;
     {
         const std::lock_guard<std::mutex> hold(program.lock);
+        run = program.runs_started;
         program.joined = true;
         close_the_input(program);
+        had_ended = program.runs_ended >= run;
+        if (had_ended)
+            code = program.code;
+        else
+            program.wait_on(run);
     }
-    stop_it(program);
-    long long code = 0;
-    {
+    if (!had_ended) {
+        stop_it(program, run);   // answers once this run has ended
         const std::lock_guard<std::mutex> hold(program.lock);
-        program.joined = true;   // and a run another thread started meanwhile is this one's too
-        code = program.code;
+        if (const auto mine = program.endings.find(run); mine != program.endings.end())
+            code = mine->second.code;
+        program.done_waiting(run);
     }
     forget(which);
     return Value::of_number(satellite_number::from_signed(code));
+}
+
+// ONE OF end()'s FOUR NAMES, or one of join()'s three -- each its own code since the review of steps
+// 2-5, so a spacesuit's quit and shutdown, or code and return, stay two names.
+bool is_end(token::Code method)
+{
+    return method == token::end_token || method == token::exit_token || method == token::quit_token ||
+           method == token::shutdown_token;
+}
+
+bool is_join(token::Code method)
+{
+    return method == token::join_token || method == token::code_token || method == token::return_token;
 }
 
 } // namespace
@@ -373,8 +434,7 @@ int program_method_arity(token::Code method)
 {
     if (method == token::start_token || method == token::pass_token)
         return 1;                        // start() or start("hide"); pass(text)
-    if (method == token::ok_token || method == token::error_text_token || method == token::join_token ||
-        method == token::code_token || method == token::end_token)
+    if (method == token::ok_token || method == token::error_text_token || is_join(method) || is_end(method))
         return 0;
     return -1;
 }
@@ -450,7 +510,7 @@ Value call_program_method(token::Code method, const ProgramHandle &which, const 
         return Value::of_bool(could_start);
     if (method == token::error_text_token)
         return a_string(why);
-    if (method == token::end_token)
+    if (is_end(method))
         return end(which);
     if (method == token::pass_token)
         return pass(which, arguments.front(), name, context);
