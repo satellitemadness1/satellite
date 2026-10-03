@@ -1,9 +1,11 @@
 # window_and_extras.py -- satl_18_vars as plain Python, for race_windows.cpp: the same 18
 # variables, one method for each of the satl file's capsules, the object made ten times.
 #
-# open_window() makes a window and closes it on the next line, as the satl file's does, so neither
-# language ever draws one (checked 2026-10-03: satl 0 of 10 drawn, Tk 0 of 10 mapped). Each tk.Tk()
-# is a whole Tcl interpreter and display connection; satl starts its GTK once, at its first window.
+# open_window() makes a window, puts it on the screen with update() -- which waits until the window
+# manager says it is there -- and destroys it (checked 2026-10-03: 10 of 10 mapped). satl's
+# open_window() closes its window on the line after satellite.window.new, which does not wait for it
+# to be drawn, and on a test compositor none of its ten was. Each tk.Tk() is a whole Tcl interpreter
+# and display connection; satl starts its GTK once, at its first window.
 import subprocess
 import sys
 import threading
@@ -87,6 +89,7 @@ class py_18_vars:
 
     def open_window(self):
         self.my_window = tk.Tk()
+        self.my_window.update()
         self.my_window.destroy()
 
     def flip_bool(self):
