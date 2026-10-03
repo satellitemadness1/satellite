@@ -2,7 +2,9 @@ satellite.include(satellite)
 
 // experiments/quad_test/quad_test.satl -- WORDS, WHAT EACH ONE IS, AND THE CONNECTIONS BETWEEN THEM.
 //
-//     satl quad_test.satl
+//     satl quad_test.satl              the nine sentences below
+//     satl quad_test.satl some.txt     every sentence of a text file (the author: "we can still try
+//                                      to feed in wikipedia at first anyways")
 //
 // THE AUTHOR, 2026-10-03, in his own order:
 //
@@ -32,7 +34,9 @@ satellite.include(satellite)
 //
 // NO && IN A CONDITION: satl 0153 has not built it yet (`& | << >> !! are undecided`), so two
 // conditions are two ifs, one inside the other. A map handed to a capsule is a copy, so a capsule
-// that adds to one hands it back. And a map has no .to_string(), so one is shown on a line of its own.
+// that adds to one hands it back -- which is why the counts live in an OBJECT (counts, below): an
+// object is a reference, and its own capsule changes its own map in place. And a map has no
+// .to_string(), so one is shown on a line of its own.
 
 // THE CONNECTION, AND EVERY THING ABOUT IT. One map, `about`, a row a thing, so a new thing is a
 // new row and the spacesuit never has to grow a field for it.
@@ -204,45 +208,85 @@ satellite.capsule remember(satellite.container.list words, satellite.container.l
 }
 
 // ---------------------------------------------------------------------------------------------
-// 3. WHICH WORDS ARE FOUND WITH WHICH (before 2, because 2 uses it)
+// 3. WHICH WORDS ARE FOUND WITH WHICH (before 2, because 2 asks it)
 // ---------------------------------------------------------------------------------------------
 
-satellite.capsule count_one(satellite.container.map together, satellite.variable.string a, satellite.variable.string b)
+// WHICH WORDS ARE FOUND WITH WHICH, IN AN OBJECT. Handed to a capsule, a map is copied in and copied
+// back out, and counting Wikipedia that way would copy every count there is for every pair counted.
+// An object is a reference: count() changes this object's own map where it stands.
+satellite.spacesuit counts()
 {
-    satellite.statement.if(together.contains(a) == satellite.bool.false)
+    satellite.protected
     {
-        together[a] = satellite.container.map()
+        satellite.container.map together = satellite.container.map()
+        satellite.variable.number pairs = 0
     }
-    satellite.statement.if(together[a].contains(b))
-    {
-        together[a][b] = together[a][b] + 1
-    }
-    satellite.statement.else
-    {
-        together[a][b] = 1
-    }
-    satellite.return(together)
-}
 
-// EVERY PAIR OF WORDS IN EVERY SENTENCE, counted both ways round.
-satellite.capsule count_together(satellite.container.list sentences)
-{
-    satellite.container.map together = satellite.container.map()
-    satellite.statement.for(satellite.variable.number s = 1; s <= sentences.size; s++)
+    satellite.public
     {
-        satellite.container.list words = words_of(sentences[s])
-        satellite.statement.for(satellite.variable.number i = 1; i <= words.size; i++)
+        satellite.capsule count(satellite.variable.string a, satellite.variable.string b)
         {
-            satellite.statement.for(satellite.variable.number j = 1; j <= words.size; j++)
+            satellite.statement.if(together.contains(a) == satellite.bool.false)
             {
-                satellite.statement.if(i != j)
+                together[a] = satellite.container.map()
+            }
+            satellite.statement.if(together[a].contains(b))
+            {
+                together[a][b] = together[a][b] + 1
+            }
+            satellite.statement.else
+            {
+                together[a][b] = 1
+            }
+            pairs = pairs + 1
+        }
+
+        // EVERY PAIR OF WORDS IN ONE SENTENCE, counted both ways round.
+        satellite.capsule count_sentence(satellite.container.list words)
+        {
+            satellite.statement.for(satellite.variable.number i = 1; i <= words.size; i++)
+            {
+                satellite.statement.for(satellite.variable.number j = 1; j <= words.size; j++)
                 {
-                    together = count_one(together, words[i], words[j])
+                    satellite.statement.if(i != j)
+                    {
+                        count(words[i], words[j])
+                    }
                 }
             }
         }
+
+        satellite.capsule seen(satellite.variable.string a, satellite.variable.string b)
+        {
+            satellite.statement.if(together.contains(a))
+            {
+                satellite.statement.if(together[a].contains(b))
+                {
+                    satellite.return(together[a][b])
+                }
+            }
+            satellite.return(0)
+        }
+
+        satellite.capsule found_with(satellite.variable.string a)
+        {
+            satellite.statement.if(together.contains(a))
+            {
+                satellite.return(together[a])
+            }
+            satellite.return(satellite.container.map())
+        }
+
+        satellite.capsule words_counted()
+        {
+            satellite.return(together.size)
+        }
+
+        satellite.capsule pairs_counted()
+        {
+            satellite.return(pairs)
+        }
     }
-    satellite.return(together)
 }
 
 // ---------------------------------------------------------------------------------------------
@@ -294,7 +338,7 @@ satellite.capsule kind_of(satellite.variable.string from_is, satellite.variable.
 // moment the two words are -- where they stand, what each is, how often the two are found
 // together; the rest wait until both words are known, and then come all at once.
 satellite.capsule connections_of(satellite.container.list words, satellite.container.list kinds, satellite.container.list how,
-                                 satellite.container.map together)
+                                 counts together)
 {
     satellite.container.list links = satellite.container.list()
     satellite.statement.for(satellite.variable.number i = 1; i <= words.size; i++)
@@ -306,7 +350,7 @@ satellite.capsule connections_of(satellite.container.list words, satellite.conta
             link.set_text("to is", kinds[j])
             link.set_text("from found by", how[i])
             link.set_text("to found by", how[j])
-            link.set_number("seen together", together[words[i]][words[j]])
+            link.set_number("seen together", together.seen(words[i], words[j]))
             satellite.variable.string filled = "nothing more yet: one of the two words is not known"
             satellite.statement.if(kinds[i] != "not known yet")
             {
@@ -368,7 +412,7 @@ satellite.capsule travel(satellite.container.list words, satellite.container.lis
 
 // ONE SENTENCE: what each word is, its connections, and where travelling along them goes -- shown
 // when `shown` says so, and read either way, so what it teaches reaches the sentences after it.
-satellite.capsule show(satellite.variable.string sentence, satellite.container.map known, satellite.container.map together,
+satellite.capsule show(satellite.variable.string sentence, satellite.container.map known, counts together,
                        satellite.container.map remembered, satellite.variable.bool shown)
 {
     satellite.container.list words = words_of(sentence)
@@ -400,27 +444,85 @@ satellite.capsule show(satellite.variable.string sentence, satellite.container.m
     satellite.return(remember(words, kinds, how, remembered))
 }
 
-satellite.capsule satellite.main()
+// EVERY SENTENCE OF A TEXT FILE: a line at a time, each line cut at every ". ".
+satellite.capsule sentences_in(satellite.variable.string path)
+{
+    satellite.container.list sentences = satellite.container.list()
+    satellite.variable.file text = satellite.file.open(path, "text")
+    satellite.statement.for(satellite.variable.number i = 1; i <= text.size; i++)
+    {
+        satellite.variable.string line = text[i]
+        satellite.container.list pieces = line.split(". ")
+        satellite.statement.for(satellite.variable.number k = 1; k <= pieces.size; k++)
+        {
+            satellite.variable.string piece = pieces[k]
+            satellite.statement.if(piece.trim() != "")
+            {
+                sentences.append(piece.trim())
+            }
+        }
+    }
+    text.close()
+    satellite.return(sentences)
+}
+
+satellite.capsule satellite.main(satellite.variable.arguments x)
 {
     satellite.container.list sentences = {"hello, my name is madness", "my name is madness", "that is the cat",
                                           "that is my dog", "the dog is a dog", "hi, your name is the zorp",
                                           "zorp is that", "madness wrote satellite", "he is a person"}
     satellite.container.list shown = {1, 7, 9}
+    satellite.statement.if(x.length > 1)
+    {
+        sentences = sentences_in(x.argument_1)
+        shown = {1}
+    }
     satellite.container.map known = known_before()
-    satellite.container.map together = count_together(sentences)
 
-    // EVERY SENTENCE IN ORDER, and what each one works out carried into the next.
+    // EVERY PAIR IN EVERY SENTENCE, counted once, before any sentence is shown.
+    counts together
+    satellite.statement.for(satellite.variable.number s = 1; s <= sentences.size; s++)
+    {
+        together.count_sentence(words_of(sentences[s]))
+    }
+
+    // EVERY SENTENCE IN ORDER, and what each one works out carried into the next. A file's are read
+    // without a line each, there being so many of them.
     satellite.container.map remembered = satellite.container.map()
     satellite.statement.for(satellite.variable.number s = 1; s <= sentences.size; s++)
     {
-        remembered = show(sentences[s], known, together, remembered, shown.contains(s))
+        satellite.statement.if(shown.contains(s))
+        {
+            remembered = show(sentences[s], known, together, remembered, satellite.bool.true)
+        }
+        satellite.statement.else
+        {
+            satellite.statement.if(x.length == 1)
+            {
+                remembered = show(sentences[s], known, together, remembered, satellite.bool.false)
+            }
+        }
     }
 
-    satellite.console.display("\nWHAT THE SENTENCES TAUGHT THE ONES AFTER THEM:")
-    satellite.console.display(remembered)
-    satellite.console.display("\nWHAT \"is\" IS FOUND WITH, over all " + sentences.size.to_string() + " sentences:")
-    satellite.console.display(together["is"])
-    satellite.console.display("    with \"that\" " + together["is"]["that"].to_string() + " times, with \"the\" " +
-                              together["is"]["the"].to_string() + " times -- each count a thing about a connection to \"is\"")
+    satellite.console.display("\n" + sentences.size.to_string() + " sentences, " + together.words_counted().to_string() +
+                              " different words, " + together.pairs_counted().to_string() + " pairs counted")
+    satellite.statement.if(x.length == 1)
+    {
+        satellite.console.display("\nWHAT THE SENTENCES TAUGHT THE ONES AFTER THEM:")
+        satellite.console.display(remembered)
+    }
+    satellite.container.map with_is = together.found_with("is")
+    satellite.console.display("\nWHAT \"is\" IS FOUND WITH, the most often last:")
+    satellite.container.list most = with_is.sort("value").keys
+    satellite.variable.number first = 1
+    satellite.statement.if(most.size > 10)
+    {
+        first = most.size - 9
+    }
+    satellite.statement.for(satellite.variable.number k = first; k <= most.size; k++)
+    {
+        satellite.variable.string word = most[k]
+        satellite.console.display("    " + word + ": " + with_is[word].to_string())
+    }
     satellite.return(satellite)
 }
