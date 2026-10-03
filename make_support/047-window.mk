@@ -249,6 +249,7 @@ endif
 ifeq ($(HAVE_GTK),yes)
 GTK_SOURCES = $(SATELLITE)/satellite_variable_window/window_desk.cpp \
               $(SATELLITE)/satellite_variable_window/satellite_window.cpp \
+              $(SATELLITE)/satellite_variable_window/window_open.cpp \
               $(SATELLITE)/satellite_variable_window/window_pieces.cpp \
               $(SATELLITE)/satellite_variable_window/window_asks.cpp \
               $(SATELLITE)/satellite_variable_window/window_state.cpp \

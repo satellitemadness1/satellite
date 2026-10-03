@@ -1198,6 +1198,10 @@ answer; it reports the asked-for size and **says so in the documentation**.
 
 **AS BUILT** — `.resize(wide, tall)`, `.width`, `.height`, `.fullscreen`.
 
+**AND `.open()`, 2026-10-03** — the window that was declared, on the screen and
+drawn before the next line, and a window that has closed put back with its
+title, size, look and capsules: SATELLITE_WINDOW.md Part 2c.
+
 **`.wide` AND `.tall` WERE SPELLED `.width` AND `.height`**, and not by
 preference: **`wide_token` already exists** at `0x9C40` and is the marker for a
 32-bit character in a payload (D3.1). Two things called `wide` in one registry

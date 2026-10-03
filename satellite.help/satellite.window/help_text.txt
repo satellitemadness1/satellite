@@ -31,10 +31,14 @@ milliseconds, and .ask(a_capsule, "sure?") and .choose_a_file(a_capsule), whose
 answer is its_window.answer. The capsule may declare nothing, the piece, or the
 piece and its window. .press() is your program pressing a button itself.
 
-A window also has .close(), .focus(), .resize(1024, 768), .fullscreen(1) and
-.message("saved"). Every piece but a menu has .width, .height, .colour("red")
-(or .color), .background("#222228") and .font("IBM Plex Mono", 12). A canvas
-draws with .line, .box, .circle, .arc and .write; .clear() and .save("a.png").
+A window also has .open(), .close(), .focus(), .resize(1024, 768),
+.fullscreen(1) and .message("saved"). new puts a window up and goes straight on;
+.open() waits until it has been drawn, and puts back a window that has closed:
+its title, its size and its capsules come back, and what was in it closed with
+it and is appended again. Every piece but a menu has .width, .height,
+.colour("red") (or .color), .background("#222228") and .font("IBM Plex Mono",
+12). A canvas draws with .line, .box, .circle, .arc and .write; .clear() and
+.save("a.png").
 
 satl refuses a wrong argument count, a method no piece has and a capsule nobody
 wrote before a line runs, and a method this piece lacks (.resize on a button)

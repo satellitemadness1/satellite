@@ -19,6 +19,7 @@
 #include "satellite_window.hpp"
 
 #include "window_desk.hpp"
+#include "window_frame.hpp"
 
 #include "../bytecode/capsule_key.hpp"
 
@@ -212,7 +213,56 @@ void it_was_clicked(GtkGestureClick *, gint, gdouble x, gdouble y, gpointer user
                                static_cast<long long int>(std::floor(y)));
 }
 
+// THE KEYBOARD AND THE MOUSE, WIRED ONTO A PIECE'S WIDGET. ON THE DESK. Here
+// rather than inside window_key and window_clicked because a window opened
+// again (`.open()`) is wired by the same two lines: one way to add a
+// controller, or the reopened window is the one that hears differently.
+//
+// THE CONTROLLER IS ADDED ONCE. GTK4 has no key signal on a widget --
+// everything is a controller you add -- and adding a second would run the
+// capsule twice for one key. The `destroy` handler sets both flags back,
+// because the controllers go with the widget they were added to.
+//
+// AND NOTHING IS ADDED TO A WIDGET THAT HAS GONE (a fresh reader, 2026-10-03).
+// A person can close the window between `.key`'s check on the interpreter's
+// thread and this job on the desk's; GTK would refuse the controller with a
+// critical, and the flag set anyway would have kept a window opened again from
+// ever hearing a key -- with nothing said. The NAME is kept by the caller, so
+// `.open()` wires it then.
+void hear_the_keys(satellite_window &window)
+{
+    if (window.key_is_connected || window.widget == nullptr)
+        return;
+    GtkEventController *hears = gtk_event_controller_key_new();
+    g_signal_connect(hears, "key-pressed", G_CALLBACK(a_key_went_down), &window);
+    gtk_widget_add_controller(static_cast<GtkWidget *>(window.widget), hears);
+    window.key_is_connected = true;
+}
+
+void notice_clicks(satellite_window &piece)
+{
+    if (piece.click_is_connected || piece.widget == nullptr)
+        return;
+    GtkGesture *notices = gtk_gesture_click_new();
+    g_signal_connect(notices, "released", G_CALLBACK(it_was_clicked), &piece);
+    gtk_widget_add_controller(static_cast<GtkWidget *>(piece.widget), GTK_EVENT_CONTROLLER(notices));
+    piece.click_is_connected = true;
+}
+
 } // namespace
+
+void the_window_answers_again(satellite_window &which)
+{
+    if (!which.when_a_key.empty())
+        hear_the_keys(which);
+    if (!which.when_clicked.empty())
+        notice_clicks(which);
+    // THE CLOCK STARTS WITH THE WINDOW AS IT STOPPED WITH IT (GTK-13): the
+    // `destroy` handler removed the source and zeroed `tick`, so a window opened
+    // again keeps time from the moment it is back, at the rate it was given.
+    if (!which.when_it_ticks.empty() && which.tick_every > 0 && which.tick == 0)
+        which.tick = g_timeout_add(which.tick_every, it_ticked, &which);
+}
 
 bool window_pressed(satellite_window &which, const std::string &capsule, std::string &why)
 {
@@ -362,6 +412,7 @@ bool window_every(satellite_window &which, const std::string &capsule, long long
         // g_main_loop_run there, so the source fires on the desk and nowhere
         // else.
         raw->tick = g_timeout_add(how_often, it_ticked, raw);
+        raw->tick_every = how_often;
     });
     return true;
 }
@@ -380,15 +431,7 @@ bool window_key(satellite_window &which, const std::string &capsule, std::string
     satellite_window *raw = &which;
     on_the_desk([raw, &capsule] {
         raw->when_a_key = capsule;
-        // THE CONTROLLER IS ADDED ONCE. GTK4 has no key signal on a widget --
-        // everything is a controller you add -- and adding a second would run
-        // the capsule twice for one key.
-        if (raw->key_is_connected)
-            return;
-        GtkEventController *hears = gtk_event_controller_key_new();
-        g_signal_connect(hears, "key-pressed", G_CALLBACK(a_key_went_down), raw);
-        gtk_widget_add_controller(static_cast<GtkWidget *>(raw->widget), hears);
-        raw->key_is_connected = true;
+        hear_the_keys(*raw);
     });
     return true;
 }
@@ -414,13 +457,7 @@ bool window_clicked(satellite_window &which, const std::string &capsule, std::st
     satellite_window *raw = &which;
     on_the_desk([raw, &capsule] {
         raw->when_clicked = capsule;
-        if (raw->click_is_connected)
-            return;
-        GtkGesture *notices = gtk_gesture_click_new();
-        g_signal_connect(notices, "released", G_CALLBACK(it_was_clicked), raw);
-        gtk_widget_add_controller(static_cast<GtkWidget *>(raw->widget),
-                                  GTK_EVENT_CONTROLLER(notices));
-        raw->click_is_connected = true;
+        notice_clicks(*raw);
     });
     return true;
 }

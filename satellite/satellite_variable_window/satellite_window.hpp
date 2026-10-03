@@ -296,6 +296,15 @@ public:
     std::string text;
     bool on_the_screen = false;   // false once it is closed, whoever closed it
 
+    // WHETHER GTK HAS DRAWN THIS WINDOW since it was last put on a screen
+    // (`.open()`, 2026-10-03) -- which is what `.open()` waits for, because a
+    // window asked for and closed on the next line is never drawn at all
+    // (experiments/window_test/windows_10.satl: ten asked for, none drawn).
+    // WRITTEN ON THE DESK UNDER ITS MUTEX, out of the first frame, and read
+    // under the same mutex (window_desk.hpp, the_desk_waits_until_it_is_drawn);
+    // set back to false by the interpreter only while no frame of it exists.
+    bool has_been_drawn = false;
+
     // THE CAPSULE A PRESS RUNS, by name, and empty for a piece that answers
     // nobody (WIN-11). A NAME AND NOT A CAPSULE: a capsule is arm 5 of the
     // object model and nothing in the language makes one yet, and the walker
@@ -331,6 +340,10 @@ public:
     // no way to be stopped.
     std::string when_it_ticks;
     unsigned int tick = 0;
+    // AND HOW OFTEN, kept so that a window closed and opened again keeps time
+    // again (`.open()`): the clock stops with the window and starts with it.
+    // The desk's, like `tick`.
+    unsigned int tick_every = 0;
 
     // AND THE KEYBOARD AND THE MOUSE (GTK-14). `last_key` is what `.key` reads
     // back, and it is WRITTEN BY THE INTERPRETER -- window_calls.cpp copies it
@@ -947,6 +960,26 @@ bool window_choose_a_file(satellite_window &which, const std::string &capsule, s
 bool window_ask(satellite_window &which, const std::string &question, const std::string &capsule,
                 std::string &why);
 
+// `my_window.open()` -- THE WINDOW THAT WAS DECLARED, ON THE SCREEN (the author,
+// 2026-10-03: "window_object.open() and it opens the window object that was
+// already declared", gtkcar/satl_window.satl; 003 wrote it as
+// `my_terminal.open() // window appears`). window_open.cpp.
+//
+// IT ANSWERS ONCE THE WINDOW HAS BEEN DRAWN. `satellite.window.new` asks the
+// compositor and returns, so a window closed on the next line was never drawn
+// and nobody saw it; `.open()` is the line after which a person can.
+//
+// A WINDOW THAT IS OPEN IS WAITED FOR, AND NOTHING ELSE IS DONE TO IT -- not
+// brought to the front, which is `.focus()`. A WINDOW THAT HAS CLOSED IS PUT
+// BACK: the same handle, a new frame, with what belongs to the WINDOW -- its
+// title, the size it last asked for, what it wears, and the capsules it answers
+// (.key, .clicked, .every, .closed). WHAT WAS IN IT CLOSED WITH IT and stays
+// closed -- its pieces and its menus -- and is appended again.
+//
+// A CONSOLE THAT HAS CLOSED IS REFUSED: its pty and its screen went with it,
+// and satellite.console.new is what makes another. A piece is refused: it is
+// on a screen when it is appended into a window.
+bool window_open(satellite_window &which, std::string &why);
 bool window_close(satellite_window &which, std::string &why);
 bool window_focus(satellite_window &which, std::string &why);
 

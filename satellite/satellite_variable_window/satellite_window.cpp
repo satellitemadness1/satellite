@@ -1,9 +1,10 @@
 // satellite/satellite_variable_window/satellite_window.cpp -- what a program can
 // do to a WINDOW. SATELLITE_WINDOW.md WIN-3.
 //
-// ELEVEN FILES NOW, and this one is the WINDOW. It makes one, closes it, focuses
+// TWELVE FILES NOW, and this one is the WINDOW. It makes one, closes it, focuses
 // it, titles it, appends into it and holds the run open:
 //
+//   window_open.cpp      OPENING one: .open(), and a closed window put back
 //   window_pieces.cpp    MAKING a piece -- four factories, one an argument shape
 //   window_asks.cpp      a piece's WORDS: .text and .path
 //   window_state.cpp     what a piece is SET TO: .on, .value, .chosen
@@ -50,6 +51,12 @@ void it_was_closed(GtkWidget *, gpointer user_data)
         g_source_remove(window->tick);
         window->tick = 0;
     }
+    // AND ITS KEY CONTROLLER AND CLICK GESTURE GO WITH THE GtkWindow they were
+    // added to, so the flags that say "already added" go too. A window opened
+    // again (`.open()`) adds them afresh; left true, `.key` on it would find
+    // its flag set and add nothing, and keys would stop with nothing said.
+    window->key_is_connected = false;
+    window->click_is_connected = false;
     // THE CAPSULE IS QUEUED BEFORE THE DESK LETS GO, and the order matters: the
     // queue carries a HANDLE to the window, and the_desk_let_go_of drops the
     // desk's own reference. Queueing second would still work -- the program's
@@ -71,9 +78,30 @@ bool still_there(const satellite_window &which, std::string &why)
     return false;
 }
 
-// WHAT A WINDOW'S COLUMN HOLDS: the GtkFixed that `.append` places pieces in
-// (WIN-3). ON THE DESK, from frame_new. A console fills its column with a
-// terminal instead (window_console.cpp), which is the whole difference.
+// A WINDOW'S FIRST FRAME (`.open()`, 2026-10-03). ON THE DESK, at the start of
+// that frame -- and GTK finishes it in the same breath: gdk_frame_clock_frame()
+// runs update, layout, paint and after-paint in one call (gdkframeclock.c:1304),
+// and GDK's Wayland backend hands the buffer to the compositor in after-paint.
+// So the desk does nothing else until it is drawn, and a program released here
+// meets a window that is on the screen by the time its next line reaches the
+// desk. THE FIRST FRAME IS A REAL ONE: GDK freezes a new toplevel's clock until
+// the compositor has placed it (gdktoplevel-wayland.c:981, thawed at the first
+// configure, gdksurface-wayland.c:1025), so no frame is drawn for nobody.
+//
+// A TICK, AND NOT THE OBVIOUS TWO. `render` on the surface cannot be listened
+// to after GTK: its own handler answers TRUE and the accumulator stops there
+// (gdksurface.c:716). `after-paint` on the frame clock can, but its handler
+// would hold a pointer into this window on a clock that is not the window's,
+// and a window closed before it was ever drawn would leave it there. A tick
+// callback is the WIDGET'S, and GTK takes it down with the widget.
+gboolean it_was_drawn(GtkWidget *, GdkFrameClock *, gpointer user_data)
+{
+    the_desk_saw_it_drawn(static_cast<satellite_window *>(user_data));
+    return G_SOURCE_REMOVE;   // once: it is the first frame that was waited for
+}
+
+} // namespace
+
 void a_fixed_to_place_pieces_in(satellite_window &made, GtkWidget *, GtkWidget *column)
 {
     GtkWidget *inside = gtk_fixed_new();
@@ -82,7 +110,42 @@ void a_fixed_to_place_pieces_in(satellite_window &made, GtkWidget *, GtkWidget *
     made.inside = inside;
 }
 
-} // namespace
+void put_the_frame_up(satellite_window &which,
+                      void (*fill)(satellite_window &made, GtkWidget *window, GtkWidget *column))
+{
+    // NO GtkApplication, ON PURPOSE (hello-static.c:17-22): GtkApplication is
+    // GApplication, which registers on the D-Bus session bus, and a machine
+    // that satl is shipped to may have none. gtk_window_new() needs none of it.
+    GtkWidget *window = gtk_window_new();
+    gtk_window_set_title(GTK_WINDOW(window), which.title.c_str());
+    gtk_window_set_default_size(GTK_WINDOW(window), which.asked_wide, which.asked_tall);
+    // GTK4 HAS NO ABSOLUTE POSITION IN A BOX, and `.append` places by
+    // coordinate, so every window holds a GtkFixed to put pieces into (WIN-3).
+    //
+    // INSIDE A VERTICAL BOX SINCE GTK-12, because a GtkWindow holds exactly
+    // one child and a menu bar has to go somewhere: window_menu.cpp puts
+    // the bar ABOVE the fixed in this column. With no menu the column holds
+    // only the fixed, expanded to fill it, and the fixed sits at the same
+    // 0,0 it did as the window's own child -- nothing measures or places
+    // differently, and press-a-button.sh's coordinates still land.
+    //
+    // WHAT THE COLUMN HOLDS IS THE CALLER'S (GTK-17): a fixed for a window,
+    // a terminal for a console. It goes in BEFORE `destroy` is connected --
+    // window_frame.hpp says why that order matters.
+    GtkWidget *column = gtk_box_new(GTK_ORIENTATION_VERTICAL, 0);
+    gtk_window_set_child(GTK_WINDOW(window), column);
+    which.widget = window;
+    fill(which, window, column);
+    g_signal_connect(window, "destroy", G_CALLBACK(it_was_closed), &which);
+    // WHAT THE WINDOW WEARS AND WHAT IT ANSWERS COME BACK WITH IT (`.open()`):
+    // nothing, for a window made a moment ago. Its stylesheet was never taken
+    // off the display -- the class it is keyed on is all a new frame needs.
+    if (!which.style_class.empty())
+        gtk_widget_add_css_class(window, which.style_class.c_str());
+    the_window_answers_again(which);
+    gtk_window_present(GTK_WINDOW(window));
+    gtk_widget_add_tick_callback(window, it_was_drawn, &which, nullptr);
+}
 
 WindowHandle frame_new(satellite_window::Piece which, const std::string &title,
                        unsigned long long int width, unsigned long long int height, std::string &why,
@@ -113,34 +176,7 @@ WindowHandle frame_new(satellite_window::Piece which, const std::string &title,
     the_desk_holds(made);
 
     satellite_window *raw = made.get();
-    const int wide = static_cast<int>(width), tall = static_cast<int>(height);
-    on_the_desk([raw, &title, wide, tall, fill] {
-        // NO GtkApplication, ON PURPOSE (hello-static.c:17-22): GtkApplication is
-        // GApplication, which registers on the D-Bus session bus, and a machine
-        // that satl is shipped to may have none. gtk_window_new() needs none of it.
-        GtkWidget *window = gtk_window_new();
-        gtk_window_set_title(GTK_WINDOW(window), title.c_str());
-        gtk_window_set_default_size(GTK_WINDOW(window), wide, tall);
-        // GTK4 HAS NO ABSOLUTE POSITION IN A BOX, and `.append` places by
-        // coordinate, so every window holds a GtkFixed to put pieces into (WIN-3).
-        //
-        // INSIDE A VERTICAL BOX SINCE GTK-12, because a GtkWindow holds exactly
-        // one child and a menu bar has to go somewhere: window_menu.cpp puts
-        // the bar ABOVE the fixed in this column. With no menu the column holds
-        // only the fixed, expanded to fill it, and the fixed sits at the same
-        // 0,0 it did as the window's own child -- nothing measures or places
-        // differently, and press-a-button.sh's coordinates still land.
-        //
-        // WHAT THE COLUMN HOLDS IS THE CALLER'S (GTK-17): a fixed for a window,
-        // a terminal for a console. It goes in BEFORE `destroy` is connected --
-        // window_frame.hpp says why that order matters.
-        GtkWidget *column = gtk_box_new(GTK_ORIENTATION_VERTICAL, 0);
-        gtk_window_set_child(GTK_WINDOW(window), column);
-        raw->widget = window;
-        fill(*raw, window, column);
-        g_signal_connect(window, "destroy", G_CALLBACK(it_was_closed), raw);
-        gtk_window_present(GTK_WINDOW(window));
-    });
+    on_the_desk([raw, fill] { put_the_frame_up(*raw, fill); });
     return made;
 }
 
@@ -198,7 +234,7 @@ bool window_append(satellite_window &into, const WindowHandle &piece, bool by_pl
             why = "it is closed";
         return false;
     }
-    if (piece == nullptr || piece->widget == nullptr) {
+    if (piece == nullptr) {
         why = "there is nothing here to append";
         return false;
     }
@@ -219,6 +255,18 @@ bool window_append(satellite_window &into, const WindowHandle &piece, bool by_pl
     if (!piece->is_drawn()) {
         why = "a menu is not appended -- it goes across the top of a window: "
               "my_window.menu(the_menu)";
+        return false;
+    }
+    // A PIECE WHOSE WINDOW CLOSED CLOSED WITH IT, and `.open()` puts the window
+    // back and not what was in it -- so the piece a program kept a name for is
+    // exactly the one it will try to put in again. Said by name, where "nothing
+    // here" was the whole answer until 2026-10-03. AFTER the frame and the menu
+    // above, which read only what the piece IS (a fresh reader, 2026-10-03): a
+    // closed WINDOW was never in one, and is told it goes inside nothing.
+    // window_methods.cpp gives this sentence S505, and finds it by its words.
+    if (piece->widget == nullptr) {
+        why = std::string(piece->piece_name()) + " closed with the window it was in -- a window opens "
+              "again, and what was in it is made again";
         return false;
     }
     if (piece->widget == into.widget) {

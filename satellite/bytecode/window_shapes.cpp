@@ -21,7 +21,7 @@ using token::Code;
 // this and it went stale the same afternoon it was written.
 std::string window_methods_are()
 {
-    return "a window has .append(piece, across, down), .close(), .focus(), .title(\"text\"), "
+    return "a window has .append(piece, across, down), .open(), .close(), .focus(), .title(\"text\"), "
            ".resize(wide, tall), .fullscreen and .ok; every piece has .width, .height, "
            ".colour(\"#00ff88\"), .background(...) and .font(\"a face\", 12); "
            "a row, a column or a grid has .append too -- .append(piece) for a row, "
@@ -49,6 +49,7 @@ int window_method_arity(Code method)
 {
     switch (method) {
     case token::append_token:  return 3;     // the piece, and where its centre goes
+    case token::open_token:    return 0;     // on the screen, and drawn, before the next line
     case token::close_token:   return 0;
     case token::focus_token:   return 0;
     case token::title_token:   return 1;     // written; read with no brackets

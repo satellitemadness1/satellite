@@ -16,9 +16,9 @@
 // bookkeeping (which nulls the handle's widgets) runs after it.
 //
 // GTK IS IN THIS HEADER, AND THAT IS ALLOWED HERE AND NOWHERE PUBLIC: it is
-// included by two files compiled only where pkg-config found gtk4
-// (satellite_window.cpp and window_console.cpp), and by nothing
-// satellite_object.hpp reaches.
+// included by four files compiled only where pkg-config found gtk4
+// (satellite_window.cpp, window_open.cpp, window_answers.cpp and
+// window_console.cpp), and by nothing satellite_object.hpp reaches.
 
 #include "satellite_window.hpp"
 
@@ -29,5 +29,25 @@ namespace satellite004 {
 WindowHandle frame_new(satellite_window::Piece which, const std::string &title,
                        unsigned long long int width, unsigned long long int height, std::string &why,
                        void (*fill)(satellite_window &made, GtkWidget *window, GtkWidget *column));
+
+// THE FRAME ITSELF, ON THE DESK: a GtkWindow with the handle's title and the
+// size it last asked for, its column filled by `fill`, `destroy` connected,
+// presented, and its first frame watched for. frame_new runs it the first time
+// a window is opened and window_open (`.open()`) every time after -- ONE place
+// that says what a window on a screen is, or the second opening would be the
+// one that forgot something.
+void put_the_frame_up(satellite_window &which,
+                      void (*fill)(satellite_window &made, GtkWidget *window, GtkWidget *column));
+
+// WHAT A WINDOW'S COLUMN HOLDS (WIN-3): the GtkFixed that `.append` places
+// pieces in. A console fills its column with a terminal instead.
+void a_fixed_to_place_pieces_in(satellite_window &made, GtkWidget *window, GtkWidget *column);
+
+// AND WHAT THE WINDOW ANSWERS, PUT BACK ON A NEW FRAME (window_answers.cpp).
+// ON THE DESK, from put_the_frame_up: a key controller if it had `.key`, a
+// click gesture if it had `.clicked`, its clock if it had `.every`. A window
+// the program has just made has none of them, so for one of those it does
+// nothing. `.closed` needs nothing here: the `destroy` handler reads its name.
+void the_window_answers_again(satellite_window &which);
 
 } // namespace satellite004

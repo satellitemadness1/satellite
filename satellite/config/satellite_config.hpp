@@ -82,7 +82,7 @@ inline std::vector<satellite_argument_row> return_arguments_vector()
     arguments_vector.push_back({"arguments.startup_display", 0, true, true});
     arguments_vector.push_back({"arguments.version", 4, false, false});
     arguments_vector.push_back({"arguments.revision", 8, false, false});
-    arguments_vector.push_back({"arguments.build", 155, false, false});
+    arguments_vector.push_back({"arguments.build", 159, false, false});
     arguments_vector.push_back({"arguments.object_bytes_max", 34359738368, false, false});
     arguments_vector.push_back({"arguments.threads_max", 1000000, false, false});
     // HOW MANY WARM THREADS START: THE MACHINE'S CORES TIMES THIS (the author, 2026-10-03): "set

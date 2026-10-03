@@ -2238,7 +2238,42 @@ headless build/window_method.satl > build/window_method.out 2>&1
 expect "a window has no .read_all, and the checker says so first" "27|" \
        "$?|$(grep -x before build/window_method.out)"
 expect "... and names what a window DOES have" 1 \
-       "$(tr '\n' ' ' < build/window_method.out | grep -cF 'a window has .append(piece, across, down), .close(), .focus()')"
+       "$(tr '\n' ' ' < build/window_method.out | grep -cF 'a window has .append(piece, across, down), .open(), .close(), .focus()')"
+
+# `my_window.open()` (the author, 2026-10-03, gtkcar/satl_window.satl): THE CHECKER
+# KNOWS IT, so the run gets as far as the window -- which, here, has no screen.
+# Before it was built this was refused before anything ran, as .read_all is above.
+# That it waits for the first frame and puts a closed window back was proved on a
+# compositor of its own, WAYLAND_DEBUG counting the buffers; check.sh opens no
+# window.
+cat > build/window_open.satl <<'WIN_EOF'
+satellite.include(satellite)
+satellite.capsule satellite.main()
+{
+    satellite.console.display("before")
+    satellite.variable.window w = satellite.window.new("a title", 450, 250)
+    w.open()
+    w.close()
+    w.open()
+    satellite.return(satellite)
+}
+WIN_EOF
+headless build/window_open.satl > build/window_open.out 2>&1
+expect "a window's .open() passes the checker, and the run reaches the window (S730 here, with no screen)" "50|before|1" \
+       "$?|$(grep -x before build/window_open.out)|$(grep -c 'S730: NO_DISPLAY' build/window_open.out)"
+cat > build/window_open_arity.satl <<'WIN_EOF'
+satellite.include(satellite)
+satellite.capsule satellite.main()
+{
+    satellite.console.display("before")
+    satellite.variable.window w = satellite.window.new("a title", 450, 250)
+    w.open("now")
+    satellite.return(satellite)
+}
+WIN_EOF
+headless build/window_open_arity.satl > build/window_open_arity.out 2>&1
+expect "... and .open(\"now\") is refused before anything runs: it takes nothing" "13|" \
+       "$?|$(grep -x before build/window_open_arity.out)"
 
 # THE WORDS ARE IN THE TABLE, at the numbers WIN-3 minted. 003 had these paths
 # and they were REMOVED and their numbers REASSIGNED, so a row here that read

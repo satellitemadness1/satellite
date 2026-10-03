@@ -63,6 +63,27 @@ void the_desk_let_go_of(satellite_window *window);
 // How many windows are on the screen right now.
 unsigned long long int windows_open();
 
+// IS IT STILL ON THE SCREEN -- asked under the desk's lock, the one the
+// `destroy` bookkeeping holds -- and when it is not and `put_it_back` is true,
+// the desk takes it back IN THE SAME BREATH (`.open()`): on the screen, not
+// drawn, held. A person's close cannot land between the question and the
+// answer, which an unlocked read of `on_the_screen` could not promise (a fresh
+// reader, 2026-10-03). Answers whether it was STILL on the screen; when it was
+// not and was taken back, the caller builds its frame.
+bool the_desk_still_holds(const WindowHandle &window, bool put_it_back);
+
+// A WINDOW'S FIRST FRAME, called on the DESK'S OWN THREAD out of it (`.open()`,
+// satellite_window.cpp's it_was_drawn) -- never through on_the_desk(), which
+// would be the desk waiting on itself.
+void the_desk_saw_it_drawn(satellite_window *window);
+
+// WAITS, ON THE INTERPRETER'S THREAD, until that window has been drawn -- or
+// has closed, because a window a person or the compositor took away before its
+// first frame will never have one. NO TIME LIMIT: a compositor that never
+// places a window is a desktop that is not drawing anything, and answering
+// "open" before it is would be the answer that is wrong and does not say so.
+void the_desk_waits_until_it_is_drawn(const satellite_window &window);
+
 // ---------------------------------------------------------------------------
 // SOMETHING HAPPENED, AND WHICH THREAD RUNS THE CAPSULE FOR IT (WIN-11, GTK-9).
 // ---------------------------------------------------------------------------

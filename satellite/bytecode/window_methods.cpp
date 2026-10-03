@@ -67,6 +67,7 @@ Value call_window_method(Code method, const WindowHandle &which, const std::vect
     bool went = false;
     switch (method) {
     case token::press_token: went = window_press(*window, why); break;
+    case token::open_token: went = window_open(*window, why); break;
     case token::close_token: went = window_close(*window, why); break;
     case token::focus_token: went = window_focus(*window, why); break;
     case token::title_token: {
@@ -377,6 +378,18 @@ Value call_window_method(Code method, const WindowHandle &which, const std::vect
                          !place_of(arguments[2], y, what + "'s down", context)))
             return Value();
         went = window_append(*window, *piece, by_place, x, y, why);
+        // A PIECE THAT CLOSED WITH ITS WINDOW GETS THE CODE THAT SAYS CLOSED.
+        // The tail below reads the RECEIVER, which is open, and would print
+        // types_do_not_meet under a sentence about closing -- the code and the
+        // sentence disagreeing, which `.save` above was fixed for too. TOLD
+        // APART BY THE SENTENCE, as `.save` is, and not by the piece being
+        // closed: a closed piece handed to the wrong shape of `.append` is
+        // refused for the shape first, and that is a kind that does not meet
+        // (a fresh reader, 2026-10-03).
+        if (!went && why.find("closed with the window it was in") != std::string::npos) {
+            context.refuse(window_is_closed, what + " could not be done -- " + why);
+            return Value();
+        }
         break;
     }
     default: break;

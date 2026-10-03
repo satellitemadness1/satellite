@@ -15,6 +15,13 @@ which thread runs it.** It was proved by clicking a real button three times on a
 real compositor, not reasoned about:
 `satellite/satellite_variable_window/press-a-button.sh`.
 
+**`my_window.open()` IS BUILT (2026-10-03).** The window that was declared,
+on the screen and DRAWN before the next line runs — and a window that has closed
+put back on it, the same handle with a new frame. `satellite.window.new` still
+shows its window as it always has. **Part 2c** is what it waits for, what comes
+back with a window and what does not; it was proved on a compositor of its own,
+WAYLAND_DEBUG counting the buffers.
+
 **WIN-1 IS ALSO BUILT (2026-09-20).** `make GTK=vendor` opens a window with no
 GTK stack loaded from the machine: xkeyboard-config, the IBM Plex Mono family,
 satl's own fonts.conf and GTK's schemas are carried as a GResource and spilled
@@ -748,6 +755,155 @@ than a page of them when the window finally closes.
   today, on the argument that a capsule's refusal is the program's refusal. The
   other answer is that a GUI reports and carries on — which is what every other
   GUI does, and which would need somewhere to put the report.
+
+---
+
+# Part 2c — `my_window.open()`, 2026-10-03
+
+The author: *"for satellite.window on a satellite.variable.window object, the
+user needs to be able to type in: window_object.open() and it opens the window
+object that was already declared"* — `gtkcar/satl_window.satl`:
+
+    satellite.variable.window local_window = satellite.window.new("gtkcar", 450, 250)
+
+    local_window.open()
+    local_window.close()
+
+003 had the same three lines for a console, in the author's own example
+(`old_versions/second_satellite/example/gui_example.satl`):
+`my_terminal.open() // window appears`. 004 had no `.open()` at all: the checker
+refused the line before anything ran, and `experiments/window_test/` carried a
+comment saying so.
+
+## `new` STILL SHOWS THE WINDOW — the reversible choice
+
+Part 2a's ruling stands — *"get a window to appear when the window syntax is
+called"* — so every program written since keeps its window with no line
+changed. **Whether `new` should stop showing a window until `.open()` (003's
+shape) is the author's.** It is one move, `put_the_frame_up` out of `frame_new`
+and into `.open()`, plus one decision: what the run waits for when a program
+declares a window and never opens it.
+
+## WHAT `.open()` DOES
+
+- **A window that is open: it waits until the window has been DRAWN**, and does
+  nothing else to it — bringing it to the front is `.focus()`. The wait is the
+  whole point. `new` asks the compositor and returns, so a window closed on the
+  next line is never drawn: `windows_10.satl` asks for ten and draws none. Put
+  `.open()` between the two lines and all ten are drawn.
+- **A window that has closed: it is put back** — the same handle, a new frame —
+  and the line waits until that frame is drawn. `.ok` is true again and
+  `display` says `(window "…")` again.
+- **A console that has closed is refused** (S505). Its frame could come back;
+  its pty could not, and a console is its pty — a new one would be an empty
+  screen in satl's colours with the program's `.colour` and `.font` lost, because
+  VTE kept those and the handle did not.
+- **A piece is refused** (S301): it is on a screen once it is appended.
+- **Written bare it is told to put its brackets on** (S110), as `.close` is.
+
+## HOW IT KNOWS THE WINDOW WAS DRAWN
+
+A tick callback on the GtkWindow, added as the frame is presented, reports the
+first frame to the desk (`the_desk_saw_it_drawn`) and removes itself; `.open()`
+waits on the desk's condition variable for that or for the window closing
+(`the_desk_waits_until_it_is_drawn`). Read in the vendored GTK 4.24 first:
+
+- **The first tick is a real frame.** GDK freezes a new toplevel's clock until
+  the compositor's first configure (`gdktoplevel-wayland.c:981`, thawed at
+  `gdksurface-wayland.c:1025`), so nothing is drawn for nobody.
+- **The frame is finished before the desk does anything else.**
+  `gdk_frame_clock_frame()` runs update, layout, paint and after-paint in one
+  call (`gdkframeclock.c:1304`), and GDK's Wayland backend commits the buffer in
+  after-paint — so a program released at the tick meets a drawn window by the
+  time its next line reaches the desk.
+- **Not `render`, not `after-paint`.** GTK's own `render` handler answers TRUE
+  and the accumulator stops there (`gdksurface.c:716`), so nothing can listen
+  after it. `after-paint` can be listened to, but the handler would sit on a
+  clock that is not the window's, holding a pointer into a window that may close
+  before its first frame. A tick callback is the widget's, and GTK takes it down
+  with the widget.
+- **No time limit.** A compositor that never places a window is a desktop that
+  is drawing nothing; answering "open" first would be the answer that is wrong
+  and does not say so. A window closed before its first frame wakes the wait.
+
+## WHAT COMES BACK WITH A WINDOW, AND WHAT DOES NOT
+
+**What belongs to the WINDOW comes back:** its title as last set, the size it
+last asked for (`.resize`), what it wears (`.colour`, `.background`, `.font` —
+the stylesheet stays on the display, keyed by a class the new frame is given),
+and the capsules it answers: `.key`, `.clicked`, `.every` (restarted at its
+rate — `tick_every` is kept for that) and `.closed`. The `destroy` handler now
+sets `key_is_connected` and `click_is_connected` back to false; left true, `.key`
+on a reopened window would have found its flag set, added nothing, and keys
+would have stopped with nothing said.
+
+**What was IN it does not:** its pieces and its menus closed with it, as they
+always have — GTK freed their widgets and the desk let go of them. They are made
+again and appended again. **A piece kept from before is refused by name** —
+`a button closed with the window it was in -- a window opens again, and what was
+in it is made again`, S505 — where `.append` used to say `there is nothing here
+to append` under S301. Not fullscreen again, and not where a person dragged it:
+Wayland gives a client no position anyway.
+
+## WHAT WAS PROVED, on a headless mutter of its own (WAYLAND_DEBUG counting each toplevel's buffers)
+
+| program | exit | toplevels drawn |
+|---|---|---|
+| `gtkcar/satl_window.satl`, the author's | 0 | 1 of 1 |
+| one handle: open, close, open, open again, ten open/close, retitle, open, append | 0 | 14 of 14 — `.ok` true/false/true, 450 × 250 after reopening, the new title on the next frame |
+| ten `new` + `.open()` + `.close()` | 0 | **10 of 10** |
+| `windows_10.satl`, untouched — ten `new` + `.close()` | 0 | **0 of 10**, as before |
+| a console closed and opened | 51 (S505) | 1 of 1, then refused |
+| a button's `.open()` | 27 (S301) | — |
+| `w.open` written bare | 13 (S110) | — |
+| a button kept from before, appended into its window opened again | 51 (S505), by name | 2 of 2 |
+| a closed WINDOW appended into another | 27 (S301), "a frame of its own and goes inside nothing" | — |
+| a closed button handed to `.append` in the wrong shape | 27 (S301), the shape's sentence | — |
+
+No GTK warning or critical in any run. check.sh carries two rows (it opens no
+window): `.open()` passes the checker and the run reaches the window, and
+`.open("now")` is refused before anything runs.
+
+## WHAT A FRESH READER FOUND, three real and all low, and one it called theoretical
+
+- **`.append` gave S505 to refusals that were not about closing.** The first
+  special case keyed on the PIECE being closed, so a closed button handed to the
+  wrong shape of `.append` got the shape's sentence under WINDOW_IS_CLOSED. It is
+  told apart by its own sentence now, as `.save`'s is.
+- **A closed WINDOW appended was told it "closed with the window it was in"** —
+  it was never in one. The closed-piece check moved below the frame and menu
+  checks, which read only what the piece is, so it is told a frame goes inside
+  nothing, as an open one is.
+- **A key controller could be wired to a widget that had gone.** A person
+  closing the window between `.key`'s check on the interpreter's thread and its
+  job on the desk's left `key_is_connected` true on a dead widget — and a window
+  opened again would never have heard a key, with nothing said. The same for
+  `.clicked`. Both helpers now add nothing to a gone widget, and the NAME is kept
+  for `.open()` to wire.
+- **Theoretical:** `.open()` read `on_the_screen` unlocked to decide open or
+  closed, as `still_there` does everywhere in this module. It asks under the
+  desk's lock now, and a closed window is taken back in the same breath
+  (`the_desk_still_holds`), so a person's close is either before the question or
+  after the answer.
+
+## WHAT COULD NOT BE SHOWN
+
+**That `.every`, `.key`, `.clicked` and `.closed` RUN on a reopened window.**
+They are wired back by the same two helpers the first wiring uses
+(`hear_the_keys`, `notice_clicks`) and the same `g_timeout_add` — but no capsule
+runs after `main` in this build: since c7ec8a1 `satellite.return(satellite)`
+sets `program_quit()`, and every capsule the window's own run starts exits 64.
+A control with no `.open()` in it exits 64 on build 0155 as well. That is the
+author's open question from 2026-10-01, not this part's.
+
+## THE AUTHOR'S
+
+- **Should `new` stop showing a window until `.open()`?** (above)
+- **Should a reopened window bring its pieces back?** Possible: hold a
+  reference on the window's column so it survives the frame, and set it into
+  the next one. It changes what a closed window's pieces answer — a text box's
+  words would still be readable after closing — so it is a ruling, not a fix.
+- **Should a closed console reopen**, as a new pty and an empty screen?
 
 # Part 2 — the milestones
 

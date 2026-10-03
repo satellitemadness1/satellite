@@ -276,6 +276,40 @@ unsigned long long int windows_open()
     return open_windows.size();
 }
 
+bool the_desk_still_holds(const WindowHandle &window, bool put_it_back)
+{
+    std::lock_guard<std::mutex> lock(desk_mutex);
+    if (window->on_the_screen)
+        return true;
+    // TAKEN BACK BEFORE ITS FRAME EXISTS, the order frame_new keeps: a window
+    // closed the instant it appears is still one the desk knows how to let go
+    // of. Not drawn -- the frame it was drawn in has gone.
+    if (put_it_back) {
+        window->on_the_screen = true;
+        window->has_been_drawn = false;
+        open_windows.push_back(window);
+    }
+    return false;
+}
+
+void the_desk_saw_it_drawn(satellite_window *window)
+{
+    {
+        std::lock_guard<std::mutex> lock(desk_mutex);
+        window->has_been_drawn = true;
+    }
+    desk_changed.notify_all();
+}
+
+// `on_the_screen` IS READ HERE UNDER THE SAME LOCK the_desk_let_go_of writes
+// it under, so a window closed before its first frame wakes this as surely as
+// one that was drawn.
+void the_desk_waits_until_it_is_drawn(const satellite_window &window)
+{
+    std::unique_lock<std::mutex> lock(desk_mutex);
+    desk_changed.wait(lock, [&window] { return window.has_been_drawn || !window.on_the_screen; });
+}
+
 // ON THE DESK'S OWN THREAD, out of GTK's `clicked` -- the same rule as
 // the_desk_let_go_of above, and for the same reason: the desk must never go
 // through on_the_desk(), which would be the desk waiting on itself.
