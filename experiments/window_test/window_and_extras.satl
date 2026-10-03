@@ -17,7 +17,7 @@ satellite.spacesuit satl_18_vars()
         satellite.variable.program my_program = {"echo", "hello, world!"}     // some_program is on no PATH (127)
         satellite.variable.string my_str = "void"
         satellite.variable.thread my_thread                                   // made in start_thread()
-        satellite.variable.window my_window = satellite.window.new("hello_title", 800, 600)
+        satellite.variable.window my_window                                   // made in open_window()
         satellite.variable.bool my_bool = satellite.bool.false
         satellite.variable.bash my_bash = "echo hello from bash"
         satellite.container.list<satellite.variable.number> my_list = {1, 2, 3}
@@ -147,13 +147,10 @@ satellite.spacesuit satl_18_vars()
 
         satellite.capsule open_window()
         {
-            // a window is open from the line that made it -- there is no .open() -- and a closed
-            // window stays closed
-            satellite.console.display(my_window.ok)
+            // there is no .open(): a window is open from the line that makes it
+            my_window = satellite.window.new("hello_title", 800, 600)
 
             my_window.close()
-
-            satellite.console.display(my_window)
         }
 
         satellite.capsule flip_bool()

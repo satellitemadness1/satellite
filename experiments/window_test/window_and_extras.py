@@ -1,9 +1,9 @@
 # window_and_extras.py -- satl_18_vars as plain Python, for race_windows.cpp: the same 18
 # variables, one method for each of the satl file's capsules, the object made ten times.
 #
-# Each object makes its own Tk -- a whole Tcl interpreter and display connection apiece, where satl
-# starts its GTK once. Nothing here calls update_idletasks() or mainloop(), so Tk never puts these
-# windows on the screen (checked 2026-10-03: 0 of 10 mapped), while satl's ten are drawn.
+# open_window() makes a window and closes it on the next line, as the satl file's does, so neither
+# language ever draws one (checked 2026-10-03: satl 0 of 10 drawn, Tk 0 of 10 mapped). Each tk.Tk()
+# is a whole Tcl interpreter and display connection; satl starts its GTK once, at its first window.
 import subprocess
 import sys
 import threading
@@ -25,7 +25,7 @@ class py_18_vars:
         self.my_program = ["echo", "hello, world!"]
         self.my_str = "void"
         self.my_thread = None
-        self.my_window = tk.Tk()
+        self.my_window = None
         self.my_bool = False
         self.my_bash = "echo hello from bash"
         self.my_list = [1, 2, 3]
@@ -86,9 +86,8 @@ class py_18_vars:
         self.my_thread.join()
 
     def open_window(self):
-        print(self.my_window.winfo_exists())
+        self.my_window = tk.Tk()
         self.my_window.destroy()
-        print(self.my_window)
 
     def flip_bool(self):
         self.my_bool = self.my_number > 1000
