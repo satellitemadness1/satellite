@@ -776,6 +776,16 @@ void join_includes(CapsuleTable &table, const BytecodeRegistry &registry, const 
                 refuse(table, r, at, name_declared_twice,
                        "the file " + shape.name + ".satl is reached as " + shape.name + ", and this file already has " +
                            taken + " named " + shape.name + " -- a name is declared once, so rename one of them");
+            // A FILE NAMED LIKE A WORD THE LANGUAGE OWNS UNDER satellite.library -- main, system, and
+            // since 2026-10-03 arguments -- has its values read as the language's (the review, that
+            // day): after satellite.include("arguments"), satellite.library.arguments.cores lexed as the
+            // arguments word and answered the machine's 12, not the file's 4, and said nothing at all.
+            // So the include is refused, by name, before anything runs.
+            if (word::code_of_spelling("satellite.library." + shape.name) != 0)
+                refuse(table, r, at, name_declared_twice,
+                       "the file " + shape.name + ".satl would be reached as satellite.library." + shape.name +
+                           ", which is the language's own word, so its satellite.library values could never be read "
+                           "-- rename the file");
         }
     }
 }

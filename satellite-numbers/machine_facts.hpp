@@ -15,8 +15,8 @@
 //
 // A FACT THAT DOES NOT IS READ ONCE, ON THE FIRST START, AND KEPT IN config.ini
 // (the author, 2026-10-03; Remembered and remember_the_machine below): the
-// processor's name and its cores, the whole memory, and which system this is --
-// six facts that stay true while the machine stays the same machine.
+// processor's name and its cores, and which system this is -- facts that stay true
+// while the machine stays the same machine, and are believed only on that machine.
 //
 // A FAILURE IS AN ANSWER. Every reader says whether it could read, and the
 // library turns that into a refusal naming the file it could not read -- rather
@@ -52,14 +52,15 @@ namespace machine_facts {
 // ONLY WHAT STAYS TRUE WHILE THE MACHINE STAYS THE SAME. The count of cores was the one that
 // cost: reading all of /proc/cpuinfo to count them took 322,492 ns here, and a hello world
 // counted them three times. Free and used memory, the process and the session change from one
-// moment to the next, and are still read when asked.
+// moment to the next, and are still read when asked -- and so is the WHOLE memory (the review,
+// 2026-10-03): it moves with a kernel update or a resized machine, a kept one disagreed with
+// args.memory.total and made total - free differ from used, and it costs 8,164 ns to read.
 //
 // AN EMPTY FIELD IS ONE NOT KEPT -- no config.ini, a fact the machine would not state, a row a
 // person deleted -- and its reader goes to the machine exactly as it did before anything was kept.
 struct Remembered {
     unsigned long long int cores = 0;
     std::string cpu;
-    unsigned long long int memory_total = 0;
     std::string distribution;
     std::string distribution_id;
     std::string distribution_version;
@@ -78,8 +79,11 @@ inline Remembered &remembered()
 // that spelling is read as well.
 inline constexpr const char *kFirstStart = "first_start";
 inline constexpr const char *kFirstStartAsWritten = "FIRST_START";
-inline constexpr const char *kKeptRows[] = {"machine.cpu",         "machine.cores",          "memory.total",
+inline constexpr const char *kKeptRows[] = {"machine.cpu",         "machine.cores",          "system.hostname",
                                             "system.distribution", "system.distribution_id", "system.distribution_version"};
+// A ROW AN EARLIER satl KEPT AND THIS ONE DOES NOT: read by nothing, taken out at the next first start,
+// and known to S016 until then, so a config.ini that holds one is not called wrong.
+inline constexpr const char *kRetiredRows[] = {"memory.total"};
 
 // A named kilobyte count out of /proc/meminfo: "MemTotal:", "MemFree:",
 // "MemAvailable:", "SwapTotal:", "SwapFree:". The file states kB and this
@@ -223,8 +227,6 @@ inline FactReply some_text(std::string value)
 
 inline FactReply answer_memory_total()
 {
-    if (remembered().memory_total != 0)
-        return a_count(remembered().memory_total);
     unsigned long long int said = 0;
     if (meminfo_bytes("MemTotal:", said) == false)
         return could_not_read("MemTotal in /proc/meminfo", machine_fact_not_read);
@@ -547,6 +549,9 @@ inline bool is_kept_row(const std::string &line)
     for (const char *kept : kKeptRows)
         if (key == kept)
             return true;
+    for (const char *retired : kRetiredRows)
+        if (key == retired)
+            return true;
     return false;
 }
 
@@ -563,22 +568,22 @@ inline std::size_t top_of(const std::vector<std::string> &lines)
 
 inline std::vector<std::string> first_start_comment()
 {
-    return {"# first_start -- true until satl has read this machine once. Then it reads /proc/cpuinfo,",
-            "# /proc/meminfo and /etc/os-release, writes what they said in the rows below, and sets this",
-            "# false; every start after that reads those rows instead. satl --rebuild sets it true again:",
-            "# run it after new hardware or a new system, or write true here yourself."};
+    return {"# first_start -- true until satl has read this machine once. Then it reads /proc/cpuinfo",
+            "# and /etc/os-release, writes what they said in the rows below with the machine's name, and",
+            "# sets this false; every start after that, on this machine, reads those rows instead. satl",
+            "# --rebuild sets it true again: run it after new hardware or a new system, or write true here."};
 }
 
 // THE ROWS THE FIRST START WRITES: `first_start = false` and, under it in kKeptRows' order, each
 // fact the machine stated -- one it would not state is left out, and is refused when it is asked,
 // as before. Every older copy of these rows, wherever a person or an earlier start left one, is
 // taken out first, so the file holds one of each.
-inline signed long long int write_the_machine(const Remembered &found, std::string &why)
+inline signed long long int write_the_machine(const Remembered &found, const std::string &host, std::string &why)
 {
     std::vector<std::string> rows = {std::string(kFirstStart) + " = false"};
     if (!found.cpu.empty()) rows.push_back("machine.cpu = " + found.cpu);
     if (found.cores != 0) rows.push_back("machine.cores = " + std::to_string(found.cores));
-    if (found.memory_total != 0) rows.push_back("memory.total = " + std::to_string(found.memory_total));
+    if (!host.empty()) rows.push_back("system.hostname = " + host);
     if (!found.distribution.empty()) rows.push_back("system.distribution = " + found.distribution);
     if (!found.distribution_id.empty()) rows.push_back("system.distribution_id = " + found.distribution_id);
     if (!found.distribution_version.empty())
@@ -616,34 +621,53 @@ inline std::string remember_the_machine()
     // machine is read whenever a fact is asked for, as it always was.
     if (!config_file::exists())
         return "no config.ini, so the machine is read whenever a fact is asked for";
+    std::string host;
+    uname_field(0, host);   // 547 ns: which machine this is, asked every start
+    std::string why_again;
     if (first_start_says() == "false") {
-        // EVERY START AFTER THE FIRST: the facts are read out of config.ini, and nothing else.
+        // EVERY START AFTER THE FIRST: the facts are read out of config.ini, and nothing else --
+        // but only BELIEVED on the machine that wrote them, and only when they could be true
+        // (the review, 2026-10-03). A config.ini on a shared or copied home answered another
+        // machine's processor; and the cores decide how many warm threads start, so a row of
+        // 300000 -- a typo, a pasted file -- would have asked for 600,000 threads at every start.
+        // Either one is a first start again: the machine is read, and the rows are written right.
         Remembered kept;
-        std::string said;
+        std::string said, kept_host;
         if (config_file::read_value("machine.cpu", said)) kept.cpu = said;
         if (config_file::read_value("machine.cores", said)) kept.cores = count_in(said);
-        if (config_file::read_value("memory.total", said)) kept.memory_total = count_in(said);
+        if (config_file::read_value("system.hostname", said)) kept_host = said;
         if (config_file::read_value("system.distribution", said)) kept.distribution = said;
         if (config_file::read_value("system.distribution_id", said)) kept.distribution_id = said;
         if (config_file::read_value("system.distribution_version", said)) kept.distribution_version = said;
-        remembered() = kept;
-        return "the machine's facts read from config.ini";
+        unsigned long long int online = 0;
+        cores_online(online);
+        if (kept_host != host)
+            why_again = "config.ini's facts were read on " + (kept_host.empty() ? std::string("a machine it does not name") : kept_host) +
+                        ", and this is " + host;
+        else if (kept.cores == 0 || (online != 0 && kept.cores > online))
+            why_again = "config.ini says machine.cores = " + std::to_string(kept.cores) + ", and this machine runs " +
+                        std::to_string(online) + " threads";
+        if (why_again.empty()) {
+            remembered() = kept;
+            return "the machine's facts read from config.ini";
+        }
     }
     // THE FIRST START -- first_start = true, or no first_start row at all, which is every
-    // config.ini written before 2026-10-03 -- and the author's special function: everything
-    // from /proc/cpuinfo, /proc/meminfo and /etc/os-release, read once and written down.
+    // config.ini written before 2026-10-03 -- and the author's special function: the facts in
+    // /proc/cpuinfo and /etc/os-release, read once and written down with the machine's name.
     Remembered found;
     found.cores = physical_cores();
     cpu_model(found.cpu);
-    meminfo_bytes("MemTotal:", found.memory_total);
     os_release("NAME", found.distribution);
     os_release("ID", found.distribution_id);
     os_release("VERSION_ID", found.distribution_version);
     remembered() = found;
     std::string why;
-    if (write_the_machine(found, why) != success)
-        return "the machine read, and config.ini could not be written (" + why + "), so the next start reads it again";
-    return "the machine read on its first start, and written into config.ini";
+    const std::string what = why_again.empty() ? std::string("the machine read on its first start")
+                                               : "the machine read again, because " + why_again;
+    if (write_the_machine(found, host, why) != success)
+        return what + ", and config.ini could not be written (" + why + "), so the next start reads it again";
+    return what + ", and written into config.ini";
 }
 
 // satl --rebuild MAKES THE NEXT START A FIRST START (rebuild.hpp). New hardware or a new system is

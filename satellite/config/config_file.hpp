@@ -41,6 +41,8 @@
 #include <mutex>
 #include <sstream>
 #include <string>
+#include <fcntl.h>
+#include <sys/file.h>
 #include <sys/stat.h>
 #include <sys/types.h>
 #include <unistd.h>
@@ -222,6 +224,17 @@ inline bool read_flag(const std::string &key, bool &value)
 // or another program may have changed the file since this one started, and a writer must keep
 // what they wrote -- then `change`, then written back, and the copy becomes what was written.
 // No file yet is no lines yet: what `change` adds is the file.
+//
+// FOUR THINGS A PERSON'S FILE IS OWED, since a plain start writes it now (the first start, the
+// review of 2026-10-03): a config.ini that is a LINK, into a folder of dotfiles, is written
+// where it points and stays a link; its PERMISSIONS stay what they were; one the person made
+// READ-ONLY is not written at all -- the facts are read each start instead; and two satl
+// rewriting it at once take turns, on a lock FILE beside it, config.ini.lock.
+//
+// A FILE AND NOT THE FOLDER, AND THAT WAS LEARNED THE HARD WAY (2026-10-03): the installer locks
+// the folder itself for the whole install (install_support/060-install-tree.sh, `flock -n 9` on
+// ~/.satl) and runs `satl --rebuild` inside that lock -- so a writer that locked the folder too
+// waited for the installer, which was waiting for it, and the install hung for good.
 template <typename Change>
 inline signed long long int rewrite(Change change, std::string &why)
 {
@@ -236,9 +249,30 @@ inline signed long long int rewrite(Change change, std::string &why)
     // satl has never been installed into. 0755 is what the installer makes.
     ::mkdir(folder().c_str(), 0755);   // EEXIST is the ordinary answer and is not read
 
+    std::string target = where;
+    if (char *real = ::realpath(where.c_str(), nullptr)) {
+        target = real;
+        std::free(real);
+    }
+    struct stat about {};
+    const bool there = ::stat(target.c_str(), &about) == 0;
+    if (there && ::access(target.c_str(), W_OK) != 0) {
+        why = target + " is not writable, so it is left as it is";
+        return config_file_unwritable;
+    }
+    // TURNS, across satl processes, on config.ini.lock -- never on the folder (see above).
+    const std::string lock_file = target + ".lock";
+    const int turn = ::open(lock_file.c_str(), O_RDWR | O_CREAT | O_CLOEXEC, 0644);
+    if (turn >= 0)
+        ::flock(turn, LOCK_EX);
+    struct Release {
+        int fd;
+        ~Release() { if (fd >= 0) ::close(fd); }
+    } release{turn};
+
     std::vector<std::string> lines;
     {
-        std::ifstream in(where);
+        std::ifstream in(target);
         for (std::string line; in && std::getline(in, line);)
             lines.push_back(line);
     }
@@ -249,10 +283,9 @@ inline signed long long int rewrite(Change change, std::string &why)
     // old one or all of the new one, and a program killed mid-write leaves the
     // setting it had rather than a truncated row nothing can parse.
     //
-    // THE TEMPORARY IS THIS PROCESS'S OWN (2026-10-03): two satl started together on a first
-    // start both write the machine's facts, and with one shared name the second could rename
-    // the first one's half-written file into place.
-    const std::string temporary = where + ".writing." + std::to_string(::getpid());
+    // THE TEMPORARY IS THIS PROCESS'S OWN (2026-10-03), and it is removed whenever the write does
+    // not land -- a disk that is full would otherwise leave one more behind at every start.
+    const std::string temporary = target + ".writing." + std::to_string(::getpid());
     {
         std::ofstream out(temporary, std::ios::trunc);
         if (!out) {
@@ -263,13 +296,17 @@ inline signed long long int rewrite(Change change, std::string &why)
             out << line << '\n';
         out.flush();
         if (!out) {
+            out.close();
+            std::remove(temporary.c_str());
             why = "could not finish writing " + temporary;
             return config_file_unwritable;
         }
     }
-    if (std::rename(temporary.c_str(), where.c_str()) != 0) {
+    if (there)
+        ::chmod(temporary.c_str(), about.st_mode & 07777);
+    if (std::rename(temporary.c_str(), target.c_str()) != 0) {
         std::remove(temporary.c_str());
-        why = "could not put " + temporary + " in place as " + where;
+        why = "could not put " + temporary + " in place as " + target;
         return config_file_unwritable;
     }
     Copy &copy = the_copy();

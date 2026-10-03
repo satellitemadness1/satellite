@@ -11,7 +11,11 @@
 # `satellite.library.arguments.access = satellite.bool.false`, and an
 # install that reset it would throw away a setting somebody chose, silently, as a
 # side effect of upgrading. So: created when absent, left exactly as it is when
-# present, and no attempt is made to merge new keys into an old file.
+# present, and no attempt is made to merge new keys into an old file. (satl itself
+# adds two things to it, by the same rules its own writes keep: --rebuild below
+# sets first_start = true, and the hello_world that proves the install is then
+# the first start, which writes the machine's facts under first_start -- see
+# satellite-numbers/machine_facts.hpp. Every other line is left where it was.)
 #
 # A MISSING KEY IS NOT A PROBLEM, which is what makes leaving it alone safe. Every
 # setting carries its own default in its own library (satellite/config/

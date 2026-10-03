@@ -317,6 +317,7 @@ signed long long int run_satl(int argc, char **argv)
                                        "display.buffer", machine_facts::kFirstStart,
                                        machine_facts::kFirstStartAsWritten};
         for (const char *kept : machine_facts::kKeptRows) known.push_back(kept);
+        for (const char *retired : machine_facts::kRetiredRows) known.push_back(retired);
         for (const FeatureFact &fact : feature_facts()) known.push_back(fact.name);
         for (const satellite_argument_row &row : return_arguments_vector())
             if (row.is_text && row.name.size() > 10) known.push_back(row.name.substr(10));
@@ -337,7 +338,7 @@ signed long long int run_satl(int argc, char **argv)
                                 ". The rows it reads are features, the feature switches (access, word_counts, "
                                 "statements and the rest satl --rebuild lists), directory.default, log_path, "
                                 "float.whole, float.decimal, console.font_size, display.buffer, and first_start "
-                                "with the machine's facts it keeps (machine.cpu, machine.cores, memory.total, "
+                                "with the machine's facts it keeps (machine.cpu, machine.cores, system.hostname, "
                                 "system.distribution, system.distribution_id, system.distribution_version)";
             stray.directory = config_file::path();
             print_notice(stray);

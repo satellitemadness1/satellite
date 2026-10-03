@@ -4847,7 +4847,7 @@ expect "... and access, a setting, is written through to config.ini and the copy
 # FALSE or TRUE if it is the first start, and then it will run a special function to grab everything
 # from /proc/meminfo and /proc/cpuinfo and /etc/os-release"; satellite-numbers/machine_facts.hpp). In a
 # home of its own: --rebuild asks for a first start, the first run writes the six facts under
-# first_start = false, every run after believes config.ini -- a hand-written 99 is what a program
+# first_start = false, every run after believes config.ini -- a hand-written 7 is what a program
 # reads -- first_start = true reads the machine again, and where there is no config.ini none is made.
 fs_home=$PWD/build/first-start-home
 rm -rf -- "$fs_home"
@@ -4860,29 +4860,98 @@ fs_cpu=$(grep -m1 '^model name' /proc/cpuinfo | sed 's/^[^:]*: *//')
 fs_total=$(( $(awk '/^MemTotal:/ {print $2}' /proc/meminfo) * 1024 ))
 fs_os=$(. /etc/os-release && printf '%s|%s|%s' "$NAME" "$ID" "$VERSION_ID")
 HOME=$fs_home "$interpreter" build/first_start_facts.satl > build/first_start_facts.out 2>/dev/null; code=$?
-expect "the first start reads the machine, answers what it says, and writes the six facts under first_start = false" \
-       "0|$cores|$fs_cpu|$fs_total|${fs_os%%|*}|first_start = false|$fs_cpu|$cores|$fs_total|$fs_os" \
-       "$code|$(tr '\n' '|' < build/first_start_facts.out)$(grep -x 'first_start = .*' "$fs_home/.satl/config.ini")|$(for row in machine.cpu machine.cores memory.total system.distribution system.distribution_id system.distribution_version; do sed -n "s/^$row = //p" "$fs_home/.satl/config.ini"; done | tr '\n' '|' | sed 's/|$//')"
-sed -i 's/^machine.cores = .*/machine.cores = 99/' "$fs_home/.satl/config.ini"
-HOME=$fs_home "$interpreter" --debug build/first_start_facts.satl > build/first_start_99.out 2>&1
-expect "every start after believes config.ini: a hand-written machine.cores = 99 is what a program reads, and the warm threads are 99 x arguments.threads_startup_per_core" \
+expect "the first start reads the machine, answers what it says, and writes the facts under first_start = false with the machine's name" \
+       "0|$cores|$fs_cpu|$fs_total|${fs_os%%|*}|first_start = false|$fs_cpu|$cores|$(uname -n)|$fs_os" \
+       "$code|$(tr '\n' '|' < build/first_start_facts.out)$(grep -x 'first_start = .*' "$fs_home/.satl/config.ini")|$(for row in machine.cpu machine.cores system.hostname system.distribution system.distribution_id system.distribution_version; do sed -n "s/^$row = //p" "$fs_home/.satl/config.ini"; done | tr '\n' '|' | sed 's/|$//')"
+sed -i 's/^machine.cores = .*/machine.cores = 7/' "$fs_home/.satl/config.ini"
+HOME=$fs_home "$interpreter" --debug build/first_start_facts.satl > build/first_start_7.out 2>&1
+expect "every start after believes config.ini: a hand-written machine.cores = 7 is what a program reads, and the warm threads are 7 x arguments.threads_startup_per_core" \
        "1|1|1" \
-       "$(grep -cx '99' build/first_start_99.out)|$(grep -c "^\[satellite\] arguments.threads_startup = $(( 99 * $(config_row threads_startup_per_core) )) " build/first_start_99.out)|$(grep -c '^\[satellite\] machine(the machine.s facts read from config.ini)' build/first_start_99.out)"
+       "$(grep -cx '7' build/first_start_7.out)|$(grep -c "^\[satellite\] arguments.threads_startup = $(( 7 * $(config_row threads_startup_per_core) )) " build/first_start_7.out)|$(grep -c '^\[satellite\] machine(the machine.s facts read from config.ini)' build/first_start_7.out)"
 sed -i 's/^first_start = .*/first_start = true/' "$fs_home/.satl/config.ini"
 HOME=$fs_home "$interpreter" build/first_start_facts.satl > /dev/null 2>&1
 expect "first_start = true reads the machine again: machine.cores is $cores once more, and first_start is false" \
        "$cores|first_start = false" \
        "$(sed -n 's/^machine.cores = //p' "$fs_home/.satl/config.ini")|$(grep -x 'first_start = .*' "$fs_home/.satl/config.ini")"
-sed -i 's/^first_start = .*/FIRST_START = FALSE/; s/^machine.cores = .*/machine.cores = 77/' "$fs_home/.satl/config.ini"
-HOME=$fs_home "$interpreter" build/first_start_facts.satl > build/first_start_77.out 2> build/first_start_77.err
-expect "the author's own spelling, FIRST_START = FALSE, is read the same, and S016 says nothing of it" "77|0" \
-       "$(head -1 build/first_start_77.out)|$(grep -c S016 build/first_start_77.err)"
+sed -i 's/^first_start = .*/FIRST_START = FALSE/; s/^machine.cores = .*/machine.cores = 5/' "$fs_home/.satl/config.ini"
+HOME=$fs_home "$interpreter" build/first_start_facts.satl > build/first_start_5.out 2> build/first_start_5.err
+expect "the author's own spelling, FIRST_START = FALSE, is read the same, and S016 says nothing of it" "5|0" \
+       "$(head -1 build/first_start_5.out)|$(grep -c S016 build/first_start_5.err)"
 fs_none=$PWD/build/first-start-no-config
 rm -rf -- "$fs_none"
 mkdir -p -- "$fs_none"
 HOME=$fs_none "$interpreter" build/first_start_facts.satl > build/first_start_none.out 2>/dev/null
 expect "with no config.ini the machine is read when a fact is asked for, and no config.ini is made" "$cores|0" \
        "$(head -1 build/first_start_none.out)|$(ls -A "$fs_none/.satl" 2>/dev/null | grep -c config.ini)"
+
+# AND WHAT THE REVIEW OF 84afee8 FOUND (2026-10-03), each held here. Kept facts are believed only on
+# the machine that wrote them, and only when they could be true: cores beyond what the machine runs
+# -- tried with ONE more than it runs, so a broken check asks for a few more threads, never the
+# 600,000 a typo would -- or another machine's name, and the machine is read again. The whole memory
+# is not kept at all (it moves, and must agree with free and used). A config.ini that is a link
+# stays a link, one made read-only is left alone, and a write that fails leaves no temporary behind.
+fs_online=$(getconf _NPROCESSORS_ONLN)
+sed -i "s/^first_start = .*/first_start = false/; s/^FIRST_START = .*/first_start = false/; s/^machine.cores = .*/machine.cores = $((fs_online + 1))/" "$fs_home/.satl/config.ini"
+HOME=$fs_home "$interpreter" --debug build/first_start_facts.satl > build/first_start_toomany.out 2>&1
+expect "a kept machine.cores beyond the $fs_online threads this machine runs is not believed: the machine is read again" \
+       "1|1|$cores" \
+       "$(grep -c "^\[satellite\] machine(the machine read again, because config.ini says machine.cores = $((fs_online + 1))" build/first_start_toomany.out)|$(grep -c "^\[satellite\] arguments.threads_startup = $warm_threads " build/first_start_toomany.out)|$(sed -n 's/^machine.cores = //p' "$fs_home/.satl/config.ini")"
+sed -i 's/^system.hostname = .*/system.hostname = not-this-machine/; s/^machine.cores = .*/machine.cores = 1/' "$fs_home/.satl/config.ini"
+HOME=$fs_home "$interpreter" build/first_start_facts.satl > build/first_start_elsewhere.out 2>/dev/null
+expect "facts read on another machine are not believed: this machine is read, and its own name written" \
+       "$cores|$(uname -n)|$cores" \
+       "$(head -1 build/first_start_elsewhere.out)|$(sed -n 's/^system.hostname = //p' "$fs_home/.satl/config.ini")|$(sed -n 's/^machine.cores = //p' "$fs_home/.satl/config.ini")"
+printf 'memory.total = 12345\n' >> "$fs_home/.satl/config.ini"
+HOME=$fs_home "$interpreter" build/first_start_facts.satl > build/first_start_memory.out 2> build/first_start_memory.err
+sed -i 's/^first_start = .*/first_start = true/' "$fs_home/.satl/config.ini"
+HOME=$fs_home "$interpreter" build/first_start_facts.satl > /dev/null 2>&1
+expect "the whole memory is read live, never kept: memory.total = 12345 changes nothing, says no S016, and the next first start takes the row out" \
+       "$fs_total|0|0" \
+       "$(sed -n 3p build/first_start_memory.out)|$(grep -c S016 build/first_start_memory.err)|$(grep -c '^memory.total' "$fs_home/.satl/config.ini")"
+fs_link=$PWD/build/first-start-link
+rm -rf -- "$fs_link"
+mkdir -p -- "$fs_link/.satl" "$fs_link/dotfiles"
+HOME=$fs_link "$interpreter" --rebuild > /dev/null 2>&1
+mv "$fs_link/.satl/config.ini" "$fs_link/dotfiles/config.ini"
+ln -s ../dotfiles/config.ini "$fs_link/.satl/config.ini"
+chmod 640 "$fs_link/dotfiles/config.ini"
+HOME=$fs_link "$interpreter" build/first_start_facts.satl > /dev/null 2>&1
+expect "a config.ini that is a link stays a link, its file is written where the link points, and keeps its permissions" \
+       "link|first_start = false|640" \
+       "$([ -L "$fs_link/.satl/config.ini" ] && echo link || echo replaced)|$(grep -x 'first_start = .*' "$fs_link/dotfiles/config.ini")|$(stat -c %a "$fs_link/dotfiles/config.ini")"
+fs_locked=$PWD/build/first-start-read-only
+rm -rf -- "$fs_locked"
+mkdir -p -- "$fs_locked/.satl"
+HOME=$fs_locked "$interpreter" --rebuild > /dev/null 2>&1
+chmod 400 "$fs_locked/.satl/config.ini"
+fs_before=$(md5sum < "$fs_locked/.satl/config.ini")
+HOME=$fs_locked "$interpreter" build/first_start_facts.satl > build/first_start_locked.out 2>/dev/null
+expect "a config.ini made read-only is left exactly as it was, and the facts are still answered, from the machine" \
+       "$fs_before|400|$cores" \
+       "$(md5sum < "$fs_locked/.satl/config.ini")|$(stat -c %a "$fs_locked/.satl/config.ini")|$(head -1 build/first_start_locked.out)"
+chmod 600 "$fs_locked/.satl/config.ini"
+(trap '' XFSZ; ulimit -f 0; HOME=$fs_locked "$interpreter" build/first_start_facts.satl > /dev/null 2>&1)
+expect "a write that fails -- here, no file may grow -- leaves no temporary behind" "0" \
+       "$(ls -A "$fs_locked/.satl" | grep -c 'config.ini.writing')"
+# INSIDE THE INSTALLER'S LOCK: install_support/060-install-tree.sh holds `flock -n 9` on ~/.satl for
+# the whole install and runs satl --rebuild in it. A config.ini writer that locked the folder too
+# waited for the installer that was waiting for it -- the install hung (2026-10-03). Held here the
+# same way; 124 would be the timeout.
+fs_inst=$PWD/build/first-start-installer-lock
+rm -rf -- "$fs_inst"
+mkdir -p -- "$fs_inst/.satl"
+fs_inst_code=$( (exec 9< "$fs_inst/.satl"; flock -n 9 && HOME=$fs_inst timeout 20 "$interpreter" --rebuild > /dev/null 2>&1; echo $?) )
+expect "satl --rebuild inside the installer's own lock on ~/.satl finishes, and writes first_start" "0|1" \
+       "$fs_inst_code|$(grep -cx 'first_start = true' "$fs_inst/.satl/config.ini" 2>/dev/null)"
+mkdir -p build/include-arguments
+printf 'satellite.library.cores = 4\n' > build/include-arguments/arguments.satl
+printf 'satellite.include(satellite)\nsatellite.include("arguments")\n\nsatellite.capsule satellite.main()\n{\n    satellite.console.display(satellite.library.arguments.cores)\n    satellite.return(satellite)\n}\n' > build/include-arguments/main.satl
+(cd build/include-arguments && "$interpreter" main.satl > out.txt 2>&1); code=$?
+expect "a file named arguments.satl is refused by name when included: its values would be read as the language's own" \
+       "26|1" "$code|$(tr '\n' ' ' < build/include-arguments/out.txt | grep -c 'would be reached as satellite.library.arguments, which is the language.s own word')"
+printf 'satellite.include(satellite)\n\nsatellite.capsule satellite.main()\n{\n    satellite.console.display(satellite.library.main.arguments.machine.cores)\n    satellite.console.display(satellite.library.arguments.machine.cores)\n    satellite.return(satellite)\n}\n' > build/arguments_both_places.satl
+expect "the old place, satellite.library.main.arguments, still answers what satellite.library.arguments does" \
+       "$cores $cores " "$("$interpreter" build/arguments_both_places.satl 2>/dev/null | tr '\n' ' ')"
 
 # WHAT THE PROCESSOR CAN RUN (the author, 2026-09-23: "arguments.cpu.architecture =
 # "haswell" ... arguments.cpu.features = AVX, AVX2, 512-bit stuff, all that in a single

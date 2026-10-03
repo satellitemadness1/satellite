@@ -15,15 +15,20 @@ read about the machine it runs on. It is filled from four places:
    directory.default, float.whole, float.decimal and display.buffer are the
    rows read from this file today; any other number row there is not read.
    The switches live here too (access = true), and "features = b..." is what
-   satl really reads: satl --rebuild writes it from the switches. No config.ini
-   is only a notice (S010), and the run carries on.
+   satl really reads: satl --rebuild writes it from the switches. At its top,
+   first_start and the machine's facts satl keeps (point 4). No config.ini is
+   only a notice (S010), and the run carries on.
 3) the command line: satl prog.satl one two gives arguments.program,
    arguments.argument_1, arguments.argument_2 and arguments.length = 3, the
    program counted. satl --debug prints every argument, these included.
-4) the machine, read fresh each time a program asks. satl --config [most]
-   measures once how many threads this machine can hold and keeps the count in
-   ~/.satl/machine.conf; until then machine.threads answers the lowest of the
-   thread limits the system states.
+4) the machine. What changes -- free and used memory, the process, the
+   session -- is read fresh each time a program asks. What does not -- the
+   processor's name and cores, and the system's name and version -- is read
+   once, on the first start, and kept in config.ini under first_start = false
+   with the machine's name: believed on that machine only, and read again after
+   satl --rebuild. satl --config [most] measures once how many threads this
+   machine can hold and keeps the count in ~/.satl/machine.conf; until then
+   arguments.threads answers the lowest of the thread limits the system states.
 
 satellite.main hands a program all of it as ONE variable, when main asks for it
 by declaring it -- satellite.main() with nothing between its brackets asks for
