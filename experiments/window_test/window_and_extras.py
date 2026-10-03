@@ -1,11 +1,10 @@
 # window_and_extras.py -- satl_18_vars as plain Python, for race_windows.cpp: the same 18
 # variables, one method for each of the satl file's capsules, the object made ten times.
 #
-# open_window() makes a window, puts it on the screen with update() -- which waits until the window
-# manager says it is there -- and destroys it (checked 2026-10-03: 10 of 10 mapped). satl's
-# open_window() closes its window on the line after satellite.window.new, which does not wait for it
-# to be drawn, and on a test compositor none of its ten was. Each tk.Tk() is a whole Tcl interpreter
-# and display connection; satl starts its GTK once, at its first window.
+# The window is made and shown when the object is made, as the satl file's my_window is, and
+# open_window() closes it. update() is how Tk shows it, and it waits for the window manager to say
+# the window is there; satl's goes up on a thread of its own. Each tk.Tk() is a whole Tcl
+# interpreter and display connection; satl starts its GTK once, at its first window.
 import subprocess
 import sys
 import threading
@@ -27,7 +26,10 @@ class py_18_vars:
         self.my_program = ["echo", "hello, world!"]
         self.my_str = "void"
         self.my_thread = None
-        self.my_window = None
+        self.my_window = tk.Tk()
+        self.my_window.title("title")
+        self.my_window.geometry("800x600")
+        self.my_window.update()
         self.my_bool = False
         self.my_bash = "echo hello from bash"
         self.my_list = [1, 2, 3]
@@ -88,8 +90,6 @@ class py_18_vars:
         self.my_thread.join()
 
     def open_window(self):
-        self.my_window = tk.Tk()
-        self.my_window.update()
         self.my_window.destroy()
 
     def flip_bool(self):
