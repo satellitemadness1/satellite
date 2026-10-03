@@ -1,6 +1,6 @@
 # satellite
 
-**satellite 004 revision 08** — the third satellite, and the one being built from
+**satellite 004 revision 09** — the third satellite, and the one being built from
 here on. Its version, revision and build number live in
 `satellite/config/satellite_config.hpp`; `make` raises the build number every time
 it builds, and a new revision restarts the count at 1.
@@ -28,6 +28,18 @@ foreground=xFF8800, bold=satellite.bool.true, end="")`, `satellite.console.input
 `.width`, `.height`, `.clear()` and `.home()`, and what 003 refused:
 `"OK".foreground(x00FF00)`, `satellite.console.foreground(c)` for every line after,
 and `satellite.terminal.foreground(c)` for the terminal's own colours.
+
+Revision 09 is the one where a program reaches past itself: its own threads
+(`satellite.thread.new(a_capsule(arguments))`, `.start()`, `.join()`) sharing
+objects under `object.lock()`; other programs run as `satellite.variable.program`
+and `satellite.variable.bash` — started, fed lines, waited for and stopped;
+objects that point, with `.pointer()`, `.reference()` and `==` asking "the same
+object?"; `satellite.random.fast()`, `.normal()` and `.ultra()` with
+`satellite.random.seed(n)`; a string's own methods, a map's `.sort()`, containers
+of any shape with `satellite.access` showing the way in, and
+`satellite.statement.break` and `.continue`; and `my_window.open()`. satl itself
+is built for the processor it runs on, laid out by PGO, ThinLTO and BOLT, reads
+config.ini once a run, and reads the machine only on its first start.
 
 ```satellite
 satellite.include(satellite)
@@ -67,7 +79,7 @@ What changes in 004 is how it runs.
 
 ## Where it is today
 
-Revision 08 runs real programs. What runs:
+Revision 09 runs real programs. What runs:
 
 - capsules with parameters and answers; `satellite.statement.if`, `else`, `while`
   and `for`; and a capsule whose last line calls itself runs in constant memory,

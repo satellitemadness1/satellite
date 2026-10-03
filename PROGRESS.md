@@ -1,6 +1,6 @@
 # satellite-004 — PROGRESS.md
 
-**satellite 004 revision 08** (the build number is in `satellite/config/satellite_config.hpp`,
+**satellite 004 revision 09** (the build number is in `satellite/config/satellite_config.hpp`,
 and `satl --version` shows it). Where the work stands: section 1's table runs to
 2026-09-23, the rest of this file as it was written on 2026-09-16. Read this first
 after a break; then **MILESTONES.md (everything not built, one milestone each)**,
