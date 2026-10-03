@@ -39,3 +39,9 @@ satellite.info.dir(path)	satellite.info.directory(path)
 # on the machine". The singular is the second spelling of each, so either reaches one word.
 satellite.library.main.arguments.thread	satellite.library.main.arguments.threads
 satellite.library.main.arguments.machine.thread	satellite.library.main.arguments.machine.threads
+#
+# AND THE SAME TWO WHERE THE ARGUMENTS LIVE NOW (the author, 2026-10-03: "satellite.library.arguments
+# ... because satellite.library.main is just for satellite.main"), so arguments.thread and
+# arguments.machine.thread still reach their words from main's arguments variable.
+satellite.library.arguments.thread	satellite.library.arguments.threads
+satellite.library.arguments.machine.thread	satellite.library.arguments.machine.threads

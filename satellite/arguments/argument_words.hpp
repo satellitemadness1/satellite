@@ -87,11 +87,24 @@ inline FactReply answer_threads()
     return machine_facts::a_count(said);
 }
 
-// ONE ROW A WORD.
+// ONE ROW A WORD: its name after the arguments' own -- `machine.cores`, the name main's
+// arguments variable files it under and config.ini spells it by -- and the function it runs.
 struct BuiltInWord {
-    const char *spelling;
+    const char *key;
     Scenarios scenarios;
 };
+
+// WHERE EVERY ROW IS FILED, ONCE UNDER EACH. The author, 2026-10-03: "we make it a special
+// variable IN satellite.library at the location of: satellite.library.arguments ... so the
+// entire interpreter can use it, because satellite.library.main is just for satellite.main".
+// So satellite.library.arguments (1 14 3) is where the arguments live, first.
+//
+// THE OLD PLACE STILL ANSWERS, AND THAT IS A CHOICE HE MAY REVERSE. satellite.library.main.
+// arguments (1 14 1 1) is where every one of these words lived until that day, and a word's
+// number is frozen once given (words/make_words.py), so its rows stay in words.tsv either way.
+// Filed here too, a program written the old way reads the same reader through the same row;
+// dropping this second entry retires the old spelling, and nothing else has to change.
+inline constexpr const char *kPlaces[] = {"satellite.library.arguments", "satellite.library.main.arguments"};
 
 // THE ALIASES ARE ROWS OF THEIR OWN WITH THE SAME FUNCTION -- cores, dir, ram, user and the two
 // bare memory words. The author, 2026-09-18: *"let's use the longer choice for each one, can we
@@ -99,40 +112,40 @@ struct BuiltInWord {
 // write it, and because both rows point at ONE reader in machine_facts.hpp they cannot answer
 // differently, which is the only way an alias really goes wrong.
 inline constexpr BuiltInWord kWords[] = {
-    {"satellite.library.main.arguments.access", {.flag_setting = &access_setting}},
-    {"satellite.library.main.arguments.cores", {.fact = &machine_facts::answer_cores}},
-    {"satellite.library.main.arguments.dir", {.fact = &machine_facts::answer_directory}},
-    {"satellite.library.main.arguments.directory", {.fact = &machine_facts::answer_directory}},
-    {"satellite.library.main.arguments.machine.architecture", {.fact = &machine_facts::answer_architecture}},
-    {"satellite.library.main.arguments.machine.byte_order", {.fact = &machine_facts::answer_byte_order}},
-    {"satellite.library.main.arguments.machine.cores", {.fact = &machine_facts::answer_cores}},
-    {"satellite.library.main.arguments.machine.cpu", {.fact = &machine_facts::answer_cpu}},
-    {"satellite.library.main.arguments.machine.page_size", {.fact = &machine_facts::answer_page_size}},
-    {"satellite.library.main.arguments.machine.pointer_bits", {.fact = &machine_facts::answer_pointer_bits}},
-    {"satellite.library.main.arguments.machine.threads", {.fact = &machine_facts::answer_hardware_threads}},
-    {"satellite.library.main.arguments.memory()", {.fact = &machine_facts::answer_memory_total}},
-    {"satellite.library.main.arguments.memory", {.fact = &machine_facts::answer_memory_total}},
-    {"satellite.library.main.arguments.memory.free", {.fact = &machine_facts::answer_memory_free}},
-    {"satellite.library.main.arguments.memory.total", {.fact = &machine_facts::answer_memory_total}},
-    {"satellite.library.main.arguments.memory.used", {.fact = &machine_facts::answer_memory_used}},
-    {"satellite.library.main.arguments.process.id", {.fact = &machine_facts::answer_process_id}},
-    {"satellite.library.main.arguments.process.parent", {.fact = &machine_facts::answer_process_parent}},
-    {"satellite.library.main.arguments.ram", {.fact = &machine_facts::answer_memory_total}},
-    {"satellite.library.main.arguments.session.directory", {.fact = &machine_facts::answer_directory}},
-    {"satellite.library.main.arguments.session.home", {.fact = &machine_facts::answer_home}},
-    {"satellite.library.main.arguments.session.language", {.fact = &machine_facts::answer_language}},
-    {"satellite.library.main.arguments.session.shell", {.fact = &machine_facts::answer_shell}},
-    {"satellite.library.main.arguments.session.terminal", {.fact = &machine_facts::answer_terminal}},
-    {"satellite.library.main.arguments.system.distribution", {.fact = &machine_facts::answer_distribution}},
-    {"satellite.library.main.arguments.system.distribution_id", {.fact = &machine_facts::answer_distribution_id}},
-    {"satellite.library.main.arguments.system.distribution_version",
+    {"access", {.flag_setting = &access_setting}},
+    {"cores", {.fact = &machine_facts::answer_cores}},
+    {"dir", {.fact = &machine_facts::answer_directory}},
+    {"directory", {.fact = &machine_facts::answer_directory}},
+    {"machine.architecture", {.fact = &machine_facts::answer_architecture}},
+    {"machine.byte_order", {.fact = &machine_facts::answer_byte_order}},
+    {"machine.cores", {.fact = &machine_facts::answer_cores}},
+    {"machine.cpu", {.fact = &machine_facts::answer_cpu}},
+    {"machine.page_size", {.fact = &machine_facts::answer_page_size}},
+    {"machine.pointer_bits", {.fact = &machine_facts::answer_pointer_bits}},
+    {"machine.threads", {.fact = &machine_facts::answer_hardware_threads}},
+    {"memory()", {.fact = &machine_facts::answer_memory_total}},
+    {"memory", {.fact = &machine_facts::answer_memory_total}},
+    {"memory.free", {.fact = &machine_facts::answer_memory_free}},
+    {"memory.total", {.fact = &machine_facts::answer_memory_total}},
+    {"memory.used", {.fact = &machine_facts::answer_memory_used}},
+    {"process.id", {.fact = &machine_facts::answer_process_id}},
+    {"process.parent", {.fact = &machine_facts::answer_process_parent}},
+    {"ram", {.fact = &machine_facts::answer_memory_total}},
+    {"session.directory", {.fact = &machine_facts::answer_directory}},
+    {"session.home", {.fact = &machine_facts::answer_home}},
+    {"session.language", {.fact = &machine_facts::answer_language}},
+    {"session.shell", {.fact = &machine_facts::answer_shell}},
+    {"session.terminal", {.fact = &machine_facts::answer_terminal}},
+    {"system.distribution", {.fact = &machine_facts::answer_distribution}},
+    {"system.distribution_id", {.fact = &machine_facts::answer_distribution_id}},
+    {"system.distribution_version",
      {.fact = &machine_facts::answer_distribution_version}},
-    {"satellite.library.main.arguments.system.hostname", {.fact = &machine_facts::answer_hostname}},
-    {"satellite.library.main.arguments.system.kernel", {.fact = &machine_facts::answer_kernel}},
-    {"satellite.library.main.arguments.system.kernel_version", {.fact = &machine_facts::answer_kernel_version}},
-    {"satellite.library.main.arguments.threads", {.fact = &answer_threads}},
-    {"satellite.library.main.arguments.user", {.fact = &machine_facts::answer_username}},
-    {"satellite.library.main.arguments.username", {.fact = &machine_facts::answer_username}},
+    {"system.hostname", {.fact = &machine_facts::answer_hostname}},
+    {"system.kernel", {.fact = &machine_facts::answer_kernel}},
+    {"system.kernel_version", {.fact = &machine_facts::answer_kernel_version}},
+    {"threads", {.fact = &answer_threads}},
+    {"user", {.fact = &machine_facts::answer_username}},
+    {"username", {.fact = &machine_facts::answer_username}},
 };
 
 } // namespace argument_words

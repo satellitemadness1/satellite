@@ -138,12 +138,12 @@ public:
     }
 
     // The full word-table spelling, which is what the table is keyed on.
-    // words.tsv carries satellite.library.main.arguments.memory.total; the
+    // words.tsv carries satellite.library.arguments.memory.total; the
     // author writes arguments.memory.total. Same word, two spellings, and this
     // is the one place that knows it.
     std::string word_table_name() const
     {
-        return "satellite.library.main." + full_name();
+        return "satellite.library." + full_name();   // satellite.library.arguments since 2026-10-03
     }
 
     ArgumentOrigin origin() const { return origin_; }

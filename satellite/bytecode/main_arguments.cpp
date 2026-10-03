@@ -18,7 +18,9 @@ namespace {
 using token::Code;
 
 const std::string kPrefix = "arguments.";
-const std::string kLibraryPrefix = "satellite.library.main.arguments.";
+// WHERE THE ARGUMENTS LIVE (the author, 2026-10-03): satellite.library.arguments, not
+// satellite.library.main.arguments -- "satellite.library.main is just for satellite.main".
+const std::string kLibraryPrefix = "satellite.library.arguments.";
 
 Value text_value(const std::string &text)
 {
@@ -44,7 +46,7 @@ std::string filed(const std::string &key)
     return name;
 }
 
-// A LIVE ROW: the library of satellite.library.main.arguments.<key>, when it has a
+// A LIVE ROW: the word satellite.library.arguments.<key>, when it has a
 // fact or a setting to answer. memory.used is what the machine uses NOW, so it is
 // asked when it is read, never kept from when main began.
 bool live_row(const std::string &key, const FunctionTable &functions, Value &out, std::string &why,
@@ -159,7 +161,7 @@ std::string arguments_row_written_as_a_word(const std::vector<std::bitset<16>> &
         std::size_t used = 0;
         for (std::size_t n = 0; n < names.size(); ++n) {
             path += (n == 0 ? "" : ".") + names[n];
-            if (word::code_of_spelling("satellite.library.main.arguments." + std::string(under) + path) != 0) {
+            if (word::code_of_spelling(kLibraryPrefix + std::string(under) + path) != 0) {
                 found = under + path;
                 used = n + 1;
             }
@@ -167,7 +169,7 @@ std::string arguments_row_written_as_a_word(const std::vector<std::bitset<16>> &
         if (found.empty()) continue;
         for (std::size_t n = 0; n < used; ++n) written += "." + names[n];
         return written + " is not a word -- in 004 it is a row of main's arguments: arguments." + found +
-               " in a satellite.main(satellite.variable.arguments arguments), or satellite.library.main.arguments." +
+               " in a satellite.main(satellite.variable.arguments arguments), or satellite.library.arguments." +
                found + " in any capsule";
     }
     return std::string();

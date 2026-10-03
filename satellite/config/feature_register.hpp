@@ -93,7 +93,7 @@ struct FeatureFact {
 };
 
 // THE NAMES ARE THE config.ini KEYS. A person opening the file reads `access`,
-// not `satellite.library.main.arguments.access` -- the path is how the LANGUAGE
+// not `satellite.library.arguments.access` -- the path is how the LANGUAGE
 // spells it, the file is a person's and spells it short.
 inline const std::array<FeatureFact, kFeatureCount> &feature_facts()
 {

@@ -38,8 +38,8 @@ call on it.
 The name must be one the line can see: satellite.access(nobody) is refused
 before anything runs, and so is anything in the brackets but one name.
 
-satellite.access also has a switch, satellite.library.main.arguments.access,
-1 14 1 1 10, which the design documents write arguments.access. The author
+satellite.access also has a switch, satellite.library.arguments.access,
+1 14 3 10, which the design documents write arguments.access. The author
 meant access to keep "the last known name, type and value of every object, kept
 in memory for as long as the interpreter runs, so you can still ask about an
 object after the program has stopped". That store is not built yet, so the

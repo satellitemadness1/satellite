@@ -31,7 +31,7 @@ namespace word {
 inline constexpr token::Code kBase = 4096;       // reserved: no word has it
 inline constexpr token::Code kFirst = 4097;      // satellite
 inline constexpr token::Code kLast = 8191;       // the end of the range
-inline constexpr unsigned int kWordsInTable = 475;
+inline constexpr unsigned int kWordsInTable = 536;
 inline constexpr unsigned int kMaxDepth = 7;
 
 inline constexpr bool is_word_code(token::Code code) { return code >= kBase && code <= kLast; }
@@ -178,6 +178,7 @@ inline constexpr KeyedWord kKeyedWords[] = {
     {0x03010E0000000000ULL, 4328},  // 1 14 0 -- satellite.library()
     {0x03010E0100000000ULL, 4329},  // 1 14 1 -- satellite.library.main
     {0x03010E0200000000ULL, 4382},  // 1 14 2 -- satellite.library.system
+    {0x03010E0300000000ULL, 4572},  // 1 14 3 -- satellite.library.arguments
     {0x03010F0000000000ULL, 4389},  // 1 15 0 -- satellite.return()
     {0x03010F0100000000ULL, 4390},  // 1 15 1 -- satellite.return(satellite)
     {0x03010F0200000000ULL, 4391},  // 1 15 2 -- satellite.return(value)
@@ -427,6 +428,24 @@ inline constexpr KeyedWord kKeyedWords[] = {
     {0x04010E0202000000ULL, 4385},  // 1 14 2 2 -- satellite.library.system.max_depth
     {0x04010E0203000000ULL, 4386},  // 1 14 2 3 -- satellite.library.system.min_free_mb
     {0x04010E0204000000ULL, 4387},  // 1 14 2 4 -- satellite.library.system.float_digits
+    {0x04010E0300000000ULL, 4573},  // 1 14 3 0 -- satellite.library.arguments()
+    {0x04010E0301000000ULL, 4574},  // 1 14 3 1 -- satellite.library.arguments.machine
+    {0x04010E0302000000ULL, 4583},  // 1 14 3 2 -- satellite.library.arguments.memory
+    {0x04010E0303000000ULL, 4586},  // 1 14 3 3 -- satellite.library.arguments.username
+    {0x04010E0304000000ULL, 4587},  // 1 14 3 4 -- satellite.library.arguments.system
+    {0x04010E0305000000ULL, 4596},  // 1 14 3 5 -- satellite.library.arguments.build
+    {0x04010E0306000000ULL, 4606},  // 1 14 3 6 -- satellite.library.arguments.interpreter
+    {0x04010E0307000000ULL, 4611},  // 1 14 3 7 -- satellite.library.arguments.process
+    {0x04010E0308000000ULL, 4615},  // 1 14 3 8 -- satellite.library.arguments.session
+    {0x04010E0309000000ULL, 4622},  // 1 14 3 9 -- satellite.library.arguments.length
+    {0x04010E030A000000ULL, 4623},  // 1 14 3 10 -- satellite.library.arguments.access
+    {0x04010E030B000000ULL, 4624},  // 1 14 3 11 -- satellite.library.arguments.history
+    {0x04010E030C000000ULL, 4627},  // 1 14 3 12 -- satellite.library.arguments.directory
+    {0x04010E030D000000ULL, 4628},  // 1 14 3 13 -- satellite.library.arguments.cores
+    {0x04010E030E000000ULL, 4629},  // 1 14 3 14 -- satellite.library.arguments.threads
+    {0x04010E030F000000ULL, 4630},  // 1 14 3 15 -- satellite.library.arguments.user
+    {0x04010E0310000000ULL, 4631},  // 1 14 3 16 -- satellite.library.arguments.ram
+    {0x04010E0311000000ULL, 4632},  // 1 14 3 17 -- satellite.library.arguments.dir
     {0x0401160400000000ULL, 4423},  // 1 22 4 0 -- satellite.system.memory()
     {0x0401160401000000ULL, 4424},  // 1 22 4 1 -- satellite.system.memory.bit
     {0x0401160402000000ULL, 4425},  // 1 22 4 2 -- satellite.system.memory.frequency
@@ -470,6 +489,48 @@ inline constexpr KeyedWord kKeyedWords[] = {
     {0x05010E01010F0000ULL, 4470},  // 1 14 1 1 15 -- satellite.library.main.arguments.user
     {0x05010E0101100000ULL, 4471},  // 1 14 1 1 16 -- satellite.library.main.arguments.ram
     {0x05010E0101110000ULL, 4472},  // 1 14 1 1 17 -- satellite.library.main.arguments.dir
+    {0x05010E0301000000ULL, 4575},  // 1 14 3 1 0 -- satellite.library.arguments.machine()
+    {0x05010E0301010000ULL, 4576},  // 1 14 3 1 1 -- satellite.library.arguments.machine.cores
+    {0x05010E0301020000ULL, 4577},  // 1 14 3 1 2 -- satellite.library.arguments.machine.cpu
+    {0x05010E0301030000ULL, 4578},  // 1 14 3 1 3 -- satellite.library.arguments.machine.threads
+    {0x05010E0301040000ULL, 4579},  // 1 14 3 1 4 -- satellite.library.arguments.machine.architecture
+    {0x05010E0301050000ULL, 4580},  // 1 14 3 1 5 -- satellite.library.arguments.machine.byte_order
+    {0x05010E0301060000ULL, 4581},  // 1 14 3 1 6 -- satellite.library.arguments.machine.page_size
+    {0x05010E0301070000ULL, 4582},  // 1 14 3 1 7 -- satellite.library.arguments.machine.pointer_bits
+    {0x05010E0302000000ULL, 4584},  // 1 14 3 2 0 -- satellite.library.arguments.memory()
+    {0x05010E0302010000ULL, 4585},  // 1 14 3 2 1 -- satellite.library.arguments.memory.total
+    {0x05010E0302020000ULL, 4625},  // 1 14 3 2 2 -- satellite.library.arguments.memory.free
+    {0x05010E0302030000ULL, 4626},  // 1 14 3 2 3 -- satellite.library.arguments.memory.used
+    {0x05010E0304000000ULL, 4588},  // 1 14 3 4 0 -- satellite.library.arguments.system()
+    {0x05010E0304010000ULL, 4589},  // 1 14 3 4 1 -- satellite.library.arguments.system.name
+    {0x05010E0304020000ULL, 4590},  // 1 14 3 4 2 -- satellite.library.arguments.system.kernel
+    {0x05010E0304030000ULL, 4591},  // 1 14 3 4 3 -- satellite.library.arguments.system.kernel_version
+    {0x05010E0304040000ULL, 4592},  // 1 14 3 4 4 -- satellite.library.arguments.system.distribution
+    {0x05010E0304050000ULL, 4593},  // 1 14 3 4 5 -- satellite.library.arguments.system.distribution_id
+    {0x05010E0304060000ULL, 4594},  // 1 14 3 4 6 -- satellite.library.arguments.system.distribution_version
+    {0x05010E0304070000ULL, 4595},  // 1 14 3 4 7 -- satellite.library.arguments.system.hostname
+    {0x05010E0305000000ULL, 4597},  // 1 14 3 5 0 -- satellite.library.arguments.build()
+    {0x05010E0305010000ULL, 4598},  // 1 14 3 5 1 -- satellite.library.arguments.build.compiler
+    {0x05010E0305020000ULL, 4599},  // 1 14 3 5 2 -- satellite.library.arguments.build.compiler_version
+    {0x05010E0305030000ULL, 4600},  // 1 14 3 5 3 -- satellite.library.arguments.build.standard
+    {0x05010E0305040000ULL, 4601},  // 1 14 3 5 4 -- satellite.library.arguments.build.flags
+    {0x05010E0305050000ULL, 4602},  // 1 14 3 5 5 -- satellite.library.arguments.build.make
+    {0x05010E0305060000ULL, 4603},  // 1 14 3 5 6 -- satellite.library.arguments.build.standard_library
+    {0x05010E0305070000ULL, 4604},  // 1 14 3 5 7 -- satellite.library.arguments.build.c_library
+    {0x05010E0305080000ULL, 4605},  // 1 14 3 5 8 -- satellite.library.arguments.build.built
+    {0x05010E0306000000ULL, 4607},  // 1 14 3 6 0 -- satellite.library.arguments.interpreter()
+    {0x05010E0306010000ULL, 4608},  // 1 14 3 6 1 -- satellite.library.arguments.interpreter.version
+    {0x05010E0306020000ULL, 4609},  // 1 14 3 6 2 -- satellite.library.arguments.interpreter.library_path
+    {0x05010E0306030000ULL, 4610},  // 1 14 3 6 3 -- satellite.library.arguments.interpreter.library_path_source
+    {0x05010E0307000000ULL, 4612},  // 1 14 3 7 0 -- satellite.library.arguments.process()
+    {0x05010E0307010000ULL, 4613},  // 1 14 3 7 1 -- satellite.library.arguments.process.id
+    {0x05010E0307020000ULL, 4614},  // 1 14 3 7 2 -- satellite.library.arguments.process.parent
+    {0x05010E0308000000ULL, 4616},  // 1 14 3 8 0 -- satellite.library.arguments.session()
+    {0x05010E0308010000ULL, 4617},  // 1 14 3 8 1 -- satellite.library.arguments.session.shell
+    {0x05010E0308020000ULL, 4618},  // 1 14 3 8 2 -- satellite.library.arguments.session.terminal
+    {0x05010E0308030000ULL, 4619},  // 1 14 3 8 3 -- satellite.library.arguments.session.language
+    {0x05010E0308040000ULL, 4620},  // 1 14 3 8 4 -- satellite.library.arguments.session.home
+    {0x05010E0308050000ULL, 4621},  // 1 14 3 8 5 -- satellite.library.arguments.session.directory
     {0x0501160404000000ULL, 4428},  // 1 22 4 4 0 -- satellite.system.memory.swap()
     {0x0501160404010000ULL, 4429},  // 1 22 4 4 1 -- satellite.system.memory.swap.free()
     {0x0501160404020000ULL, 4430},  // 1 22 4 4 2 -- satellite.system.memory.swap.total()
@@ -1010,6 +1071,67 @@ inline constexpr WordFacts kWordFacts[] = {
     {"satellite.variable.bash.shutdown()", {1, 6, 24, 11, 0, 0, 0}, 4},
     {"satellite.variable.bash.pass(text)", {1, 6, 24, 12, 0, 0, 0}, 4},
     {"satellite.random.seed(seed)", {1, 7, 17, 0, 0, 0, 0}, 3},
+    {"satellite.library.arguments", {1, 14, 3, 0, 0, 0, 0}, 3},
+    {"satellite.library.arguments()", {1, 14, 3, 0, 0, 0, 0}, 4},
+    {"satellite.library.arguments.machine", {1, 14, 3, 1, 0, 0, 0}, 4},
+    {"satellite.library.arguments.machine()", {1, 14, 3, 1, 0, 0, 0}, 5},
+    {"satellite.library.arguments.machine.cores", {1, 14, 3, 1, 1, 0, 0}, 5},
+    {"satellite.library.arguments.machine.cpu", {1, 14, 3, 1, 2, 0, 0}, 5},
+    {"satellite.library.arguments.machine.threads", {1, 14, 3, 1, 3, 0, 0}, 5},
+    {"satellite.library.arguments.machine.architecture", {1, 14, 3, 1, 4, 0, 0}, 5},
+    {"satellite.library.arguments.machine.byte_order", {1, 14, 3, 1, 5, 0, 0}, 5},
+    {"satellite.library.arguments.machine.page_size", {1, 14, 3, 1, 6, 0, 0}, 5},
+    {"satellite.library.arguments.machine.pointer_bits", {1, 14, 3, 1, 7, 0, 0}, 5},
+    {"satellite.library.arguments.memory", {1, 14, 3, 2, 0, 0, 0}, 4},
+    {"satellite.library.arguments.memory()", {1, 14, 3, 2, 0, 0, 0}, 5},
+    {"satellite.library.arguments.memory.total", {1, 14, 3, 2, 1, 0, 0}, 5},
+    {"satellite.library.arguments.username", {1, 14, 3, 3, 0, 0, 0}, 4},
+    {"satellite.library.arguments.system", {1, 14, 3, 4, 0, 0, 0}, 4},
+    {"satellite.library.arguments.system()", {1, 14, 3, 4, 0, 0, 0}, 5},
+    {"satellite.library.arguments.system.name", {1, 14, 3, 4, 1, 0, 0}, 5},
+    {"satellite.library.arguments.system.kernel", {1, 14, 3, 4, 2, 0, 0}, 5},
+    {"satellite.library.arguments.system.kernel_version", {1, 14, 3, 4, 3, 0, 0}, 5},
+    {"satellite.library.arguments.system.distribution", {1, 14, 3, 4, 4, 0, 0}, 5},
+    {"satellite.library.arguments.system.distribution_id", {1, 14, 3, 4, 5, 0, 0}, 5},
+    {"satellite.library.arguments.system.distribution_version", {1, 14, 3, 4, 6, 0, 0}, 5},
+    {"satellite.library.arguments.system.hostname", {1, 14, 3, 4, 7, 0, 0}, 5},
+    {"satellite.library.arguments.build", {1, 14, 3, 5, 0, 0, 0}, 4},
+    {"satellite.library.arguments.build()", {1, 14, 3, 5, 0, 0, 0}, 5},
+    {"satellite.library.arguments.build.compiler", {1, 14, 3, 5, 1, 0, 0}, 5},
+    {"satellite.library.arguments.build.compiler_version", {1, 14, 3, 5, 2, 0, 0}, 5},
+    {"satellite.library.arguments.build.standard", {1, 14, 3, 5, 3, 0, 0}, 5},
+    {"satellite.library.arguments.build.flags", {1, 14, 3, 5, 4, 0, 0}, 5},
+    {"satellite.library.arguments.build.make", {1, 14, 3, 5, 5, 0, 0}, 5},
+    {"satellite.library.arguments.build.standard_library", {1, 14, 3, 5, 6, 0, 0}, 5},
+    {"satellite.library.arguments.build.c_library", {1, 14, 3, 5, 7, 0, 0}, 5},
+    {"satellite.library.arguments.build.built", {1, 14, 3, 5, 8, 0, 0}, 5},
+    {"satellite.library.arguments.interpreter", {1, 14, 3, 6, 0, 0, 0}, 4},
+    {"satellite.library.arguments.interpreter()", {1, 14, 3, 6, 0, 0, 0}, 5},
+    {"satellite.library.arguments.interpreter.version", {1, 14, 3, 6, 1, 0, 0}, 5},
+    {"satellite.library.arguments.interpreter.library_path", {1, 14, 3, 6, 2, 0, 0}, 5},
+    {"satellite.library.arguments.interpreter.library_path_source", {1, 14, 3, 6, 3, 0, 0}, 5},
+    {"satellite.library.arguments.process", {1, 14, 3, 7, 0, 0, 0}, 4},
+    {"satellite.library.arguments.process()", {1, 14, 3, 7, 0, 0, 0}, 5},
+    {"satellite.library.arguments.process.id", {1, 14, 3, 7, 1, 0, 0}, 5},
+    {"satellite.library.arguments.process.parent", {1, 14, 3, 7, 2, 0, 0}, 5},
+    {"satellite.library.arguments.session", {1, 14, 3, 8, 0, 0, 0}, 4},
+    {"satellite.library.arguments.session()", {1, 14, 3, 8, 0, 0, 0}, 5},
+    {"satellite.library.arguments.session.shell", {1, 14, 3, 8, 1, 0, 0}, 5},
+    {"satellite.library.arguments.session.terminal", {1, 14, 3, 8, 2, 0, 0}, 5},
+    {"satellite.library.arguments.session.language", {1, 14, 3, 8, 3, 0, 0}, 5},
+    {"satellite.library.arguments.session.home", {1, 14, 3, 8, 4, 0, 0}, 5},
+    {"satellite.library.arguments.session.directory", {1, 14, 3, 8, 5, 0, 0}, 5},
+    {"satellite.library.arguments.length", {1, 14, 3, 9, 0, 0, 0}, 4},
+    {"satellite.library.arguments.access", {1, 14, 3, 10, 0, 0, 0}, 4},
+    {"satellite.library.arguments.history", {1, 14, 3, 11, 0, 0, 0}, 4},
+    {"satellite.library.arguments.memory.free", {1, 14, 3, 2, 2, 0, 0}, 5},
+    {"satellite.library.arguments.memory.used", {1, 14, 3, 2, 3, 0, 0}, 5},
+    {"satellite.library.arguments.directory", {1, 14, 3, 12, 0, 0, 0}, 4},
+    {"satellite.library.arguments.cores", {1, 14, 3, 13, 0, 0, 0}, 4},
+    {"satellite.library.arguments.threads", {1, 14, 3, 14, 0, 0, 0}, 4},
+    {"satellite.library.arguments.user", {1, 14, 3, 15, 0, 0, 0}, 4},
+    {"satellite.library.arguments.ram", {1, 14, 3, 16, 0, 0, 0}, 4},
+    {"satellite.library.arguments.dir", {1, 14, 3, 17, 0, 0, 0}, 4},
 };
 
 inline constexpr std::size_t kWordFactsCount = sizeof kWordFacts / sizeof kWordFacts[0];
@@ -1144,6 +1266,69 @@ inline constexpr SpelledWord kSpelledWords[] = {
     {"satellite.info.file(path)", 4536},
     {"satellite.library", 4327},
     {"satellite.library()", 4328},
+    {"satellite.library.arguments", 4572},
+    {"satellite.library.arguments()", 4573},
+    {"satellite.library.arguments.access", 4623},
+    {"satellite.library.arguments.build", 4596},
+    {"satellite.library.arguments.build()", 4597},
+    {"satellite.library.arguments.build.built", 4605},
+    {"satellite.library.arguments.build.c_library", 4604},
+    {"satellite.library.arguments.build.compiler", 4598},
+    {"satellite.library.arguments.build.compiler_version", 4599},
+    {"satellite.library.arguments.build.flags", 4601},
+    {"satellite.library.arguments.build.make", 4602},
+    {"satellite.library.arguments.build.standard", 4600},
+    {"satellite.library.arguments.build.standard_library", 4603},
+    {"satellite.library.arguments.cores", 4628},
+    {"satellite.library.arguments.dir", 4632},
+    {"satellite.library.arguments.directory", 4627},
+    {"satellite.library.arguments.history", 4624},
+    {"satellite.library.arguments.interpreter", 4606},
+    {"satellite.library.arguments.interpreter()", 4607},
+    {"satellite.library.arguments.interpreter.library_path", 4609},
+    {"satellite.library.arguments.interpreter.library_path_source", 4610},
+    {"satellite.library.arguments.interpreter.version", 4608},
+    {"satellite.library.arguments.length", 4622},
+    {"satellite.library.arguments.machine", 4574},
+    {"satellite.library.arguments.machine()", 4575},
+    {"satellite.library.arguments.machine.architecture", 4579},
+    {"satellite.library.arguments.machine.byte_order", 4580},
+    {"satellite.library.arguments.machine.cores", 4576},
+    {"satellite.library.arguments.machine.cpu", 4577},
+    {"satellite.library.arguments.machine.page_size", 4581},
+    {"satellite.library.arguments.machine.pointer_bits", 4582},
+    {"satellite.library.arguments.machine.thread", 4578},
+    {"satellite.library.arguments.machine.threads", 4578},
+    {"satellite.library.arguments.memory", 4583},
+    {"satellite.library.arguments.memory()", 4584},
+    {"satellite.library.arguments.memory.free", 4625},
+    {"satellite.library.arguments.memory.total", 4585},
+    {"satellite.library.arguments.memory.used", 4626},
+    {"satellite.library.arguments.process", 4611},
+    {"satellite.library.arguments.process()", 4612},
+    {"satellite.library.arguments.process.id", 4613},
+    {"satellite.library.arguments.process.parent", 4614},
+    {"satellite.library.arguments.ram", 4631},
+    {"satellite.library.arguments.session", 4615},
+    {"satellite.library.arguments.session()", 4616},
+    {"satellite.library.arguments.session.directory", 4621},
+    {"satellite.library.arguments.session.home", 4620},
+    {"satellite.library.arguments.session.language", 4619},
+    {"satellite.library.arguments.session.shell", 4617},
+    {"satellite.library.arguments.session.terminal", 4618},
+    {"satellite.library.arguments.system", 4587},
+    {"satellite.library.arguments.system()", 4588},
+    {"satellite.library.arguments.system.distribution", 4592},
+    {"satellite.library.arguments.system.distribution_id", 4593},
+    {"satellite.library.arguments.system.distribution_version", 4594},
+    {"satellite.library.arguments.system.hostname", 4595},
+    {"satellite.library.arguments.system.kernel", 4590},
+    {"satellite.library.arguments.system.kernel_version", 4591},
+    {"satellite.library.arguments.system.name", 4589},
+    {"satellite.library.arguments.thread", 4629},
+    {"satellite.library.arguments.threads", 4629},
+    {"satellite.library.arguments.user", 4630},
+    {"satellite.library.arguments.username", 4586},
     {"satellite.library.main", 4329},
     {"satellite.library.main()", 4330},
     {"satellite.library.main.arguments", 4331},

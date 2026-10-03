@@ -8,7 +8,7 @@
 # else the installer puts down is REPLACED on purpose -- a new satl, new
 # libraries, a rewritten record -- because those are satellite's. This one is the
 # PERSON'S: it holds what their programs wrote with
-# `satellite.library.main.arguments.access = satellite.bool.false`, and an
+# `satellite.library.arguments.access = satellite.bool.false`, and an
 # install that reset it would throw away a setting somebody chose, silently, as a
 # side effect of upgrading. So: created when absent, left exactly as it is when
 # present, and no attempt is made to merge new keys into an old file.
@@ -48,7 +48,7 @@ else
 # One `key = value` a line. `#` starts a comment, and anything this file does not
 # name takes satl's built-in default, so a key you delete is not a key you break.
 #
-# A PROGRAM WRITES THIS FILE TOO. `satellite.library.main.arguments.access =
+# A PROGRAM WRITES THIS FILE TOO. `satellite.library.arguments.access =
 # satellite.bool.false` rewrites the row below and leaves every other line --
 # these comments included -- exactly where it found them.
 

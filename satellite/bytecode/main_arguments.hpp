@@ -40,7 +40,7 @@ class Arguments;
 
 // Every row (an empty index when `arguments` is nullptr), in the order satl
 // gathered them, then every live fact and setting under
-// satellite.library.main.arguments that is not a row already. Text is a string, a
+// satellite.library.arguments that is not a row already. Text is a string, a
 // count or a number is a number, a switch is a bool, a size is its exact bytes.
 Value the_arguments_value(const Arguments *arguments, const FunctionTable &functions);
 
@@ -54,7 +54,7 @@ std::size_t past_the_argument_names(const std::vector<std::bitset<16>> &row, std
 // word, and was told "machine has no satellite.variable line declaring it" -- true, and about
 // something else. `at` on the first name after `satellite.` (or after `satellite.system.`, when
 // `after_system`); answers the refusal that says what 004 spells it -- the longest run of the
-// names written that is a row under satellite.library.main.arguments -- or "" when the names
+// names written that is a row under satellite.library.arguments -- or "" when the names
 // spell none, and the refusal stays the one it was.
 std::string arguments_row_written_as_a_word(const std::vector<std::bitset<16>> &row, std::size_t at,
                                             bool after_system);

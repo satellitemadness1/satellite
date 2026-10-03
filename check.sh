@@ -4823,7 +4823,7 @@ arguments_word_says() {
     printf '%s|%s|%s' "$code" "$(grep -cx before build/arguments_word.out)" "$(tr '\n' ' ' < build/arguments_word.out | grep -cF -- "$2")"
 }
 expect "satellite.machine.cores() is told 004 spells it arguments.machine.cores, before anything runs" "25|0|1" \
-       "$(arguments_word_says 'satellite.machine.cores()' "satellite.machine.cores is not a word -- in 004 it is a row of main's arguments: arguments.machine.cores in a satellite.main(satellite.variable.arguments arguments), or satellite.library.main.arguments.machine.cores in any capsule")"
+       "$(arguments_word_says 'satellite.machine.cores()' "satellite.machine.cores is not a word -- in 004 it is a row of main's arguments: arguments.machine.cores in a satellite.main(satellite.variable.arguments arguments), or satellite.library.arguments.machine.cores in any capsule")"
 expect "... satellite.system.hostname is arguments.system.hostname" "25|0|1" \
        "$(arguments_word_says 'satellite.system.hostname' "satellite.system.hostname is not a word -- in 004 it is a row of main's arguments: arguments.system.hostname in a")"
 expect "... satellite.system.cores is arguments.cores" "25|0|1" \

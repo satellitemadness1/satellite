@@ -213,7 +213,7 @@ inline FactReply answer_cores()
 // HOW MANY THREADS THE MACHINE'S PROCESSORS RUN AT ONCE -- 24 on a 12-core processor that
 // runs two a core. The author, 2026-09-25: *"arguments.machine.thread = how many physical
 // threads exist on the machine"*, where arguments.threads is how many the INTERPRETER can
-// create (satellite.library.main.arguments.threads, read from machine_probe.hpp). Until
+// create (satellite.library.arguments.threads, read from machine_probe.hpp). Until
 // then the machine's word answered the interpreter's count, and the arguments variable's
 // own row said 24: the two names disagreed in one program (NEW_ERROR_LIST A2).
 inline FactReply answer_hardware_threads()

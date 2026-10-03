@@ -10,7 +10,7 @@ bare it is refused S201, a name nobody declared, and satellite.history(x) is
 refused S110, "no capsule named history", both before anything runs.
 
 What exists is its switch, and only as a number in the word table:
-satellite.library.main.arguments.history, 1 14 1 1 11 -- the design documents
+satellite.library.arguments.history, 1 14 3 11 -- the design documents
 write it arguments.history. It has no library, so a program that reads it is
 refused S110 ("there is no value here to work with"), and a program that writes
 it is refused S110 before anything runs. In ~/.satl/config.ini the switch is the
@@ -39,7 +39,7 @@ runs, so the loop below never prints.
 example:
 
 // refused today -- S110, satl(run): there is no value here to work with
-satellite.console.display(satellite.library.main.arguments.history)
+satellite.console.display(satellite.library.arguments.history)
 
 // in ~/.satl/config.ini
 history = true

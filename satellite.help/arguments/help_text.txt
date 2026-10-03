@@ -58,9 +58,10 @@ the program runs. access is the one setting among them:
 args.access = satellite.bool.false turns it off in ~/.satl/config.ini.
 
 The same facts are words of the language too, read by their full name with no
-brackets: satellite.library.main.arguments.cores,
-satellite.library.main.arguments.memory.used and the rest. access is the one a
-program can also write.
+brackets: satellite.library.arguments.cores,
+satellite.library.arguments.memory.used and the rest, in any capsule. access is
+the one a program can also write. (satellite.library.main.arguments, where
+they lived until 2026-10-03, still answers.)
 
 example (run as: satl prog.satl one two -- the comments are one machine's):
 
@@ -78,7 +79,7 @@ satellite.capsule satellite.main(satellite.variable.arguments args)
     args.some_var = 5
     args.some_var = args.some_var + 1
     satellite.console.display(args.some_var) // 6
-    satellite.console.display(satellite.library.main.arguments.machine.pointer_bits) // 64
+    satellite.console.display(satellite.library.arguments.machine.pointer_bits) // 64
 
     satellite.return(satellite)
 }
