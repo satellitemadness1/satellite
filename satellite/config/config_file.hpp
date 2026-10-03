@@ -38,10 +38,12 @@
 
 #include <cstdlib>
 #include <fstream>
+#include <mutex>
 #include <sstream>
 #include <string>
 #include <sys/stat.h>
 #include <sys/types.h>
+#include <unistd.h>
 #include <vector>
 
 namespace satellite004::config_file {
@@ -77,6 +79,64 @@ inline std::string path()
     return where + "/config.ini";
 }
 
+// THE FILE IS READ ONCE (the author, 2026-10-03: "reading config.ini a single time"). Every
+// reader here used to open it again: a start-up opened it 22 times -- once for each feature
+// switch, the register, the text rows, the float precisions and the display buffer. Now the
+// first reader reads every line into one copy, every reader after it reads the copy, and a
+// write puts what it wrote into the copy as well as the file, so a value read after a write
+// is the value written.
+//
+// WHAT IT GIVES UP: a change another program makes to the file while this one runs is not
+// seen until this one starts again. Every setting here is read at start-up anyway, and the
+// one a program reads while it runs -- access -- is one it writes itself.
+//
+// UNDER ONE LOCK, because a thread may read a setting while another writes one.
+struct Copy {
+    bool read = false;      // the file has been looked for once
+    bool found = false;     // and it was there
+    std::vector<std::string> lines;
+};
+
+inline std::mutex &copy_lock()
+{
+    static std::mutex lock;
+    return lock;
+}
+
+// The copy, read from the file the first time anything asks. Call it holding copy_lock().
+inline Copy &the_copy()
+{
+    static Copy copy;
+    if (!copy.read) {
+        copy.read = true;
+        const std::string where = path();
+        if (!where.empty()) {
+            std::ifstream in(where);
+            if (in) {
+                copy.found = true;
+                for (std::string line; std::getline(in, line);)
+                    copy.lines.push_back(line);
+            }
+        }
+    }
+    return copy;
+}
+
+// The key and value a `key = value` line holds -- the value is everything after the first
+// `=` -- or false for a blank line, a comment, or a line that is not one.
+inline bool key_and_value(const std::string &line, std::string &key, std::string &value)
+{
+    const std::string clean = trimmed(line);
+    if (clean.empty() || clean[0] == '#')
+        return false;
+    const std::string::size_type equals = clean.find('=');
+    if (equals == std::string::npos)
+        return false;
+    key = trimmed(clean.substr(0, equals));
+    value = trimmed(clean.substr(equals + 1));
+    return true;
+}
+
 // Whether the file is there at all. Asked at start-up so satl can SAY it is
 // missing -- the author, 2026-09-18: *"don't run the interpreter without
 // /home_dir/.satl/config.ini say 'cannot find ...' please reinstall satellite,
@@ -93,11 +153,8 @@ inline std::string path()
 // asked to be told, and told is what a person can act on.
 inline bool exists()
 {
-    const std::string where = path();
-    if (where.empty())
-        return false;
-    std::ifstream in(where);
-    return static_cast<bool>(in);
+    std::lock_guard<std::mutex> hold(copy_lock());
+    return the_copy().found;
 }
 
 // Whether the file names this key, and what it says. `found` is false both when
@@ -111,25 +168,14 @@ inline bool exists()
 // read_flag() is this with the two words understood.
 inline bool read_value(const std::string &key, std::string &value)
 {
-    const std::string where = path();
-    if (where.empty())
-        return false;
-    std::ifstream in(where);
-    if (!in)
-        return false;
+    std::lock_guard<std::mutex> hold(copy_lock());
     bool found = false;
-    std::string line;
-    while (std::getline(in, line)) {
-        const std::string clean = trimmed(line);
-        if (clean.empty() || clean[0] == '#')
+    std::string said_key, said;
+    for (const std::string &line : the_copy().lines) {
+        if (!key_and_value(line, said_key, said) || said_key != key)
             continue;
-        const std::string::size_type equals = clean.find('=');
-        if (equals == std::string::npos)
-            continue;
-        if (trimmed(clean.substr(0, equals)) != key)
-            continue;
-        value = trimmed(clean.substr(equals + 1));
-        found = true;   // the LAST one wins; see below
+        value = said;
+        found = true;   // the LAST one wins; see above
     }
     return found;
 }
@@ -146,17 +192,14 @@ struct Row {
 inline std::vector<Row> rows()
 {
     std::vector<Row> found;
-    const std::string where = path();
-    if (where.empty())
-        return found;
-    std::ifstream in(where);
-    std::string line;
-    for (std::size_t number = 1; std::getline(in, line); ++number) {
-        const std::string clean = trimmed(line);
+    std::lock_guard<std::mutex> hold(copy_lock());
+    const std::vector<std::string> &lines = the_copy().lines;
+    for (std::size_t at = 0; at < lines.size(); ++at) {
+        const std::string clean = trimmed(lines[at]);
         if (clean.empty() || clean[0] == '#')
             continue;
         const std::string::size_type equals = clean.find('=');
-        found.push_back(Row{number, equals == std::string::npos ? std::string() : trimmed(clean.substr(0, equals)), clean});
+        found.push_back(Row{at + 1, equals == std::string::npos ? std::string() : trimmed(clean.substr(0, equals)), clean});
     }
     return found;
 }
@@ -175,20 +218,14 @@ inline bool read_flag(const std::string &key, bool &value)
     return false;
 }
 
-// Write `key = value`, keeping every other line of the file exactly as it was.
-//
-// REWRITTEN IN PLACE AND NOT APPENDED, because appending makes the file grow by
-// one row every time a program assigns -- which for a setting written in a loop
-// is the console queue's bug with a disk behind it instead of memory. The whole
-// file is read, the matching rows are replaced, and a key that was never there
-// is added once at the end.
-//
-// EVERY OTHER LINE SURVIVES, COMMENTS INCLUDED. The file is a person's, and a
-// program that rewrote it into a canonical form would throw away notes the
-// person left. That is the reason the parser above ignores what it cannot read
-// rather than refusing it.
-inline signed long long int write_value(const std::string &key, const std::string &value, std::string &why)
+// THE WHOLE FILE REWRITTEN: every line as it is ON DISK now -- not the copy, because a person
+// or another program may have changed the file since this one started, and a writer must keep
+// what they wrote -- then `change`, then written back, and the copy becomes what was written.
+// No file yet is no lines yet: what `change` adds is the file.
+template <typename Change>
+inline signed long long int rewrite(Change change, std::string &why)
 {
+    std::lock_guard<std::mutex> hold(copy_lock());
     const std::string where = path();
     if (where.empty()) {
         why = "HOME is not set, so there is no $HOME/.satl to write to";
@@ -200,34 +237,22 @@ inline signed long long int write_value(const std::string &key, const std::strin
     ::mkdir(folder().c_str(), 0755);   // EEXIST is the ordinary answer and is not read
 
     std::vector<std::string> lines;
-    bool replaced = false;
     {
         std::ifstream in(where);
-        if (in) {
-            std::string line;
-            while (std::getline(in, line)) {
-                const std::string clean = trimmed(line);
-                const std::string::size_type equals = clean.find('=');
-                const bool is_this_key = !clean.empty() && clean[0] != '#' &&
-                                         equals != std::string::npos &&
-                                         trimmed(clean.substr(0, equals)) == key;
-                if (!is_this_key) {
-                    lines.push_back(line);
-                    continue;
-                }
-                lines.push_back(key + " = " + value);
-                replaced = true;
-            }
-        }
+        for (std::string line; in && std::getline(in, line);)
+            lines.push_back(line);
     }
-    if (!replaced)
-        lines.push_back(key + " = " + value);
+    change(lines);
 
     // WRITTEN TO A TEMPORARY AND RENAMED, so a config.ini is never half a file.
     // rename(2) within one directory is atomic: a reader either sees all of the
     // old one or all of the new one, and a program killed mid-write leaves the
     // setting it had rather than a truncated row nothing can parse.
-    const std::string temporary = where + ".writing";
+    //
+    // THE TEMPORARY IS THIS PROCESS'S OWN (2026-10-03): two satl started together on a first
+    // start both write the machine's facts, and with one shared name the second could rename
+    // the first one's half-written file into place.
+    const std::string temporary = where + ".writing." + std::to_string(::getpid());
     {
         std::ofstream out(temporary, std::ios::trunc);
         if (!out) {
@@ -243,10 +268,45 @@ inline signed long long int write_value(const std::string &key, const std::strin
         }
     }
     if (std::rename(temporary.c_str(), where.c_str()) != 0) {
+        std::remove(temporary.c_str());
         why = "could not put " + temporary + " in place as " + where;
         return config_file_unwritable;
     }
+    Copy &copy = the_copy();
+    copy.read = true;
+    copy.found = true;
+    copy.lines = std::move(lines);
     return success;
+}
+
+// Write `key = value`, keeping every other line of the file exactly as it was.
+//
+// REWRITTEN IN PLACE AND NOT APPENDED, because appending makes the file grow by
+// one row every time a program assigns -- which for a setting written in a loop
+// is the console queue's bug with a disk behind it instead of memory. The whole
+// file is read, the matching rows are replaced, and a key that was never there
+// is added once at the end.
+//
+// EVERY OTHER LINE SURVIVES, COMMENTS INCLUDED. The file is a person's, and a
+// program that rewrote it into a canonical form would throw away notes the
+// person left. That is the reason the parser above ignores what it cannot read
+// rather than refusing it.
+inline signed long long int write_value(const std::string &key, const std::string &value, std::string &why)
+{
+    return rewrite(
+        [&](std::vector<std::string> &lines) {
+            bool replaced = false;
+            std::string said_key, said;
+            for (std::string &line : lines) {
+                if (!key_and_value(line, said_key, said) || said_key != key)
+                    continue;
+                line = key + " = " + value;
+                replaced = true;
+            }
+            if (!replaced)
+                lines.push_back(key + " = " + value);
+        },
+        why);
 }
 
 // The two words understood. `true` and `false` are the only things written, so

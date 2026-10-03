@@ -4843,6 +4843,47 @@ expect "... and access, a setting, is written through to config.ini and the copy
        "34|true|false|1|1|1" \
        "$code|$(grep -xE 'true|false' build/arguments_access.out | tr '\n' '|')$(grep -cx 'access = false' "$access_home/.satl/config.ini")|$(grep -c '"access": false' build/arguments_access.out)|$(tr '\n' ' ' < build/arguments_access.out | grep -c 'a.access is true or false, and was given a number')"
 
+# THE MACHINE, READ ONCE (the author, 2026-10-03: "have a variable at the top of it: FIRST_START=
+# FALSE or TRUE if it is the first start, and then it will run a special function to grab everything
+# from /proc/meminfo and /proc/cpuinfo and /etc/os-release"; satellite-numbers/machine_facts.hpp). In a
+# home of its own: --rebuild asks for a first start, the first run writes the six facts under
+# first_start = false, every run after believes config.ini -- a hand-written 99 is what a program
+# reads -- first_start = true reads the machine again, and where there is no config.ini none is made.
+fs_home=$PWD/build/first-start-home
+rm -rf -- "$fs_home"
+mkdir -p -- "$fs_home"
+printf 'satellite.include(satellite)\n\nsatellite.capsule satellite.main()\n{\n    satellite.console.display(satellite.library.arguments.machine.cores)\n    satellite.console.display(satellite.library.arguments.machine.cpu)\n    satellite.console.display(satellite.library.arguments.memory.total)\n    satellite.console.display(satellite.library.arguments.system.distribution)\n    satellite.return(satellite)\n}\n' > build/first_start_facts.satl
+HOME=$fs_home "$interpreter" --rebuild > build/first-start-rebuild.out 2>&1
+expect "satl --rebuild asks for a first start: first_start = true, the first row of a new config.ini" "1|first_start = true" \
+       "$(grep -cx 'first_start = true' "$fs_home/.satl/config.ini")|$(grep -v -e '^#' -e '^$' "$fs_home/.satl/config.ini" | head -1)"
+fs_cpu=$(grep -m1 '^model name' /proc/cpuinfo | sed 's/^[^:]*: *//')
+fs_total=$(( $(awk '/^MemTotal:/ {print $2}' /proc/meminfo) * 1024 ))
+fs_os=$(. /etc/os-release && printf '%s|%s|%s' "$NAME" "$ID" "$VERSION_ID")
+HOME=$fs_home "$interpreter" build/first_start_facts.satl > build/first_start_facts.out 2>/dev/null; code=$?
+expect "the first start reads the machine, answers what it says, and writes the six facts under first_start = false" \
+       "0|$cores|$fs_cpu|$fs_total|${fs_os%%|*}|first_start = false|$fs_cpu|$cores|$fs_total|$fs_os" \
+       "$code|$(tr '\n' '|' < build/first_start_facts.out)$(grep -x 'first_start = .*' "$fs_home/.satl/config.ini")|$(for row in machine.cpu machine.cores memory.total system.distribution system.distribution_id system.distribution_version; do sed -n "s/^$row = //p" "$fs_home/.satl/config.ini"; done | tr '\n' '|' | sed 's/|$//')"
+sed -i 's/^machine.cores = .*/machine.cores = 99/' "$fs_home/.satl/config.ini"
+HOME=$fs_home "$interpreter" --debug build/first_start_facts.satl > build/first_start_99.out 2>&1
+expect "every start after believes config.ini: a hand-written machine.cores = 99 is what a program reads, and the warm threads are 99 x arguments.threads_startup_per_core" \
+       "1|1|1" \
+       "$(grep -cx '99' build/first_start_99.out)|$(grep -c "^\[satellite\] arguments.threads_startup = $(( 99 * $(config_row threads_startup_per_core) )) " build/first_start_99.out)|$(grep -c '^\[satellite\] machine(the machine.s facts read from config.ini)' build/first_start_99.out)"
+sed -i 's/^first_start = .*/first_start = true/' "$fs_home/.satl/config.ini"
+HOME=$fs_home "$interpreter" build/first_start_facts.satl > /dev/null 2>&1
+expect "first_start = true reads the machine again: machine.cores is $cores once more, and first_start is false" \
+       "$cores|first_start = false" \
+       "$(sed -n 's/^machine.cores = //p' "$fs_home/.satl/config.ini")|$(grep -x 'first_start = .*' "$fs_home/.satl/config.ini")"
+sed -i 's/^first_start = .*/FIRST_START = FALSE/; s/^machine.cores = .*/machine.cores = 77/' "$fs_home/.satl/config.ini"
+HOME=$fs_home "$interpreter" build/first_start_facts.satl > build/first_start_77.out 2> build/first_start_77.err
+expect "the author's own spelling, FIRST_START = FALSE, is read the same, and S016 says nothing of it" "77|0" \
+       "$(head -1 build/first_start_77.out)|$(grep -c S016 build/first_start_77.err)"
+fs_none=$PWD/build/first-start-no-config
+rm -rf -- "$fs_none"
+mkdir -p -- "$fs_none"
+HOME=$fs_none "$interpreter" build/first_start_facts.satl > build/first_start_none.out 2>/dev/null
+expect "with no config.ini the machine is read when a fact is asked for, and no config.ini is made" "$cores|0" \
+       "$(head -1 build/first_start_none.out)|$(ls -A "$fs_none/.satl" 2>/dev/null | grep -c config.ini)"
+
 # WHAT THE PROCESSOR CAN RUN (the author, 2026-09-23: "arguments.cpu.architecture =
 # "haswell" ... arguments.cpu.features = AVX, AVX2, 512-bit stuff, all that in a single
 # list"; satellite/arguments/cpu_facts.hpp): asked against /proc/cpuinfo's own flags and

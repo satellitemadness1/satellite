@@ -44,6 +44,7 @@
 
 #include "config_file.hpp"
 #include "feature_register.hpp"
+#include "../../satellite-numbers/machine_facts.hpp"
 #include "../machine/critical_report.hpp"
 #include "../machine/machine_codes.hpp"
 
@@ -184,6 +185,16 @@ inline signed long long int run_rebuild()
 
     std::cout << "\n    written to " << config_file::path() << "\n";
     std::cout << "    every run from now reads that one value.\n";
+
+    // AND THE NEXT START READS THE MACHINE AGAIN (2026-10-03, machine_facts.hpp): a rebuild is
+    // what a person runs after new hardware or a new system, and the facts the first start kept
+    // in config.ini would otherwise be answered as this machine's. The register above is saved
+    // either way; a file that would not take first_start keeps the facts it has, and says so.
+    std::string why_not;
+    if (machine_facts::ask_for_a_first_start(why_not) == success)
+        std::cout << "    first_start = true, so the next start reads this machine again.\n";
+    else
+        std::cout << "    first_start could not be set (" << why_not << "), so the machine's facts stay as they are.\n";
     return success;
 }
 

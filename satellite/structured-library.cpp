@@ -54,6 +54,7 @@
 #include "machine/run_state.hpp"
 #include "machine/stack_share.hpp"
 #include "../satellite-numbers/call_number.hpp"
+#include "../satellite-numbers/machine_facts.hpp"
 #include "satl/satl_file.hpp"
 #include "satl/session.hpp"
 #include "display/printing_satellite.hpp"
@@ -313,7 +314,9 @@ signed long long int run_satl(int argc, char **argv)
     // notice, not a refusal: every setting keeps its default, as with S010.
     {
         std::vector<std::string> known{kRegisterKey, "float.whole", "float.decimal", "console.font_size",
-                                       "display.buffer"};
+                                       "display.buffer", machine_facts::kFirstStart,
+                                       machine_facts::kFirstStartAsWritten};
+        for (const char *kept : machine_facts::kKeptRows) known.push_back(kept);
         for (const FeatureFact &fact : feature_facts()) known.push_back(fact.name);
         for (const satellite_argument_row &row : return_arguments_vector())
             if (row.is_text && row.name.size() > 10) known.push_back(row.name.substr(10));
@@ -333,11 +336,19 @@ signed long long int run_satl(int argc, char **argv)
             stray.description = "config.ini has rows satl does not read, so they change nothing: " + unknown +
                                 ". The rows it reads are features, the feature switches (access, word_counts, "
                                 "statements and the rest satl --rebuild lists), directory.default, log_path, "
-                                "float.whole, float.decimal, console.font_size and display.buffer";
+                                "float.whole, float.decimal, console.font_size, display.buffer, and first_start "
+                                "with the machine's facts it keeps (machine.cpu, machine.cores, memory.total, "
+                                "system.distribution, system.distribution_id, system.distribution_version)";
             stray.directory = config_file::path();
             print_notice(stray);
         }
     }
+
+    // THE MACHINE, READ ONCE (the author, 2026-10-03: "have a variable at the top of it:
+    // FIRST_START=FALSE or TRUE"): its facts come out of config.ini, or -- on a first start --
+    // out of /proc/cpuinfo, /proc/meminfo and /etc/os-release, and are written in. Before
+    // gather(), which is the first thing to ask for the cores (machine_facts.hpp says the rest).
+    const std::string machine_read = machine_facts::remember_the_machine();
 
     MachineState state;
     code = arguments.gather(command_line);
@@ -368,6 +379,7 @@ signed long long int run_satl(int argc, char **argv)
     }
     state.set("satellite " + version_line(arguments) + " (starting)", success);
     state.set("arguments(gathered)", success);
+    state.set("machine(" + machine_read + ")", success);
 
     // THE REGISTER, SPELLED OUT -- SATELLITE_ERROR Part 10's rule 4. A run
     // gathered with half the features off has holes in it, and a person reading

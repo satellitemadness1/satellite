@@ -295,7 +295,9 @@ signed long long int Arguments::gather(const CommandLine &command_line)
     // The machine.
     const long threads = sysconf(_SC_NPROCESSORS_ONLN);
     const unsigned long long int thread_count = threads > 0 ? static_cast<unsigned long long int>(threads) : 1;
-    const unsigned long long int cores = machine_facts::physical_cores();   // the libraries' own reader
+    // The arguments words' own reader, which answers the count the first start kept in config.ini
+    // and reads /proc/cpuinfo only when none was kept (machine_facts.hpp).
+    const unsigned long long int cores = machine_facts::cores_of_this_machine();
     add_count("arguments.machine.threads", thread_count);
     add_count("arguments.machine.cores", cores > 0 ? cores : thread_count);
     // HOW MANY WARM THREADS START: THOSE CORES TIMES arguments.threads_startup_per_core (the
