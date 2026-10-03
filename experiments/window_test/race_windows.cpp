@@ -20,8 +20,8 @@ int main()
 
     auto satl_end = std::chrono::high_resolution_clock::now();
 
-    std::cout << "pypy: " << py_end - py_start << "\n";
-    std::cout << "satl: " << satl_end - satl_start << "\n";
+    std::cout << "pypy: " << std::chrono::duration_cast<std::chrono::nanoseconds>(py_end - py_start).count() << " ns\n";
+    std::cout << "satl: " << std::chrono::duration_cast<std::chrono::nanoseconds>(satl_end - satl_start).count() << " ns\n";
 
     return 0;
 }
