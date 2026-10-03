@@ -229,6 +229,21 @@ Value apply(Code op, std::size_t op_at, const Value &left, const Value &right, E
         int order = 0;
         const signed long long int code = left.compare(right, order, why);
         if (code != success) {
+            // TWO OBJECTS ARE ONE OBJECT OR TWO, AND A POINTER AT ONE IS THAT ONE (the author,
+            // 2026-10-02: "it knows which object it is pointing at, it's pointing at a ... we can do
+            // a == p and it's true"). == and != ask satelliteObject's identity -- the same object,
+            // never the same fields -- and an order is refused by name, as for two threads. Asked
+            // only once compare has no scenario, so no other comparison pays for it.
+            if (left.answers_as_an_object() && right.answers_as_an_object()) {
+                if (an_ordering(op)) {
+                    context.refuse(types_do_not_meet,
+                                   std::string(spelling_of(op)) + " was given " + left.kind_name() + " and " +
+                                       right.kind_name() + ", and only == and != compare those -- one object or two",
+                                   op_at);
+                    return Value();
+                }
+                return Value::of_bool((left == right) == (op == token::equals_token));
+            }
             context.refuse(code, why, op_at);
             return Value();
         }

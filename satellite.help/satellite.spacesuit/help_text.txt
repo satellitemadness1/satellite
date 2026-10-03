@@ -51,6 +51,10 @@ so the object can be emptied and the reference is still there".
   at the copy of what it pointed at, when that was copied too.
 - ok() is true of an object, and of a pointer whose object is still there. A
   capsule called through a pointer whose object is gone stops with S260.
+- == and != ask whether two are one object: host == p is true when p points
+  at host's object, host == host is true, and two objects are never ==, even
+  when every field matches. An object has no order, so < > <= >= stop the
+  program (S301).
 
 A spacesuit may hold spacesuits of its own, written in its satellite.public or
 satellite.protected. The outer one's capsules and fields name it bare; from

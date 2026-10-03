@@ -98,8 +98,8 @@ use-after-free; all fixed in build 0144, each with a check.sh row:
   20,000 deep. Now 0.10 s, and 100,000 deep in 0.33 s.
 - MEDIUM, **a new choice of mine, his to overrule:** **an object and a pointer at it are one
   object** to `.contains`, `.index_of`, `.remove` and a list's `==` -- a list of pointers said it
-  did not contain `a`, and `.remove(a)` found nothing. (`a == p` written in a line is still S301,
-  as `a == b` is: that is his open question.)
+  did not contain `a`, and `.remove(a)` found nothing. (`a == p` written in a line: his ruling the
+  same night, below.)
 - MEDIUM: a `multiple` with a spacesuit among its types was refused `m.pointer()` before the run,
   with "m is satellite.container.multiple" -- now it answers all three, as `m.call_x()` already did.
 - MEDIUM: `satellite.thread.new(x.pointer())` ran a spacesuit's own `pointer()`, where every other
@@ -115,9 +115,19 @@ use-after-free; all fixed in build 0144, each with a check.sh row:
   yet"; and a thread kept in a field of the object it runs on keeps that object living, so it is a
   strong circle even when started through a pointer (thread_calls.cpp keeps `self`).
 
+**`==` ON OBJECTS -- HIS RULING, THE SAME NIGHT (build 0145).** Asked what "refused" meant for
+`a == p` (it stopped the program, S301), the author: *"Can we program this so that if p =
+a.pointer() so that a pointer knows that it's a pointer, and it knows what object it is pointing
+at? So then a == p is true, it knows which object it is pointing at, it's pointing at a, and it
+knows it's a pointer"*. So `==` and `!=` on objects and pointers ask **"the same object?"**:
+`a == p` and `p == q` are true when they reach one object, `a == a` is true, and two objects are
+never `==`, even with every field the same (`tests/pointer_equals.satl`). An object still has no
+order: `<` `>` `<=` `>=` stop the program by name (S301), as two threads' do. It is asked only
+once `compare` has no scenario for the pair, so no other comparison pays for it.
+
 **Not done, and his:** `.ok()` on a field never given an object still refuses ("has no value
 yet") -- answering false there would close the "test whether an object field is empty" row
-below; `this`; `==` on two objects written in a line (S301 still).
+below; `this`.
 
 ---
 
@@ -136,7 +146,7 @@ Most mistakes are refused before anything runs, with the right sentence.
 1. **One dangerous bug.** A constructor that makes an object of its own spacesuit is not
    refused. It takes memory at about 2 GB a second until the machine runs out.
 2. **Eleven things class systems usually have that satellite cannot write yet.** Most important
-   are a way to test whether an object field is empty, `==` on two objects, a way for an object
+   are a way to test whether an object field is empty, `==` on two objects (BUILT 2026-10-02), a way for an object
    to hand itself on (`this`), and calling the supertype's version of a replaced capsule. Each
    of these is the author's decision.
 3. **Refusals that come late or say the wrong thing.** The main one: a value of the wrong type
@@ -349,7 +359,7 @@ Ordered by how much each one stops a normal program being written. Each row was 
 | what | today | workaround that runs |
 |---|---|---|
 | **test whether an object field is empty**, or set one back to empty | `node n = a.get_next()` on an empty field: S301 *"holds nothing"*, at run; every spelling of a test is refused | a bool beside the link, or a `list<node>` field holding 0 or 1 items |
-| **`a == b` on two objects** | S301 *"no scenario for that pair"*, at run, **even `a == a`**, though `{a} == {a}` and `.contains` already compare objects by identity | a list of one, or an id field |
+| **`a == b` on two objects** | **BUILT 2026-10-02 (build 0145): the same object** -- before it, S301 *"no scenario for that pair"*, at run, even `a == a` | a list of one, or an id field |
 | **an object handing itself on** (`this` / `self`) | the help says *"there is no this"*, which settles naming inside; nothing lets an object register itself, return itself for chaining, or set a back-link | the caller sets both halves of the link, which is exactly the cycle that leaks (below) |
 | **calling the supertype's version of a replaced capsule** (`super.speak()`) | `animal.speak()` inside `dog.speak()`: S201 | the supertype keeps the body in a second, differently named protected capsule |
 | **a type test before a downcast** (`is it an eclipse?`) | a wrong downcast stops the program; `variant.holds` is numbered for variants only | an overridden `kind()` capsule |
@@ -386,7 +396,7 @@ The help's list of refusals names none of the three.
 - **New questions from today:**
   - does `satellite.return(self(...))` count as the tail call?
   - does the same capsule on another object?
-  - should `==` on two objects mean "the same object"?
+  - ~~should `==` on two objects mean "the same object"?~~ **Yes, his ruling of 2026-10-02 (top of this page).**
   - does satellite want an empty value for object fields, and a `this` for handing an object on?
 
 ## Not reproduced

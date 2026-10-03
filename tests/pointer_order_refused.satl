@@ -1,0 +1,29 @@
+satellite.include(satellite)
+
+// AN OBJECT HAS NO ORDER: < > <= >= on objects and pointers are refused by name, and only == and !=
+// compare them -- one object or two (as two threads and two programs are). The line before ran.
+
+satellite.spacesuit box()
+{
+    satellite.protected
+    {
+        satellite.variable.number value = 0
+    }
+    satellite.public
+    {
+        satellite.capsule call_put(satellite.variable.number n)
+        {
+            value = n
+        }
+    }
+}
+
+satellite.capsule satellite.main()
+{
+    box a
+    box p = a.pointer()
+    satellite.console.display("before")
+    satellite.console.display(a < p)
+    satellite.console.display("THIS LINE MUST NOT RUN")
+    satellite.return(satellite)
+}

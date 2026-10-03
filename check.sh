@@ -6905,6 +6905,14 @@ expect "pointer: satellite.thread.new(x.pointer()) is refused before anything ru
 "$interpreter" tests/pointer_access.satl > build/pointer_access.out 2> build/pointer_access.err; code=$?
 expect "satellite.access(p) says a pointer is one, and when its object is gone" "0|1|1" \
        "$code|$(grep -c '^p is a pointer at a box object$' build/pointer_access.out)|$(grep -c '^p is a pointer at a box object, which is gone$' build/pointer_access.out)"
+# == AND != ON OBJECTS (the author, 2026-10-02: "it knows which object it is pointing at, it's
+# pointing at a ... we can do a == p and it's true"): the same object, never the same fields.
+"$interpreter" tests/pointer_equals.satl > build/pointer_equals.out 2> build/pointer_equals.err; code=$?
+expect "==: an object and a pointer at it are ==, two pointers at one object are, two objects with equal fields are not" \
+       "0|true true true true false false true true false true" "$code|$(tr '\n' ' ' < build/pointer_equals.out | sed 's/ $//')"
+"$interpreter" tests/pointer_order_refused.satl > build/pointer_order_refused.out 2> build/pointer_order_refused.err; code=$?
+expect "==: an object has no order -- a < p is refused by name, after the line before it ran" "27|before|1" \
+       "$code|$(cat build/pointer_order_refused.out)|$(tr '\n' ' ' < build/pointer_order_refused.err | grep -c '< was given an object and a pointer, and only == and != compare those -- one object or two')"
 awk '/^example, a pointer and a reference:$/{p=1; next} p && /^prints:$/{exit} p' satellite.help/satellite.spacesuit/help_text.txt > build/help_pointer.satl
 "$interpreter" build/help_pointer.satl > build/help_pointer.out 2> build/help_pointer.err; code=$?
 expect "satellite.help(spacesuit)'s pointer and reference example prints what the page says" "0|1 2 1 false 2" \
