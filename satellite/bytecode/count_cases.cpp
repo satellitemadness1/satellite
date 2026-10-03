@@ -93,10 +93,33 @@ int main()
         }
     }
 
+    // A CHARACTER ABOVE U+FFFF IS wide_token AND TWO CODES (D3.1, the author, 2026-09-16: "32-bits
+    // only when we use the number 40000 as a 16-bit code"): U+1F600 is 40000, 0x0001, 0xF600, and
+    // nothing writes the retired wide-run token -- asked for by its number, 0x0909, because check.sh
+    // holds that no source names it. check.sh read this off a program's .sate until there was no
+    // .sate (the author, 2026-10-03: "skip .sate altogether").
+    {
+        constexpr unsigned long kRetiredWideRun = 0x0909;
+        BytecodeRegistry registry(1);
+        tokenise_one_line("s = \"\xF0\x9F\x98\x80\"", registry[0]);
+        const std::vector<std::bitset<16>> &row = registry[0];
+        bool wide = false, retired = false;
+        for (std::size_t i = 0; i + 2 < row.size(); ++i)
+            wide = wide || (row[i].to_ulong() == token::wide_token && row[i + 1].to_ulong() == 0x0001 &&
+                            row[i + 2].to_ulong() == 0xF600);
+        for (const std::bitset<16> &code : row)
+            retired = retired || code.to_ulong() == kRetiredWideRun;
+        if (!wide || retired) {
+            std::printf("  WRONG  U+1F600 is not 40000, 0x0001, 0xF600 in the codes%s\n",
+                        retired ? ", and the retired wide-run token is there" : "");
+            ++wrong;
+        }
+    }
+
     if (wrong != 0) {
         std::printf("%llu wrong, among %zu counts and the rows after them\n", wrong, counts.size());
         return 1;
     }
-    std::printf("%zu counts written and read back\n", counts.size());
+    std::printf("%zu counts written and read back, and U+1F600 is 40000 and two codes\n", counts.size());
     return 0;
 }

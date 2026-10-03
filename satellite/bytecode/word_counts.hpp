@@ -68,9 +68,9 @@ struct WordCounts {
 
     // THE ONE CALL ON THE HOT PATH, and it is two adds. `code` is a word code,
     // which word_codes.hpp guarantees is 4097 or above, so the subtraction cannot
-    // wrap; the bound is checked anyway because a code from a .sate file written
-    // by a NEWER build could be past the end of this build's table, and reading
-    // past an array to count a word nobody here knows is not worth the risk.
+    // wrap; the bound is checked anyway, because reading past an array to count a
+    // word nobody here knows is not worth the risk. (It was written for a .sate made
+    // by a newer build; there has been no .sate since 2026-10-03.)
     void saw(token::Code code)
     {
         const std::size_t slot = static_cast<std::size_t>(code) - word::kFirst;

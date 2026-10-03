@@ -1987,12 +1987,9 @@ for line in (s, s.find('b'), s.find('\u9C40'), s.find('\U00019C40'), s.find('d')
     print(line)")
 expect "wide characters in a string: held, found by character, joined, compared" "$wanted_wide" \
        "$("$interpreter" tests/wide_characters.satl 2>/dev/null)"
-# In the bytecode too: the program's .sate holds U+1F600 as 40000, 0x0001, 0xF600, and no
-# code is the retired wide_run_32_token (the wide-strings review, 2026-09-17).
-expect "a wide character in the bytecode is 40000 and two codes" "True False" \
-       "$(python3 -c "
-codes = open('tests/wide_characters.sate').read().split()
-print('1001110001000000 0000000000000001 1111011000000000' in ' '.join(codes), '0000100100001001' in codes)")"
+# In the bytecode too: U+1F600 is 40000, 0x0001, 0xF600, and no code is the retired
+# wide_run_32_token (the wide-strings review, 2026-09-17) -- build/count_cases checks it, below,
+# since there is no .sate to read it off (the author, 2026-10-03: "skip .sate altogether").
 "$interpreter" tests/find_wide_high_half.satl > /dev/null 2>&1; expect "find never matches a wide character's high half" 15 $?
 "$interpreter" tests/find_wide_low_half.satl > /dev/null 2>&1; expect "find never starts at a wide character's low half" 15 $?
 # D3.1 retired wide_run_32_token: nothing writes it and nothing reads it, so nothing names it.

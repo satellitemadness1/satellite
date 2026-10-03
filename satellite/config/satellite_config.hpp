@@ -46,21 +46,15 @@ inline std::vector<satellite_argument_row> return_arguments_vector()
     // 3) if 4 is set to true, then the 3rd item is used instead of the number...
     // 4) whether it is a bool(true) or a number(false)
 
-    // THE THREE FILES BECAME ONE (the author, 2026-09-16): "We skipped .satc and
-    // .satb in place of something else, we are just saving the 16-bit bytecode as
-    // .sate and skipping everything... there is only argument.sate=true/false".
-    //
-    // .satc held the program as numbers, .satb held combine's batch marks and
-    // .sati held the strings as bits. The 16-bit bytecode is already all three:
-    // it IS the numbered program (one code a word), its strings are codes inline
-    // and counted, and the registry already reserves batch_start/batch_end/wait/
-    // batch_size for the marks. So there is one file and one flag.
     // 5) and 6), since 2026-09-22: a row can be WORDS -- 6) true, and 5) is the
     // words; 2), 3) and 4) are then unused and written 0, false, false. A row of
     // words may be set on ONE MACHINE in ~/.satl/config.ini, by its name without
     // `arguments.` -- `directory.default = /home/madness/code/satl` -- and this
     // file keeps the default every other machine gets.
-    arguments_vector.push_back({"arguments.sate", 0, true, true});
+    //
+    // NO arguments.sate ROW (the author, 2026-10-03: "skip .sate altogether"). It saved the
+    // 16-bit codes beside every program, as text, on every run, and nothing read them back
+    // (MILESTONES M31): the codes are made fresh from the .satl each run.
 
     // THE STEP (the author, 2026-09-16): "the magic is step, so it just jumps at
     // that step, preparing every 5 lines by default". A converting thread jumps
@@ -88,7 +82,7 @@ inline std::vector<satellite_argument_row> return_arguments_vector()
     arguments_vector.push_back({"arguments.startup_display", 0, true, true});
     arguments_vector.push_back({"arguments.version", 4, false, false});
     arguments_vector.push_back({"arguments.revision", 8, false, false});
-    arguments_vector.push_back({"arguments.build", 145, false, false});
+    arguments_vector.push_back({"arguments.build", 146, false, false});
     arguments_vector.push_back({"arguments.object_bytes_max", 34359738368, false, false});
     arguments_vector.push_back({"arguments.threads_max", 1000000, false, false});
     arguments_vector.push_back({"arguments.threads_startup", 1024, false, false});

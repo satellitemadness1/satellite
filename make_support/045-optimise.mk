@@ -130,7 +130,7 @@ OPTIMISE_LINK_FLAGS = $(if $(LTO),$(LTO_LINK_FLAGS)) $(if $(BOLT),$(BOLT_LINK_FL
 endif
 
 # RUNS EVERY TRAINING PROGRAM: $(1) the satl, $(2) what goes in its environment, $(3) the
-# folder it runs in. Copies, because satl writes a .sate beside each program; its own
+# folder it runs in. Copies, so nothing a run leaves lands beside the training; its own
 # HOME, so no ~/.satl is read or written; no window, and no terminal to wait on. A
 # subshell, so a failure's `exit` ends the training and not the caller's `|| ...`.
 define run_training

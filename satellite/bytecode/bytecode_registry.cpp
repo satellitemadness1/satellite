@@ -1111,7 +1111,7 @@ std::string string_at(const std::vector<std::bitset<16>> &row, std::size_t &at)
 // neither makes nor breaks an escape.
 //
 // A CHARACTER THE STRING CANNOT HOLD -- a surrogate, or past U+10FFFF -- is string_error,
-// as of_utf8 refused its bytes. The lexer never writes one; a .sate made by hand could.
+// as of_utf8 refused its bytes. The lexer never writes one.
 signed long long int string_literal_at(const std::vector<std::bitset<16>> &row, std::size_t &at,
                                        satellite_string &out, std::size_t &bad_character)
 {

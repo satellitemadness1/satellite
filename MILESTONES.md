@@ -200,7 +200,7 @@ string is 16-bit codes inline and counted. There is no `.satc`, no `.satb` and n
 
 **What survives is work, not files:** combine's marks, which live in the bytecode
 (`batch_start`/`batch_end`/`wait`/`batch_size` are reserved rows already) and
-belong to M12; and the ONE file that does exist, `.sate`, which M31 makes
+belong to M12; and the ONE file that existed, `.sate` (dropped 2026-10-03, M31), which M31 was to make
 runnable.
 
 ## M1.5 / M2.5 / M3.5 / M3.6 — the converters — **now ONE converter**
@@ -880,12 +880,12 @@ by a session limit and never ran.
 
 ## M24 — the stored program: transcription, or code stream
 
-**PROGRESS §6, open, the author's** -- and NARROWER than it was. There is one
-stored file now, `.sate`, and it holds the registry's codes, so the code-stream
-half is already real in what is written. What is still undecided is whether a
-stored program may be RE-LEXED as a transcription, which is what a converter needs
-to know before it records anything. M31 (running a `.sate`) settles it in
-practice.
+**PROGRESS §6, open, the author's** -- and NARROWER than it was. There was one
+stored file, `.sate`, holding the registry's codes, until the author dropped it on
+2026-10-03 ("skip .sate altogether", M31): no program is stored at all now, so
+this question waits until something stores one. What is still undecided is
+whether a stored program may be RE-LEXED as a transcription, which is what a
+converter needs to know before it records anything.
 
 With it: **the nineteen registry rows marked QUESTION**, which name forms this
 language cannot emit — `<<` `>>`, `/* */`, `+= -= *= /= %=`, `&& || ! & | ^ ~`,
@@ -1013,14 +1013,25 @@ programs mean, and needs the analysis first.
 The registry already reserves `batch_start`, `batch_end`, `wait` and `batch_size`
 for exactly these marks — so where the answer is written down is already decided.
 
-## M31 — running a `.sate` without its `.satl`
+## ~~M31 — running a `.sate` without its `.satl`~~ — **DROPPED 2026-10-03, and the `.sate` with it**
 
-`.sate` is written and never read. A program saved as bytecode should run from
-the bytecode: it is the numbered program, so nothing needs re-lexing.
+The author, 2026-10-03, after asking "does a .sate file even speed anything up?" and seeing it
+timed: *"let's just delete writing the .sate files and move on?"*, then *"skip .sate altogether"*.
+So satl writes no `.sate` (and has no `arguments.sate` row): the codes are made fresh from the
+`.satl` on every run.
 
-**This is what makes `.sate` worth writing at all,** and it is small — the
-registry is already exactly what the file holds. It also answers half of M24
-(transcription or code stream) by making the code-stream half real.
+**What the timing said** (satl's own conversion on 1024 warm threads, best of seven): his
+programs of 2,760 to 3,534 lines convert in 3.4 to 3.7 ms, where checking a fingerprint and
+reading 2-byte codes back would have cost about 0.1 ms -- so running from a `.sate` saves about
+3.5 ms of a 60-70 ms start, most of which is satl starting itself. The text `.sate` cost more
+than it could ever save: written on every run at 17 bytes a code, it took 3 ms a run at his
+programs' size and 212 ms at 100,000 lines, and reading the text back cost more than
+converting. A line is 13 to 15 codes in his programs (a 100,000-line program of his shape is
+about 1.4 million codes), and a binary read of 1.4 million codes is 1.7 ms warm, 7 ms cold.
+
+**What it took with it:** `satellite/bytecode/sate_file.{hpp,cpp}`; check.sh's row that read
+U+1F600's three codes off a `.sate` is now a case in `build/count_cases`. M24 below loses the
+stored file it was asking about; M1.5's converter has nothing stored to print.
 
 ## M32 — `satellite_time`
 
@@ -1162,7 +1173,7 @@ is a candidate for the register:
 
 | setting | where it lives now | why it is a candidate |
 |---|---|---|
-| `arguments.sate` | `satellite_config.hpp`, compiled in | gates whether the 16-bit file is written |
+| ~~`arguments.sate`~~ | gone 2026-10-03 with the `.sate` (M31) | -- |
 | `arguments.startup_display` | `satellite_config.hpp`, compiled in | gates the start-up block |
 | `arguments.debug_mode` | the command line, `--debug` | gates every state line |
 

@@ -28,7 +28,6 @@
 // and the tokens are the first thing built out of a program.
 
 #include "arguments/arguments.hpp"
-#include "bytecode/sate_file.hpp"
 #include "bytecode/window_calls.hpp"
 #include "bytecode/console_style.hpp"
 #include "bytecode/bytecode_registry.hpp"
@@ -480,19 +479,10 @@ signed long long int run_satl(int argc, char **argv)
     state.program = &bytecode_registry;
     state.program_files = &bytecode_filenames;
 
-    // THE ONE FILE (the author, 2026-09-16). `.satc`, `.satb` and `.sati` are
-    // skipped: the 16-bit bytecode is already the numbered program, already
-    // carries its strings inline and counted, and already reserves combine's
-    // batch marks. `arguments.sate` is the only flag, and saving is a side
-    // effect of a run rather than a pass of its own -- the codes are in memory
-    // by here whether they are written or not.
-    if (arguments.flag("arguments.sate")) {
-        const signed long long int written =
-            write_sate_file(sate_path_of(arguments.text("arguments.file")),
-                            bytecode_registry, bytecode_filenames, state);
-        if (stops_the_program(written))
-            return written;
-    }
+    // NO .sate (the author, 2026-10-03: "skip .sate altogether"). The codes were written beside
+    // the program as text on every run -- about 3 ms a run for a 3,500-line program, 212 ms at
+    // 100,000 lines -- and nothing read them back: reading them in place of converting would
+    // have saved about 3.5 ms a start at his programs' size (MILESTONES M31).
 
     // No globals: a file must say it is runnable and must have a main to begin
     // in and a return to end in.

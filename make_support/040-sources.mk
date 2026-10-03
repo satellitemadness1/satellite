@@ -40,7 +40,7 @@ INTERPRETER_SOURCES = $(SATELLITE)/structured-library.cpp \
                       $(BYTECODE)/capsule_scopes.cpp $(BYTECODE)/capsule_reach.cpp \
                       $(BYTECODE)/suit_scan.cpp $(BYTECODE)/suit_reach.cpp $(BYTECODE)/suit_run.cpp \
                       $(BYTECODE)/capsule_calls.cpp $(BYTECODE)/pointer_calls.cpp $(BYTECODE)/library_values.cpp \
-                      $(BYTECODE)/expression.cpp $(BYTECODE)/sate_file.cpp \
+                      $(BYTECODE)/expression.cpp \
                       $(BYTECODE)/file_calls.cpp $(BYTECODE)/info_calls.cpp $(BYTECODE)/access_calls.cpp $(BYTECODE)/access_words.cpp $(BYTECODE)/container_calls.cpp \
                       $(BYTECODE)/string_calls.cpp $(BYTECODE)/string_check.cpp \
                       $(BYTECODE)/console_style.cpp $(BYTECODE)/console_calls.cpp $(SATELLITE)/satellite_variable_file/satellite_file.cpp \
@@ -107,7 +107,7 @@ HEADERS = $(ARGUMENTS)/arguments.hpp $(ARGUMENTS)/command_line.hpp $(ARGUMENTS)/
           $(WINDOW_DIR)/satellite_window.hpp $(WINDOW_DIR)/window_desk.hpp \
           $(WINDOW_DIR)/window_spill.hpp $(WINDOW_DIR)/window_menu.hpp $(WINDOW_DIR)/window_canvas.hpp \
           $(WINDOW_DIR)/window_frame.hpp $(WINDOW_DIR)/window_console.hpp $(WINDOW_DIR)/console_feed.hpp \
-          $(BYTECODE)/sate_file.hpp $(BYTECODE)/cascade_convert.hpp \
+          $(BYTECODE)/cascade_convert.hpp \
           $(NUMBER)/satellite_number.hpp $(NUMBER)/satellite_number_limbs.hpp \
           $(NUMBER)/number_arithmetic.hpp $(NUMBER)/number_conversions.hpp \
           $(STRING16)/satellite_string.hpp $(STRING16)/character_table.hpp \
