@@ -418,10 +418,10 @@ signed long long int run_satl(int argc, char **argv)
     FunctionTable functions;
 
     // THE TOPOLOGY (the author, 2026-09-16): main starts ONE thread, and that one
-    // starts the 256. Main does not wait for them -- it loads the number index
-    // and builds the function table while they come up, which is the first time
-    // this interpreter does two things at once. Parking 256 costs ~12 ms and
-    // neither of those two jobs needs a thread.
+    // starts the rest -- 256 then, the cores x2 now (24 here). Main does not wait for
+    // them -- it loads the number index and builds the function table while they come
+    // up, which is the first time this interpreter does two things at once. Parking
+    // 24 costs ~2.3 ms (1024 took ~34 ms) and neither of those two jobs needs a thread.
     StartupThreads threads;
     threads.start_in_background(startup);
 

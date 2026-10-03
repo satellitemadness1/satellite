@@ -1,5 +1,5 @@
 #pragma once
-// satellite/bytecode/cascade_convert.hpp -- EVERY LINE CONVERTED ON 1024 THREADS
+// satellite/bytecode/cascade_convert.hpp -- EVERY LINE CONVERTED ON THE WARM THREADS
 // BEFORE A SINGLE LINE RUNS.
 //
 // (the author, 2026-09-16) "let's create 1024 threads, and have 1024 convert every
@@ -8,9 +8,12 @@
 // have to convert the lines in any order, convert them in any order that you
 // want".
 //
-// THE 1024 ARE THE WARM THREADS. arguments.threads_startup is 1024, so they are
-// started and parked before the program is loaded, and converting a file is
-// handing them its lines. No thread is created per line and none per file.
+// THEY ARE THE WARM THREADS -- 1024 until 2026-10-03, and since then the machine's
+// cores x2 (the author: "how many cores the machine has x2 ... so 24 threads on this
+// machine"). arguments.threads_startup is that count, so they are started and
+// parked before the program is loaded, and converting a file is handing them its
+// lines -- one chunk a thread, 24 chunks on siege3. No thread is created per line
+// and none per file.
 //
 // ANY ORDER TO CONVERT, ONE ORDER TO LAY. The lines of a file are cut into
 // contiguous chunks, one per thread, and the chunks finish in whatever order they

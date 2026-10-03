@@ -82,10 +82,16 @@ inline std::vector<satellite_argument_row> return_arguments_vector()
     arguments_vector.push_back({"arguments.startup_display", 0, true, true});
     arguments_vector.push_back({"arguments.version", 4, false, false});
     arguments_vector.push_back({"arguments.revision", 8, false, false});
-    arguments_vector.push_back({"arguments.build", 146, false, false});
+    arguments_vector.push_back({"arguments.build", 149, false, false});
     arguments_vector.push_back({"arguments.object_bytes_max", 34359738368, false, false});
     arguments_vector.push_back({"arguments.threads_max", 1000000, false, false});
-    arguments_vector.push_back({"arguments.threads_startup", 1024, false, false});
+    // HOW MANY WARM THREADS START: THE MACHINE'S CORES TIMES THIS (the author, 2026-10-03): "set
+    // the arguments.threads thing to be how many cores the machine has x2, so it checks how many
+    // cores the machine has, then starts double that amount, so 24 threads on this machine". satl
+    // counts the cores where it runs (arguments.machine.cores, 12 on siege3) and starts that many
+    // times this row, so arguments.threads_startup is 24 here and is filled in by satl, not written
+    // here. It was a fixed 1024 until then. Never more than arguments.threads_max.
+    arguments_vector.push_back({"arguments.threads_startup_per_core", 2, false, false});
     arguments_vector.push_back({"arguments.file_size_max_bytes", 549755813888, false, false}); // 512 gigabyte file_size maximum
 
     // INFINITY'S TWO WIDTHS (the author, 2026-09-16: "both digits configurable"; and

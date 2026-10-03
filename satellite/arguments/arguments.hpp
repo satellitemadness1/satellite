@@ -8,7 +8,7 @@
 //     count  a whole number   arguments.machine.threads   24
 //     number a satellite_number, as satellite_config.hpp writes one -- any number
 //            of digits (the author, 2026-09-16: "just make everything a
-//            satellite number")    arguments.threads_startup   1024
+//            satellite number")    arguments.infinity   128
 //     flag   true or false    arguments.debug_mode        true
 //     size   an amount of memory or disk, as a long double plus its unit:
 //            "bytes", "kilobytes", "megabytes", "gigabytes" or "terabytes"

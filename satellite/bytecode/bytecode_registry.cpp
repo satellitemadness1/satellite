@@ -869,9 +869,9 @@ void add_file_to_bytecode_registry(const std::string &filename,
     // (join_statements_across_lines). What the file ends inside is refused by the scan.
     join_statements_across_lines(lines);
 
-    // EVERY LINE ON THE 1024 WARM THREADS, IN ANY ORDER, BEFORE ANYTHING RUNS
+    // EVERY LINE ON THE WARM THREADS, IN ANY ORDER, BEFORE ANYTHING RUNS
     // (the author). cascade_convert.hpp holds the design. `batches` is the number
-    // of warm threads, which is arguments.threads_startup.
+    // of warm threads, which is arguments.threads_startup -- the machine's cores x2.
     convert_every_line(lines, file, threads, batches);
     file.push_back(std::bitset<16>(token::end_of_file_token));
 }

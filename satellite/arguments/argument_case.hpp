@@ -56,7 +56,7 @@ inline constexpr std::size_t kArgumentRegisters = 4;
 //          and a program can read it. The word table is the authority and a name
 //          it does not have is a typo.
 //   satl   SATL fills this in, and the language has no word for it.
-//          `arguments.threads_startup` is a config.ini row; `arguments.file` is
+//          `arguments.threads_startup` is the machine's cores x2; `arguments.file` is
 //          what satl was told to run; `arguments.argument_1` exists only on a run
 //          that was given a word. None of them are words and none of them are
 //          mistakes, and `arguments.file` in particular is how the interpreter

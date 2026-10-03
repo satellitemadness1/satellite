@@ -163,9 +163,9 @@ signed long long int Arguments::gather_config()
     else if (startup_display->kind != ArgumentKind::flag)
         return refuse("arguments.startup_display is a bool row (true, true or false, true)");
 
-    // The three numbers the title lines show, and the start-up threads.
+    // The three numbers the title lines show, and how many start-up threads a core gets.
     for (const char *name : {"arguments.version", "arguments.revision", "arguments.build",
-                             "arguments.threads_startup"}) {
+                             "arguments.threads_startup_per_core"}) {
         const Argument *entry = find(name);
         if (entry == nullptr || entry->kind != ArgumentKind::number)
             return refuse(std::string(name) + " needs a number row");
@@ -298,6 +298,13 @@ signed long long int Arguments::gather(const CommandLine &command_line)
     const unsigned long long int cores = machine_facts::physical_cores();   // the libraries' own reader
     add_count("arguments.machine.threads", thread_count);
     add_count("arguments.machine.cores", cores > 0 ? cores : thread_count);
+    // HOW MANY WARM THREADS START: THOSE CORES TIMES arguments.threads_startup_per_core (the
+    // author, 2026-10-03: "how many cores the machine has x2 ... so 24 threads on this
+    // machine"), and a fixed 1024 before that. A NUMBER row, not a count, because run_satl and
+    // the prompt read it with number(), which answers 0 for a count -- and 0 warm threads would
+    // quietly convert every line on main.
+    add_number("arguments.threads_startup", satellite_number(cores > 0 ? cores : thread_count) *
+                                                number("arguments.threads_startup_per_core"));
     // WHAT THE PROCESSOR CAN RUN (cpu_facts.hpp): 003's build name, and every instruction
     // set the processor and the kernel both allow, in one list.
     add_text("arguments.cpu.architecture", cpu_architecture());
@@ -342,7 +349,7 @@ bool filled_in_by_satl(const std::string &name)
     static const char *const names[] = {
         "arguments.debug_mode", "arguments.file", "arguments.program", "arguments.length",
         "arguments.session.directory", "arguments.machine.threads", "arguments.machine.cores",
-        "arguments.cpu.architecture", "arguments.cpu.features",
+        "arguments.threads_startup", "arguments.cpu.architecture", "arguments.cpu.features",
         "arguments.machine.page_size", "arguments.memory.total", "arguments.disk.total", "arguments.disk.free",
         "arguments.username", "arguments.system.hostname", "arguments.system.kernel", "arguments.system.kernel_version"};
     for (const char *filled : names)

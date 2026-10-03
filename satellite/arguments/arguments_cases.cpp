@@ -29,10 +29,12 @@ int main()
 
     for (const char *name : {"arguments.argument_1", "arguments.argument_3", "arguments.argument_100000",
                              "arguments.program", "arguments.file", "arguments.length", "arguments.debug_mode",
-                             "arguments.session.directory", "arguments.system.hostname", "arguments.disk.free"})
+                             "arguments.session.directory", "arguments.system.hostname", "arguments.disk.free",
+                             "arguments.threads_startup"})
         check(filled_in_by_satl(name), std::string(name) + " is satl's");
     for (const char *name : {"arguments.argument_", "arguments.argument_x", "arguments.argument_1x",
-                             "arguments.argument", "arguments.magic", "arguments.build", "arguments.session"})
+                             "arguments.argument", "arguments.magic", "arguments.build", "arguments.session",
+                             "arguments.threads_startup_per_core"})
         check(!filled_in_by_satl(name), std::string(name) + " may be a row");
 
     Arguments arguments;
@@ -51,5 +53,16 @@ int main()
             argument.name != "arguments.infinity.counter" &&
             argument.name != "arguments.float.whole" && argument.name != "arguments.float.decimal")
             check(filled_in_by_satl(argument.name), "gather's " + argument.name + " is on filled_in_by_satl's list");
+
+    // THE WARM THREADS ARE THE MACHINE'S CORES TIMES THE AUTHOR'S ROW (2026-10-03: "how many
+    // cores the machine has x2"), held as a NUMBER, because number() is how run_satl reads it.
+    const Argument *cores = arguments.find("arguments.machine.cores");
+    const satellite_number &per_core = arguments.number("arguments.threads_startup_per_core");
+    check(cores != nullptr && cores->count > 0 &&
+              satellite_number::compare(arguments.number("arguments.threads_startup"),
+                                        satellite_number(cores->count) * per_core) == 0,
+          "arguments.threads_startup is arguments.machine.cores (" + std::to_string(cores ? cores->count : 0) +
+              ") x arguments.threads_startup_per_core (" + per_core.to_text() + ") = " +
+              arguments.number("arguments.threads_startup").to_text());
     return failed == 0 ? 0 : 1;
 }

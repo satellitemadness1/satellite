@@ -8,7 +8,8 @@ satl starts with, the words it was given on the command line, and what it can
 read about the machine it runs on. It is filled from four places:
 
 1) the author's rows, compiled into satl (satellite/config/satellite_config.hpp)
-   -- arguments.version, arguments.threads_startup, arguments.infinity and more.
+   -- arguments.version, arguments.threads_startup_per_core, arguments.infinity
+   and more.
 2) ~/.satl/config.ini, your own file: one "key = value" a line, # for comments.
    A row can be set for one machine by its name without "arguments." --
    directory.default, float.whole, float.decimal and display.buffer are the

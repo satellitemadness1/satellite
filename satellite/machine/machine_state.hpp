@@ -45,8 +45,8 @@ struct MachineState {
     // features on for some threads and not others.
     //
     // READ-ONLY ONCE A PROGRAM IS RUNNING. config/feature_register.hpp's rule 3
-    // says why: `arguments.threads_startup` is 1,024 threads, and a value one
-    // thread writes while a thousand read it is a data race. Start-up sets this
+    // says why: `arguments.threads_startup` is many threads (the cores x2), and a
+    // value one thread writes while the rest read it is a data race. Start-up sets this
     // and nothing writes it again.
     FeatureRegister features;
 

@@ -4286,7 +4286,14 @@ rm -rf build/deep
 expect "--debug runs" 0 $code
 expect "--debug shows the index being defined" 1 "$(grep -c 'vector.number.index(defined) (machine_code: 6 number_vector_defined)' build/debug.out)"
 expect "--debug shows memory as a size" 1 "$(grep -cE '^\[satellite\] arguments.memory.total = [0-9.]+ (kilo|mega|giga|tera)?bytes' build/debug.out)"
-expect "--debug shows arguments.threads_startup from the config" 1 "$(grep -c "^\[satellite\] arguments.threads_startup = $(config_row threads_startup) " build/debug.out)"
+# THE WARM THREADS ARE THE MACHINE'S CORES TIMES arguments.threads_startup_per_core (the author,
+# 2026-10-03: "how many cores the machine has x2 ... so 24 threads on this machine"). The cores are
+# counted here the way satl counts them and not read back from satl: the distinct (physical id,
+# core id) pairs in /proc/cpuinfo, or every online CPU when it names none.
+cores=$(awk -F: '/^physical id/ {p = $2} /^core id/ {print p ":" $2}' /proc/cpuinfo | sort -u | wc -l)
+[ "$cores" -gt 0 ] || cores=$(getconf _NPROCESSORS_ONLN)
+warm_threads=$(( cores * $(config_row threads_startup_per_core) ))
+expect "--debug shows arguments.threads_startup = the machine's $cores cores x arguments.threads_startup_per_core" 1 "$(grep -c "^\[satellite\] arguments.threads_startup = $warm_threads " build/debug.out)"
 # Every config number is a satellite_number (the author, 2026-09-16), and infinity's
 # two digit counts are rows: 128 held (4096 until 2026-09-18), 32 shown, "both digits
 # configurable". The counter (2026-09-18) is the calculations before the INFINITY WARNING.
@@ -4765,7 +4772,7 @@ expect "word_codes.hpp is exactly what make_word_codes.py writes" 0 $code
 python3 words/check_make_words.py > build/check_make_words.out 2>&1; code=$?
 if [ $code = 2 ]; then echo "  skip  make_words.py's checks: no 003 satl at old_versions/second_satellite/satl"
 else expect "make_words.py against rows typed by hand: $(tail -1 build/check_make_words.out) (build/check_make_words.out)" 0 $code; fi
-expect "the start-up threads are warm" 1 "$(grep -cE "^\[satellite\] threads.startup\(warm\): $(config_row threads_startup) threads parked in [0-9.]+ ms" build/debug.out)"
+expect "the start-up threads are warm, $warm_threads of them" 1 "$(grep -cE "^\[satellite\] threads.startup\(warm\): $warm_threads threads parked in [0-9.]+ ms" build/debug.out)"
 
 # THE ARGUMENTS VARIABLE (the author, 2026-09-22: "so main will become satellite.capsule
 # satellite.main(satellite.variable.arguments anything_typed_in_here)"): every row satl

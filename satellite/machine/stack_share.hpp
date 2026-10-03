@@ -26,7 +26,7 @@
 // ONLY THE MAIN THREAD'S, and the main thread is where a program runs: the file,
 // the prompt, and every window event's capsule (the desk is GTK's thread and runs
 // no capsule). glibc fixes the stack NEW threads get when it starts, before
-// main(), so satl's 1,024 start-up threads keep 8 MiB each.
+// main(), so satl's start-up threads (the cores x2, 24 here) keep 8 MiB each.
 //
 // AND A CHILD GETS BACK THE STACK satl WAS GIVEN. A child starts its glibc on the
 // limit it inherits and makes that EVERY one of its threads' stack: a satl started
