@@ -176,6 +176,10 @@ std::string as_text(const Value &value, bool inside)
     if (const UserDefinedHandle *object = value.as_user_defined())
         return "<" + (*object != nullptr && (*object)->layout != nullptr ? (*object)->layout->shown : std::string("spacesuit")) +
                " object>";
+    // A POINTER SAYS SO, and whether its object is still there (satellite_pointer.hpp).
+    if (const ObjectPointer *pointer = value.as_pointer())
+        return "<pointer at " + (pointer->layout != nullptr ? pointer->layout->shown : std::string("spacesuit")) +
+               (object_of(*pointer) != nullptr ? " object>" : " object, gone>");
     if (const ListHandle *list = value.as_list()) {
         text = "{";
         if (*list != nullptr)

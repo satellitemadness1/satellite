@@ -733,7 +733,7 @@ LockUse what_the_line_does(const std::vector<std::bitset<16>> &row, std::size_t 
                     return LockUse::writing;               // the line's own target: name [ ... ] =
                 reads = true;
             } else if (seen && code_at(row, past) == token::method_token &&
-                       token::is_method_code(code_at(row, past + 1)) && !seen.value->is_user_defined()) {
+                       token::is_method_code(code_at(row, past + 1)) && !seen.value->answers_as_an_object()) {
                 // A METHOD ON THIS BODY'S OWN VARIABLE THAT HOLDS NO OBJECT -- a thread's
                 // `mine.join()`, a string's `.upper()` -- cannot reach this object's fields, so
                 // it is stepped over and not taken for a capsule call below. Taken as writing,

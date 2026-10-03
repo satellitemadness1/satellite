@@ -2,6 +2,7 @@
 
 #include "capsule_calls.hpp"
 
+#include "pointer_calls.hpp"
 #include "program_walk.hpp"
 #include "../machine/source_position.hpp"
 
@@ -132,12 +133,18 @@ bool package_capsule_call(const std::vector<std::bitset<16>> &row, std::size_t &
     // is what makes its writes one at a time).
     if (names.size() == 2) {
         const Seen object = context.variables.seen(names.front());
-        const UserDefinedHandle *handle = object ? object.value->as_user_defined() : nullptr;
-        if (handle != nullptr && *handle != nullptr && (*handle)->layout != nullptr) {
+        // A POINTER'S OBJECT TOO, and the thread holds it for its whole run, as it holds any
+        // object it is handed (pointer_calls.hpp).
+        const UserDefinedHandle held = object ? object_behind(*object.value) : UserDefinedHandle();
+        if (object && object.value->is_pointer() && held == nullptr) {
+            context.refuse(object_is_gone, object_is_gone_because(out.written, names.front()), started);
+            return false;
+        }
+        if (held != nullptr && held->layout != nullptr) {
             signed long long int refused = success;
             std::string why;
             const CapsuleSite *site =
-                table->member((*handle)->layout->suit, names.back(), table->scope_at(which, started), refused, why);
+                table->member(held->layout->suit, names.back(), table->scope_at(which, started), refused, why);
             if (site == nullptr) {
                 context.refuse(refused, why, started);
                 return false;
@@ -146,7 +153,7 @@ bool package_capsule_call(const std::vector<std::bitset<16>> &row, std::size_t &
             if (!arguments_at(row, at, out.written, out.arguments, context))
                 return false;
             out.site = site;
-            out.self = *handle;
+            out.self = held;
             return true;
         }
     }
@@ -186,19 +193,32 @@ Value call_member(const std::vector<std::bitset<16>> &row, std::size_t &at, cons
     at = k;
     const std::string written = receiver + "." + name;
 
+    // THE THREE EVERY OBJECT ANSWERS (pointer_calls.hpp), asked of a pointer BEFORE its object
+    // is held, because a pointer whose object is gone still answers them: ok() is false. The
+    // pointer is asked about first -- one compare, and almost every call is on an object.
+    if (object.is_pointer() && every_object_answers(next))
+        return every_object_method(row, at, next, object, receiver, dot, context);
+
     // THE OBJECT IS HELD HERE, BY A HANDLE OF ITS OWN, for the whole call. `object` is
     // whatever the chain was standing on -- a variable, or a field of this body's object
     // -- and the arguments below, or the capsule itself, may give that name another
-    // object while this one is still being run on.
-    const UserDefinedHandle *named = object.as_user_defined();
-    const UserDefinedHandle held = named != nullptr ? *named : UserDefinedHandle();
+    // object while this one is still being run on. A POINTER'S OBJECT is held the same way,
+    // so the object it points at cannot go while its capsule runs.
+    const UserDefinedHandle held = object_behind(object);
     const UserDefinedHandle *handle = &held;
-    if (named == nullptr || held == nullptr || held->layout == nullptr) {
+    if (held == nullptr || held->layout == nullptr) {
+        if (object.is_pointer()) {
+            context.refuse(object_is_gone, object_is_gone_because(written, receiver), dot);
+            return Value();
+        }
         context.refuse(satl_line_not_understood, receiver + " holds no object yet, so it has no " + name +
                                                      " -- a field of a spacesuit's type starts empty until something "
                                                      "gives it one", dot);
         return Value();
     }
+    // A CAPSULE'S OWN NAME is a name, never one of the three -- one compare for nearly every call.
+    if (next != token::name_token && every_object_answers(next))
+        return every_object_method(row, at, next, object, receiver, dot, context);
     // THE AUTHOR'S LOCK (satellite_object/object_lock.hpp): `.lock()` turns it on and
     // `.unlock()` off. Neither locks anything itself; a statement that writes the object does.
     if (next == token::lock_token || next == token::unlock_token) {

@@ -6850,5 +6850,43 @@ expect "random: satellite.random(5) is not a call on its own, said before anythi
 printf 'satellite.help(random)\n' | "$interpreter" --repl > build/repl_help_random.out 2>&1
 expect "satellite.help(random) is the page" 1 "$(grep -c '^SATELLITE 004: satellite.random$' build/repl_help_random.out)"
 
+# object.pointer() AND object.reference() (the author, 2026-10-02): "the pointer() is something that
+# just points at the object, doesn't keep the object living" and "the reference never goes empty, it's
+# an exact copy" -- satellite_object/satellite_pointer.hpp, satellite_object/object_copy.hpp,
+# bytecode/pointer_calls.hpp.
+expect "pointer and reference are registry rows 0x0B6E and 0x0B6F, and token_codes.hpp agrees" "1|1|1|1" \
+       "$(grep -c '^0000101101101110  pointer_token ' REGISTRY.satellite)|$(grep -c 'Code pointer_token = 0x0B6E;' satellite/bytecode/token_codes.hpp)|$(grep -c '^0000101101101111  reference_token ' REGISTRY.satellite)|$(grep -c 'Code reference_token = 0x0B6F;' satellite/bytecode/token_codes.hpp)"
+"$interpreter" tests/pointer.satl > build/pointer.out 2> build/pointer.err; code=$?
+expect "pointer: reaches its object, and is empty once nothing holds it; reference: an exact copy that stays" \
+       "0|true 7 8 8 8 9 false 10 false 11 true" "$code|$(tr '\n' ' ' < build/pointer.out | sed 's/ $//')"
+"$interpreter" tests/reference_tree.satl > build/reference_tree.out 2> build/reference_tree.err; code=$?
+expect "reference: a tree copied whole, its pointers aimed into the copy, and whole after the original is emptied" \
+       "0|100 100 2 2 1 1 2 false true 100" "$code|$(tr '\n' ' ' < build/reference_tree.out | sed 's/ $//')"
+"$interpreter" tests/pointer_gone.satl > build/pointer_gone.out 2> build/pointer_gone.err; code=$?
+expect "pointer: a capsule called through one whose object is gone is S260, after the line before it ran" "76|before|1|1" \
+       "$code|$(cat build/pointer_gone.out)|$(grep -c '^S260: OBJECT_IS_GONE$' build/pointer_gone.err)|$(tr '\n' ' ' < build/pointer_gone.err | grep -c 'p.call_take -- p points at an object that is gone: nothing else held it')"
+"$interpreter" tests/reference_gone.satl > build/reference_gone.out 2> build/reference_gone.err; code=$?
+expect "reference: asked of a pointer whose object is gone is S260" "76|false|1" \
+       "$code|$(cat build/reference_gone.out)|$(tr '\n' ' ' < build/reference_gone.err | grep -c 'p.reference() -- p points at an object that is gone')"
+"$interpreter" tests/pointer_wrong_suit.satl > build/pointer_wrong_suit.out 2> build/pointer_wrong_suit.err; code=$?
+expect "pointer: a name declared another spacesuit refuses it, as it would the object (S301)" "27|before|1" \
+       "$code|$(cat build/pointer_wrong_suit.out)|$(tr '\n' ' ' < build/pointer_wrong_suit.err | grep -c 'c was declared crate, and it holds a pointer at an object of the spacesuit box')"
+"$interpreter" tests/pointer_takes_nothing.satl > build/pointer_takes_nothing.out 2> build/pointer_takes_nothing.err; code=$?
+expect "pointer: pointer(1) is refused before anything runs" "13|0|1" \
+       "$code|$(wc -l < build/pointer_takes_nothing.out | tr -d ' ')|$(tr '\n' ' ' < build/pointer_takes_nothing.err | grep -c 'a.pointer() takes nothing, in its brackets')"
+"$interpreter" tests/pointer_on_a_list.satl > build/pointer_on_a_list.out 2> build/pointer_on_a_list.err; code=$?
+expect "pointer: a list's .pointer() is refused before anything runs, as an object's and not as unbuilt" "13|0|1" \
+       "$code|$(wc -l < build/pointer_on_a_list.out | tr -d ' ')|$(tr '\n' ' ' < build/pointer_on_a_list.err | grep -c "a.pointer() is an object's -- an object of a satellite.spacesuit -- and a is satellite.container.list")"
+"$interpreter" tests/pointer_own_capsule.satl > build/pointer_own_capsule.out 2> build/pointer_own_capsule.err; code=$?
+expect "pointer: x.pointer() is the language's though the spacesuit has its own pointer(), which its bare name still calls; a thread reaches an object through one" \
+       "0|true|the spacesuit's own pointer() ran|41|42" "$code|$(paste -sd'|' build/pointer_own_capsule.out)"
+"$interpreter" tests/pointer_in_a_list.satl > build/pointer_in_a_list.out 2> build/pointer_in_a_list.err; code=$?
+expect "pointer: a list of a spacesuit holds pointers beside objects, .contains finds one, and one empties with its object" \
+       "0|3 3 9 true false" "$code|$(tr '\n' ' ' < build/pointer_in_a_list.out | sed 's/ $//')"
+awk '/^example, a pointer and a reference:$/{p=1; next} p && /^prints:$/{exit} p' satellite.help/satellite.spacesuit/help_text.txt > build/help_pointer.satl
+"$interpreter" build/help_pointer.satl > build/help_pointer.out 2> build/help_pointer.err; code=$?
+expect "satellite.help(spacesuit)'s pointer and reference example prints what the page says" "0|1 2 1 false 2" \
+       "$code|$(tr '\n' ' ' < build/help_pointer.out | sed 's/ $//')"
+
 echo "$passed passed, $failed failed"
 [ "$failed" = 0 ]

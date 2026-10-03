@@ -1,0 +1,76 @@
+satellite.include(satellite)
+
+// object.pointer() AND object.reference() -- the author, 2026-10-02: "we could make .pointer()
+// be something that points at the object, and .reference() something that is a copy of the
+// object, so the object can be emptied and the reference is still there, so the reference never
+// goes empty, it's an exact copy, and the pointer() is something that just points at the object,
+// doesn't keep the object living, if there's nothing else". check.sh compares every line.
+
+satellite.spacesuit box()
+{
+    satellite.protected
+    {
+        satellite.variable.number value = 0
+    }
+    satellite.public
+    {
+        satellite.capsule call_put(satellite.variable.number n)
+        {
+            value = n
+        }
+        satellite.capsule call_take()
+        {
+            satellite.return(value)
+        }
+    }
+}
+
+// A POINTER AT AN OBJECT MADE INSIDE A CAPSULE: when the capsule ends nothing holds the object,
+// so the pointer it hands back is already empty.
+satellite.capsule pointer_at_a_local()
+{
+    box local
+    local.call_put(5)
+    satellite.return(local.pointer())
+}
+
+satellite.capsule satellite.main()
+{
+    box a
+    a.call_put(7)
+
+    // THE POINTER REACHES THE OBJECT: a change through it is a change to a.
+    box p = a.pointer()
+    satellite.console.display(p.ok())
+    satellite.console.display(p.call_take())
+    p.call_put(8)
+    satellite.console.display(a.call_take())
+
+    // THE REFERENCE IS AN EXACT COPY: a change to a does not reach it, nor the other way round.
+    box r = a.reference()
+    satellite.console.display(r.call_take())
+    a.call_put(9)
+    satellite.console.display(r.call_take())
+    r.call_put(10)
+    satellite.console.display(a.call_take())
+
+    // EMPTYING THE OBJECT: a is given another object, so nothing holds the first one -- the
+    // pointer does not keep it living -- and the reference is still there.
+    box other
+    a = other
+    satellite.console.display(p.ok())
+    satellite.console.display(r.call_take())
+
+    // A POINTER HANDED BACK FROM A CAPSULE, AT THE CAPSULE'S OWN OBJECT: gone with the capsule.
+    box q = pointer_at_a_local()
+    satellite.console.display(q.ok())
+
+    // A POINTER'S pointer() IS THE POINTER, and an object's ok() is true.
+    box p2 = r.pointer()
+    box p3 = p2.pointer()
+    p3.call_put(11)
+    satellite.console.display(r.call_take())
+    satellite.console.display(r.ok())
+
+    satellite.return(satellite)
+}

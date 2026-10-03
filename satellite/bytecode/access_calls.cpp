@@ -5,6 +5,7 @@
 
 #include "access_words.hpp"
 #include "capsule_scopes.hpp"
+#include "pointer_calls.hpp"
 #include "suit_layout.hpp"
 #include "type_shape.hpp"
 #include "word_codes.hpp"
@@ -198,21 +199,26 @@ std::string access_text(const std::string &name, const TypeShape &shape, const V
     } else if (const IndexHandle *index = value.as_index()) {
         const std::size_t keys = *index != nullptr ? (*index)->entries.size() : 0;
         text += ", " + std::to_string(keys) + (keys == 1 ? " key" : " keys");
+    } else if (const ObjectPointer *pointer = value.as_pointer()) {
+        text += object_of(*pointer) != nullptr ? ", a pointer at one" : ", a pointer at one that is gone";
     }
 
     Walk walk;
     walk.capsules = capsules;
     std::vector<Line> held;
-    // AN OBJECT'S FIELDS, which it holds and only its own capsules reach.
-    const UserDefinedHandle *object = value.as_user_defined();
-    if (object != nullptr && *object != nullptr && (*object)->layout != nullptr) {
-        const satelliteSuitLayout &layout = *(*object)->layout;
-        for (std::size_t at = 0; at < layout.fields.size() && at < (*object)->fields.size(); ++at)
+    // AN OBJECT'S FIELDS, which it holds and only its own capsules reach -- and a pointer's
+    // object's, held while they are read (pointer_calls.hpp).
+    const UserDefinedHandle object = object_behind(value);
+    if (object != nullptr && object->layout != nullptr) {
+        const satelliteSuitLayout &layout = *object->layout;
+        for (std::size_t at = 0; at < layout.fields.size() && at < object->fields.size(); ++at)
             held.push_back({layout.fields[at].name, with_article(noun(layout.fields[at].shape, false)) + ", " +
-                                                        value_shown((*object)->fields[at])});
+                                                        value_shown(object->fields[at])});
         if (!held.empty())
             held.insert(held.begin(), Line{"its fields", "reached only from inside its own capsules"});
         capsule_lines(layout.suit, name, std::string(), walk);
+    } else if (value.is_pointer()) {
+        held.push_back({"value", "nothing -- the object it pointed at is gone"});
     } else {
         held.push_back({"value", value_shown(value)});
         reach_into(shape, name, std::string(), &value, true, walk);

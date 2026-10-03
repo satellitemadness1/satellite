@@ -20,14 +20,22 @@ bool value_fits(const TypeShape &shape, const satelliteObject &value, std::strin
     // SCOPE it resolved to, never the name: two files may each declare a `people`,
     // and an object of one is not an object of the other.
     if (shape.is_a_suit()) {
-        const UserDefinedHandle *object = value.as_user_defined();
-        if (object == nullptr || *object == nullptr || (*object)->layout == nullptr) {
+        // AN OBJECT'S SPACESUIT, OR A POINTER'S -- which is the spacesuit of the object it points
+        // at, kept with it after that object is gone (satellite_pointer.hpp): `box p = a.pointer()`
+        // declares a box, and every capsule of a box is called through p.
+        const satelliteSuitLayout *layout = nullptr;
+        if (const UserDefinedHandle *object = value.as_user_defined())
+            layout = *object != nullptr ? (*object)->layout.get() : nullptr;
+        else if (const ObjectPointer *pointer = value.as_pointer())
+            layout = pointer->layout.get();
+        if (layout == nullptr) {
             why = "it holds " + std::string(value.kind_name());
             return false;
         }
         // AN OBJECT OF A SPACESUIT THAT EXTENDS IT FITS TOO: it is one of those as well.
-        if (!(*object)->layout->is_a(shape.suit)) {
-            why = "it holds an object of the spacesuit " + (*object)->layout->shown;
+        if (!layout->is_a(shape.suit)) {
+            why = std::string(value.is_pointer() ? "it holds a pointer at an object" : "it holds an object") +
+                  " of the spacesuit " + layout->shown;
             return false;
         }
         return true;
@@ -124,7 +132,7 @@ void of_its_kind(const TypeShape &shape, const satelliteObject &value, const Typ
             of_its_kind(arm, value, first, count);
             continue;
         }
-        const bool fits = a_multiple || (arm.is_a_suit() ? value.as_user_defined() != nullptr
+        const bool fits = a_multiple || (arm.is_a_suit() ? value.answers_as_an_object()
                                                           : kind_of_type_word(arm.word) == value.kind());
         if (!fits) continue;
         if (count++ == 0) first = &arm;

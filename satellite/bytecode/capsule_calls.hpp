@@ -51,10 +51,10 @@ Value call_member(const std::vector<std::bitset<16>> &row, std::size_t &at, cons
 
 // IS `.name` AFTER THIS VALUE ONE OF ITS SPACESUIT'S MEMBERS? An object's capsule may be
 // called anything -- `call_name`, and also `size` or `text`, which the lexer makes
-// method codes -- so after an object, both are.
+// method codes -- so after an object, both are. After a pointer at one, too.
 inline bool a_member_next(const std::vector<std::bitset<16>> &row, std::size_t at, const Value &value)
 {
-    if (!value.is_user_defined() || at >= row.size() ||
+    if (!value.answers_as_an_object() || at >= row.size() ||
         static_cast<token::Code>(row[at].to_ulong()) != token::method_token || at + 1 >= row.size())
         return false;
     const token::Code next = static_cast<token::Code>(row[at + 1].to_ulong());

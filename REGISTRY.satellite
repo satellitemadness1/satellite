@@ -428,7 +428,9 @@ bits              name                         what it is
 0000101101101011  exit_token                   exit  [METHOD] program.exit() -- the same as program.end(), with its own code: one code for the four spellings ran a spacesuit's shutdown() for m.quit() (the review of steps 2-5, 2026-10-01)
 0000101101101100  quit_token                   quit  [METHOD] program.quit() -- the same as program.end(), with its own code, as exit's
 0000101101101101  shutdown_token               shutdown  [METHOD] program.shutdown() -- the same as program.end(), with its own code, as exit's
-0000101101101110  free                         to 0000101111111111, free for this family
+0000101101101110  pointer_token                pointer  [METHOD] object.pointer() -- points at the object and does not keep it living: once nothing else holds the object it is gone, and the pointer is empty (the author, 2026-10-02)
+0000101101101111  reference_token              reference  [METHOD] object.reference() -- an exact copy of the object, its own from then on: the object can be emptied and the reference is still there (the author, 2026-10-02)
+0000101101110000  free                         to 0000101111111111, free for this family
 
 0001000000000000  word_base                    reserved: no word has this code
 0001000000000001  the first word               satellite -- and every satellite.something.something after it

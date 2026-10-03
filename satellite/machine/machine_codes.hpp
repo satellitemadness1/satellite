@@ -162,6 +162,10 @@ enum MachineCode : signed long long int {
     random_range_empty = 73,            // min above max: nothing between them to draw
     random_step_not_a_step = 74,        // a step below 1
     random_step_misses = 75,            // from min, the step never lands on max
+    // 76, 2026-10-02, with object.pointer() (satellite_object/satellite_pointer.hpp): the author's
+    // pointer "doesn't keep the object living", so the object it points at may be gone when the
+    // pointer is used -- and then there is nothing to run its capsule on.
+    object_is_gone = 76,                // a pointer was used, and the object it pointed at is gone
 
     // 130 AND NOT 32, ON PURPOSE (PLAN M0.6): 128 + SIGINT is what a shell and 003
     // both answer for Ctrl-C, and exit_status_of passes a code under 255 through as
@@ -237,6 +241,7 @@ inline const char *machine_code_name(signed long long int code)
     case random_range_empty: return "random_range_empty";
     case random_step_not_a_step: return "random_step_not_a_step";
     case random_step_misses: return "random_step_misses";
+    case object_is_gone: return "object_is_gone";
     case out_of_memory: return "out_of_memory";
     case libraries_not_understood: return "libraries_not_understood";
     case file_not_found: return "file_not_found";

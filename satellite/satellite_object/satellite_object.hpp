@@ -46,6 +46,7 @@
 
 #include "satellite_bytecode.hpp"
 #include "satellite_capsule.hpp"
+#include "satellite_pointer.hpp"
 #include "../satellite_variable_binary/satellite_binary_number.hpp"
 #include "../satellite_variable_color/satellite_color.hpp"
 #include "../satellite_variable_file/satellite_file.hpp"
@@ -151,7 +152,8 @@ public:
                               satellite_color,         // 16 satellite.variable.color (2026-09-22)
                               satellite_fraction,      // 17 satellite.variable.fraction (2026-09-22)
                               ThreadHandle,            // 18 satellite.variable.thread (2026-09-23, 003's "Thr")
-                              ProgramHandle            // 19 satellite.variable.program (2026-10-01)
+                              ProgramHandle,           // 19 satellite.variable.program (2026-10-01)
+                              ObjectPointer            // 20 object.pointer() (2026-10-02, satellite_pointer.hpp)
                               // APPEND HERE, NEVER INSERT ABOVE. 003's own list
                               // is the map of what comes: Flo, Lst, Map, Fil,
                               // Bin, Hex, Arg, Thr. Arms take their numbers in
@@ -206,7 +208,8 @@ public:
         fraction = 17,
         thread = 18,
         program = 19,
-        how_many_kinds = 20
+        pointer = 20,
+        how_many_kinds = 21
     };
 
     static_assert(std::variant_size_v<Held> == how_many_kinds, "Kind must name every arm of Held");
@@ -227,6 +230,7 @@ public:
     static_assert(std::is_same_v<std::variant_alternative_t<fraction, Held>, satellite_fraction>, "");
     static_assert(std::is_same_v<std::variant_alternative_t<thread, Held>, ThreadHandle>, "");
     static_assert(std::is_same_v<std::variant_alternative_t<program, Held>, ProgramHandle>, "");
+    static_assert(std::is_same_v<std::variant_alternative_t<pointer, Held>, ObjectPointer>, "");
 
     Held held;
 
@@ -250,6 +254,7 @@ public:
     satelliteObject(satellite_fraction from) : held(std::move(from)) {}
     satelliteObject(ThreadHandle from) : held(std::move(from)) {}
     satelliteObject(ProgramHandle from) : held(std::move(from)) {}
+    satelliteObject(ObjectPointer from) : held(std::move(from)) {}
 
     static satelliteObject of_nothing() { return satelliteObject(); }
     static satelliteObject of_bool(bool from) { return satelliteObject(from); }
@@ -271,6 +276,7 @@ public:
     static satelliteObject of_fraction(satellite_fraction from) { return satelliteObject(std::move(from)); }
     static satelliteObject of_thread(ThreadHandle from) { return satelliteObject(std::move(from)); }
     static satelliteObject of_program(ProgramHandle from) { return satelliteObject(std::move(from)); }
+    static satelliteObject of_pointer(ObjectPointer from) { return satelliteObject(std::move(from)); }
     // A machine code is a number, as it already was in bytecode/value.hpp.
     static satelliteObject of_code(signed long long int code)
     {
@@ -302,6 +308,10 @@ public:
     bool is_fraction() const { return held.index() == fraction; }
     bool is_thread() const { return held.index() == thread; }
     bool is_program() const { return held.index() == program; }
+    bool is_pointer() const { return held.index() == pointer; }
+    // AN OBJECT, OR A POINTER AT ONE: either way `.name` after it is one of its spacesuit's
+    // members, and a pointer's object is reached through it (bytecode/pointer_calls.hpp).
+    bool answers_as_an_object() const { return held.index() == user_defined || held.index() == pointer; }
 
     // THE ARM, OR nullptr. std::get_if and never std::get: a wrong guess answers
     // nullptr rather than throwing, and satellite does not run on exceptions.
@@ -374,6 +384,10 @@ public:
         return handle != nullptr ? handle->get() : nullptr;
     }
     const ProgramHandle *program_handle() const { return std::get_if<ProgramHandle>(&held); }
+
+    // THE POINTER ITSELF, or nullptr -- never the object, which may be gone: object_of()
+    // in satellite_pointer.hpp asks, and holds it while the answer is kept.
+    const ObjectPointer *as_pointer() const { return std::get_if<ObjectPointer>(&held); }
 
     satellite_number *as_number() { return std::get_if<satellite_number>(&held); }
     satellite_string *as_string() { return std::get_if<satellite_string>(&held); }

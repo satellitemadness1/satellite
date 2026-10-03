@@ -1,0 +1,46 @@
+satellite.include(satellite)
+
+// POINTERS IN A LIST OF A SPACESUIT, beside an object: an item reaches its object, .contains finds a
+// pointer at the same object, and a pointer item is empty once nothing else holds its object.
+// check.sh compares every line.
+
+satellite.spacesuit box()
+{
+    satellite.protected
+    {
+        satellite.variable.number value = 0
+    }
+    satellite.public
+    {
+        satellite.capsule call_put(satellite.variable.number n)
+        {
+            value = n
+        }
+        satellite.capsule call_take()
+        {
+            satellite.return(value)
+        }
+    }
+}
+
+satellite.capsule satellite.main()
+{
+    box a
+    a.call_put(3)
+    box b
+    b.call_put(4)
+    satellite.container.list<box> l = {a.pointer(), b}
+    l.append(b.pointer())
+    satellite.console.display(l.size)
+    box first = l[1]
+    satellite.console.display(first.call_take())
+    box third = l[3]
+    third.call_put(9)
+    satellite.console.display(b.call_take())
+    satellite.console.display(l.contains(a.pointer()))
+    satellite.container.list<box> copied = l
+    box spare
+    a = spare
+    satellite.console.display(first.ok())
+    satellite.return(satellite)
+}

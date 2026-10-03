@@ -1,0 +1,26 @@
+satellite.include(satellite)
+
+// object.pointer() TAKES NOTHING IN ITS BRACKETS, and the checker says so before anything runs.
+
+satellite.spacesuit box()
+{
+    satellite.protected
+    {
+        satellite.variable.number value = 0
+    }
+    satellite.public
+    {
+        satellite.capsule call_take()
+        {
+            satellite.return(value)
+        }
+    }
+}
+
+satellite.capsule satellite.main()
+{
+    satellite.console.display("THIS LINE MUST NOT RUN")
+    box a
+    box p = a.pointer(1)
+    satellite.return(satellite)
+}

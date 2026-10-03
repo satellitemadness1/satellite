@@ -36,6 +36,7 @@
 #include "color_values.hpp"
 #include "console_calls.hpp"
 #include "container_calls.hpp"
+#include "pointer_calls.hpp"
 #include "string_calls.hpp"
 #include "main_arguments.hpp"
 #include "float_values.hpp"
@@ -615,6 +616,14 @@ signed long long int method_judged(const std::vector<std::bitset<16>> &row, std:
 
     if (method == token::reverse_token)
         return success;                  // every type with an order has one
+    // object.pointer() AND object.reference() ARE AN OBJECT'S (pointer_calls.hpp) -- an object of a
+    // satellite.spacesuit, the one kind `b = a` shares -- and a name declared any other type has
+    // neither. Said as that, and not as a method not built yet.
+    if (method == token::pointer_token || method == token::reference_token) {
+        why = spelling + "() is an object's -- an object of a satellite.spacesuit -- and " + name + " is " +
+              word::spelling_of(declared_as);
+        return satl_line_not_understood;
+    }
     if (one_of_the_four(declared_as))
         return method_right_for(declared_as, method, spelling, why);
     // AN INFINITY'S OWN METHODS, numbered at INF-1 and built from INF-4, each named
@@ -1081,8 +1090,10 @@ signed long long int member_of_an_object(const std::vector<std::bitset<16>> &row
     }
     const std::string written = receiver + "." + member;
     // THE AUTHOR'S LOCK (satellite_object/object_lock.hpp): every object has .lock() and
-    // .unlock(), whatever its spacesuit declares, and each takes nothing.
-    if (code_at(row, k + 1) == token::lock_token || code_at(row, k + 1) == token::unlock_token) {
+    // .unlock(), whatever its spacesuit declares, and each takes nothing. And his pointer(),
+    // reference() and ok() (pointer_calls.hpp), the same way.
+    if (code_at(row, k + 1) == token::lock_token || code_at(row, k + 1) == token::unlock_token ||
+        every_object_answers(code_at(row, k + 1))) {
         if (code_at(row, m) != token::left_parenthesis_token || code_at(row, m + 1) != token::right_parenthesis_token) {
             why = written + "() takes nothing, in its brackets";
             return satl_line_not_understood;

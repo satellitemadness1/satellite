@@ -39,7 +39,7 @@ INTERPRETER_SOURCES = $(SATELLITE)/structured-library.cpp \
                       $(BYTECODE)/program_walk.cpp $(BYTECODE)/program_check.cpp $(BYTECODE)/type_shape.cpp \
                       $(BYTECODE)/capsule_scopes.cpp $(BYTECODE)/capsule_reach.cpp \
                       $(BYTECODE)/suit_scan.cpp $(BYTECODE)/suit_reach.cpp $(BYTECODE)/suit_run.cpp \
-                      $(BYTECODE)/capsule_calls.cpp $(BYTECODE)/library_values.cpp \
+                      $(BYTECODE)/capsule_calls.cpp $(BYTECODE)/pointer_calls.cpp $(BYTECODE)/library_values.cpp \
                       $(BYTECODE)/expression.cpp $(BYTECODE)/sate_file.cpp \
                       $(BYTECODE)/file_calls.cpp $(BYTECODE)/info_calls.cpp $(BYTECODE)/access_calls.cpp $(BYTECODE)/access_words.cpp $(BYTECODE)/container_calls.cpp \
                       $(BYTECODE)/string_calls.cpp $(BYTECODE)/string_check.cpp \
@@ -53,7 +53,7 @@ INTERPRETER_SOURCES = $(SATELLITE)/structured-library.cpp \
                       $(RANDOM_DIR)/random_spin.cpp \
                       $(BYTECODE)/window_calls.cpp $(BYTECODE)/window_readers.cpp $(BYTECODE)/window_shapes.cpp \
                       $(BYTECODE)/window_questions.cpp $(BYTECODE)/window_methods.cpp $(BYTECODE)/window_run.cpp \
-                      $(OBJECT)/satellite_object.cpp \
+                      $(OBJECT)/satellite_object.cpp $(OBJECT)/object_copy.cpp \
                       $(OBJECT)/str_add_str.cpp $(OBJECT)/str_minus_str.cpp $(OBJECT)/str_find_str.cpp \
                       $(OBJECT)/num_add_num.cpp $(OBJECT)/num_sub_num.cpp $(OBJECT)/num_div_num.cpp \
                       $(OBJECT)/object_convert.cpp $(OBJECT)/object_percentage.cpp \
@@ -116,6 +116,7 @@ HEADERS = $(ARGUMENTS)/arguments.hpp $(ARGUMENTS)/command_line.hpp $(ARGUMENTS)/
           $(PERCENTAGE)/satellite_percentage.hpp \
           $(FLOAT_HEADERS) $(HEX_HEADERS) $(COLOR_HEADERS) $(FRACTION_HEADERS) \
           $(OBJECT)/satellite_object.hpp $(OBJECT)/satellite_spacesuit.hpp \
+          $(OBJECT)/satellite_pointer.hpp $(OBJECT)/object_copy.hpp $(BYTECODE)/pointer_calls.hpp \
           $(OBJECT)/satellite_list.hpp $(OBJECT)/satellite_index.hpp $(OBJECT)/satellite_map_entry.hpp $(OBJECT)/satellite_map_sort.hpp \
           $(BYTECODE)/type_shape.hpp \
           $(OBJECT)/satellite_bytecode.hpp $(OBJECT)/satellite_capsule.hpp \

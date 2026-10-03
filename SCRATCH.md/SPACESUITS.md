@@ -18,6 +18,83 @@ Every program, its output and its verdict: `SPACESUITS/result.json`. The testers
 
 ---
 
+## 2026-10-02: `object.pointer()` and `object.reference()` are BUILT
+
+**The author**, asked whether there was any point to having both: *"we could make .pointer() be
+something that points at the object, and .reference() something that is a copy of the object, so
+the object can be emptied and the reference is still there, so the reference never goes empty,
+it's an exact copy, and the pointer() is something that just points at the object, doesn't keep
+the object living, if there's nothing else, will you code this now?"* It is 2026-09-12's ruling
+for 003 (old_versions/second_satellite/MILESTONES/M26.md §2.1, "it answers a weak reference"),
+built at last, and the new half beside it.
+
+    box p = a.pointer()       points at a's object, and does not keep it living
+    box r = a.reference()     an exact copy of a's object, its own from then on
+    p.ok()                    false once nothing else holds the object; true of an object itself
+
+**What runs** (`tests/pointer.satl`, `reference_tree.satl`, `pointer_own_capsule.satl`,
+`pointer_in_a_list.satl` and four refusals, 11 rows in check.sh, and an example on `satellite.help(spacesuit)`):
+- a pointer is its object's spacesuit -- `box p` -- and every capsule of a box is called through
+  it, on the object, which is held for the call; a list, a field or a capsule's parameter of a
+  box takes one, and so does a thread's capsule;
+- once nothing else holds the object -- no name, no field, no item of a list -- it is gone, and
+  every pointer at it is empty: `a = other`, or the end of the capsule an object was made in;
+- a capsule called through an empty pointer stops with **S260 OBJECT_IS_GONE** (machine code 76);
+- a reference copies the object and every object it holds, through fields, lists and maps, once
+  each -- an object held twice is one copy held twice, and an object that holds itself holds its
+  copy. A pointer inside it points at the copy of its object when the copy made one, so a copied
+  tree's children point at the copied parent. Emptying or changing the original never reaches it.
+
+**The leak this ends, measured** on build 0142, 200,000 objects each linked to itself: a strong
+link (`n.call_set(n)`, the author's `local_this` shape) peaks at **95.8 MB** -- not one is ever
+freed; a link made with `.pointer()` at **18.2 MB**; no link at all, 17.8 MB. So a back-link made
+with `.pointer()` is the way out of the cycle in "Missing" below, ahead of a cycle collector.
+
+**What it costs:** nothing a clock separates. Best of five, alternating, outputs byte-identical,
+0140 against 0142: 1,000,000 turns of two capsule calls 3.51 s against 3.51 s; 1,000,000 objects
+handed to a capsule 3.13 against 3.13; a plain loop 2.80 against 2.82. Counted by callgrind, a turn
+of two capsule calls was 24,642.7 instructions on 0140 and 24,733.6 on 0142 (+0.37%); build 0143
+tests the new words only when they can be the one, and is 24,726.8 (+0.34%) -- the rest is in
+one_operand's and call_method's layout, because a plain loop that runs none of the new code moved
+the same way, 10,125.1 to 10,148.1 a turn (+0.23%). The compiler lays the binary out again; the
+new words do no work on a call that is not theirs.
+
+**Files:** `satellite/satellite_object/satellite_pointer.hpp` (the value, arm 20 of
+satelliteObject: a std::weak_ptr and the spacesuit's layout, 32 bytes inside the 136 a value
+already is), `satellite_object/object_copy.{hpp,cpp}` (the copy: a list of work, never the copy
+calling itself, so a chain of a million objects copies like any other),
+`bytecode/pointer_calls.{hpp,cpp}` (the three methods), `capsule_calls.cpp` (a pointer's capsules
+run on its object), `type_shape.cpp` (a box name takes a box pointer), `program_check.cpp`, and
+REGISTRY rows 0x0B6E and 0x0B6F.
+
+**My choices, his to overrule** (each is one place):
+1. **An empty pointer stops the program when it is used** (S260), and `p.ok()` asks first. The
+   other choice is a pointer that quietly does nothing -- the "empty value" question below.
+2. **Every object answers `ok()`**, true for an object itself: a name declared `box` may hold an
+   object or a pointer, and nothing before the run can say which.
+3. **The language's words come first**, as `.lock()`'s do: a spacesuit's own capsule named
+   `pointer`, `reference` or `ok` is still called by its bare name inside the spacesuit, and
+   `x.pointer()` from anywhere is the language's. Four of his programs (the_death_korps, terran,
+   force_energy, infinity_data) declare a `pointer()` answering their strong `local_this`, so
+   their `x.pointer()` lines now get a real pointer. None of the four runs on 004 either way:
+   `#000000` colours and `satellite.system.memory.main` are 003's, and stop build 0140 the same.
+4. **A reference copies all the way down**, not one level: "an exact copy", and one level would
+   leave the copy sharing what the original goes on changing.
+5. **What a reference does not copy, as `=` does not:** a list or a map that holds no object (it
+   is a value already, shared until one side writes), a file, a window, a thread, a program.
+6. **The copy's `.lock()` is on or off as the original's**, and each original is read under its
+   lock when that is on, as a statement reading it would be.
+7. **They are an object's only:** on a list, a number or any other kind, `.pointer()` and
+   `.reference()` are refused as "an object's" (S110), before the run where the checker can see
+   it -- a list is copied by `b = a` already.
+8. A pointer's `.pointer()` is the pointer itself; `display(p)` refuses as `display(a)` does.
+
+**Not done, and his:** `.ok()` on a field never given an object still refuses ("has no value
+yet") -- answering false there would close the "test whether an object field is empty" row
+below; `this`; `==` on two objects, so on two pointers too (S301 still).
+
+---
+
 ## The short answer
 
 **Classes work.** A normal object-oriented program can be written today:
@@ -253,7 +330,7 @@ Ordered by how much each one stops a normal program being written. Each row was 
 | **sorting objects** by a key or by a capsule's answer | `.sort().by_value()`, `.max` and `.min` refuse objects, honestly | a hand-written sort |
 | class-level (static) fields or capsules | no word, and no file-level variables | one shared object handed to every constructor |
 | abstract capsules or interfaces | a placeholder whose answer is used must answer | `satellite.return(0)` as the placeholder |
-| copying an object | no word | a hand-written copy capsule |
+| copying an object | **BUILT 2026-10-02: `object.reference()`**, an exact copy (top of this page) | -- |
 | a destructor | no word | none |
 | a supertype's nested spacesuits, by bare name in a subtype | a protected one cannot be named from a subtype at all | a protected factory capsule |
 
@@ -261,7 +338,9 @@ Ordered by how much each one stops a normal program being written. Each row was 
 refcount now, `.pointer()` as the weak reference, a cycle collector later). 200,000 self-linked
 objects peaked at 71 MB, where unlinked ones stay flat at 21 MB. It matters more because of the
 first three rows: with no empty value and no `this`, a back-link can only be broken by pointing
-the field at a spare object. The 004 help page does not mention the leak.
+the field at a spare object. The 004 help page does not mention the leak. **SINCE 2026-10-02 a
+back-link made with `.pointer()` does not keep its object living** -- 95.8 MB against 18.2 MB for
+200,000 self-linked objects (top of this page).
 
 **Also by design, and worth one line in the help:**
 - one constructor per spacesuit;
@@ -277,7 +356,7 @@ The help's list of refusals names none of the three.
   and `satellite.supertype.<name>`.
 - **POLYMORPH M1 D1/D2:** a spacesuit declared inside a capsule.
 - **`Type(args)` inside a line:** today an object is made only by a declaration line.
-- **`.pointer()`** as a weak reference is owed (M26).
+- ~~**`.pointer()`** as a weak reference is owed (M26).~~ **BUILT 2026-10-02**, with `.reference()` (top of this page).
 - **New questions from today:**
   - does `satellite.return(self(...))` count as the tail call?
   - does the same capsule on another object?

@@ -157,6 +157,13 @@ inline SCode s_code_for(signed long long int machine_code)
                 "a satellite.library value is written down at the top of its file -- one number, text or other "
                 "literal -- and nothing works it out or changes it afterwards. A value every capsule could "
                 "change would be a global, and satellite has none."};
+    // AND 2026-10-02's, with object.pointer(): the author's pointer "doesn't keep the object living".
+    case object_is_gone:
+        return {"S260", "OBJECT_IS_GONE",
+                "this pointer points at an object that is gone. A pointer does not keep its object living: once "
+                "nothing else holds the object -- no name, no field, no item of a list -- it is gone, and the "
+                "pointer is empty. pointer.ok() says whether it still points at one; object.reference() is an "
+                "exact copy, which never goes empty."};
     case types_do_not_meet:
         return {"S301", "TYPES_DO_NOT_MEET",
                 "two kinds met that have nothing to do with each other: an operator given kinds it "

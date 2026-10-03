@@ -409,7 +409,8 @@ Value call_method(const std::vector<std::bitset<16>> &row, std::size_t &at, cons
         // AN OBJECT'S MEMBER (2026-09-22, capsule_calls.hpp): its spacesuit says what the
         // name is, whether or not the lexer made it a method code -- an object's capsule
         // may be called `size` as well as `call_name`. What it answers goes on down the chain.
-        if ((*live).is_user_defined()) {
+        // A pointer's are its object's (pointer_calls.hpp).
+        if ((*live).answers_as_an_object()) {
             Value answer = call_member(row, at, *live, name, context);
             if (context.code != success)
                 return Value();
@@ -689,6 +690,15 @@ Value call_method(const std::vector<std::bitset<16>> &row, std::size_t &at, cons
                                                       "every number -- there is no " + spelling + " to make of it");
                 return Value();
             }
+        }
+
+        // object.pointer() AND object.reference() ARE AN OBJECT'S (pointer_calls.hpp), and this is
+        // not one -- said as that, as the checker says it, and not as a method not built yet.
+        if (method == token::pointer_token || method == token::reference_token) {
+            context.refuse(satl_line_not_understood, name + "." + spelling + "() is an object's -- an object of a "
+                                                         "satellite.spacesuit -- and this is " +
+                                                         std::string((*live).kind_name()));
+            return Value();
         }
 
         // THE REST ARE THE STRING'S AND THE NUMBER'S, which take one argument or none.

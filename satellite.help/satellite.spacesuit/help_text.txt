@@ -36,6 +36,22 @@ or what a list holds, satellite.container.list<greeter>, and a capsule can hand
 one back. A field of a spacesuit's type with nothing after its name starts
 empty, until a capsule gives it an object.
 
+Every object also answers pointer(), reference() and ok(), whatever its
+spacesuit declares -- the author, 2026-10-02: ".pointer() be something that
+points at the object, and .reference() something that is a copy of the object,
+so the object can be emptied and the reference is still there".
+
+- host.pointer() points at host's object and does not keep it living: once
+  nothing else holds the object -- no name, no field, no item of a list -- it is
+  gone, and the pointer is empty. greeter p = host.pointer() is a greeter, and
+  p.greet() runs on host's object. A pointer is how an object points back at
+  its parent, or at itself, without the two keeping each other alive for ever.
+- host.reference() is an exact copy: its fields, and every object it holds,
+  copied all the way down, and its own from then on. A pointer inside it points
+  at the copy of what it pointed at, when that was copied too.
+- ok() is true of an object, and of a pointer whose object is still there. A
+  capsule called through a pointer whose object is gone stops with S260.
+
 A spacesuit may hold spacesuits of its own, written in its satellite.public or
 satellite.protected. The outer one's capsules and fields name it bare; from
 outside a public one is outer.inner, and a protected one cannot be named. Its
@@ -96,3 +112,47 @@ prints:
 
 hello from satl, 1
 hello from satl, 2
+
+example, a pointer and a reference:
+
+satellite.include(satellite)
+
+satellite.spacesuit counter()
+{
+    satellite.protected
+    {
+        satellite.variable.number count = 0
+    }
+
+    satellite.public
+    {
+        satellite.capsule bump()
+        {
+            count = count + 1
+            satellite.return(count)
+        }
+    }
+}
+
+satellite.capsule satellite.main()
+{
+    counter first
+    counter looking = first.pointer()
+    counter copied = first.reference()
+    satellite.console.display(looking.bump())
+    satellite.console.display(first.bump())
+    satellite.console.display(copied.bump())
+    counter spare
+    first = spare
+    satellite.console.display(looking.ok())
+    satellite.console.display(copied.bump())
+    satellite.return(satellite)
+}
+
+prints:
+
+1
+2
+1
+false
+2

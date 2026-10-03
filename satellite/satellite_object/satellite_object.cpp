@@ -347,6 +347,9 @@ bool operator==(const satelliteObject &l, const satelliteObject &r)
     // AND TWO PROGRAMS: the same program, not two that run the same words.
     case satelliteObject::program:
         return l.as_program() == r.as_program();
+    // AND TWO POINTERS: at the same object, gone or not (satellite_pointer.hpp).
+    case satelliteObject::pointer:
+        return same_target(*l.as_pointer(), *r.as_pointer());
     // THE FOUR OF 2026-09-22 SAY FOR THEMSELVES what makes two of them the same.
     case satelliteObject::floating: return float_same(*l.as_float(), *r.as_float());
     case satelliteObject::hexadecimal: return hexadecimal_same(*l.as_hexadecimal(), *r.as_hexadecimal());
@@ -379,6 +382,7 @@ const char *satelliteObject::kind_name() const
     case fraction: return "a fraction";
     case thread: return "a thread";
     case program: return "a program";
+    case pointer: return "a pointer";
     case nothing: break;
     case how_many_kinds: break;
     }
@@ -762,6 +766,10 @@ signed long long int satelliteObject::to_string(satellite_string &out, std::stri
     // spacesuit one the author never chose.
     case user_defined:
         why = "an object has no to_string capsule, and satellite does not invent one";
+        return not_built_yet;
+    // A POINTER READS AS ITS OBJECT WOULD, which is not at all, for the same reason.
+    case pointer:
+        why = "a pointer's object has no to_string capsule, and satellite does not invent one";
         return not_built_yet;
     // A FILE'S TEXT IS read_all, and its name is path -- two different strings, so
     // `.string` choosing one of them would be a guess.
