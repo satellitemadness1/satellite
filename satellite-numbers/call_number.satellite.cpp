@@ -6,10 +6,13 @@
 
 #include "call_number.hpp"
 
+#include "../satellite/arguments/argument_words.hpp"
+#include "../satellite/bytecode/word_codes.hpp"
 #include "../satellite/machine/machine_codes.hpp"
 #include "../satellite/machine/machine_state.hpp"
 
 #include <algorithm>
+#include <iterator>
 #include <string>
 #include <vector>
 
@@ -48,7 +51,31 @@ signed long long int NumberIndex::load(const std::string &folder, MachineState &
     std::sort(files.begin(), files.end());
 
     rows_.clear();
-    rows_.reserve(files.size());
+    rows_.reserve(std::size(argument_words::kWords) + files.size());
+
+    // THE WORDS BUILT INTO satl COME FIRST, AND NO FILE IS OPENED FOR THEM (the author,
+    // 2026-10-03: "build each of the 33 arguments .so file's into the interpreter";
+    // satellite/arguments/argument_words.hpp). Each is filed exactly as a library's description
+    // was, with its numbers read from the word table -- so a row cannot disagree with words.tsv,
+    // and a library that still claims one of these words is refused below as loaded twice.
+    for (const argument_words::BuiltInWord &built : argument_words::kWords) {
+        const token::Code code = word::code_of_spelling(built.spelling);
+        unsigned int depth = 0;
+        const int *numbers = code != 0 ? word::numbers_of(code, depth) : nullptr;
+        if (numbers == nullptr || depth == 0)
+            return report_error(std::string("vector.number.index(error): ") + built.spelling +
+                                    " is built into satl, and words/words.tsv has no such word",
+                                vector_loading_error);
+        NumberRow row;
+        row.name = built.spelling;
+        row.numbers.assign(numbers, numbers + depth);
+        row.scenarios = built.scenarios;
+        row.file = "(built into satl)";
+        rows_.push_back(std::move(row));
+        state.set("vector.number.index(built in " + rows_.back().name + " " + numbers_text(rows_.back().numbers) +
+                      ")",
+                  success);
+    }
 
     for (const std::string &file : files) {
         // RTLD_NOW: resolve everything now, so a broken library fails at

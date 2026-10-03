@@ -2,9 +2,11 @@
 // satellite-numbers/machine_facts.hpp -- THE READERS BEHIND arguments.*
 // SATELLITE_ARGUMENTS B7-B11.
 //
-// Shared by every numbered library that answers a fact about the machine,
-// because each library is compiled from exactly one .cpp -- so anything two of
-// them need has to be inline in a header. Same rule as critical_report.hpp.
+// satl's OWN SINCE 2026-10-03. Every word that answers a fact about the machine was a
+// numbered library of its own, compiled from exactly one .cpp -- so anything two of them
+// needed had to be inline in a header. They are built into satl now, one table
+// (satellite/arguments/argument_words.hpp), and this stays header-only so that table and
+// arguments.cpp share one reader each, and the harnesses beside satl need no extra .cpp.
 //
 // NOTHING HERE IS CACHED, AND THAT IS THE DESIGN. A machine fact is read every
 // time it is asked for. `arguments.memory.free` that answers what was free a

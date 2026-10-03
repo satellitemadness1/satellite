@@ -68,11 +68,12 @@ ENVIRONMENT = {name: value for name, value in os.environ.items() if name != "LD_
 # missing, and moving arguments.cores onto physical cores left all 32 fact libraries
 # answering the old way from a build that reported success (the error sweep, 2026-09-25).
 # `grep -ho '#include "[^"]*"' satellite-numbers/*/*.satellite.cpp satellite-numbers/*.hpp`
-# lists them.
+# lists them. machine_facts.hpp and machine_probe.hpp left the list on 2026-10-03, with the 33
+# arguments words: those are built into satl now (satellite/arguments/argument_words.hpp), and
+# no library still reads either header.
 SHARED_HEADERS = [os.path.join(HERE, "number_row.hpp"), os.path.join(ROOT, "satellite", "machine", "machine_codes.hpp"),
                   os.path.join(ROOT, "strings", "string_method.hpp"), os.path.join(HERE, "directory_words.hpp"),
-                  os.path.join(HERE, "machine_facts.hpp"), os.path.join(HERE, "feedback_book.hpp"),
-                  os.path.join(ROOT, "satellite", "config", "machine_probe.hpp"),
+                  os.path.join(HERE, "feedback_book.hpp"),
                   os.path.join(ROOT, "satellite", "config", "config_file.hpp"),
                   os.path.join(ROOT, "satellite", "machine", "filesystems.hpp")]
 
