@@ -898,7 +898,9 @@ author's open question from 2026-10-01, not this part's.
 
 ## THE AUTHOR'S
 
-- **Should `new` stop showing a window until `.open()`?** (above)
+- **Should `new` stop showing a window until `.open()`?** (above) **ANSWERED by the
+  author the same day: it should — *"When the window is declared, I don't think the
+  window should open"*. Not built yet: SCRATCH.md/MISSING_SYNTAX.md D1 and MS-0.**
 - **Should a reopened window bring its pieces back?** Possible: hold a
   reference on the window's column so it survives the frame, and set it into
   the next one. It changes what a closed window's pieces answer — a text box's
