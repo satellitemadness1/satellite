@@ -1,21 +1,9 @@
-# window_and_extras.py -- the twin of window_and_extras.satl, which race_windows.cpp times it
-# against: satl_18_vars as py_18_vars, a capsule (here a method) per variable, made ten times. Every
-# line it prints is the line satl prints -- which checks the two get the same ANSWERS, not that they
-# did the same work (an strace count of programs, files and threads showed that, 2026-10-03):
-#     diff <(satl window_and_extras.satl 2>/dev/null) <(pypy window_and_extras.py)
+# window_and_extras.py -- satl_18_vars as plain Python, for race_windows.cpp: the same 18
+# variables, one method for each of the satl file's capsules, the object made ten times.
 #
-# The window is tkinter's: ONE Tk for every object, made by the first object and withdrawn so it is
-# never shown -- satl's one GTK "desk" opens the same way, the first time a window word runs, and
-# every window after shares it. Each object's window is a Toplevel on it, shown where the object is
-# made, as satl's is.
-#
-# THE ONE THING NOT ALIKE: update_idletasks() is Tk's "show it now", and it WAITS until the window
-# manager says the window is mapped -- about 7 ms a window under PyPy and 10 under CPython, measured
-# 2026-10-03 on a headless mutter: a third of PyPy's main() and over half of CPython's. satl's GTK
-# draws its window on a thread of its own while the program goes on, so satl never waits. Both
-# windows really appear; only Tk makes the program wait for it.
-import os
-import re
+# Each object makes its own Tk -- a whole Tcl interpreter and display connection apiece, where satl
+# starts its GTK once. Nothing here calls update_idletasks() or mainloop(), so Tk never puts these
+# windows on the screen (checked 2026-10-03: 0 of 10 mapped), while satl's ten are drawn.
 import subprocess
 import sys
 import threading
@@ -24,159 +12,107 @@ from fractions import Fraction
 
 
 class py_18_vars:
-    root = None                                    # the one Tk every object's window sits on
-    a_terminal = sys.stdout.isatty()               # asked once, as satl asks it once
-
     def __init__(self):
-        if py_18_vars.root is None:
-            py_18_vars.root = tk.Tk()
-            py_18_vars.root.withdraw()
-        self.my_binary_number = 0b10101010         # Python's binary is an int written in base 2
+        self.my_binary_number = 0b10101010
         self.my_color = 0xABCDEF
+        self.my_file = open("something.txt", "w")
         self.my_float = 0.0
         self.my_fraction = Fraction(1, 2)
-        self.my_hex_code = 0x000000                # and its hex an int written in base 16
-        self.my_infinite_number = float("inf")     # a float: Python's int has no infinity
+        self.my_hex_code = 0x000000
+        self.my_infinite_number = float("inf")
         self.my_number = 111
-        self.my_percent = 99.00                    # in percent: 99.00 is 99%
+        self.my_percent = 99.00
         self.my_program = ["echo", "hello, world!"]
         self.my_str = "void"
         self.my_thread = None
-        self.my_window = tk.Toplevel(py_18_vars.root)
-        self.my_window.title("hello_title")
-        self.my_window.geometry("800x600")
-        py_18_vars.root.update_idletasks()
+        self.my_window = tk.Tk()
         self.my_bool = False
         self.my_bash = "echo hello from bash"
         self.my_list = [1, 2, 3]
         self.my_map = {}
-        self.my_multiple = "void"                  # a str or an int, as satellite.container.multiple
-
-        # THE FILE, as satl's constructor does it: a text file is a list of lines, read when it is
-        # opened and written when it is closed. There already: emptied, then opened (read). Not
-        # there: made new -- "x" refuses to write over a file, as satellite.file.new does.
-        if os.path.exists("something.txt"):
-            open("something.txt", "w").close()                     # satellite.file.clear
-            with open("something.txt") as read:                    # satellite.file.open
-                self.my_file = read.read().splitlines()
-        else:
-            open("something.txt", "x").close()                     # satellite.file.new
-            self.my_file = []
+        self.my_multiple = "void"
 
     def binary_number(self):
-        self.show(self.my_binary_number + 0b10101010)                   # 340
+        print(self.my_binary_number + 0b10101010)
 
     def use_color(self):
-        self.show(self.foreground("hello, world!", self.my_color))      # hello, world!
-        self.show(f"x{self.my_color:06X}")                              # xABCDEF
+        print(f"\033[38;2;{self.my_color >> 16};{(self.my_color >> 8) & 0xFF};{self.my_color & 0xFF}mhello, world!\033[0m")
+        print(hex(self.my_color))
 
     def write_to_file(self):
-        self.my_file.append("hello, world!")
-        with open("something.txt", "w") as written:                     # .close()
-            written.write("\n".join(self.my_file) + "\n")
-        with open("something.txt") as read:                             # .open()
-            self.my_file = read.read().splitlines()
-        self.show(self.my_file[0])                                      # hello, world!
+        self.my_file.write("hello, world!\n")
+        self.my_file.close()
+        self.my_file = open("something.txt")
+        print(self.my_file.readline(), end="")
 
     def add_to_float(self):
         to_add = 9.9
         self.my_float = self.my_float + to_add
-        self.show(f"my_float: {self.my_float}")                         # my_float: 9.9
+        print("my_float:", self.my_float)
 
     def add_to_fraction(self):
         to_add = Fraction(1, 2)
-        # satl cannot add two fractions yet, so neither does this: they are compared
-        self.show(self.my_fraction == to_add)                           # true
-        self.show(f"my_fraction: {self.my_fraction}")                   # my_fraction: 1/2
+        print(self.my_fraction == to_add)           # compared, as the satl file does
+        print("my_fraction:", self.my_fraction)
 
     def change_hex_code(self):
         self.my_hex_code = 0x0000FFCC
-        self.show(f"hex code: x{self.my_hex_code:08X}")                 # hex code: x0000FFCC
+        print("hex code:", hex(self.my_hex_code))
 
     def add_infinity(self):
-        self.show(f"infinite_number: {self.infinity(self.my_infinite_number)}")  # (infinity)
+        print("infinite_number:", self.my_infinite_number)
         to_add = float("inf")
-        # satl has no sums on an infinity yet (Python has), so this does what satl does: makes it negative
-        self.my_infinite_number = -to_add
-        self.show(f"infinite_number: {self.infinity(self.my_infinite_number)}")  # (-infinity)
+        self.my_infinite_number = -to_add           # made negative, as the satl file does
+        print("infinite_number:", self.my_infinite_number)
 
     def add_number(self):
         self.my_number = self.my_number + 100000000000
-        self.show(f"my_number: {self.my_number}")                       # my_number: 100000000111
+        print("my_number:", self.my_number)
 
     def add_percent(self):
         to_add = 99.1
         self.my_percent = self.my_percent + to_add
-        self.show(f"my_percent: {self.my_percent:g}%")                  # my_percent: 198.1%
+        print(f"my_percent: {self.my_percent}%")
 
     def run_program(self):
-        self.show(self.run(self.my_program))                            # hello, world!, then 0
+        print(subprocess.run(self.my_program).returncode)
 
     def display_str(self):
-        self.show(f"my_str: {self.my_str}")                             # my_str: void
+        print("my_str:", self.my_str)
 
     def start_thread(self):
         self.my_thread = threading.Thread(target=self.binary_number)
         self.my_thread.start()
-        self.my_thread.join()                                           # 340
+        self.my_thread.join()
 
     def open_window(self):
-        self.show(self.my_window.winfo_exists() == 1)                   # true -- not closed, as .ok asks
-        title = self.my_window.title()
+        print(self.my_window.winfo_exists())
         self.my_window.destroy()
-        closed = self.my_window.winfo_exists() == 0
-        self.show(f'({"closed window" if closed else "window"} "{title}")')  # (closed window "hello_title")
+        print(self.my_window)
 
     def flip_bool(self):
         self.my_bool = self.my_number > 1000
-        self.show(f"my_bool: {'true' if self.my_bool else 'false'}")    # my_bool: true
+        print("my_bool:", self.my_bool)
 
     def run_bash(self):
-        self.show(self.run(["bash", "-c", "--", self.my_bash]))         # hello from bash, then 0
+        print(subprocess.run(["bash", "-c", self.my_bash]).returncode)
 
     def add_to_list(self):
         self.my_list.append(4)
-        self.show("{" + ", ".join(str(n) for n in self.my_list) + "}")  # {1, 2, 3, 4}
+        print(self.my_list)
 
     def add_to_map(self):
         self.my_map["hello"] = 1
-        self.show("{" + ", ".join(f'"{k}": {v}' for k, v in self.my_map.items()) + "}")  # {"hello": 1}
+        print(self.my_map)
 
     def change_multiple(self):
         self.my_multiple = 5
-        self.show(self.my_multiple + 1)                                 # 6
-
-    # WORDS satl HAS BUILT IN, which Python has to write out.
-
-    def show(self, value):
-        """satellite.console.display: true and false in lower case, and a colour's codes left out of
-        anything that is not a terminal -- a pipe or a file -- as satl leaves them out."""
-        if isinstance(value, bool):
-            value = "true" if value else "false"
-        text = str(value)
-        if not py_18_vars.a_terminal and "\x1b" in text:
-            text = re.sub(r"\x1b\[[0-9;]*m", "", text)
-        print(text)
-
-    def foreground(self, text, rgb):
-        """A string's .foreground(colour): the terminal's own 24-bit codes, in the string itself."""
-        return f"\x1b[38;2;{rgb >> 16};{(rgb >> 8) & 0xFF};{rgb & 0xFF}m{text}\x1b[39m"
-
-    def infinity(self, x):
-        """satl shows an infinity as (infinity) and (-infinity); Python as inf and -inf."""
-        return "(infinity)" if x > 0 else "(-infinity)"
-
-    def run(self, words):
-        """A satellite.variable.program's start() and join(): satl gives the program one pipe for
-        its output and its errors, shows what comes through it, and answers the exit code."""
-        finished = subprocess.run(words, stdout=subprocess.PIPE, stderr=subprocess.STDOUT, text=True)
-        print(finished.stdout, end="")
-        return finished.returncode
+        print(self.my_multiple + 1)
 
 
 def main():
 
-    print(len(sys.argv))                                                # 1 -- the program counts
+    print(len(sys.argv))
 
     counter = 0
 
@@ -201,8 +137,6 @@ def main():
         local_object.add_to_map()
         local_object.change_multiple()
         counter = counter + 1
-
-    py_18_vars.root.destroy()
 
 
 if __name__ == "__main__":
