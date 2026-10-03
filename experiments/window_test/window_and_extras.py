@@ -1,15 +1,19 @@
 # window_and_extras.py -- the twin of window_and_extras.satl, which race_windows.cpp times it
 # against: satl_18_vars as py_18_vars, a capsule (here a method) per variable, made ten times. Every
-# line it prints is the line satl prints, which is how to check the two did the same work:
+# line it prints is the line satl prints -- which checks the two get the same ANSWERS, not that they
+# did the same work (an strace count of programs, files and threads showed that, 2026-10-03):
 #     diff <(satl window_and_extras.satl 2>/dev/null) <(pypy window_and_extras.py)
 #
 # The window is tkinter's: ONE Tk for every object, made by the first object and withdrawn so it is
 # never shown -- satl's one GTK "desk" opens the same way, the first time a window word runs, and
 # every window after shares it. Each object's window is a Toplevel on it, shown where the object is
-# made, as satl's is. update_idletasks() is Tk's "show it now" -- it maps the window and waits for
-# the window manager to say it is mapped -- and winfo_ismapped() is then Tk's answer to satl's
-# my_window.ok.
-import json
+# made, as satl's is.
+#
+# THE ONE THING NOT ALIKE: update_idletasks() is Tk's "show it now", and it WAITS until the window
+# manager says the window is mapped -- about 7 ms a window under PyPy and 10 under CPython, measured
+# 2026-10-03 on a headless mutter: a third of PyPy's main() and over half of CPython's. satl's GTK
+# draws its window on a thread of its own while the program goes on, so satl never waits. Both
+# windows really appear; only Tk makes the program wait for it.
 import os
 import re
 import subprocess
@@ -21,6 +25,7 @@ from fractions import Fraction
 
 class py_18_vars:
     root = None                                    # the one Tk every object's window sits on
+    a_terminal = sys.stdout.isatty()               # asked once, as satl asks it once
 
     def __init__(self):
         if py_18_vars.root is None:
@@ -116,9 +121,11 @@ class py_18_vars:
         self.my_thread.join()                                           # 340
 
     def open_window(self):
-        self.show(self.my_window.winfo_ismapped() == 1)                 # true
+        self.show(self.my_window.winfo_exists() == 1)                   # true -- not closed, as .ok asks
+        title = self.my_window.title()
         self.my_window.destroy()
-        self.show('(closed window "hello_title")')                      # (closed window "hello_title")
+        closed = self.my_window.winfo_exists() == 0
+        self.show(f'({"closed window" if closed else "window"} "{title}")')  # (closed window "hello_title")
 
     def flip_bool(self):
         self.my_bool = self.my_number > 1000
@@ -133,7 +140,7 @@ class py_18_vars:
 
     def add_to_map(self):
         self.my_map["hello"] = 1
-        self.show(json.dumps(self.my_map))                              # {"hello": 1}
+        self.show("{" + ", ".join(f'"{k}": {v}' for k, v in self.my_map.items()) + "}")  # {"hello": 1}
 
     def change_multiple(self):
         self.my_multiple = 5
@@ -147,7 +154,7 @@ class py_18_vars:
         if isinstance(value, bool):
             value = "true" if value else "false"
         text = str(value)
-        if not sys.stdout.isatty():
+        if not py_18_vars.a_terminal and "\x1b" in text:
             text = re.sub(r"\x1b\[[0-9;]*m", "", text)
         print(text)
 
