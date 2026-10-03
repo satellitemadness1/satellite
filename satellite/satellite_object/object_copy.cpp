@@ -7,6 +7,7 @@
 #include "satellite_list.hpp"
 #include "satellite_spacesuit.hpp"
 
+#include <memory>
 #include <unordered_map>
 #include <utility>
 #include <vector>
@@ -21,40 +22,110 @@ struct Made {
     UserDefinedHandle copy;
 };
 
+// AND THE SAME FOR A LIST OR A MAP, which a program may hold in many places at once -- `x = {x, x}`
+// twenty times over is one list reached a million ways -- so each is looked at once and copied once:
+// the places that held one list hold one copy, which copy-on-write keeps apart from then on exactly as
+// it kept the original apart (the review of 2026-10-02: a copy per path grew as 2^n, and looking
+// again at every depth made a deep list quadratic).
+struct Container {
+    std::shared_ptr<const void> original;       // held, so its address stays its own
+    bool looked_at = false;                      // holds_objects below is known
+    bool holds_objects = false;
+    bool copied = false;
+    satelliteObject copy;                        // what goes where the original was held
+};
+
 struct Copying {
     std::unordered_map<const satelliteUserDefinedObject *, Made> made;
+    std::unordered_map<const void *, Container> containers;
     std::vector<Made> to_fill;                  // made, and their fields not copied yet
     std::vector<satelliteObject *> slots;       // values in the copy that may still hold originals
     std::vector<satelliteObject *> pointers;    // pointers in the copy, aimed once every object is made
 };
 
-// DOES THIS LIST OR MAP HOLD AN OBJECT OR A POINTER, at any depth -- the only things a copy
-// treats differently from `=`. Only the containers inside it are kept to look at later, so a
-// list of a billion numbers is one pass over them and nothing more.
-bool holds_objects(const satelliteObject &value)
+// THE LIST OR MAP A VALUE HOLDS, by its address -- null when the value is neither, or holds none yet.
+const void *container_of(const satelliteObject &value)
 {
-    std::vector<const satelliteObject *> containers{&value};
-    while (!containers.empty()) {
-        const satelliteObject *one = containers.back();
-        containers.pop_back();
-        const auto look_at = [&containers](const satelliteObject &item) {
-            if (item.answers_as_an_object())
-                return true;
-            if (item.is_list() || item.is_index())
-                containers.push_back(&item);
-            return false;
-        };
-        if (const ListHandle *list = one->as_list()) {
-            if (*list != nullptr)
-                for (const satelliteObject &item : (*list)->items)
-                    if (look_at(item)) return true;
-        } else if (const IndexHandle *index = one->as_index()) {
-            if (*index != nullptr)
-                for (const satelliteMapEntry &entry : (*index)->entries)
-                    if (look_at(entry.value)) return true;   // a key is never an object (satellite_index.hpp)
+    if (const ListHandle *list = value.as_list())
+        return list->get();
+    if (const IndexHandle *index = value.as_index())
+        return index->get();
+    return nullptr;
+}
+
+std::size_t items_in(const satelliteObject &container)
+{
+    if (const ListHandle *list = container.as_list())
+        return (*list)->items.size();
+    return (*container.as_index())->entries.size();
+}
+
+// ITEM n OF A LIST, OR ENTRY n's VALUE OF A MAP -- a key is never an object (satellite_index.hpp).
+const satelliteObject &item_in(const satelliteObject &container, std::size_t n)
+{
+    if (const ListHandle *list = container.as_list())
+        return (*list)->items[n];
+    return (*container.as_index())->entries[n].value;
+}
+
+// DOES THIS LIST OR MAP HOLD AN OBJECT OR A POINTER, at any depth -- the only things a copy treats
+// differently from `=`. Each list or map is looked at once however many places hold it, inner ones
+// first, from a list of work; and only lists and maps are kept to look at later, so a list of a
+// billion numbers is one pass over them and nothing more.
+bool holds_objects(const satelliteObject &value, Copying &copying)
+{
+    struct Looking {
+        const satelliteObject *container;
+        std::size_t next;
+        bool found;
+    };
+    std::vector<Looking> looking{{&value, 0, false}};
+    bool answer = false;
+    while (!looking.empty()) {
+        Container &known = copying.containers[container_of(*looking.back().container)];
+        if (!known.looked_at) {
+            Looking &here = looking.back();
+            if (known.original == nullptr) {
+                if (const ListHandle *list = here.container->as_list())
+                    known.original = *list;
+                else
+                    known.original = *here.container->as_index();
+            }
+            const std::size_t size = items_in(*here.container);
+            bool inside = false;
+            while (!here.found && here.next < size) {
+                const satelliteObject &item = item_in(*here.container, here.next++);
+                if (item.answers_as_an_object()) {
+                    here.found = true;
+                    break;
+                }
+                const void *inner = container_of(item);
+                if (inner == nullptr)
+                    continue;
+                const auto seen = copying.containers.find(inner);
+                if (seen != copying.containers.end() && seen->second.looked_at) {
+                    here.found = seen->second.holds_objects;
+                    continue;
+                }
+                // ONE BEING LOOKED AT ALREADY is one this list is inside of. Copy-on-write means a
+                // list never holds itself, so this is never met -- and if it were, it is not a hang.
+                if (seen != copying.containers.end() && seen->second.original != nullptr)
+                    continue;
+                looking.push_back({&item, 0, false});   // inside it first; `here` is not used again
+                inside = true;
+                break;
+            }
+            if (inside)
+                continue;
+            known.holds_objects = looking.back().found;
+            known.looked_at = true;
         }
+        answer = known.holds_objects;
+        looking.pop_back();
+        if (answer && !looking.empty())
+            looking.back().found = true;
     }
-    return false;
+    return answer;
 }
 
 // THE COPY OF ONE ORIGINAL, made the first time it is reached and the same copy every time after.
@@ -71,9 +142,9 @@ UserDefinedHandle copy_for(const UserDefinedHandle &original, Copying &copying)
     return copy;
 }
 
-// ONE VALUE OF THE COPY, which still holds what the original held: an object becomes its copy,
-// and a list or a map holding objects becomes a list or a map of its own whose items are looked
-// at in turn. Everything else is already right.
+// ONE VALUE OF THE COPY, which still holds what the original held: an object becomes its copy, and a
+// list or a map holding objects becomes the one copy of it, whose items are looked at in turn the
+// first time it is made. Everything else is already right.
 void copy_into(satelliteObject &slot, Copying &copying)
 {
     if (UserDefinedHandle *object = slot.as_user_defined()) {
@@ -85,21 +156,25 @@ void copy_into(satelliteObject &slot, Copying &copying)
         copying.pointers.push_back(&slot);
         return;
     }
-    if (ListHandle *list = slot.as_list()) {
-        if (*list == nullptr || !holds_objects(slot))
-            return;
-        *list = std::make_shared<satelliteList>(**list);
-        for (satelliteObject &item : (*list)->items)
-            copying.slots.push_back(&item);
-        return;
+    const void *key = container_of(slot);
+    if (key == nullptr || !holds_objects(slot, copying))
+        return;                      // a value already, shared until one side writes -- as `=` shares it
+    Container &known = copying.containers[key];
+    if (!known.copied) {
+        if (const ListHandle *list = slot.as_list()) {
+            const ListHandle copy = std::make_shared<satelliteList>(**list);
+            for (satelliteObject &item : copy->items)
+                copying.slots.push_back(&item);
+            known.copy = satelliteObject::of_list(copy);
+        } else {
+            const IndexHandle copy = std::make_shared<satelliteIndex>(**slot.as_index());
+            for (satelliteMapEntry &entry : copy->entries)
+                copying.slots.push_back(&entry.value);
+            known.copy = satelliteObject::of_index(copy);
+        }
+        known.copied = true;
     }
-    if (IndexHandle *index = slot.as_index()) {
-        if (*index == nullptr || !holds_objects(slot))
-            return;
-        *index = std::make_shared<satelliteIndex>(**index);
-        for (satelliteMapEntry &entry : (*index)->entries)
-            copying.slots.push_back(&entry.value);
-    }
+    slot = known.copy;
 }
 
 // A POINTER IN THE COPY: at the copy of its object when the copy made one, and otherwise where it

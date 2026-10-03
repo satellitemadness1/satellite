@@ -1,0 +1,42 @@
+satellite.include(satellite)
+
+// .reference() COPIES A LIST ONCE, HOWEVER MANY PLACES HOLD IT (the review of 2026-10-02): `x = {x, x}`
+// twenty times is one list reached a million ways, and a copy for every way grew as 2^n -- 153 MB at
+// eighteen. check.sh runs this under /usr/bin/time and holds its peak under 100 MB.
+
+satellite.spacesuit box()
+{
+    satellite.protected
+    {
+        satellite.variable.number value = 5
+        satellite.container.list stuff = {}
+    }
+    satellite.public
+    {
+        satellite.capsule call_set(satellite.container.list given)
+        {
+            stuff = given
+        }
+        satellite.capsule call_size()
+        {
+            satellite.return(stuff.size)
+        }
+    }
+}
+
+satellite.capsule satellite.main()
+{
+    box leaf
+    satellite.container.list x = {leaf}
+    satellite.variable.number i = 0
+    satellite.statement.while(i < 20)
+    {
+        x = {x, x}
+        i = i + 1
+    }
+    box a
+    a.call_set(x)
+    box r = a.reference()
+    satellite.console.display(r.call_size())
+    satellite.return(satellite)
+}

@@ -187,8 +187,13 @@ std::string access_text(const std::string &name, const TypeShape &shape, const V
 {
     // WHAT IT IS, and how many it holds now.
     const TypeShape &reached = as_reached(shape);
+    const ObjectPointer *pointer = value.as_pointer();
+    const bool gone = pointer != nullptr && object_of(*pointer) == nullptr;
     std::string text = name + " is ";
     if (shape.word == word::code_of(1, 6, 22)) text += "an info, ";
+    // A POINTER IS SAID AS ONE: p is a pointer at a box object, never a box object itself (the
+    // review of 2026-10-02).
+    if (pointer != nullptr && !a_multiple(reached)) text += "a pointer at ";
     text += with_article(noun(shape, false));
     const TypeShape &held_as = arm_holding(reached, value);
     if (a_multiple(reached) && &held_as != &reached && !value.is_nothing())
@@ -199,8 +204,9 @@ std::string access_text(const std::string &name, const TypeShape &shape, const V
     } else if (const IndexHandle *index = value.as_index()) {
         const std::size_t keys = *index != nullptr ? (*index)->entries.size() : 0;
         text += ", " + std::to_string(keys) + (keys == 1 ? " key" : " keys");
-    } else if (const ObjectPointer *pointer = value.as_pointer()) {
-        text += object_of(*pointer) != nullptr ? ", a pointer at one" : ", a pointer at one that is gone";
+    } else if (pointer != nullptr) {
+        if (a_multiple(reached)) text += gone ? ", by a pointer at one that is gone" : ", by a pointer";
+        else if (gone) text += ", which is gone";
     }
 
     Walk walk;

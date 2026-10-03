@@ -272,11 +272,21 @@ std::string satelliteObject::text_utf8() const
 
 // Arm by arm; the header says why this is not std::variant's own. Two values of
 // different kinds are never the same value -- nothing is converted to find out
-// (DESIGN 1.1), so `4` and `"4"` are simply not equal.
+// (DESIGN 1.1), so `4` and `"4"` are simply not equal. The one exception is no
+// conversion either: an object and a pointer at it are one object.
 bool operator==(const satelliteObject &l, const satelliteObject &r)
 {
-    if (l.kind() != r.kind())
+    if (l.kind() != r.kind()) {
+        // AN OBJECT AND A POINTER AT IT ARE THE SAME OBJECT (satellite_pointer.hpp): a name of a
+        // spacesuit may hold either, so a list of pointers asked .contains(a) finds a's (the
+        // review of 2026-10-02: it answered false, and .remove(a) found nothing).
+        if (l.answers_as_an_object() && r.answers_as_an_object()) {
+            const UserDefinedHandle &object = *(l.is_user_defined() ? l : r).as_user_defined();
+            const ObjectPointer &pointer = *(l.is_pointer() ? l : r).as_pointer();
+            return !pointer.target.owner_before(object) && !object.owner_before(pointer.target);
+        }
         return false;
+    }
     switch (l.kind()) {
     case satelliteObject::nothing: return true;
     case satelliteObject::boolean: return *l.as_bool() == *r.as_bool();

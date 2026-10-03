@@ -247,6 +247,9 @@ const char *so_far_whose(token::Code method)
         return "so far it is a string's: \"text\".foreground(xFF8800)";
     if (method == token::background_token)
         return "so far a string and a window piece have it";
+    // .ok() IS A FILE'S, A PROGRAM'S AND EVERY OBJECT'S (pointer_calls.hpp) -- it said a file's alone.
+    if (method == token::ok_token)
+        return "so far a file, a program and an object have it";
     const bool a_file = file_method_arity(method) >= 0;
     const bool a_container = container_arity(method) >= 0;
     // A STRING'S OWN (M16, string_calls.hpp) -- named first, as the one a person is most

@@ -1,0 +1,36 @@
+satellite.include(satellite)
+
+// A MULTIPLE WITH A SPACESUIT AMONG ITS TYPES ANSWERS THE THREE WORDS (the review of 2026-10-02: the
+// checker refused m.pointer() as "not an object's" though m held one). check.sh compares every line.
+
+satellite.spacesuit box()
+{
+    satellite.protected
+    {
+        satellite.variable.number value = 0
+    }
+    satellite.public
+    {
+        satellite.capsule call_put(satellite.variable.number n)
+        {
+            value = n
+        }
+        satellite.capsule call_take()
+        {
+            satellite.return(value)
+        }
+    }
+}
+
+satellite.capsule satellite.main()
+{
+    box a
+    a.call_put(5)
+    satellite.container.multiple<box, satellite.variable.number> m = a
+    satellite.console.display(m.ok())
+    satellite.console.display(m.pointer().call_take())
+    box r = m.reference()
+    a.call_put(6)
+    satellite.console.display(r.call_take())
+    satellite.return(satellite)
+}

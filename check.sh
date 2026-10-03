@@ -6883,6 +6883,28 @@ expect "pointer: x.pointer() is the language's though the spacesuit has its own 
 "$interpreter" tests/pointer_in_a_list.satl > build/pointer_in_a_list.out 2> build/pointer_in_a_list.err; code=$?
 expect "pointer: a list of a spacesuit holds pointers beside objects, .contains finds one, and one empties with its object" \
        "0|3 3 9 true false" "$code|$(tr '\n' ' ' < build/pointer_in_a_list.out | sed 's/ $//')"
+# THE REVIEW OF 2026-10-02 (one fresh reader): a list held in many places copied once, an object at
+# the bottom of a deep list found once, an object and a pointer at it one object, a multiple that
+# holds an object answering the three words, satellite.thread.new refusing them, and
+# satellite.access saying a pointer is one.
+/usr/bin/time -f '%M' -o build/reference_shared_lists.peak "$interpreter" tests/reference_shared_lists.satl > build/reference_shared_lists.out 2> build/reference_shared_lists.err; code=$?
+expect "reference: a list held in a million places is copied once -- peak under 100 MB, where it grew as 2^n" "0|2|yes" \
+       "$code|$(cat build/reference_shared_lists.out)|$(awk '{print ($1 < 100000) ? "yes" : "no, " $1 " KB"}' build/reference_shared_lists.peak)"
+timeout 20 "$interpreter" tests/reference_deep_list.satl > build/reference_deep_list.out 2> build/reference_deep_list.err; code=$?
+expect "reference: an object at the bottom of a list nested 100,000 deep is copied in time -- it was quadratic" "0|1" \
+       "$code|$(cat build/reference_deep_list.out)"
+"$interpreter" tests/pointer_same_object.satl > build/pointer_same_object.out 2> build/pointer_same_object.err; code=$?
+expect "pointer: an object and a pointer at it are one object to .contains, .index_of and .remove" "0|true 2 1 true false" \
+       "$code|$(tr '\n' ' ' < build/pointer_same_object.out | sed 's/ $//')"
+"$interpreter" tests/pointer_in_a_multiple.satl > build/pointer_in_a_multiple.out 2> build/pointer_in_a_multiple.err; code=$?
+expect "pointer: a multiple holding an object answers ok(), pointer() and reference()" "0|true 5 5" \
+       "$code|$(tr '\n' ' ' < build/pointer_in_a_multiple.out | sed 's/ $//')"
+"$interpreter" tests/pointer_thread_refused.satl > build/pointer_thread_refused.out 2> build/pointer_thread_refused.err; code=$?
+expect "pointer: satellite.thread.new(x.pointer()) is refused before anything runs, though the spacesuit has a pointer() of its own" "56|0|1" \
+       "$code|$(wc -l < build/pointer_thread_refused.out | tr -d ' ')|$(tr '\n' ' ' < build/pointer_thread_refused.err | grep -c "data.pointer() is not one -- pointer() is every object's own word")"
+"$interpreter" tests/pointer_access.satl > build/pointer_access.out 2> build/pointer_access.err; code=$?
+expect "satellite.access(p) says a pointer is one, and when its object is gone" "0|1|1" \
+       "$code|$(grep -c '^p is a pointer at a box object$' build/pointer_access.out)|$(grep -c '^p is a pointer at a box object, which is gone$' build/pointer_access.out)"
 awk '/^example, a pointer and a reference:$/{p=1; next} p && /^prints:$/{exit} p' satellite.help/satellite.spacesuit/help_text.txt > build/help_pointer.satl
 "$interpreter" build/help_pointer.satl > build/help_pointer.out 2> build/help_pointer.err; code=$?
 expect "satellite.help(spacesuit)'s pointer and reference example prints what the page says" "0|1 2 1 false 2" \

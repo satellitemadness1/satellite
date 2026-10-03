@@ -1,0 +1,39 @@
+satellite.include(satellite)
+
+// AN OBJECT AND A POINTER AT IT ARE ONE OBJECT (the review of 2026-10-02): a list of pointers asked
+// about an object finds it -- .contains, .index_of and .remove -- and a list of objects asked about a
+// pointer finds its object. check.sh compares every line.
+
+satellite.spacesuit box()
+{
+    satellite.protected
+    {
+        satellite.variable.number value = 0
+    }
+    satellite.public
+    {
+        satellite.capsule call_put(satellite.variable.number n)
+        {
+            value = n
+        }
+        satellite.capsule call_take()
+        {
+            satellite.return(value)
+        }
+    }
+}
+
+satellite.capsule satellite.main()
+{
+    box a
+    box b
+    satellite.container.list<box> watching = {a.pointer(), b.pointer()}
+    satellite.console.display(watching.contains(a))
+    satellite.console.display(watching.index_of(b))
+    watching.remove(a)
+    satellite.console.display(watching.size)
+    satellite.container.list<box> objects = {a}
+    satellite.console.display(objects.contains(a.pointer()))
+    satellite.console.display(objects.contains(b.pointer()))
+    satellite.return(satellite)
+}

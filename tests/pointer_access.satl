@@ -1,0 +1,34 @@
+satellite.include(satellite)
+
+// satellite.access(p) SAYS A POINTER IS ONE -- a pointer at a box object, never a box object itself --
+// and says when its object is gone (the review of 2026-10-02). check.sh reads the first lines.
+
+satellite.spacesuit box()
+{
+    satellite.protected
+    {
+        satellite.variable.number value = 0
+    }
+    satellite.public
+    {
+        satellite.capsule call_put(satellite.variable.number n)
+        {
+            value = n
+        }
+        satellite.capsule call_take()
+        {
+            satellite.return(value)
+        }
+    }
+}
+
+satellite.capsule satellite.main()
+{
+    box a
+    box p = a.pointer()
+    satellite.access(p)
+    box other
+    a = other
+    satellite.access(p)
+    satellite.return(satellite)
+}

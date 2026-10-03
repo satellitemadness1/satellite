@@ -620,6 +620,8 @@ signed long long int method_judged(const std::vector<std::bitset<16>> &row, std:
     // satellite.spacesuit, the one kind `b = a` shares -- and a name declared any other type has
     // neither. Said as that, and not as a method not built yet.
     if (method == token::pointer_token || method == token::reference_token) {
+        if (declared_as == word::code_of(1, 4, 6))
+            return success;              // a multiple may hold an object: the run knows which it holds
         why = spelling + "() is an object's -- an object of a satellite.spacesuit -- and " + name + " is " +
               word::spelling_of(declared_as);
         return satl_line_not_understood;
@@ -1096,6 +1098,13 @@ signed long long int member_of_an_object(const std::vector<std::bitset<16>> &row
         every_object_answers(code_at(row, k + 1))) {
         if (code_at(row, m) != token::left_parenthesis_token || code_at(row, m + 1) != token::right_parenthesis_token) {
             why = written + "() takes nothing, in its brackets";
+            // A SPACESUIT'S OWN CAPSULE OF THAT NAME is out of reach from outside, and is said to be.
+            signed long long int unused_code = success;
+            std::string unused_why;
+            if (where.capsules.member(suit, member, where.scope, unused_code, unused_why) != nullptr)
+                why += " -- " + member + "() is every object's own word, and " +
+                       where.capsules.scopes[suit].layout->shown + "'s own " + member +
+                       "(...) is called by its bare name, inside " + where.capsules.scopes[suit].layout->shown;
             return satl_line_not_understood;
         }
         k = m;
@@ -1310,7 +1319,11 @@ signed long long int names_in_statement(const std::vector<std::bitset<16>> &row,
                 const DeclaredObjects::const_iterator object = where.objects.find(name);
                 if (object != where.objects.end())
                     suit = &object->second;
-                else if (code_at(row, k + 1) == token::name_token) {
+                else if (code_at(row, k + 1) == token::name_token || every_object_answers(code_at(row, k + 1)) ||
+                         code_at(row, k + 1) == token::lock_token || code_at(row, k + 1) == token::unlock_token) {
+                    // A MULTIPLE WITH A SPACESUIT AMONG ITS TYPES: its capsules, and the words every
+                    // object answers (pointer_calls.hpp) -- the review of 2026-10-02 found m.pointer()
+                    // refused here as "not an object's" though m held one.
                     const DeclaredObjects::const_iterator multiple = where.multiples.find(name);
                     if (multiple != where.multiples.end()) suit = &multiple->second;
                 }
@@ -1471,6 +1484,10 @@ signed long long int names_in_statement(const std::vector<std::bitset<16>> &row,
             const DeclaredObjects::const_iterator object =
                 names.size() == 2 ? where.objects.find(names.front()) : where.objects.end();
             if (object != where.objects.end()) {
+                if (every_object_word(names.back())) {
+                    why = not_a_capsule_for_a_thread(written, names.back());
+                    return thread_needs_a_capsule_call;
+                }
                 signed long long int refused = success;
                 site = capsules.member(object->second, names.back(), scope, refused, why);
                 if (site == nullptr)

@@ -33,6 +33,23 @@ inline bool every_object_answers(token::Code method)
     return method == token::pointer_token || method == token::reference_token || method == token::ok_token;
 }
 
+// THE FIVE WORDS EVERY OBJECT HAS, BY THEIR SPELLING -- these three, and .lock() and .unlock()
+// (object_lock.hpp). After a dot they are always the language's, so `x.pointer()` handed to
+// satellite.thread.new is no capsule to run, whatever x's spacesuit declares (the review of
+// 2026-10-02: a thread ran the spacesuit's own pointer() there, and nowhere else did).
+inline bool every_object_word(const std::string &spelling)
+{
+    return spelling == "pointer" || spelling == "reference" || spelling == "ok" || spelling == "lock" ||
+           spelling == "unlock";
+}
+
+// THE SENTENCE FOR ONE OF THEM HANDED TO satellite.thread.new, before the run and at it.
+inline std::string not_a_capsule_for_a_thread(const std::string &written, const std::string &word)
+{
+    return "satellite.thread.new runs a capsule of your own on a thread, and " + written + "() is not one -- " +
+           word + "() is every object's own word";
+}
+
 // THE OBJECT A VALUE STANDS FOR -- itself, or the one its pointer points at -- held for as
 // long as the answer is kept. Null when there is none: the value is not an object, or its
 // pointer's object is gone. Inline, because every capsule called on an object asks it.

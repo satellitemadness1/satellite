@@ -133,9 +133,14 @@ bool package_capsule_call(const std::vector<std::bitset<16>> &row, std::size_t &
     // is what makes its writes one at a time).
     if (names.size() == 2) {
         const Seen object = context.variables.seen(names.front());
-        // A POINTER'S OBJECT TOO, and the thread holds it for its whole run, as it holds any
-        // object it is handed (pointer_calls.hpp).
+        // A POINTER'S OBJECT TOO (pointer_calls.hpp), held by the thread as any object it is
+        // handed is -- for as long as the thread itself is kept (thread_calls.cpp keeps `self`).
         const UserDefinedHandle held = object ? object_behind(*object.value) : UserDefinedHandle();
+        if (held != nullptr && every_object_word(names.back())) {
+            context.refuse(thread_needs_a_capsule_call, not_a_capsule_for_a_thread(out.written, names.back()),
+                           started);
+            return false;
+        }
         if (object && object.value->is_pointer() && held == nullptr) {
             context.refuse(object_is_gone, object_is_gone_because(out.written, names.front()), started);
             return false;

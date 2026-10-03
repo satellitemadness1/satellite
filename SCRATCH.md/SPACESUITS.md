@@ -33,7 +33,7 @@ built at last, and the new half beside it.
     p.ok()                    false once nothing else holds the object; true of an object itself
 
 **What runs** (`tests/pointer.satl`, `reference_tree.satl`, `pointer_own_capsule.satl`,
-`pointer_in_a_list.satl` and four refusals, 11 rows in check.sh, and an example on `satellite.help(spacesuit)`):
+`pointer_in_a_list.satl` and four refusals, 11 rows in check.sh -- 17 with the review's, and an example on `satellite.help(spacesuit)`):
 - a pointer is its object's spacesuit -- `box p` -- and every capsule of a box is called through
   it, on the object, which is held for the call; a list, a field or a capsule's parameter of a
   box takes one, and so does a thread's capsule;
@@ -89,9 +89,35 @@ REGISTRY rows 0x0B6E and 0x0B6F.
    it -- a list is copied by `b = a` already.
 8. A pointer's `.pointer()` is the pointer itself; `display(p)` refuses as `display(a)` does.
 
+**THE REVIEW** (one fresh reader, after f5d8732 landed): 1 HIGH, 4 MEDIUM, 5 LOW, no crash and no
+use-after-free; all fixed in build 0144, each with a check.sh row:
+- HIGH: a list held in many places was copied once for every way to it -- `x = {x, x}` eighteen
+  times then `.reference()` peaked at 153 MB, doubling with each turn. A list or map is now looked
+  at and copied once (object_copy.cpp's `containers`): 21.6 MB, and 20 turns in 0.05 s.
+- MEDIUM: an object at the bottom of a deep list was looked for again at every depth -- 2.2 s at
+  20,000 deep. Now 0.10 s, and 100,000 deep in 0.33 s.
+- MEDIUM, **a new choice of mine, his to overrule:** **an object and a pointer at it are one
+  object** to `.contains`, `.index_of`, `.remove` and a list's `==` -- a list of pointers said it
+  did not contain `a`, and `.remove(a)` found nothing. (`a == p` written in a line is still S301,
+  as `a == b` is: that is his open question.)
+- MEDIUM: a `multiple` with a spacesuit among its types was refused `m.pointer()` before the run,
+  with "m is satellite.container.multiple" -- now it answers all three, as `m.call_x()` already did.
+- MEDIUM: `satellite.thread.new(x.pointer())` ran a spacesuit's own `pointer()`, where every other
+  line means the language's. Now the five words every object has (pointer, reference, ok, lock,
+  unlock) are refused there before the run, S721: a thread runs a capsule of your own.
+- LOW: `satellite.access(p)` said "p is a box object, a pointer at one" -- now "p is a pointer at a
+  box object", and ", which is gone"; `x.ok()` on a number said "so far it is a file's" -- a
+  program's and an object's too; `a.ok(3)` on a spacesuit with its own `ok(n)` now says that capsule
+  is called by its bare name inside the spacesuit; one comment said a thread holds an object "for its
+  whole run" -- it holds it for as long as the thread is kept.
+- **Not this work's, and not fixed:** `x.call_take()` on a spacesuit field never given an object
+  says "could not be read to the end ... (& | << >> !! are undecided)" instead of "holds no object
+  yet"; and a thread kept in a field of the object it runs on keeps that object living, so it is a
+  strong circle even when started through a pointer (thread_calls.cpp keeps `self`).
+
 **Not done, and his:** `.ok()` on a field never given an object still refuses ("has no value
 yet") -- answering false there would close the "test whether an object field is empty" row
-below; `this`; `==` on two objects, so on two pointers too (S301 still).
+below; `this`; `==` on two objects written in a line (S301 still).
 
 ---
 
