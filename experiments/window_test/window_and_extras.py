@@ -19,35 +19,6 @@ import tkinter as tk
 from fractions import Fraction
 
 
-def show(value):
-    """satellite.console.display: true and false in lower case, and a colour's codes left out of
-    anything that is not a terminal -- a pipe or a file -- as satl leaves them out."""
-    if isinstance(value, bool):
-        value = "true" if value else "false"
-    text = str(value)
-    if not sys.stdout.isatty():
-        text = re.sub(r"\x1b\[[0-9;]*m", "", text)
-    print(text)
-
-
-def foreground(text, rgb):
-    """A string's .foreground(colour): the terminal's own 24-bit codes, in the string itself."""
-    return f"\x1b[38;2;{rgb >> 16};{(rgb >> 8) & 0xFF};{rgb & 0xFF}m{text}\x1b[39m"
-
-
-def infinity(x):
-    """satl shows an infinity as (infinity) and (-infinity); Python as inf and -inf."""
-    return "(infinity)" if x > 0 else "(-infinity)"
-
-
-def run(words):
-    """A satellite.variable.program's start() and join(): satl gives the program one pipe for its
-    output and its errors, shows what comes through it, and answers the exit code."""
-    finished = subprocess.run(words, stdout=subprocess.PIPE, stderr=subprocess.STDOUT, text=True)
-    print(finished.stdout, end="")
-    return finished.returncode
-
-
 class py_18_vars:
     root = None                                    # the one Tk every object's window sits on
 
@@ -88,11 +59,11 @@ class py_18_vars:
             self.my_file = []
 
     def binary_number(self):
-        show(self.my_binary_number + 0b10101010)                        # 340
+        self.show(self.my_binary_number + 0b10101010)                   # 340
 
     def use_color(self):
-        show(foreground("hello, world!", self.my_color))                # hello, world!
-        show(f"x{self.my_color:06X}")                                   # xABCDEF
+        self.show(self.foreground("hello, world!", self.my_color))      # hello, world!
+        self.show(f"x{self.my_color:06X}")                              # xABCDEF
 
     def write_to_file(self):
         self.my_file.append("hello, world!")
@@ -100,44 +71,44 @@ class py_18_vars:
             written.write("\n".join(self.my_file) + "\n")
         with open("something.txt") as read:                             # .open()
             self.my_file = read.read().splitlines()
-        show(self.my_file[0])                                           # hello, world!
+        self.show(self.my_file[0])                                      # hello, world!
 
     def add_to_float(self):
         to_add = 9.9
         self.my_float = self.my_float + to_add
-        show(f"my_float: {self.my_float}")                              # my_float: 9.9
+        self.show(f"my_float: {self.my_float}")                         # my_float: 9.9
 
     def add_to_fraction(self):
         to_add = Fraction(1, 2)
         # satl cannot add two fractions yet, so neither does this: they are compared
-        show(self.my_fraction == to_add)                                # true
-        show(f"my_fraction: {self.my_fraction}")                        # my_fraction: 1/2
+        self.show(self.my_fraction == to_add)                           # true
+        self.show(f"my_fraction: {self.my_fraction}")                   # my_fraction: 1/2
 
     def change_hex_code(self):
         self.my_hex_code = 0x0000FFCC
-        show(f"hex code: x{self.my_hex_code:08X}")                      # hex code: x0000FFCC
+        self.show(f"hex code: x{self.my_hex_code:08X}")                 # hex code: x0000FFCC
 
     def add_infinity(self):
-        show(f"infinite_number: {infinity(self.my_infinite_number)}")   # infinite_number: (infinity)
+        self.show(f"infinite_number: {self.infinity(self.my_infinite_number)}")  # (infinity)
         to_add = float("inf")
         # satl has no sums on an infinity yet (Python has), so this does what satl does: makes it negative
         self.my_infinite_number = -to_add
-        show(f"infinite_number: {infinity(self.my_infinite_number)}")   # infinite_number: (-infinity)
+        self.show(f"infinite_number: {self.infinity(self.my_infinite_number)}")  # (-infinity)
 
     def add_number(self):
         self.my_number = self.my_number + 100000000000
-        show(f"my_number: {self.my_number}")                            # my_number: 100000000111
+        self.show(f"my_number: {self.my_number}")                       # my_number: 100000000111
 
     def add_percent(self):
         to_add = 99.1
         self.my_percent = self.my_percent + to_add
-        show(f"my_percent: {self.my_percent:g}%")                       # my_percent: 198.1%
+        self.show(f"my_percent: {self.my_percent:g}%")                  # my_percent: 198.1%
 
     def run_program(self):
-        show(run(self.my_program))                                      # hello, world!, then 0
+        self.show(self.run(self.my_program))                            # hello, world!, then 0
 
     def display_str(self):
-        show(f"my_str: {self.my_str}")                                  # my_str: void
+        self.show(f"my_str: {self.my_str}")                             # my_str: void
 
     def start_thread(self):
         self.my_thread = threading.Thread(target=self.binary_number)
@@ -145,33 +116,60 @@ class py_18_vars:
         self.my_thread.join()                                           # 340
 
     def open_window(self):
-        show(self.my_window.winfo_ismapped() == 1)                      # true
+        self.show(self.my_window.winfo_ismapped() == 1)                 # true
         self.my_window.destroy()
-        show('(closed window "hello_title")')                           # (closed window "hello_title")
+        self.show('(closed window "hello_title")')                      # (closed window "hello_title")
 
     def flip_bool(self):
         self.my_bool = self.my_number > 1000
-        show(f"my_bool: {'true' if self.my_bool else 'false'}")         # my_bool: true
+        self.show(f"my_bool: {'true' if self.my_bool else 'false'}")    # my_bool: true
 
     def run_bash(self):
-        show(run(["bash", "-c", "--", self.my_bash]))                   # hello from bash, then 0
+        self.show(self.run(["bash", "-c", "--", self.my_bash]))         # hello from bash, then 0
 
     def add_to_list(self):
         self.my_list.append(4)
-        show("{" + ", ".join(str(n) for n in self.my_list) + "}")       # {1, 2, 3, 4}
+        self.show("{" + ", ".join(str(n) for n in self.my_list) + "}")  # {1, 2, 3, 4}
 
     def add_to_map(self):
         self.my_map["hello"] = 1
-        show(json.dumps(self.my_map))                                   # {"hello": 1}
+        self.show(json.dumps(self.my_map))                              # {"hello": 1}
 
     def change_multiple(self):
         self.my_multiple = 5
-        show(self.my_multiple + 1)                                      # 6
+        self.show(self.my_multiple + 1)                                 # 6
+
+    # WORDS satl HAS BUILT IN, which Python has to write out.
+
+    def show(self, value):
+        """satellite.console.display: true and false in lower case, and a colour's codes left out of
+        anything that is not a terminal -- a pipe or a file -- as satl leaves them out."""
+        if isinstance(value, bool):
+            value = "true" if value else "false"
+        text = str(value)
+        if not sys.stdout.isatty():
+            text = re.sub(r"\x1b\[[0-9;]*m", "", text)
+        print(text)
+
+    def foreground(self, text, rgb):
+        """A string's .foreground(colour): the terminal's own 24-bit codes, in the string itself."""
+        return f"\x1b[38;2;{rgb >> 16};{(rgb >> 8) & 0xFF};{rgb & 0xFF}m{text}\x1b[39m"
+
+    def infinity(self, x):
+        """satl shows an infinity as (infinity) and (-infinity); Python as inf and -inf."""
+        return "(infinity)" if x > 0 else "(-infinity)"
+
+    def run(self, words):
+        """A satellite.variable.program's start() and join(): satl gives the program one pipe for
+        its output and its errors, shows what comes through it, and answers the exit code."""
+        finished = subprocess.run(words, stdout=subprocess.PIPE, stderr=subprocess.STDOUT, text=True)
+        print(finished.stdout, end="")
+        return finished.returncode
 
 
 def main():
 
-    show(len(sys.argv))                                                 # 1 -- the program counts
+    print(len(sys.argv))                                                # 1 -- the program counts
 
     counter = 0
 
