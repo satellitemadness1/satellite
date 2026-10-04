@@ -5,6 +5,6 @@ satellite.include(satellite)
 
 satellite.capsule satellite.main(satellite.container.list<satellite.variable.string> arguments)
 {
-    satellite.console.display(arguments.argument_1)
+    satellite.console.display(arguments.argument3)
     satellite.return(satellite)
 }

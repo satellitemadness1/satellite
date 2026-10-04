@@ -68,6 +68,13 @@ public:
     std::string text(const std::string &name) const;
     const std::vector<Argument> &all() const { return entries_; }
 
+    // EVERY ROW, THE COMMAND LINE FIRST (MS-1, the author 2026-10-03: "arguments returns a
+    // note about every argument that exists, starting from argv at argument1, and the
+    // entire arguments special variable"): argument1 onwards, then length, then every other
+    // row in the order it was added. Wherever all of them are shown -- the variable a
+    // program displays, satl --debug -- this is the order.
+    std::vector<const Argument *> every_row_arguments_first() const;
+
 private:
     Argument &add(const std::string &name, ArgumentKind kind);
 
@@ -81,8 +88,24 @@ private:
 std::string describe(const Argument &argument);
 
 // Whether satl fills this name in itself -- from the command line or the machine
-// -- on SOME run, so satellite_config.hpp may never hold it. arguments.argument_3
-// is satl's whether or not this run was given three words.
+// -- on SOME run, so satellite_config.hpp may never hold it. arguments.argument3
+// is satl's whether or not this run was given three words -- under every spelling
+// of it, and under the old argument_3 too, so no program writes one either.
 bool filled_in_by_satl(const std::string &name);
+
+// THE ROW A SPELLING OF A COMMAND-LINE WORD NAMES (MS-1, the author 2026-10-03:
+// "arguments.arg1 || args1 || arguments1 and no _underscore?? ... you could alias them
+// as the same thing"): arg3, args3, argument3 and arguments3 -- and argument03 -- are
+// all argument3, ONE row and never four. A key that is none of them answers itself, and
+// so does one numbered 0 (names_argument_zero says so).
+std::string the_argument_row_spelled(const std::string &key);
+bool names_argument_zero(const std::string &key);
+
+// THE OLD SPELLING. argument_1 was the first word AFTER the file, which is argument3
+// now that argument1 is satl itself and argument2 the file -- so argument_N answers
+// the row it means now, argument(N+2), and "" for a key that is not one. It is never
+// READ as that row: a program written before 2026-10-03 is told the new name, rather
+// than quietly handed satl's own path where it expected its first word.
+std::string the_row_argument_underscore_is_now(const std::string &key);
 
 } // namespace satellite004

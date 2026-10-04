@@ -526,6 +526,13 @@ Value call_method(const std::vector<std::bitset<16>> &row, std::size_t &at, cons
 
         // A LIST'S AND AN INDEX'S OWN METHODS (container_calls.cpp).
         if ((*live).is_list() || (*live).is_index()) {
+            // ON THE ARGUMENTS VARIABLE ITSELF, a key asked about or taken out is the row of
+            // every spelling (MS-1): `args.contains("arg3")` asks about argument3, and
+            // `.has` is contains's own spelling.
+            if (on_the_name && shape != nullptr && shape->word == word::code_of(1, 6, 21) && !arguments.empty() &&
+                (method == token::contains_token || method == token::remove_token) &&
+                !an_argument_key(arguments.front(), name, context))
+                return Value();
             const bool changes_it = method == token::append_token;
             Value answer = call_container_method(method, (*live), on_the_name ? live : nullptr,
                                                         on_the_name ? shape : nullptr, arguments,
@@ -1571,7 +1578,7 @@ Value one_operand(const std::vector<std::bitset<16>> &row, std::size_t &at, Expr
             while (code_at(row, at) == token::left_square_bracket_token) {
                 const std::size_t opened_at = at;
                 ++at;
-                const Value index = evaluate_at(row, at, 1, context);
+                Value index = evaluate_at(row, at, 1, context);
                 if (context.code != success)
                     return Value();
                 if (code_at(row, at) != token::right_square_bracket_token) {
@@ -1585,6 +1592,10 @@ Value one_operand(const std::vector<std::bitset<16>> &row, std::size_t &at, Expr
                                                                  "reading an item of it", opened_at);
                     return Value();
                 }
+                // `args["arg3"]` IS `args.arg3` (MS-1): the first bracket on the arguments
+                // variable takes the row's every spelling, and refuses the old one by name.
+                if (used.empty() && found.declared == word::code_of(1, 6, 21) && !an_argument_key(index, name, context))
+                    return Value();
                 used.push_back(index);
                 current = index_into(*reading, index, what, opened_at, context);
                 reading = &current;

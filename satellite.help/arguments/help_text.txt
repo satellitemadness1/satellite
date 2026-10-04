@@ -18,9 +18,11 @@ read about the machine it runs on. It is filled from four places:
    satl really reads: satl --rebuild writes it from the switches. At its top,
    first_start and the machine's facts satl keeps (point 4). No config.ini is
    only a notice (S010), and the run carries on.
-3) the command line: satl prog.satl one two gives arguments.program,
-   arguments.argument_1, arguments.argument_2 and arguments.length = 3, the
-   program counted. satl --debug prints every argument, these included.
+3) the command line, numbered as it was typed: satl prog.satl one two gives
+   arguments.argument1 = satl (satl itself), argument2 = prog.satl, argument3
+   = one, argument4 = two, and arguments.length = 4, every one counted. arg3,
+   args3 and arguments3 are argument3 too, and arguments.program is the file
+   again. satl --debug prints every argument, these first.
 4) the machine. What changes -- free and used memory, the process, the
    session -- is read fresh each time a program asks. What does not -- the
    processor's name and cores, and the system's name and version -- is read
@@ -38,7 +40,7 @@ nothing:
 
 The name is yours: arguments, args, anything. Each row is read by its name
 after the variable's, with no brackets -- args.username, args.memory.total,
-args.argument_1, args.float.decimal. A row satl gathered when it started is
+args.argument3, args.float.decimal. A row satl gathered when it started is
 that row; a row only a library answers, like memory.used and memory.free, is
 read fresh each time, so it is what the machine is using now.
 satellite.console.display(args) shows every row there is (57 on one machine). A
@@ -57,7 +59,7 @@ A row is written the same way, when its name is the program's own:
 args.some_var = 5 adds it, a second args.some_var = 6 changes it, and
 satellite.console.display(args) shows it after satl's rows. A row can hold a
 list and change it: args.l = satellite.container.list(), then args.l.append(5)
-and args.l[1]. A row satl holds -- username, memory.total, argument_1,
+and args.l[1]. A row satl holds -- username, memory.total, argument3,
 infinity -- is read and never written, and a line writing one is refused before
 the program runs. access is the one setting among them:
 args.access = satellite.bool.false turns it off in ~/.satl/config.ini.
@@ -75,8 +77,8 @@ satellite.include(satellite)
 satellite.capsule satellite.main(satellite.variable.arguments args)
 {
     satellite.console.display(args.username) // madness
-    satellite.console.display(args.argument_1) // one
-    satellite.console.display(args.length) // 3
+    satellite.console.display(args.argument3) // one
+    satellite.console.display(args.length) // 4
     satellite.console.display(args.float.decimal) // 128
     satellite.console.display(args.memory.used > 0) // true
     satellite.console.display(args.cpu.architecture) // haswell
@@ -89,9 +91,11 @@ satellite.capsule satellite.main(satellite.variable.arguments args)
     satellite.return(satellite)
 }
 
-satl --debug prog.satl one two prints, among its other lines:
+satl --debug prog.satl one two prints, among its other lines, every argument --
+the command line first:
 
-[satellite] arguments.program = prog.satl (machine_code: 0 success)
-[satellite] arguments.argument_1 = one (machine_code: 0 success)
-[satellite] arguments.argument_2 = two (machine_code: 0 success)
-[satellite] arguments.length = 3 (machine_code: 0 success)
+[satellite] arguments.argument1 = satl (machine_code: 0 success)
+[satellite] arguments.argument2 = prog.satl (machine_code: 0 success)
+[satellite] arguments.argument3 = one (machine_code: 0 success)
+[satellite] arguments.argument4 = two (machine_code: 0 success)
+[satellite] arguments.length = 4 (machine_code: 0 success)

@@ -48,6 +48,10 @@ struct CommandLine {
     // after it, it is the prompt there -- `satl --console` alone is Command::repl,
     // because the opening lines would flash in a window and be gone.
     bool console = false;
+    // ARGV[0], SATL ITSELF AS THE SYSTEM STARTED IT -- "satl", "./satl", a whole path. Every
+    // command, because it is arguments.argument1 on every run (MS-1, the author 2026-10-03:
+    // "Let's just put argv as argument1, then argument2 will be filename.satl").
+    std::string satl;
     std::string file;                  // Command::run only
     std::vector<std::string> words;    // Command::run only: the program's own, in order
 

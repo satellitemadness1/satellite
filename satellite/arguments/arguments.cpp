@@ -269,17 +269,29 @@ signed long long int Arguments::gather(const CommandLine &command_line)
     // behind the author's back (review 2026-09-15).
     facts_start_ = entries_.size();
 
-    // THE COMMAND LINE (PLAN M0.5), with 003's names: the file is
-    // arguments.program, every word after it is arguments.argument_1 onwards in
-    // the order it was typed, and arguments.length counts them all, the program
-    // included -- so `satl prog.satl a b` is 3. arguments.file is the same file
-    // under the name the interpreter reads it by.
+    // THE COMMAND LINE, AS IT WAS TYPED (MS-1, the author 2026-10-03: "Let's just put argv as
+    // argument1, then argument2 will be filename.satl, then argument3 will be --help, so it's
+    // kept in order"). argument1 is satl itself, as the system started it; argument2 the file;
+    // argument3 onwards every word after the file, in order. NO UNDERSCORE, and arg3, args3
+    // and arguments3 are the same row (the_argument_row_spelled). arguments.length counts every
+    // one of them, satl included -- `satl prog.satl a b` is 4, where it was 3 before argv was
+    // counted. satl's own words BEFORE the file (--debug, --console) are satl's, and in none of
+    // them. arguments.program and arguments.file are the file again, under the names the
+    // interpreter reads it by.
     add_flag("arguments.debug_mode", command_line.debug);
     add_text("arguments.file", command_line.file);
     add_text("arguments.program", command_line.file);
-    for (std::size_t i = 0; i < command_line.words.size(); i++)
-        add_text("arguments.argument_" + std::to_string(i + 1), command_line.words[i]);
-    add_count("arguments.length", command_line.words.size() + 1);
+    std::vector<std::string> typed;
+    typed.push_back(command_line.satl.empty() ? std::string("satl") : command_line.satl);
+    // THE FILE WHENEVER ONE IS RUN, even one spelled "" -- asked by whether a file is RUN and
+    // not by whether its name is empty, or `satl "" a b` would number a as argument2 (a fresh
+    // reader, 2026-10-03). The prompt and the opening lines run no file, and have argument1 only.
+    if (command_line.command == Command::run)
+        typed.push_back(command_line.file);
+    typed.insert(typed.end(), command_line.words.begin(), command_line.words.end());
+    for (std::size_t i = 0; i < typed.size(); i++)
+        add_text("arguments.argument" + std::to_string(i + 1), typed[i]);
+    add_count("arguments.length", typed.size());
 
     // THE DIRECTORY SATL STARTED IN, read once. M0.6's satellite.directory.change
     // never moves it (PLAN M0.5). Any length: getcwd(nullptr, 0) sizes its own
@@ -343,6 +355,71 @@ signed long long int Arguments::gather(const CommandLine &command_line)
     return success;
 }
 
+namespace {
+
+// THE NUMBER AFTER ONE OF THE FOUR SPELLINGS of a command-line row, without its leading
+// zeros -- "3" for arg3, args03, argument3 and arguments3, "0" for arg0 -- or "" when the key
+// is none of them. DIGITS AND NOT A COUNT, so arguments99999999999999999999 is read without
+// overflowing anything. LONGEST FIRST: arguments3 also begins with argument and with arg.
+std::string number_after_a_spelling(const std::string &key)
+{
+    for (const char *spelling : {"arguments", "argument", "args", "arg"}) {
+        const std::size_t length = std::strlen(spelling);
+        if (key.size() <= length || key.compare(0, length, spelling) != 0)
+            continue;
+        if (key.find_first_not_of("0123456789", length) != std::string::npos)
+            return std::string();
+        const std::size_t first = key.find_first_not_of('0', length);
+        return first == std::string::npos ? std::string("0") : key.substr(first);
+    }
+    return std::string();
+}
+
+// argument_ AND DIGITS, the spelling until 2026-10-03.
+bool an_old_argument_spelling(const std::string &key)
+{
+    static const std::string old = "argument_";
+    return key.size() > old.size() && key.compare(0, old.size(), old) == 0 &&
+           key.find_first_not_of("0123456789", old.size()) == std::string::npos;
+}
+
+// DIGITS PLUS TWO, as digits -- a row number of any length.
+std::string plus_two(std::string digits)
+{
+    int carry = 2;
+    for (std::size_t at = digits.size(); at-- > 0 && carry != 0;) {
+        const int sum = (digits[at] - '0') + carry;
+        digits[at] = static_cast<char>('0' + sum % 10);
+        carry = sum / 10;
+    }
+    if (carry != 0)
+        digits.insert(digits.begin(), static_cast<char>('0' + carry));
+    return digits;
+}
+
+} // namespace
+
+std::string the_argument_row_spelled(const std::string &key)
+{
+    const std::string number = number_after_a_spelling(key);
+    return number.empty() || number == "0" ? key : "argument" + number;
+}
+
+bool names_argument_zero(const std::string &key)
+{
+    return number_after_a_spelling(key) == "0";
+}
+
+std::string the_row_argument_underscore_is_now(const std::string &key)
+{
+    if (!an_old_argument_spelling(key))
+        return std::string();
+    const std::size_t first = key.find_first_not_of('0', std::strlen("argument_"));
+    if (first == std::string::npos)
+        return std::string();   // argument_0 was never a row, and is nothing now either
+    return "argument" + plus_two(key.substr(first));
+}
+
 bool filled_in_by_satl(const std::string &name)
 {
     // Every name gather() can add, including the ones it adds only when the
@@ -357,9 +434,37 @@ bool filled_in_by_satl(const std::string &name)
     for (const char *filled : names)
         if (name == filled)
             return true;
-    const std::string numbered = "arguments.argument_";
-    return name.size() > numbered.size() && name.compare(0, numbered.size(), numbered) == 0 &&
-           name.find_first_not_of("0123456789", numbered.size()) == std::string::npos;
+    // THE COMMAND LINE'S ROWS, UNDER EVERY SPELLING (MS-1) -- argument3, arg3, args3,
+    // arguments3, arg0 -- and the old argument_3: none of them is a name a config row or a
+    // program may take, whichever of them this run happened to be given.
+    const std::string prefix = "arguments.";
+    if (name.size() <= prefix.size() || name.compare(0, prefix.size(), prefix) != 0)
+        return false;
+    const std::string key = name.substr(prefix.size());
+    return !number_after_a_spelling(key).empty() || an_old_argument_spelling(key);
+}
+
+std::vector<const Argument *> Arguments::every_row_arguments_first() const
+{
+    // gather() ADDS THE TYPED ROWS IN ORDER, one after another, so the first pass keeps the
+    // order they were typed in; the second takes every row that is neither them nor length.
+    // A config row can never be named like one (filled_in_by_satl), so nothing else is skipped.
+    const auto typed = [](const std::string &name) {
+        static const std::string numbered = "arguments.argument";
+        return name.size() > numbered.size() && name.compare(0, numbered.size(), numbered) == 0 &&
+               name.find_first_not_of("0123456789", numbered.size()) == std::string::npos;
+    };
+    std::vector<const Argument *> rows;
+    rows.reserve(entries_.size());
+    for (const Argument &row : entries_)
+        if (typed(row.name))
+            rows.push_back(&row);
+    if (const Argument *length = find("arguments.length"))
+        rows.push_back(length);
+    for (const Argument &row : entries_)
+        if (!typed(row.name) && row.name != "arguments.length")
+            rows.push_back(&row);
+    return rows;
 }
 
 std::string describe(const Argument &argument)

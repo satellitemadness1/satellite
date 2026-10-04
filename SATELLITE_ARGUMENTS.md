@@ -14,6 +14,16 @@ Part 4B, its milestones are Part 4C, and `arguments.access` from it is BUILT.
 **WRITING A ROW ARRIVED 2026-09-23** -- `any_name.some_var = some_value`. Part 4D.
 **AND WHAT THE PROCESSOR CAN RUN** -- `arguments.cpu.architecture`, `arguments.cpu.features`. Part 4E.
 
+**THE COMMAND LINE IS NUMBERED AS IT WAS TYPED, 2026-10-03** (SCRATCH.md/MISSING_SYNTAX.md
+MS-1). The author: *"Let's just put argv as argument1, then argument2 will be filename.satl,
+then argument3 will be --help, so it's kept in order"*, and *"no _underscore"*. So
+`satl prog.satl one` is `argument1` = satl itself as the system started it, `argument2` =
+prog.satl, `argument3` = one, and `length` = 3, every one counted -- it was 2. `arg3`, `args3`
+and `arguments3` are the same row as `argument3`, *"you could alias them as the same thing"*,
+and the variable shows the command line first. **The old `argument_1` meant the first word after
+the file, which is `argument3` now -- so it is refused, naming `argument3`, and never read as
+`argument1`.** `arg0` is refused with S413: the arguments count from 1, as satellite does.
+
 **THE ACCEPTANCE TEST IS THE COMPILER.** The author, in the brief: *"none of
 this will be tested or checked or anything -- we just write it, make sure it
 compiles, and if it compiles then we just accept it as the gospel!"* No check.sh

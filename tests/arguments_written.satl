@@ -20,7 +20,7 @@ satellite.capsule satellite.main(satellite.variable.arguments any_name)
     satellite.console.display(any_name.some_var)
     any_name.deep.row = "text"
     satellite.console.display(any_name.deep.row)
-    satellite.console.display(any_name.argument_1)
+    satellite.console.display(any_name.argument3)
     satellite.console.display(any_name.username)
     satellite.console.display(any_name["some_var"])
     satellite.console.display(any_name.contains("deep.row"))

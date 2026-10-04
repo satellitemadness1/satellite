@@ -103,7 +103,10 @@ Value the_arguments_value(const Arguments *arguments, const FunctionTable &funct
     IndexHandle index = make_index();
     satelliteIndex &rows = about_to_change(index);
     if (arguments != nullptr) {
-        for (const Argument &row : arguments->all()) {
+        // THE COMMAND LINE FIRST (MS-1): argument1 -- satl itself -- onwards, then length, then
+        // the rest of the variable, so `satellite.console.display(args)` begins with what was typed.
+        for (const Argument *each : arguments->every_row_arguments_first()) {
+            const Argument &row = *each;
             const std::string key =
                 row.name.compare(0, kPrefix.size(), kPrefix) == 0 ? row.name.substr(kPrefix.size()) : row.name;
             Value value;
@@ -190,6 +193,47 @@ std::size_t past_the_argument_names(const std::vector<std::bitset<16>> &row, std
     return at;
 }
 
+namespace {
+
+// THE OLD SPELLING AND THE NUMBER 0, SAID BY NAME (MS-1), wherever the key arrives -- a dotted
+// read or a key handed over as text. argument_1 was the first word after the file, and that is
+// argument3 now -- argument1 is satl itself, argument2 the file -- so it is refused with the
+// row it means, and never quietly answered with satl's own path.
+bool an_argument_name_is_refused(const std::string &key, const std::string &name, ExpressionContext &context)
+{
+    const std::string now = the_row_argument_underscore_is_now(key);
+    if (!now.empty()) {
+        context.refuse(name_not_declared, name + "." + key + " is " + name + "." + now + " now -- the arguments "
+                                          "are numbered as they were typed: " + name + ".argument1 is satl itself, " +
+                                          name + ".argument2 the file, and " + name + ".argument3 the first word "
+                                          "after it");
+        return true;
+    }
+    if (names_argument_zero(key)) {
+        context.refuse(counts_from_one, name + "." + key + " -- the arguments count from 1, as satellite does: " +
+                                        name + ".argument1 is satl itself, as it was started");
+        return true;
+    }
+    return false;
+}
+
+} // namespace
+
+bool an_argument_key(Value &key, const std::string &name, ExpressionContext &context)
+{
+    satellite_string text;
+    std::string unused;
+    if (key.kind() != satelliteObject::string || key.to_string(text, unused) != success)
+        return true;
+    const std::string spelled = text.to_utf8();
+    if (an_argument_name_is_refused(spelled, name, context))
+        return false;
+    const std::string row = the_argument_row_spelled(spelled);
+    if (row != spelled)
+        key = text_value(row);
+    return true;
+}
+
 Value read_an_argument(const std::vector<std::bitset<16>> &row, std::size_t &at, const std::string &name,
                        const Value &arguments, ExpressionContext &context, bool &read, std::string &read_as)
 {
@@ -203,9 +247,12 @@ Value read_an_argument(const std::vector<std::bitset<16>> &row, std::size_t &at,
     }
     if (runs.empty())
         return Value();
+    if (an_argument_name_is_refused(runs.front().first, name, context))
+        return Value();
     const IndexHandle *index = arguments.as_index();
     for (std::size_t n = runs.size(); n > 0; --n) {
-        const std::string &tried = runs[n - 1].first;
+        // arg3, args3 AND arguments3 ARE argument3 (MS-1): one row, read under its own name.
+        const std::string tried = the_argument_row_spelled(runs[n - 1].first);
         // THE ROW satl GATHERED WINS, and a library is asked only for what was not
         // gathered: memory.used is live because no start-up row holds it, while
         // machine.cores is the count gather() measured. Asked the other way round,
@@ -259,8 +306,9 @@ const NumberRow *an_argument_setting(const std::string &key, const FunctionTable
 namespace {
 
 // satl's: a library's row (memory.used) or a group of them (memory); one gathered at
-// start-up (username, infinity); and argument_7 on a run given two words, which is still
-// satl's name -- written, length would say 3 while argument_7 said otherwise.
+// start-up (username, infinity); and argument7 -- or arg7, or the old argument_7 -- on a run
+// given two words, which is still satl's name: written, length would say 4 while argument7
+// said otherwise.
 bool satl_holds(const std::string &key, const Arguments *arguments)
 {
     return word::code_of_spelling(kLibraryPrefix + key) != 0 || filled_in_by_satl(kPrefix + key) ||

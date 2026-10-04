@@ -1,0 +1,12 @@
+// THE OLD SPELLING, argument_1, meant the first word after the file -- argument3 since
+// 2026-10-03 (MS-1). It is refused with the name it means now, and never read as
+// argument1, which is satl itself. check.sh runs it with one word after the file.
+
+satellite.include(satellite)
+
+satellite.capsule satellite.main(satellite.variable.arguments args)
+{
+    satellite.console.display("before")
+    satellite.console.display(args.argument_1)
+    satellite.return(satellite)
+}

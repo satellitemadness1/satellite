@@ -64,6 +64,14 @@ Then, with the window built and the revision raised to 09:
 >    the console built into the new window, almost everything is not built just yet, and we
 >    need to find a way to build all of it somehow, using a milestone + some instructions that
 >    you have written..."*
+> 11. *"okay start MS-1; and let's have argument1 = "--help" as in the case of "satl
+>    filename.satl --help" as the command entered into a prompt, but then where does that leave
+>    the argv at?? Let's just put argv as argument1, then argument2 will be filename.satl, then
+>    argument3 will be --help, so it's kept in order, and arguments returns a note about every
+>    argument that exists, starting from argv at argument1, and the entire arguments special
+>    variable..."* — and: *"let's allow bare false/true on the special arguments variable as it
+>    breaks all of the rules, and also allow it to take satellite.bool.true, or
+>    satellite.bool.false as that is clear by what the user meant,"*
 
 ## 2. What those words decide
 
@@ -85,12 +93,14 @@ Each of these is a requirement, not a proposal.
 | D12 | it accepts a few simple commands, added milestone by milestone: **copy, delete, rename** and **create a new file** | 9 |
 | D13 | it accepts `--help` as an argument, and parses it | 9 |
 | D14 | the milestones are followed in order until the program is complete; **THEN** input parsing beyond `--help` — **the final milestone of this file** | 9 |
-| D15 | **before anything else:** a program's own words are `arguments.arg1`, `arguments.arg2` — **no underscore** — and `args1` and `arguments1` are the SAME row, aliases, *"we will try to guess"* | 10 |
+| D15 | **before anything else:** a program's own words have **no underscore**, and `arg1`, `args1`, `argument1` and `arguments1` are the SAME row, aliases, *"we will try to guess"*; the row is shown as `argument1`, message 11's own spelling | 10, 11 |
 | D16 | **severity is MINOR** for missing syntax — **except `satellite.include(satellite)`**, without which the file does not execute | 10 |
 | D17 | the numbers are this file's to choose: *"add numbers && renumber as you want to"* — section 4 | 10 |
 | D18 | `arguments.missing = false` is written **where a satellite word goes** — a line of the file's own, as `satellite.library.x = 5` is | 10 |
 | D19 | **the prompt reads a line from the console BUILT INTO the window** — not a separate console. This settles message 4 against message 8, and D7 and D11 mean this window | 10 |
 | D20 | almost nothing here is built; each milestone carries the instructions to build it | 10 |
+| D21 | **the command line is numbered as it was typed:** `argument1` is argv — satl itself — `argument2` the file, `argument3` onwards its words, *"so it's kept in order"*; and the arguments variable, shown, begins with every argument from `argument1`, then the whole of the variable | 11 |
+| D22 | **a bare `true` or `false` is taken by the arguments special variable** — *"as it breaks all of the rules"* — and so are `satellite.bool.true` and `satellite.bool.false` | 11 |
 
 **The milestones keep their size** — message 10 asked for smaller ones and then saw that Part B
 already gives every missing element its own: *"oh okay that's what you did, nevermind"*. The
@@ -130,7 +140,7 @@ when the run ends.
 
 | it needs | today |
 |---|---|
-| to read `--help` | **built**, under today's spelling: `satellite.main(satellite.variable.arguments args)`; `satl files.satl --help` gives `args.argument_1` = `--help` and `args.length` = 2 — satl does not take the flag for itself. D15 renames the row (MS-1) |
+| to read `--help` | **built**: `satellite.main(satellite.variable.arguments args)`; satl does not take the flag for itself. Measured before MS-1 as `args.argument_1` = `--help`, `args.length` 2; since MS-1 it is `args.argument3`, `args.length` 3 |
 | a prompt that reads a line and splits it | **built on satl's own console:** `satellite.console.input("> ")` in a `satellite.statement.while`, and `line.split(" ")` — run with `new made.txt` and `quit` piped in, exit 0 |
 | its own window | **built:** `satellite.window.new` and `.open()` |
 | a console built into that window (D19) | **not built.** A console is a frame of its own today (`satellite.console.new`, GTK_AND_NO_DEPENDENCIES.md GTK-17), `.append` refuses a frame, and the only way to read from a console a program made is `.typed(a_capsule)`, whose capsule runs after `main` — where every capsule exits 64 since c7ec8a1 |
@@ -262,7 +272,7 @@ and `p.join()`.
 | 12 | `my_window.display(...)` | capsule | a line into the console built into the window (D19) |
 | 13 | `my_window.input("> ")`, split into words | capsule | a command loop at the window's prompt |
 | 14 | `new`, then `copy`, `rename`, `delete` | capsule, one a command | the commands (D12) |
-| 15 | `satellite.main(satellite.variable.arguments args)` and `args.arg1` | variable | its own `--help` (D13, D15) |
+| 15 | `satellite.main(satellite.variable.arguments args)` and `args.argument3` | variable | its own `--help` (D13, D21) |
 
 **THE PROGRAM AT THE END OF IT (D11, D19).** One self-contained file. Every line marked
 `NOT BUILT` waits on the milestone it names; every other line was run (section 3b): `--help`
@@ -275,9 +285,9 @@ exited 0.
     satellite.capsule satellite.main(satellite.variable.arguments args)
     {
         satellite.variable.bool asked_for_help = satellite.bool.false
-        satellite.statement.if(args.length > 1)
+        satellite.statement.if(args.length > 2)
         {
-            asked_for_help = args.arg1 == "--help"                          // NOT BUILT: MS-1
+            asked_for_help = args.argument3 == "--help"
         }
 
         satellite.statement.if(asked_for_help)
@@ -335,16 +345,10 @@ their own: exit 0, both drawn.
 
 ## 7. Open — the author's, and nothing below is decided
 
-Answered by message 10, and gone from this list: which band (D16), renumbering (D17), where
-`arguments.missing` is written (D18), and where the prompt is (D19).
+Answered by messages 10 and 11, and gone from this list: which band (D16), renumbering (D17),
+where `arguments.missing` is written (D18), where the prompt is (D19), which spellings of an
+argument answer (D15, D21), and the bare `false` (D22).
 
-- **Q1. Which spellings of the first argument answer?** D15 names `arg1`, `args1` and
-  `arguments1`. Recommended besides: `argument1`, the fourth guess a person makes, and the old
-  `argument_1` kept answering — his own `experiments/quad_test/quad_test.satl` and three tests
-  use it. `satellite.console.display(args)` shows one name a row: `arg1`.
-- **Q2. `arguments.missing = false` — the bare `false`, or `satellite.bool.false`?** A bare
-  `false` is refused everywhere today (build 0125). He wrote it bare. Recommended: take it bare on
-  this line, where nothing else could be meant.
 - **Q3. S032 "missing a window" — every run of every program with no window?** Hello, World!
   and every console script would say it each time. The severity policy wants one quiet line, and
   S020 goes to satellite.log only. Console, log, or both; every run, or once a program? Does
@@ -395,18 +399,40 @@ and it is committed and pushed before the next begins. **Read before building an
 
 ### Part A — what everything after it stands on
 
-**MS-1 — `arguments.arg1`: a program's words without an underscore (D15).**
-- BUILD: in `satellite/arguments/arguments.cpp`, `gather()` (`:281`) adds `arguments.arg<N>` in
-  place of `arguments.argument_<N>`, and the list of rows satl fills (`:350-363`) takes the
-  `arg` prefix. ONE function turns `args<N>`, `arguments<N>`, `argument<N>` and the old
-  `argument_<N>` into `arg<N>` (Q1), called by the read in `bytecode/main_arguments.cpp`
-  (`:200-245`) and by its refusal of a write (`:359`) — the same row under every spelling, never
-  a second row. Then `arguments_cases.cpp`'s name cases, `command_line.cpp:167`'s help line,
+**MS-1 — the command line numbered as it was typed, without an underscore (D15, D21). BUILT
+2026-10-03, revision 09 build 0004** — check.sh and one fresh reader as below.
+- BUILD: `CommandLine` keeps argv[0] (`satellite/arguments/command_line.hpp`, set first in
+  `read_command_line`). `gather()` (`arguments.cpp`) adds `arguments.argument1` = satl,
+  `argument2` = the file, `argument3` onwards the words, and `length` = all of them. ONE
+  function, `the_argument_row_spelled`, makes `arg3`, `args3`, `arguments3` and `argument03`
+  the row `argument3`, called by the read in `bytecode/main_arguments.cpp`'s
+  `read_an_argument`; `filled_in_by_satl` refuses every spelling as a config row or a program's
+  write. **The old `argument_N` meant the first word after the file, and that is
+  `argument(N+2)` now** — so it is refused, naming the row it means
+  (`the_row_argument_underscore_is_now`), never read as `argument1`; `arg0` is refused with S413.
+  `every_row_arguments_first` gives the variable (`the_arguments_value`) and `satl --debug` the
+  command line first. Then `arguments_cases.cpp`, `command_line.cpp`'s help lines,
   `satellite.help/arguments` and `satellite.help/satellite.main`, `SATELLITE_ARGUMENTS.md`,
-  `tests/arguments_*.satl`, and check.sh's five `argument_` rows.
-- PROVE: `satl prog.satl one two` — `args.arg1`, `args.args1`, `args.arguments1` and
-  `args.argument_1` are each `one`; `args.length` is 3; writing any of them is refused before the
-  run; `satellite.console.display(args)` shows `arg1`; `quad_test.satl` runs as it did.
+  `tests/arguments_*.satl` (three moved, three new: `arguments_typed`, `arguments_old_name`,
+  `arguments_zero`), check.sh's rows — and the author's `experiments/quad_test/quad_test.satl`,
+  whose `x.length > 1` and `x.argument_1` would otherwise have changed meaning without a word.
+- PROVE: `satl prog.satl one` — `argument1` is satl as it was started, `argument2` the file,
+  `argument3`, `arg3`, `args3`, `arguments3` and `argument03` each `one`, `length` 3; the variable
+  displayed begins `{"argument1": ..., "argument2": ..., "argument3": "one", "length": 3,`;
+  `args.argument_1` refused naming `args.argument3`; `args.arg0` S413; a write to any spelling
+  refused before the run.
+- WHAT THE FRESH READER CHANGED: a key handed over as TEXT takes every spelling too —
+  `args["arg3"]`, `args.contains("arguments3")`, `args.remove("arg3")` — through one helper,
+  `an_argument_key`, with the old name and 0 refused in the same words; and `satl "" a b` keeps
+  `argument2` for the file. Its second finding, `args.set("argument3", ...)` writing past satl's
+  rows, does not happen: the checker refuses `.get` and `.set` on the arguments variable before
+  anything runs ("no capsule named set") — measured, so no guard was added that could never run.
+- WHAT IT TOUCHED OUTSIDE THE REPO, AND DID NOT CHANGE: the author's own probes under
+  `~/code/satl` — `mythkeepers/probes/threads_skeleton.satl`, `display_mock.satl`,
+  `threads_overlap_skeleton.satl`, `shell_skeleton.satl`, `acorps/probes/arguments.satl`,
+  `guard_probe.satl` — read `argument_N` and guard on `args.length > 1` or count
+  `args.length - 1`. Each old name is now refused with its new one; each `> 1` must become `> 2`
+  and each `- 1` become `- 2`, or the count is one off. His to change, or to ask for.
 
 **MS-2 — `arguments.missing`, the switch, where a satellite word goes (D9, D18).**
 - BUILD: a flag row in `satellite/config/satellite_config.hpp`,
@@ -414,7 +440,10 @@ and it is committed and pushed before the next begins. **Read before building an
   own, `arguments.missing = false` (and its full name, `satellite.library.arguments.missing`), read
   by the same scan as `satellite.library.x = 5` (`bytecode/library_values.cpp`, "the scan's line")
   and checked where those are (`program_check.cpp`), setting the run's row BEFORE the checker
-  says anything missing — every MISSING code asks it. Bare `false` as Q2 rules.
+  says anything missing — every MISSING code asks it. **D22:** a bare `true` or `false` is taken
+  here and by every write to the arguments variable (`args.access = false`), and so are
+  `satellite.bool.true` and `satellite.bool.false` — `write_an_argument` in
+  `bytecode/main_arguments.cpp`, and the checker's view of the same line.
 - PROVE: a file with the line and a file without, side by side; the row read back.
 
 **MS-3 — the register (section 4).**
@@ -567,7 +596,8 @@ and Q13.
 carries on.
 
 **MS-28 — `--help` (D13).** `satl files.satl --help` prints what it does and exits 0, read from
-`args.arg1` (MS-1); any other first argument is said to be unknown.
+`args.argument3` (MS-1) — argument1 being satl and argument2 the file; any other first word
+is said to be unknown.
 
 **MS-29 — the skeleton is complete.** Section 6's program, all of it, on a compositor: the window
 and its prompt drawn; `new`, `copy`, `rename`, `delete` and an unknown command typed in turn, the

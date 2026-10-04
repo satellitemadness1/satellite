@@ -152,17 +152,20 @@ cp examples/hello_world.satl build/-x.satl && (cd build && "$interpreter" --run 
     expect "--run -x.satl runs a file whose name begins with -" 0 $?
 "$interpreter" --debug examples/hello_world.satl --version --debug --repl "" > build/words.out 2>&1; code=$?
 expect "every word after the file is the program's" 0 $code
-expect "... kept in order as arguments.argument_1 onwards, and counted with the program" \
-       "arguments.program = examples/hello_world.satl|arguments.argument_1 = --version|arguments.argument_2 = --debug|arguments.argument_3 = --repl|arguments.argument_4 = |arguments.length = 5" \
-       "$(grep -E '^\[satellite\] arguments\.(program|argument_[0-9]+|length) = ' build/words.out | sed 's/^\[satellite\] //; s/ (machine_code: 0 success)$//' | tr '\n' '|' | sed 's/|$//')"
+# NUMBERED AS IT WAS TYPED (MS-1, the author 2026-10-03: "argv as argument1, then argument2
+# will be filename.satl, then argument3 will be --help, so it's kept in order"), shown first
+# under --debug, and length counts every one of them, satl itself included.
+expect "... kept in order: argument1 is satl, argument2 the file, argument3 onwards its words, then length" \
+       "arguments.argument1 = $interpreter|arguments.argument2 = examples/hello_world.satl|arguments.argument3 = --version|arguments.argument4 = --debug|arguments.argument5 = --repl|arguments.argument6 = |arguments.length = 6|arguments.program = examples/hello_world.satl" \
+       "$(grep -E '^\[satellite\] arguments\.(program|argument[0-9]+|length) = ' build/words.out | sed 's/^\[satellite\] //; s/ (machine_code: 0 success)$//' | tr '\n' '|' | sed 's/|$//')"
 expect "arguments.session.directory is where satl started" 1 \
        "$(grep -cxF "[satellite] arguments.session.directory = $PWD (machine_code: 0 success)" build/words.out)"
 # DESIGN §9: a word that is not text never reaches the terminal raw -- ESC ] 2 ; BEL
 # would retitle it. Shown escaped under --debug and in every refusal.
 "$interpreter" --debug examples/hello_world.satl $'\e]2;title\a' $'\xff' > build/hostile.out 2>&1
 expect "an escape sequence as a program word is shown as text" 1 \
-       "$(grep -cF 'arguments.argument_1 = \x1b]2;title\x07 (machine_code' build/hostile.out)"
-expect "... invalid UTF-8 too" 1 "$(grep -cF 'arguments.argument_2 = \xff (machine_code' build/hostile.out)"
+       "$(grep -cF 'arguments.argument3 = \x1b]2;title\x07 (machine_code' build/hostile.out)"
+expect "... invalid UTF-8 too" 1 "$(grep -cF 'arguments.argument4 = \xff (machine_code' build/hostile.out)"
 "$interpreter" $'\e]2;title\a.satl' > build/hostile.out 2>&1; expect "an escape sequence as the file" 8 $?
 expect "... is named, escaped, and no ESC or BEL byte is written" "1|0" \
        "$(grep -cF 'cannot locate file: \x1b]2;title\x07.satl' build/hostile.out)|$(tr -cd '\033\007' < build/hostile.out | wc -c)"
@@ -4814,7 +4817,7 @@ expect "the start-up threads are warm, $warm_threads of them" 1 "$(grep -cE "^\[
 # holds, by its name after the variable's -- a config row, a command-line word, a fact
 # gathered at start-up, and a live one (memory.used).
 "$interpreter" tests/arguments_variable.satl one "two words" > build/arguments_variable.out 2>/dev/null; code=$?
-expect "main's satellite.variable.arguments reads rows by name" "0|$(id -un)|one|two words|3|true|true|128|$(id -un)" \
+expect "main's satellite.variable.arguments reads rows by name" "0|$(id -un)|one|two words|4|true|true|128|$(id -un)" \
        "$code|$(tr '\n' '|' < build/arguments_variable.out | sed 's/|$//')"
 expect "... and the older list<string> spelling is the same arguments" "one" \
        "$("$interpreter" tests/arguments_old_spelling.satl one 2>/dev/null)"
@@ -4830,6 +4833,21 @@ expect "a row that is not an argument is refused by name" "25|1" \
 expect "a name of the program's own is written into the arguments, and shown after satl's rows" \
        "0|5|6|text|one|$(id -un)|6|true|more|{\"first\", \"more\"}|{\"kept\"}|new|1" \
        "$code|$(head -11 build/arguments_written.out | tr '\n' '|')$(tail -1 build/arguments_written.out | grep -c ', "some_var": 6, "deep.row": "text", "saved": "new"}$')"
+# NUMBERED AS IT WAS TYPED (MS-1, the author 2026-10-03): argument1 is satl itself, argument2
+# the file, argument3 the first word after it -- and arg3, args3, arguments3 and argument03 are
+# all argument3, one row. The whole variable, shown, begins with them and then length.
+"$interpreter" tests/arguments_typed.satl one > build/arguments_typed.out 2>/dev/null; code=$?
+expect "argument1 is satl, argument2 the file, argument3 its first word, under every spelling -- by a dot, [] and .contains" \
+       "0|$interpreter|tests/arguments_typed.satl|one|one|one|one|one|3|one|true|false" \
+       "$code|$(head -11 build/arguments_typed.out | tr '\n' '|' | sed 's/|$//')"
+expect "... and the arguments variable begins with what was typed, then length" 1 \
+       "$(tail -1 build/arguments_typed.out | grep -cF "{\"argument1\": \"$interpreter\", \"argument2\": \"tests/arguments_typed.satl\", \"argument3\": \"one\", \"length\": 3, ")"
+"$interpreter" tests/arguments_old_name.satl one > build/arguments_old_name.out 2>&1; code=$?
+expect "the old argument_1 is refused with the row it means now, argument3" "25|1|1" \
+       "$code|$(grep -cx before build/arguments_old_name.out)|$(tr '\n' ' ' < build/arguments_old_name.out | grep -cF 'args.argument_1 is args.argument3 now')"
+"$interpreter" tests/arguments_zero.satl one > build/arguments_zero.out 2>&1; code=$?
+expect "... and args.arg0 is refused: the arguments count from 1 (S413)" "66|1|1" \
+       "$code|$(grep -cx before build/arguments_zero.out)|$(grep -c 'S413' build/arguments_zero.out)"
 "$interpreter" tests/arguments_not_written.satl > build/arguments_not_written.out 2>&1; code=$?
 expect "... and a row satl holds is refused before anything runs" "35|0|1" \
        "$code|$(grep -cx before build/arguments_not_written.out)|$(tr '\n' ' ' < build/arguments_not_written.out | grep -c 'args.memory.total is a row satl holds')"
@@ -4845,6 +4863,10 @@ arguments_refuses() {
 }
 arguments_refuses '    args.infinity = 64' "35|0|1" 'args.infinity is a row satl holds'
 arguments_refuses '    args.argument_7 = "x"' "35|0|1" 'args.argument_7 is a row satl holds'
+arguments_refuses '    args.argument7 = "x"' "35|0|1" 'args.argument7 is a row satl holds'
+arguments_refuses '    args.arg7 = "x"' "35|0|1" 'args.arg7 is a row satl holds'
+arguments_refuses '    args["args1"] = "x"' "35|1|1" 'args.args1 is a row satl holds'
+arguments_refuses '    satellite.console.display(args["argument_2"])' "25|1|1" 'args.argument_2 is args.argument4 now'
 arguments_refuses '    args.length.hex = 5' "35|0|1" 'args.length.hex is inside args.length, a name satl holds'
 arguments_refuses '    args.l.size = 99' "35|1|1" "args.l.size is inside args.l, a row of the program's own"
 arguments_refuses '    args["username"] = "x"' "35|1|1" 'args.username is a row satl holds'

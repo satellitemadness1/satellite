@@ -133,11 +133,12 @@ void go_to_the_default_directory(const satellite004::Arguments &arguments)
                                    satellite004::success);
 }
 
-// Every argument, one line each, while debug mode is on.
+// Every argument, one line each, while debug mode is on -- what was typed first, from satl
+// itself at argument1 (MS-1), then the rest, as the arguments variable shows them.
 void display_arguments(const satellite004::Arguments &arguments, satellite004::MachineState &state)
 {
-    for (const satellite004::Argument &argument : arguments.all())
-        state.set(argument.name + " = " + satellite004::describe(argument), satellite004::success);
+    for (const satellite004::Argument *argument : arguments.every_row_arguments_first())
+        state.set(argument->name + " = " + satellite004::describe(*argument), satellite004::success);
 }
 
 } // namespace

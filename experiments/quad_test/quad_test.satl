@@ -472,9 +472,9 @@ satellite.capsule satellite.main(satellite.variable.arguments x)
                                           "that is my dog", "the dog is a dog", "hi, your name is the zorp",
                                           "zorp is that", "madness wrote satellite", "he is a person"}
     satellite.container.list shown = {1, 7, 9}
-    satellite.statement.if(x.length > 1)
+    satellite.statement.if(x.length > 2)
     {
-        sentences = sentences_in(x.argument_1)
+        sentences = sentences_in(x.argument3)
         shown = {1}
     }
     satellite.container.map known = known_before()
@@ -497,7 +497,7 @@ satellite.capsule satellite.main(satellite.variable.arguments x)
         }
         satellite.statement.else
         {
-            satellite.statement.if(x.length == 1)
+            satellite.statement.if(x.length == 2)
             {
                 remembered = show(sentences[s], known, together, remembered, satellite.bool.false)
             }
@@ -506,7 +506,7 @@ satellite.capsule satellite.main(satellite.variable.arguments x)
 
     satellite.console.display("\n" + sentences.size.to_string() + " sentences, " + together.words_counted().to_string() +
                               " different words, " + together.pairs_counted().to_string() + " pairs counted")
-    satellite.statement.if(x.length == 1)
+    satellite.statement.if(x.length == 2)
     {
         satellite.console.display("\nWHAT THE SENTENCES TAUGHT THE ONES AFTER THEM:")
         satellite.console.display(remembered)

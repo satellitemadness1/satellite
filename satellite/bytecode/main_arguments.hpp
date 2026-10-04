@@ -14,7 +14,8 @@
 // parameter asks for nothing.
 //
 // EVERY ROW satl HOLDS, AS ONE INDEX: the author's config rows, the command line
-// (program, argument_1 onwards, length), the machine's facts (username,
+// (argument1 -- satl itself -- argument2 the file, argument3 onwards its words, then
+// length and program: MS-1, numbered as typed), the machine's facts (username,
 // memory.total, cores ...) and every fact and setting the numbered libraries
 // answer live (memory.used, memory.free, access ...). Keyed by the row's name
 // without `arguments.`, so the variable's own name supplies it back:
@@ -66,6 +67,13 @@ std::string arguments_row_written_as_a_word(const std::vector<std::bitset<16>> &
 // `read_as` is the row's name, as it is filed: "memory.total".
 Value read_an_argument(const std::vector<std::bitset<16>> &row, std::size_t &at, const std::string &name,
                        const Value &arguments, ExpressionContext &context, bool &read, std::string &read_as);
+
+// A KEY HANDED TO THE ARGUMENTS VARIABLE AS TEXT (MS-1, and a fresh reader the same day) --
+// `args["arg3"]`, `args.contains("arguments3")`, `args.remove("argument03")` -- names the row
+// the dotted read names: argument3, ONE row under every spelling. (.get and .set are not here:
+// the checker refuses both on the arguments variable before anything runs.) The old argument_N and an argument numbered 0 are refused in the dotted read's
+// own words. A key that is not text is left as it is. False when it has refused.
+bool an_argument_key(Value &key, const std::string &name, ExpressionContext &context);
 
 // THE WALKER, WRITING -- `argz.some_var = some_value` (the author, 2026-09-23: "the syntax
 // is: satellite.variable.arguments any_name then any_name.some_var = some_value"). 003

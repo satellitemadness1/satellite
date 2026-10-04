@@ -58,7 +58,7 @@ inline bool is_a_real_argument(const satelliteArgumentCase &argument_case)
 
     // A NAME SATL FILLS IN IS NOT CHECKED AGAINST THE WORD TABLE, because the
     // language has no word for it and is not supposed to. `arguments.file`,
-    // `arguments.threads_startup`, `arguments.argument_1` -- eighteen of the
+    // `arguments.threads_startup`, `arguments.argument1` -- eighteen of the
     // twenty-nine a real gather produces. What checks THOSE is the thing that
     // produces them: a config row is checked by `gather_config()` against the
     // author's own `return_arguments_vector()`, and a fact satl fills in is

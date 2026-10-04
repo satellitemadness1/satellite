@@ -26,6 +26,8 @@ bool alone(const std::string &word)
 signed long long int read_command_line(int argc, char **argv, CommandLine &into)
 {
     into = CommandLine{};
+    // ARGV[0] FIRST, before anything can answer early: it is argument1 whatever comes after it.
+    into.satl = argc > 0 && argv[0] != nullptr ? argv[0] : "satl";
     int i = 1;
     while (i < argc && (std::strcmp(argv[i], "--debug") == 0 || std::strcmp(argv[i], "--console") == 0)) {
         if (std::strcmp(argv[i], "--debug") == 0)
@@ -163,8 +165,9 @@ std::string usage_lines()
            "\n"
            "    --debug and --console come before the file, --run or --repl. --version\n"
            "    and --help are the whole command line. Every word after the file is the\n"
-           "    program's, --version and --debug included: arguments.program,\n"
-           "    arguments.argument_1 ... and arguments.length.\n"
+           "    program's, --version and --debug included, numbered as it was typed:\n"
+           "    arguments.argument1 is satl, argument2 the file, argument3 onwards its\n"
+           "    words (arg3, args3 and arguments3 are argument3), and arguments.length.\n"
            "\n"
            // THE SPELLINGS ARE DOCUMENTED HERE AND NOT IN THE TABLE. Four of them
            // on one row would be wider than the column and would read as four

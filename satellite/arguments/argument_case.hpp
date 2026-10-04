@@ -57,8 +57,8 @@ inline constexpr std::size_t kArgumentRegisters = 4;
 //          it does not have is a typo.
 //   satl   SATL fills this in, and the language has no word for it.
 //          `arguments.threads_startup` is the machine's cores x2; `arguments.file` is
-//          what satl was told to run; `arguments.argument_1` exists only on a run
-//          that was given a word. None of them are words and none of them are
+//          what satl was told to run; `arguments.argument3` exists only on a run
+//          that was given a word after the file. None of them are words and none of them are
 //          mistakes, and `arguments.file` in particular is how the interpreter
 //          knows what to run -- refusing it stops satl from starting at all.
 //

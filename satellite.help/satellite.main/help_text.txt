@@ -31,7 +31,7 @@ capsules, and its main never runs.
 main takes nothing, satellite.main(), or one parameter: the arguments variable,
 which holds every row satl holds -- the words your program was started with,
 satl's settings, and facts gathered when satl starts -- read by name, as
-arguments.argument_1 or arguments.username. The author writes it
+arguments.argument3 or arguments.username. The author writes it
 satellite.variable.arguments arguments since 2026-09-22; the older
 satellite.container.list<satellite.variable.string> arguments is the same
 variable, and you may give it any name. See satellite.help(arguments).
