@@ -1,0 +1,10 @@
+satellite.include(satellite)
+// full_structure_7 -- REFUSED by satellite.test.full(): satellite.main: main must end with satellite.return(satellite).
+// The rule: satellite.main: a main that does not end with it is refused before anything runs (S103, exit 12).
+// satl refuses it: exit 12, and its report on stderr says "S103: FILE_HAS_NO_RETURN". It prints nothing.
+
+satellite.capsule satellite.main()
+{
+    satellite.variable.number passes = 1
+    satellite.variable.number n = passes
+}

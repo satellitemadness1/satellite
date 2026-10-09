@@ -1,0 +1,8 @@
+satellite.include(satellite)
+
+satellite.capsule satellite.main()
+{
+    satellite.variable.number k = 0
+    satellite.console.display("abc".at(k))
+    satellite.return(satellite)
+}

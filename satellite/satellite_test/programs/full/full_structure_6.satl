@@ -1,0 +1,9 @@
+// full_structure_6 -- REFUSED by satellite.test.full(): satellite.include: a file without satellite.include(satellite) is a spaceship, not a program.
+// The rule: satellite.main / satellite.include: satellite.include(satellite) -- this file is a program (S101, exit 10).
+// satl refuses it: exit 10, and its report on stderr says "S101: MISSING_INCLUDE". It prints nothing.
+
+satellite.capsule satellite.main()
+{
+    satellite.variable.number passes = 1
+    satellite.return(satellite)
+}

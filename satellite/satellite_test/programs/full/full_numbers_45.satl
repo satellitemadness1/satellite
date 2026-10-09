@@ -1,0 +1,14 @@
+satellite.include(satellite)
+
+// full_numbers_45 -- satellite.test.full(), a program satl must REFUSE.
+// color: a color has no arithmetic.
+// It exits 27, and its report on stderr holds: a color has no arithmetic
+// Nothing is printed on stdout.
+
+satellite.capsule satellite.main()
+{
+    satellite.variable.number passes = 1
+    satellite.variable.color red = xFF0000
+    satellite.console.display(red + 1)
+    satellite.return(satellite)
+}

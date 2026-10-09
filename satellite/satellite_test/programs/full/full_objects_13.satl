@@ -1,0 +1,19 @@
+satellite.include(satellite)
+
+// full_objects_13 -- REFUSED when its line runs: reading a line past the end of a file (SATELLITE_FILE_
+// OPERATIONS 3.1: "f[n] ... past the end (line_past_the_end, 47)"). The file is this program's own
+// source -- found by the path satl was given, made whole with the folder satl started in -- opened
+// to read and never changed, so nothing is made and nothing is left behind.
+
+satellite.capsule satellite.main(satellite.variable.arguments args)
+{
+    satellite.variable.number passes = 1
+    satellite.variable.string path = args.program
+    satellite.statement.if (path.starts_with("/") == satellite.bool.false)
+    {
+        path = args.session.directory + "/" + path
+    }
+    satellite.variable.file me = satellite.file.open(path)
+    satellite.console.display(me[me.size + 1])
+    satellite.return(satellite)
+}

@@ -1,0 +1,19 @@
+ok number + - * add, take away and multiply, below zero too
+ok number / is whole-number division, cut toward zero
+ok number % takes the sign of the number divided
+ok number ^ is power, grouped right to left
+ok number ** is the second spelling of ^
+ok number * / % bind tighter than + and -
+ok number - and / group left to right, and brackets come first
+ok number a touching minus is part of the number, -2 ^ 2 is 4
+ok number has no size limit and never wraps
+ok number * / % past one unsigned long long
+ok number 2 ^ -1 is the float 0.5
+ok number == != < > <= >= answer true or false
+ok number - in front of a name turns it over
+ok number .string .to_string and .str are its base 10 text
+ok number .binary and .bin are its base 2 text, .hex its base 16 text
+ok number .reverse() turns its digits round and keeps the sign
+ok number .add(x) is +
+ok number meets text by what the text says: a number in quotes is added, other text joined
+ok number a number name given a binary or a hex holds what it is worth

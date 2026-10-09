@@ -1,0 +1,46 @@
+// satellite.variable.percentage (the author, 2026-09-17): "take 1% and 100% as
+// meaning a percentage and 1000000000000% as something you can multiply by", kept
+// to 32 digits after the point and rounded there. check.sh has Python's decimal
+// module work out every line.
+
+satellite.include(satellite)
+
+satellite.capsule satellite.main()
+{
+    satellite.variable.percentage half = 50%
+    satellite.console.display(half)
+    satellite.variable.percentage third = 33.333333333333333333333333333333335%
+    satellite.console.display(third)
+    satellite.variable.percentage big = 1000000000000%
+    satellite.console.display(big)
+    satellite.console.display(12.5%)
+
+    // Rounded at the 33rd digit: 4 drops, 5 carries.
+    satellite.console.display(100.000000000000000000000000000000004%)
+    satellite.console.display(0.000000000000000000000000000000005%)
+
+    // A number and a percentage answer a number.
+    satellite.console.display(200 * half)
+    satellite.console.display(5 * big)
+    satellite.console.display(half * 200)
+    satellite.console.display(200 - half)
+    satellite.console.display(200 + half)
+    satellite.console.display(200 / half)
+
+    // Two percentages, or a percentage shared out, answer a percentage.
+    satellite.console.display(half + 25%)
+    satellite.console.display(half - 75%)
+    satellite.console.display(half * half)
+    satellite.console.display(half / 4)
+    satellite.console.display(-half)
+    satellite.console.display(half == 50%)
+    satellite.console.display(half < 75%)
+    satellite.console.display(half.string)
+    satellite.console.display(100% / 3)
+    satellite.console.display(200% / 3)
+
+    // A binary is read by its worth, as in every arithmetic.
+    satellite.console.display(b1010 * 50%)
+
+    satellite.return(satellite)
+}

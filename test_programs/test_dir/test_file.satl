@@ -1,0 +1,5 @@
+
+satellite.capsule test_two()
+{
+    satellite.console.display("success!")
+}

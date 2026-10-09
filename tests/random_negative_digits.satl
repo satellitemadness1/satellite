@@ -1,0 +1,9 @@
+// A count of digits below 0: S431.
+satellite.include(satellite)
+
+satellite.capsule satellite.main()
+{
+    satellite.console.display("before")
+    satellite.console.display(satellite.random.normal(-3))
+    satellite.return(satellite)
+}

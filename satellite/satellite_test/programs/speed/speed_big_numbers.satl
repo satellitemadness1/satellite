@@ -1,0 +1,24 @@
+satellite.include(satellite)
+
+// speed_big_numbers.satl -- satellite.test.speed(): WHOLE NUMBERS PAST 64 BITS, inside 128 bits.
+// x walks x = (x * 1000003 + i) % m with m = 2^100 - 15, so it lives in two limbs and its product
+// reaches 120 bits before the %; s sums every x (past 2^100); p adds x's top 36 bits times its low 64
+// bits, brought back under m. Every value fits 128 bits, so the C++ twin uses unsigned __int128.
+// Prints: x, s and p.  C++ twin: speed_big_numbers().
+
+satellite.capsule satellite.main()
+{
+    satellite.variable.number passes = 390000
+    satellite.variable.number m = 1267650600228229401496703205361
+    satellite.variable.number x = 547311173
+    satellite.variable.number s = 0
+    satellite.variable.number p = 0
+    satellite.statement.for(satellite.variable.number i = 0; i < passes; i + 1)
+    {
+        x = (x * 1000003 + i) % m
+        s = s + x
+        p = (p + x / 18446744073709551616 * (x % 18446744073709551616)) % m
+    }
+    satellite.console.display(x.string + " " + s.string + " " + p.string)
+    satellite.return(satellite)
+}

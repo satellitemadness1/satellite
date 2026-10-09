@@ -1,0 +1,11 @@
+satellite.include(satellite)
+// full_structure_23 -- REFUSED by satellite.test.full(): satellite.access: its switch takes true or false and nothing else.
+// The rule: satellite.access: = 5 stops the program with machine code 34 setting_is_not_a_flag.
+// satl refuses it: exit 34, and its report on stderr says "S310: SETTING_IS_NOT_A_FLAG". It prints nothing.
+
+satellite.capsule satellite.main()
+{
+    satellite.variable.number passes = 1
+    arguments.access = 5
+    satellite.return(satellite)
+}

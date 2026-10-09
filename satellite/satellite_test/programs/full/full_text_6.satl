@@ -1,0 +1,158 @@
+satellite.include(satellite)
+
+// full_text_6 -- satellite.container.multiple, containers inside containers, and == / !=
+// on containers: a multiple holding a string, then a number, a binary that stays a
+// binary, a multiple with no <>, as a capsule's parameter and as the type inside a list
+// and a map; a list of lists, a map of lists, a list of maps of lists, read and written
+// and appended to at every depth, a copy that is a copy at every depth; == and != on
+// lists (order counts) and maps (order does not), nested.
+// Every expected answer is a help page's own (satellite.container, .list, .map, .multiple).
+// One line per check, written on the first pass: "ok <what>", or "WRONG <what>: <answer>
+// (expected <right answer>)". Every pass runs every check again, and the last line says
+// whether every pass answered as the first did.
+
+satellite.capsule check(satellite.variable.number round, satellite.variable.string what, satellite.container.multiple got, satellite.container.multiple want)
+{
+    satellite.statement.if (got == want)
+    {
+        satellite.statement.if (round == 1)
+        {
+            satellite.console.display("ok " + what)
+        }
+        satellite.return(0)
+    }
+    satellite.statement.if (round == 1)
+    {
+        satellite.console.display("WRONG " + what + ": ", end="")
+        satellite.console.display(got, end="")
+        satellite.console.display(" (expected ", end="")
+        satellite.console.display(want, end="")
+        satellite.console.display(")")
+    }
+    satellite.return(1)
+}
+
+satellite.capsule twice(satellite.container.multiple<satellite.variable.string, satellite.variable.number> v)
+{
+    satellite.return(v + v)
+}
+
+satellite.capsule satellite.main()
+{
+    satellite.variable.number passes = 1000
+    satellite.variable.number rounds = passes
+    satellite.statement.if (rounds < 1)
+    {
+        rounds = 1
+    }
+    satellite.variable.number first_wrong = 0
+    satellite.variable.number unlike_the_first = 0
+    satellite.statement.for(satellite.variable.number p = 1; p <= rounds; p + 1)
+    {
+        satellite.variable.number wrong = 0
+
+        // a multiple holds an ordinary value and behaves as one declared the plain way
+        satellite.container.multiple<satellite.variable.string, satellite.variable.number> either = "abc"
+        wrong = wrong + check(p, "multiple holding text .reverse()", either.reverse(), "cba")
+        wrong = wrong + check(p, "multiple holding text .size", either.size, 3)
+        wrong = wrong + check(p, "multiple holding text +", either + "d", "abcd")
+        wrong = wrong + check(p, "multiple holding text .find", either.find("c"), 2)
+        wrong = wrong + check(p, "multiple holding text [1]", either[1], "a")
+        either = 7
+        wrong = wrong + check(p, "multiple given a number adds", either + 1, 8)
+        wrong = wrong + check(p, "multiple holding a number multiplies", either * 6, 42)
+        wrong = wrong + check(p, "multiple holding a number .binary", either.binary, "111")
+        satellite.container.multiple<satellite.variable.string, satellite.variable.number> bits = b101
+        satellite.variable.number plain = b101
+        wrong = wrong + check(p, "multiple with a number on its list keeps a binary", bits.string, "b101")
+        wrong = wrong + check(p, "multiple binary counts by its worth in a sum", bits + 1, 6)
+        wrong = wrong + check(p, "multiple a plain number name makes the binary a number", plain.string, "5")
+        satellite.container.multiple anything = 5
+        anything = "text"
+        anything = {1, 2}
+        anything = {"k": 1}
+        anything = 2.5
+        wrong = wrong + check(p, "multiple with no <> takes every type", anything, 2.5)
+        wrong = wrong + check(p, "multiple as a parameter, given a number", twice(21), 42)
+        wrong = wrong + check(p, "multiple as a parameter, given text", twice("ab"), "abab")
+        satellite.container.list<satellite.container.multiple<satellite.variable.string, satellite.variable.number>> row = {1, "a", 2}
+        row.append("b")
+        wrong = wrong + check(p, "multiple as the type inside a list", row, {1, "a", 2, "b"})
+        satellite.container.map<satellite.variable.string, satellite.container.multiple<satellite.variable.number, satellite.variable.string>> either_map
+        either_map["a"] = 1
+        either_map["b"] = "two"
+        wrong = wrong + check(p, "multiple as the type inside a map", either_map, {"a": 1, "b": "two"})
+        satellite.container.multiple<satellite.variable.string, satellite.container.list> text_or_list = "text"
+        text_or_list = {1}
+        text_or_list.append(2)
+        wrong = wrong + check(p, "multiple holding a list appends", text_or_list, {1, 2})
+
+        // a list of lists: grid[x][y] read, written, appended to
+        satellite.container.list<satellite.container.list<satellite.variable.number>> grid = {{1, 2}, {3, 4}}
+        grid[2][1] = 99
+        wrong = wrong + check(p, "nested list [x][y] = v", grid, {{1, 2}, {99, 4}})
+        wrong = wrong + check(p, "nested list [x][y] read", grid[2][1], 99)
+        grid[1].append(5)
+        wrong = wrong + check(p, "nested list [x].append", grid[1], {1, 2, 5})
+        satellite.variable.number x = 2
+        satellite.variable.number y = 2
+        wrong = wrong + check(p, "nested list [x][y] by names", grid[x - 1][y] + grid[x][y - 1], 101)
+        wrong = wrong + check(p, "nested list .contains a list", grid.contains({1, 2, 5}), satellite.bool.true)
+        wrong = wrong + check(p, "nested list .index_of a list", grid.index_of({99, 4}), 2)
+        wrong = wrong + check(p, "nested list a method on an inner list", grid[2].sum, 103)
+
+        // a map of lists, a list of maps, a map of maps of lists
+        satellite.container.index<satellite.variable.string, satellite.container.list> teams
+        teams["red"] = {"ann", "bo"}
+        teams["red"].append("cy")
+        wrong = wrong + check(p, "nested map of lists [k].append", teams, {"red": {"ann", "bo", "cy"}})
+        wrong = wrong + check(p, "nested map of lists [k][n]", teams["red"][2], "bo")
+        wrong = wrong + check(p, "nested map of lists [k].join", teams["red"].join("+"), "ann+bo+cy")
+        satellite.container.list<satellite.container.map<satellite.variable.string, satellite.variable.number>> rows = {{"a": 1}, {"b": 2}}
+        wrong = wrong + check(p, "nested list of maps [n][k]", rows[2]["b"], 2)
+        satellite.container.map<satellite.variable.string, satellite.container.map<satellite.variable.string, satellite.container.list<satellite.variable.number>>> tree
+        tree["x"] = {"y": {1, 2}}
+        tree["x"]["y"].append(3)
+        tree["x"]["z"] = {}
+        wrong = wrong + check(p, "nested map of maps of lists written at every depth", tree, {"x": {"y": {1, 2, 3}, "z": {}}})
+        wrong = wrong + check(p, "nested map of maps of lists .sum at the bottom", tree["x"]["y"].sum, 6)
+
+        // with no <> a container holds anything, to any depth: a[1]["k"][2]
+        satellite.container.list deep = {{"k": {10, 20, 30}}, 5}
+        wrong = wrong + check(p, "nested a[1][k][2] read", deep[1]["k"][2], 20)
+        deep[1]["k"][2] = 21
+        wrong = wrong + check(p, "nested a[1][k][2] = v", deep[1]["k"], {10, 21, 30})
+        deep[1]["k"].append(40)
+        wrong = wrong + check(p, "nested a[1][k].append", deep[1]["k"].size, 4)
+        deep[1]["new"] = {"x": {1}}
+        wrong = wrong + check(p, "nested a new key three deep", deep[1]["new"]["x"][1], 1)
+        satellite.container.list copy = deep
+        copy[1]["k"][1] = 0
+        wrong = wrong + check(p, "nested b = a copies every depth, a stays", deep[1]["k"][1], 10)
+        wrong = wrong + check(p, "nested b = a copies every depth, b changes", copy[1]["k"][1], 0)
+        wrong = wrong + check(p, "nested == after a change deep inside", copy == deep, satellite.bool.false)
+        copy[1]["k"][1] = 10
+        wrong = wrong + check(p, "nested == once they hold the same again", copy == deep, satellite.bool.true)
+
+        // == and != compare what two containers hold
+        wrong = wrong + check(p, "container list == list", {1, 2} == {1, 2}, satellite.bool.true)
+        wrong = wrong + check(p, "container list order counts in ==", {1, 2} == {2, 1}, satellite.bool.false)
+        wrong = wrong + check(p, "container list != of a longer list", {1, 2} != {1, 2, 3}, satellite.bool.true)
+        wrong = wrong + check(p, "container {} == {}", {} == {}, satellite.bool.true)
+        wrong = wrong + check(p, "container lists of text ==", {"a", "b"} == {"a", "b"}, satellite.bool.true)
+        wrong = wrong + check(p, "container lists of lists ==", {{1}, {2}} == {{1}, {2}}, satellite.bool.true)
+        wrong = wrong + check(p, "container lists of lists != deep inside", {{1}, {2}} != {{1}, {3}}, satellite.bool.true)
+        wrong = wrong + check(p, "container a list inside a map keeps its order", {"a": {1, 2}} == {"a": {2, 1}}, satellite.bool.false)
+        wrong = wrong + check(p, "container a map inside a map ignores order", {"a": {"x": 1, "y": 2}} == {"a": {"y": 2, "x": 1}}, satellite.bool.true)
+        satellite.statement.if (p == 1)
+        {
+            first_wrong = wrong
+        }
+        satellite.statement.if (wrong != first_wrong)
+        {
+            unlike_the_first = unlike_the_first + 1
+        }
+    }
+    check(1, "multiple and nested containers answer alike on every pass", unlike_the_first, 0)
+    satellite.return(satellite)
+}

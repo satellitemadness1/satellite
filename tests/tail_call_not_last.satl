@@ -1,0 +1,62 @@
+satellite.include(satellite)
+
+// CALLS TO ITSELF THAT ARE NOT LAST, and so stay ordinary calls: whatever runs
+// after each one must still run, in order. Shallow on purpose -- a call in the
+// middle is a C++ frame a level, as the author ruled on 2026-09-22.
+
+// The if is last in a while's body, but the while goes round again. 2 1 0 0 1 0 0
+satellite.capsule in_a_while(satellite.variable.number n)
+{
+    satellite.console.display(n)
+    satellite.variable.number i = 0
+    satellite.statement.while(i < 2)
+    {
+        i = i + 1
+        satellite.statement.if(n > 0)
+        {
+            in_a_while(n - 1)
+        }
+    }
+}
+
+// The same in a for. 2 1 0 0 1 0 0
+satellite.capsule in_a_for(satellite.variable.number n)
+{
+    satellite.console.display(n)
+    satellite.statement.for(satellite.variable.number i = 0; i < 2; i + 1)
+    {
+        satellite.statement.if(n > 0)
+        {
+            in_a_for(n - 1)
+        }
+    }
+}
+
+// A line after the if. 0 1 2 3
+satellite.capsule then_a_line(satellite.variable.number n)
+{
+    satellite.statement.if(n > 0)
+    {
+        then_a_line(n - 1)
+    }
+    satellite.console.display(n)
+}
+
+// A line after the call, inside the if. 1 2 3
+satellite.capsule then_a_line_inside(satellite.variable.number n)
+{
+    satellite.statement.if(n > 0)
+    {
+        then_a_line_inside(n - 1)
+        satellite.console.display(n)
+    }
+}
+
+satellite.capsule satellite.main()
+{
+    in_a_while(2)
+    in_a_for(2)
+    then_a_line(3)
+    then_a_line_inside(3)
+    satellite.return(satellite)
+}

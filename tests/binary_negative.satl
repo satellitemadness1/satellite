@@ -1,0 +1,31 @@
+// A binary keeps a sign (the author, 2026-09-17: "give it a different number and
+// keep a sign with all of these things"). -b0101 is a binary: shown as written,
+// worth -5, width kept, and not equal to b0101.
+
+satellite.include(satellite)
+
+satellite.capsule satellite.main()
+{
+    satellite.variable.binary below = -b0101
+    satellite.console.display(below)
+    satellite.console.display(below.number)
+    satellite.console.display(below.bin)
+    satellite.console.display(below.string)
+    satellite.console.display(below.hex)
+    satellite.console.display(below + 1)
+    satellite.console.display(below == -b0101)
+    satellite.console.display(below == b0101)
+    satellite.console.display(below < b0001)
+
+    // Each minus turns the sign over, and zero has none.
+    satellite.console.display(-below)
+    satellite.console.display(-(-b0101))
+    satellite.console.display(-b0000)
+
+    // Given, and given to a number: the sign goes with it.
+    below = -(b0011)
+    satellite.console.display(below)
+    satellite.variable.number worth = -b0011
+    satellite.console.display(worth)
+    satellite.return(satellite)
+}

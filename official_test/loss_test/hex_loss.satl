@@ -1,0 +1,43 @@
+// hex_loss.satl -- a data-loss test for satellite.variable.hex.
+//
+// The author's standard (2026-10-06): "for the loss testing, we will use the number 547311173 so we have to start
+// with that number, and end at that number, after say, 1,000,000 million operations" -- and, for a hex: "my_hex =
+// 547311173 then my_hex = my_hex + 1 (500,000 times) then 500,000 - 1 then we should still have the same hex code".
+//
+// A hex plus 1 answers a number, and nothing turns a number back into a hex yet, so the walk is a number that starts
+// from the hex: 500,000 steps up, 500,000 steps down -- 1,000,000 operations -- then it is compared with the hex.
+// The answer is always 547311173; anything else is the value the walk ended at.
+
+satellite.include(satellite)
+
+satellite.capsule satellite.main()
+{
+    satellite.variable.hex my_hex = x547311173
+    satellite.variable.number walk = my_hex
+    satellite.variable.number step = 0
+
+    satellite.statement.while(step < 500000)
+    {
+        walk = walk + 1
+        step = step + 1
+    }
+
+    step = 0
+
+    satellite.statement.while(step < 500000)
+    {
+        walk = walk - 1
+        step = step + 1
+    }
+
+    satellite.statement.if (walk == my_hex)
+    {
+        satellite.console.display(547311173)
+    }
+    satellite.statement.else
+    {
+        satellite.console.display(walk)
+    }
+
+    satellite.return(satellite)
+}

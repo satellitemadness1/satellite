@@ -1,0 +1,16 @@
+satellite.include(satellite)
+// full_structure_15 -- REFUSED by satellite.test.full(): satellite.return: an answer used from a capsule that can never hand one back.
+// The rule: satellite.return: a call whose answer is used, from a capsule that can never hand one back, is refused before anything runs (S240).
+// satl refuses it: exit 53, and its report on stderr says "S240: CAPSULE_GAVE_NO_ANSWER". It prints nothing.
+
+satellite.capsule quiet()
+{
+    satellite.variable.number x = 1
+}
+
+satellite.capsule satellite.main()
+{
+    satellite.variable.number passes = 1
+    satellite.variable.number n = quiet()
+    satellite.return(satellite)
+}

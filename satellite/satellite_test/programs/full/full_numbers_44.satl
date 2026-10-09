@@ -1,0 +1,15 @@
+satellite.include(satellite)
+
+// full_numbers_44 -- satellite.test.full(), a program satl must REFUSE.
+// color: two colors have no order.
+// It exits 27, and its report on stderr holds: only == and != compare those
+// Nothing is printed on stdout.
+
+satellite.capsule satellite.main()
+{
+    satellite.variable.number passes = 1
+    satellite.variable.color red = xFF0000
+    satellite.variable.color blue = x0000FF
+    satellite.console.display(red < blue)
+    satellite.return(satellite)
+}

@@ -1,0 +1,55 @@
+satellite.include(satellite)
+
+// full_numbers_7 -- satellite.test.full(): satellite.variable.percentage (and its second spelling,
+// percent). Held as a whole number of 10^-32 percents: 32 digits after the point, exactly, the
+// 33rd rounded half away from zero, no ceiling above. Every pair its help page's table lists,
+// worked through, and the compares that stay between two percentages.
+// The checks run `passes` times and print on the last pass only, so the lines never change.
+
+satellite.capsule check(satellite.variable.bool show, satellite.variable.string what, satellite.variable.string got, satellite.variable.string want)
+{
+    satellite.statement.if(show)
+    {
+        satellite.statement.if(got == want)
+        {
+            satellite.console.display("ok " + what)
+        }
+        satellite.statement.else
+        {
+            satellite.console.display("WRONG " + what + ": " + got + " (expected " + want + ")")
+        }
+    }
+}
+
+satellite.capsule satellite.main()
+{
+    satellite.variable.number passes = 1
+    satellite.variable.number rounds = passes
+    satellite.statement.if(rounds < 1)
+    {
+        rounds = 1
+    }
+    satellite.statement.for(satellite.variable.number turn = 1; turn <= rounds; turn + 1)
+    {
+        satellite.variable.bool show = turn == rounds
+        satellite.variable.percentage half = 50%
+        satellite.variable.percent eighth = 12.5%
+        check(show, "percentage shows with its %, and .string is that; percent is its second spelling", half.string + " " + eighth.string, "50% 12.5%")
+        check(show, "percentage two percentages stay a percentage: 50% + 25%, 50% - 25%, 50% * 50%", (half + 25%).string + " " + (half - 25%).string + " " + (half * half).string, "75% 25% 25%")
+        check(show, "percentage 50% / 4 is 12.5%, a share of it", (half / 4).string, "12.5%")
+        check(show, "percentage a number and a percentage answer a number: 200 * 50% and 50% * 200", (200 * half).string + " " + (half * 200).string, "100 100")
+        check(show, "percentage 200 - 50% is 100 and 200 + 50% is 300, reduced and grown by it", (200 - half).string + " " + (200 + half).string, "100 300")
+        check(show, "percentage 200 / 50% is 400, what 200 is 50% of", (200 / half).string, "400")
+        check(show, "percentage 0.1% + 0.2% is 0.3%, exactly", (0.1% + 0.2%).string + " " + (0.1% + 0.2% == 0.3%).string, "0.3% true")
+        check(show, "percentage keeps 32 digits after the point, the last rounded half away from zero", (100% / 3).string + " " + (200% / 3).string, "33.33333333333333333333333333333333% 66.66666666666666666666666666666667%")
+        check(show, "percentage a 33rd digit of 5 carries and of 4 drops", 33.333333333333333333333333333333335%.string + " " + 100.000000000000000000000000000000004%.string + " " + 0.000000000000000000000000000000005%.string, "33.33333333333333333333333333333334% 100% 0.00000000000000000000000000000001%")
+        check(show, "percentage has no ceiling above, 1000000000000%", 1000000000000%.string + " " + (5 * 1000000000000%).string, "1000000000000% 50000000000")
+        check(show, "percentage below zero, written with its minus and its %", (-50%).string + " " + (-half).string + " " + (-(-12.5%)).string + " " + (-200 * half).string + " " + (200 * -50%).string, "-50% -50% 12.5% -100 -100")
+        check(show, "percentage == != < > <= >= between two percentages", (half == 50%).string + " " + (half != 50%).string + " " + (50.000% == 50%).string + " " + (half < 75%).string + " " + (half > 75%).string + " " + (half <= 50%).string + " " + (half >= 50.0%).string, "true false true true false true true")
+        check(show, "percentage a binary is read by its worth, b1010 * 50% is 5", (b1010 * 50%).string, "5")
+        half = half - 75%
+        check(show, "percentage a percentage name keeps a percentage answer, 50% - 75%", half.string, "-25%")
+        check(show, "percentage a string joins a percentage as its .string", "p " + 50%, "p 50%")
+    }
+    satellite.return(satellite)
+}

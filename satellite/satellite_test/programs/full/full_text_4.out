@@ -1,0 +1,59 @@
+ok list braces make a list
+ok list {} holds nothing
+ok list .empty of {}
+ok list satellite.container.list() is {}
+ok list holds mixed items
+ok list of lists
+ok list .append adds to the end
+ok list [1] is the first item
+ok list [size] is the last item
+ok list [n] = x replaces an item
+ok list b = a copies, a stays as it was
+ok list .append on a copy leaves the first alone
+ok list .append on a copy changes the copy
+ok list .insert(n, x) at the front
+ok list .insert(n, x) in the middle
+ok list .remove(x) takes the item out
+ok list .remove_at(n)
+ok list .remove_first()
+ok list .remove_last()
+ok list .truncate(n) keeps the first n
+ok list .truncate past the end keeps them all
+ok list .reserve(n) changes no item
+ok list .clear empties it
+ok list .clear() with brackets
+ok list .size
+ok list .size()
+ok list .empty of a list with items
+ok list .first
+ok list .last
+ok list .contains
+ok list .contain is its second spelling
+ok list .contains of an item not there
+ok list .index_of answers a position
+ok list .index_of answers 0 when not there
+ok list .search answers a position
+ok list .search answers 0 when not there
+ok list .reverse()
+ok list .reverse() leaves the list alone
+ok list .sum
+ok list .sum of nothing is 0
+ok list .sum of floats
+ok list .max
+ok list .min
+ok list .max of strings
+ok list .min of strings
+ok list .join(separator)
+ok list .join of numbers
+ok list .join of nothing is empty text
+ok list .sort() on its own orders nothing
+ok list .sort().by_name()
+ok list .sort().by_name().reverse()
+ok list .sort() leaves the list alone
+ok list .sort().by_value() puts the smallest first
+ok list .sort().by_name() orders numbers by how they read
+ok list .sort().by_value().reverse()
+ok list .sort().by_value() of negatives and floats
+ok list .sort().by_name() follows the character table
+ok list walked with a for and a[i]
+ok list answers alike on every pass

@@ -1,0 +1,36 @@
+// speed_string_build.satl -- satellite.test.speed(): building strings with + and .append.
+// Each pass builds a piece -- text + a number, + a string, + a number, .append -- and adds it to a line
+// with .append and +; a line longer than 120 characters is counted and cleared first, so the line
+// stays short whatever passes is. It is never empty: it starts as >, and a cleared line is appended
+// to at once. The checksum line is how many characters were built, how many lines were filled, and
+// the last line's size and its first and last characters; its C++ twin is speed_string_build() in
+// speed_objects_twins.cpp, which prints the same line.
+
+satellite.include(satellite)
+
+satellite.capsule satellite.main()
+{
+    satellite.variable.number passes = 340000
+    satellite.variable.string piece = ""
+    satellite.variable.string line = ">"
+    satellite.variable.number built = 0
+    satellite.variable.number lines = 0
+
+    satellite.statement.for(satellite.variable.number i = 0; i < passes; i + 1)
+    {
+        piece = "satellite " + i
+        piece = piece + "/" + i % 97
+        piece.append(";")
+        satellite.statement.if (line.size > 120)
+        {
+            lines = lines + 1
+            line.clear()
+        }
+        line.append(piece)
+        line = line + " " + i % 10
+        built = built + piece.size
+    }
+
+    satellite.console.display("string_build: passes " + passes + ", built " + built + " characters, lines " + lines + ", last line " + line.size + " characters from " + line[1] + " to " + line[line.size])
+    satellite.return(satellite)
+}

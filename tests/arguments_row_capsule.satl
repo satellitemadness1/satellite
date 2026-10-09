@@ -1,0 +1,37 @@
+// A CAPSULE OF AN OBJECT HELD IN A ROW OF THE ARGUMENTS IS CALLED, AS IT ALWAYS WAS (the fresh reader,
+// 2026-10-06): `args.b.call_put(9)` is no write of a row named b.call_put -- the call that writes a row
+// (`args.my_value(5)`) is one name, or a setting's whole name. An object is a reference, so the row and
+// `a` are one object: 7, then 9 by the row, and 9 by `a`. check.sh asserts every line in order.
+
+satellite.include(satellite)
+
+satellite.spacesuit box()
+{
+    satellite.protected
+    {
+        satellite.variable.number value = 0
+    }
+    satellite.public
+    {
+        satellite.capsule call_put(satellite.variable.number n)
+        {
+            value = n
+        }
+        satellite.capsule call_take()
+        {
+            satellite.return(value)
+        }
+    }
+}
+
+satellite.capsule satellite.main(satellite.variable.arguments args)
+{
+    box a
+    a.call_put(7)
+    args.b = a
+    satellite.console.display(args.b.call_take())
+    args.b.call_put(9)
+    satellite.console.display(args.b.call_take())
+    satellite.console.display(a.call_take())
+    satellite.return(satellite)
+}

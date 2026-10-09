@@ -1,0 +1,13 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 128 128" width="128" height="128">
+<title>satellite</title>
+<polygon points="70.0,62.0 82.0,58.0 76.0,88.0 64.0,88.0" fill="rgb(43, 127, 217)" stroke="rgb(27, 86, 153)" stroke-width="2" stroke-linejoin="round"/>
+<polygon points="58.0,84.0 88.0,84.0 88.0,92.0 58.0,92.0" fill="rgb(43, 127, 217)" stroke="rgb(27, 86, 153)" stroke-width="2" stroke-linejoin="round"/>
+<ellipse cx="66" cy="46" rx="46.0" ry="25.0" fill="rgb(43, 127, 217)" stroke="rgb(27, 86, 153)" stroke-width="2" transform="rotate(-30 66 46)"/>
+<ellipse cx="66" cy="46" rx="40.0" ry="19.0" fill="rgb(221, 230, 240)" transform="rotate(-30 66 46)"/>
+<line x1="51.7" y1="74.3" x2="18.0" y2="16.0" stroke="rgb(27, 86, 153)" stroke-width="3.0" stroke-linecap="round"/>
+<line x1="29.6" y1="68.8" x2="18.0" y2="16.0" stroke="rgb(27, 86, 153)" stroke-width="3.0" stroke-linecap="round"/>
+<line x1="31.6" y1="48.2" x2="18.0" y2="16.0" stroke="rgb(27, 86, 153)" stroke-width="3.0" stroke-linecap="round"/>
+<ellipse cx="18" cy="16" rx="7.5" ry="7.5" fill="rgb(43, 127, 217)" stroke="rgb(27, 86, 153)" stroke-width="2" transform="rotate(0 18 16)"/>
+<ellipse cx="18" cy="16" rx="3.0" ry="3.0" fill="rgb(221, 230, 240)" transform="rotate(0 18 16)"/>
+<text x="64" y="120" text-anchor="middle" font-family="IBM Plex Sans,DejaVu Sans,sans-serif" font-size="22" font-weight="600" textLength="110" lengthAdjust="spacingAndGlyphs" fill="rgb(43, 127, 217)">satellite</text>
+</svg>

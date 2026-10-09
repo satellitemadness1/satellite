@@ -1,0 +1,151 @@
+satellite.include(satellite)
+
+// full_objects_5 -- satellite.test.full(): THE CONSOLE AND THE TERMINAL, the words that need no
+// person (satellite.help(satellite.console), satellite.help(satellite.terminal)): display and its
+// five options end=, foreground=, background=, bold=, italic=, and .center(),
+// console.foreground() and .background(), terminal.foreground() and .background(), and
+// console.width and .height. Not input, which waits for a person; not clear() or home().
+// One line a check: "ok <capability>", or "WRONG <capability>: <answer> (expected <right>)".
+// passes repeats the checks that answer a value; the display lines are written once, at the end.
+
+satellite.spacesuit report()
+{
+    satellite.protected
+    {
+        satellite.variable.bool loud = satellite.bool.false
+        satellite.variable.number wrong = 0
+
+        satellite.capsule word_of(satellite.variable.bool b)
+        {
+            satellite.statement.if (b)
+            {
+                satellite.return("true")
+            }
+            satellite.return("false")
+        }
+
+        satellite.capsule right(satellite.variable.string what)
+        {
+            satellite.statement.if (loud)
+            {
+                satellite.console.display("ok " + what)
+            }
+        }
+
+        satellite.capsule wrong_answer(satellite.variable.string what, satellite.variable.string got, satellite.variable.string want)
+        {
+            wrong = wrong + 1
+            satellite.console.display("WRONG " + what + ": " + got.replace("\n", "\\n") + " (expected " + want.replace("\n", "\\n") + ")")
+        }
+    }
+
+    satellite.constructor(satellite.variable.bool say)
+    {
+        loud = say
+    }
+
+    satellite.public
+    {
+        satellite.capsule check_text(satellite.variable.string what, satellite.variable.string got, satellite.variable.string want)
+        {
+            satellite.statement.if (got == want)
+            {
+                right(what)
+            }
+            satellite.statement.else
+            {
+                wrong_answer(what, got, want)
+            }
+        }
+
+        satellite.capsule check_number(satellite.variable.string what, satellite.variable.number got, satellite.variable.number want)
+        {
+            satellite.statement.if (got == want)
+            {
+                right(what)
+            }
+            satellite.statement.else
+            {
+                wrong_answer(what, got.to_string(), want.to_string())
+            }
+        }
+
+        satellite.capsule check_bool(satellite.variable.string what, satellite.variable.bool got, satellite.variable.bool want)
+        {
+            satellite.statement.if (got == want)
+            {
+                right(what)
+            }
+            satellite.statement.else
+            {
+                wrong_answer(what, word_of(got), word_of(want))
+            }
+        }
+
+        satellite.capsule call_wrong()
+        {
+            satellite.return(wrong)
+        }
+    }
+}
+
+// WHAT THE CONSOLE ANSWERS: satellite.console.width and .height, "80 and 24 when there is no
+// terminal" -- and satellite.test runs this program with its output on a pipe.
+satellite.capsule run_all(report r)
+{
+    satellite.variable.number across = satellite.console.width
+    satellite.variable.number down = satellite.console.height
+    r.check_text("console width and height are 80 and 24 when the output is not a terminal", across.to_string() + " " + down.to_string(), "80 24")
+}
+
+// WHAT DISPLAY WRITES. These lines check themselves: each is right only when it comes out exactly
+// as written in the comment beside it -- "into a pipe or a file the text goes plain", so no colour,
+// bold or italic code may reach this program's output, .center() goes "as written", and the
+// terminal's colours change nothing. A wrong one shows as a line that is not exactly this.
+satellite.capsule show_display()
+{
+    satellite.variable.color orange = xFF8800
+    satellite.console.display("ok display end=\"\" keeps the next display ", end="")
+    satellite.console.display("on the same line")              // ok display end="" keeps the next display on the same line
+    satellite.console.display("ok display end= writes its own ", end="ending")
+    satellite.console.display(" in place of the newline")      // ok display end= writes its own ending in place of the newline
+    satellite.console.display("ok display foreground= into a pipe is plain text", foreground=xFF8800)
+    satellite.console.display("ok display a satellite.variable.color and background= into a pipe are plain text", foreground=orange, background=x101010)
+    satellite.console.display("ok display bold= and italic= into a pipe are plain text", bold=satellite.bool.true, italic=satellite.bool.true)
+    satellite.console.display("ok display .center() into a pipe goes as written").center()
+    satellite.console.foreground(x33FF33)
+    satellite.console.background(orange)
+    satellite.console.display("ok console.foreground() and .background() into a pipe are plain text")
+    satellite.console.foreground()
+    satellite.console.background()
+    satellite.terminal.background(x101010)
+    satellite.terminal.foreground(orange)
+    satellite.terminal.foreground()
+    satellite.terminal.background()
+    satellite.terminal.foreground(x33FF33)
+    satellite.console.display("ok terminal.foreground() and .background() write nothing into a pipe")
+    satellite.console.display("ok display shows a number as its digits: ", end="")
+    satellite.console.display(6 * 7)                          // ok display shows a number as its digits: 42
+    satellite.console.display("ok display shows a list as ", end="")
+    satellite.console.display({1, "two"})                      // ok display shows a list as {1, "two"}
+}
+
+satellite.capsule satellite.main()
+{
+    satellite.variable.number passes = 1000
+    satellite.variable.number pass = 1
+    satellite.statement.while (pass < passes)
+    {
+        report quiet(satellite.bool.false)
+        run_all(quiet)
+        pass = pass + 1
+        satellite.statement.if (quiet.call_wrong() > 0)
+        {
+            pass = passes
+        }
+    }
+    report loud(satellite.bool.true)
+    run_all(loud)
+    show_display()
+    satellite.return(satellite)
+}

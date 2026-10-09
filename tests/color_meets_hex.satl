@@ -1,0 +1,11 @@
+satellite.include(satellite)
+
+// MIXING THE NEW TYPES IS THE AUTHOR'S "GRAND FINALE": a hex meeting a colour is said
+// as not built yet, even for ==.
+satellite.capsule satellite.main()
+{
+    satellite.console.display("before")
+    satellite.variable.color green = x00FF00
+    satellite.console.display(green == x00FF00)
+    satellite.return(satellite)
+}

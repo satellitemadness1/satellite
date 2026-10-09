@@ -1,0 +1,4 @@
+satellite.capsule deep()
+{
+    satellite.console.display("the RIGHT two.satl -- sub/two.satl, beside the file that included it")
+}

@@ -1,0 +1,13 @@
+satellite.include(satellite)
+
+// THE x IS REQUIRED ON EVERY VALUE A HEX IS GIVEN, not only the first. FF on its own
+// is a name, and one nothing declared, so the checker reads it as the hex it was
+// meant to be.
+satellite.capsule satellite.main()
+{
+    satellite.console.display("before")
+    satellite.variable.hex my_number = x1F
+    my_number = FF
+    satellite.console.display(my_number)
+    satellite.return(satellite)
+}

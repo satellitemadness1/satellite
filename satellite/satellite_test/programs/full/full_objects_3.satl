@@ -1,0 +1,289 @@
+satellite.include(satellite)
+
+// full_objects_3 -- satellite.test.full(): FILES (SATELLITE_FILE_OPERATIONS.md, FO-1 to FO-4,
+// tests/file_*.satl): a text file is a list of lines counting from 1 -- new, open, append,
+// insert, both replaces, index_of, search, contains, remove_at, remove, remove_first,
+// remove_last, truncate, clear, size, empty, first, last, read_all, save, close, open again,
+// ok, error, path; the words exists, clear, new that never replaces and open that never makes;
+// a file shared by two names, by a capsule and by two threads under lock(). Every file is made
+// beside this program and removed before the pass ends.
+// One line a check: "ok <capability>", or "WRONG <capability>: <answer> (expected <right>)".
+// passes repeats every check; the passes before the last print only what is WRONG.
+
+satellite.spacesuit report()
+{
+    satellite.protected
+    {
+        satellite.variable.bool loud = satellite.bool.false
+        satellite.variable.number wrong = 0
+
+        satellite.capsule word_of(satellite.variable.bool b)
+        {
+            satellite.statement.if (b)
+            {
+                satellite.return("true")
+            }
+            satellite.return("false")
+        }
+
+        satellite.capsule right(satellite.variable.string what)
+        {
+            satellite.statement.if (loud)
+            {
+                satellite.console.display("ok " + what)
+            }
+        }
+
+        satellite.capsule wrong_answer(satellite.variable.string what, satellite.variable.string got, satellite.variable.string want)
+        {
+            wrong = wrong + 1
+            satellite.console.display("WRONG " + what + ": " + got.replace("\n", "\\n") + " (expected " + want.replace("\n", "\\n") + ")")
+        }
+    }
+
+    satellite.constructor(satellite.variable.bool say)
+    {
+        loud = say
+    }
+
+    satellite.public
+    {
+        satellite.capsule check_text(satellite.variable.string what, satellite.variable.string got, satellite.variable.string want)
+        {
+            satellite.statement.if (got == want)
+            {
+                right(what)
+            }
+            satellite.statement.else
+            {
+                wrong_answer(what, got, want)
+            }
+        }
+
+        satellite.capsule check_number(satellite.variable.string what, satellite.variable.number got, satellite.variable.number want)
+        {
+            satellite.statement.if (got == want)
+            {
+                right(what)
+            }
+            satellite.statement.else
+            {
+                wrong_answer(what, got.to_string(), want.to_string())
+            }
+        }
+
+        satellite.capsule check_bool(satellite.variable.string what, satellite.variable.bool got, satellite.variable.bool want)
+        {
+            satellite.statement.if (got == want)
+            {
+                right(what)
+            }
+            satellite.statement.else
+            {
+                wrong_answer(what, word_of(got), word_of(want))
+            }
+        }
+
+        satellite.capsule call_wrong()
+        {
+            satellite.return(wrong)
+        }
+    }
+}
+
+// THE FILES THIS PROGRAM MAKES, beside it, and every one removed before a pass ends.
+satellite.capsule lines_file()
+{
+    satellite.return("full_objects_3_lines.se")
+}
+
+satellite.capsule chain_file()
+{
+    satellite.return("full_objects_3_chain.se")
+}
+
+satellite.capsule shared_file()
+{
+    satellite.return("full_objects_3_shared.se")
+}
+
+satellite.capsule missing_file()
+{
+    satellite.return("full_objects_3_never_made.se")
+}
+
+satellite.capsule endings_file()
+{
+    satellite.return("full_objects_3_endings.se")
+}
+
+// A FILE HANDED TO A CAPSULE IS THE CALLER'S FILE (a handle is a reference, Part 3.1).
+satellite.capsule add_line(satellite.variable.file f, satellite.variable.string text)
+{
+    f.append(text)
+}
+
+satellite.capsule add_lines(satellite.variable.file f, satellite.variable.string text, satellite.variable.number times)
+{
+    satellite.variable.number i = 0
+    satellite.statement.while (i < times)
+    {
+        f.append(text)
+        i = i + 1
+    }
+}
+
+// REMOVED WITH rm, by the path the closed handle still answers.
+satellite.capsule remove_file(satellite.variable.file f)
+{
+    satellite.variable.program rm = {"rm", "-f", "--", f.path}
+    rm.start("hide")
+    satellite.return(rm.join())
+}
+
+// THE AUTHOR'S EXAMPLE (SATELLITE_FILE_OPERATIONS Part 3.3), and every question a file answers.
+satellite.capsule check_lines(report r)
+{
+    satellite.variable.file f = satellite.file.new(lines_file(), "text")
+    r.check_bool("file new() makes an open handle", f.ok, satellite.bool.true)
+    f.append("line_1")
+    f.append("line_2")
+    r.check_text("file append() adds a last line, lines counted from 1", f[2], "line_2")
+    f.insert(2, "line_2")
+    r.check_text("file insert(n, x) puts x at line n and moves the rest down", f.read_all, "line_1\nline_2\nline_2\n")
+    f.replace(2, "line_3")
+    r.check_text("file replace(n, x) changes line n", f[2], "line_3")
+    f.replace("line_2", "line_4")
+    r.check_text("file replace(a, b) changes the text a to b", f.read_all, "line_1\nline_3\nline_4\n")
+    r.check_text("file index_of() is the line that is exactly x, or 0", f.index_of("line_3").to_string() + " " + f.index_of("line").to_string(), "2 0")
+    r.check_number("file search() is the first line that holds x", f.search("4"), 3)
+    r.check_bool("file contains() asks for a whole line", f.contains("line"), satellite.bool.false)
+    r.check_text("file first and last", f.first + " " + f.last, "line_1 line_4")
+    r.check_text("file close() answers true, the handle is not ok after it, and open() opens it again", "closed:" + f.close() + f.ok + f.open(), "closed: true false true")
+    f.close()
+    satellite.variable.file g = satellite.file.open(lines_file())
+    r.check_text("file satellite.file.open() reads what close() saved", g.read_all, "line_1\nline_3\nline_4\n")
+    g.append("two\nlines")
+    r.check_number("file a newline inside append() makes two lines", g.size, 5)
+    g.remove_at(1)
+    g.remove("line_4")
+    r.check_text("file remove_at(n) and remove(x) take lines out", g.read_all, "line_3\ntwo\nlines\n")
+    g.remove_first()
+    g.remove_last()
+    r.check_text("file remove_first() and remove_last()", g.read_all, "two\n")
+    g.append("a")
+    g.append("b")
+    g.truncate(2)
+    r.check_text("file truncate(n) keeps the first n lines", g.read_all, "two\na\n")
+    g.clear()
+    r.check_bool("file clear() leaves no lines", g.empty, satellite.bool.true)
+    g.append("saved line")
+    g.save()
+    satellite.variable.file h = satellite.file.open(lines_file())
+    r.check_text("file save() puts the change on the disk for another handle", h.read_all, "saved line\n")
+    h.close()
+    g.close()
+}
+
+// THE WORDS BY NAME: exists, new never replaces, open never makes, clear.
+satellite.capsule check_words(report r)
+{
+    satellite.variable.file twice = satellite.file.new(lines_file())
+    r.check_bool("file new() over a file that is there is not ok", twice.ok, satellite.bool.false)
+    satellite.variable.file miss = satellite.file.open(missing_file())
+    r.check_text("file open() of a missing file is not ok, and never makes it", "open:" + miss.ok + satellite.file.exists(missing_file()), "open: false false")
+    satellite.file.clear(lines_file())
+    satellite.variable.file emptied = satellite.file.open(lines_file())
+    r.check_text("file satellite.file.clear() empties the file and leaves it there", "cleared:" + satellite.file.exists(lines_file()) + emptied.empty, "cleared: true true")
+    emptied.close()
+}
+
+// A METHOD AFTER A WORD'S CALL (the review, 2026-09-18). Its own capsule, so the handles it
+// leaves are saved and closed when this body ends -- before the file is removed.
+satellite.capsule chain_writes()
+{
+    satellite.file.new(chain_file()).append("one")
+    satellite.file.open(chain_file()).append("two")
+}
+
+satellite.capsule check_sharing(report r)
+{
+    chain_writes()
+    satellite.variable.file chained = satellite.file.open(chain_file())
+    r.check_number("file a method written after satellite.file.new(...) runs", chained.size, 2)
+    chained.close()
+    remove_file(chained)
+    satellite.variable.file g = satellite.file.new(shared_file())
+    add_line(g, "from a capsule")
+    r.check_number("file handed to a capsule is the caller's file", g.size, 1)
+    g.lock()
+    satellite.variable.thread a = satellite.thread.new(add_lines(g, "a", 100))
+    satellite.variable.thread b = satellite.thread.new(add_lines(g, "b", 100))
+    a.start()
+    b.start()
+    a.join()
+    b.join()
+    r.check_number("file lock(): two threads appending to one file lose nothing", g.size, 201)
+    satellite.variable.file same = g
+    same.close()
+    r.check_bool("file closed through one name is closed for both", g.ok, satellite.bool.false)
+    remove_file(g)
+    satellite.variable.file lines = satellite.file.open(lines_file())
+    lines.close()
+    remove_file(lines)
+    satellite.variable.string left = "left:" + satellite.file.exists(lines_file()) + satellite.file.exists(chain_file()) + satellite.file.exists(shared_file()) + satellite.file.exists(endings_file())
+    r.check_text("file nothing is left beside the program", left, "left: false false false false")
+}
+
+// HOW A FILE ENDS ITS LINES (SATELLITE_FILE_OPERATIONS 3.5): bash writes the bytes into the file
+// at the path its handle answers, the file words append, and od reads the bytes back.
+satellite.capsule check_endings(report r)
+{
+    satellite.variable.file made = satellite.file.new(endings_file())
+    made.close()
+    satellite.variable.string path = "'" + made.path + "'"
+    satellite.variable.bash unended = "printf 'x' > " + path
+    unended.start("hide")
+    unended.join()
+    satellite.variable.file f = satellite.file.open(endings_file())
+    f.append("y")
+    r.check_text("file ends a last line that had no newline before it appends", f.read_all, "x\ny\n")
+    f.close()
+    satellite.variable.bash crlf = "printf 'a\\r\\nb\\r\\n' > " + path
+    crlf.start("hide")
+    crlf.join()
+    satellite.variable.file g = satellite.file.open(endings_file())
+    g.append("c")
+    g.close()
+    satellite.variable.bash bytes = "[ \"$(od -An -tx1 " + path + " | tr -d ' \\n')\" = 610d0a620d0a630d0a ]"
+    bytes.start("hide")
+    r.check_number("file keeps a file's \\r\\n endings when it appends (od reads 0d 0a)", bytes.join(), 0)
+    remove_file(g)
+}
+
+satellite.capsule run_all(report r)
+{
+    check_lines(r)
+    check_words(r)
+    check_endings(r)
+    check_sharing(r)
+}
+
+satellite.capsule satellite.main()
+{
+    satellite.variable.number passes = 25
+    satellite.variable.number pass = 1
+    satellite.statement.while (pass < passes)
+    {
+        report quiet(satellite.bool.false)
+        run_all(quiet)
+        pass = pass + 1
+        satellite.statement.if (quiet.call_wrong() > 0)
+        {
+            pass = passes
+        }
+    }
+    report loud(satellite.bool.true)
+    run_all(loud)
+    satellite.return(satellite)
+}

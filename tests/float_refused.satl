@@ -1,0 +1,12 @@
+satellite.include(satellite)
+
+// A float with a fraction has no whole number to give .number, and satellite
+// rounds nothing on its own. "before" reaches the screen: this is refused where
+// it is reached, not by the checker.
+satellite.capsule satellite.main()
+{
+    satellite.console.display("before")
+    satellite.variable.float f = 12.5
+    satellite.console.display(f.number)
+    satellite.return(satellite)
+}

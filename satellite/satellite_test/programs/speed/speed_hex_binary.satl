@@ -1,0 +1,29 @@
+satellite.include(satellite)
+
+// speed_hex_binary.satl -- satellite.test.speed(): HEX AND BINARY VALUES IN ARITHMETIC.
+// A hex and a binary are read by what they are worth and answer a number: x walks
+// x = (x * x10DCD + b1011) % xFFFFFFFB through a hex and a binary name, sum adds x % x0000FFFF and
+// takes b101 away, and every x above x7FFFFFFF adds b1 to high.
+// Prints: x, sum and high.  C++ twin: speed_hex_binary(), with C++'s own 0x and 0b literals.
+
+satellite.capsule satellite.main()
+{
+    satellite.variable.number passes = 570000
+    satellite.variable.hex multiplier = x10DCD
+    satellite.variable.binary step = b1011
+    satellite.variable.hex mask = x0000FFFF
+    satellite.variable.number x = x2A
+    satellite.variable.number sum = b0
+    satellite.variable.number high = 0
+    satellite.statement.for(satellite.variable.number i = 0; i < passes; i + 1)
+    {
+        x = (x * multiplier + step) % xFFFFFFFB
+        sum = sum + x % mask - b101
+        satellite.statement.if (x > x7FFFFFFF)
+        {
+            high = high + b1
+        }
+    }
+    satellite.console.display(x.string + " " + sum.string + " " + high.string)
+    satellite.return(satellite)
+}

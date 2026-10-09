@@ -1,0 +1,13 @@
+satellite.include(satellite)
+
+// full_numbers_41 -- satellite.test.full(), a program satl must REFUSE.
+// color: five digits are refused, a color is exactly six.
+// It exits 27, and its report on stderr holds: ERROR: 00ff0 is 5 hex digits
+// Nothing is printed on stdout.
+
+satellite.capsule satellite.main()
+{
+    satellite.variable.number passes = 1
+    satellite.variable.color c = 00ff0
+    satellite.return(satellite)
+}

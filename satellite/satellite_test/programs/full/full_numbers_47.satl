@@ -1,0 +1,13 @@
+satellite.include(satellite)
+
+// full_numbers_47 -- satellite.test.full(), a program satl must REFUSE.
+// random: min above max is refused before any spin (S432).
+// It exits 73, and its report on stderr holds: min 6 is above max 1
+// Nothing is printed on stdout.
+
+satellite.capsule satellite.main()
+{
+    satellite.variable.number passes = 1
+    satellite.console.display(satellite.random.fast(6, 1))
+    satellite.return(satellite)
+}

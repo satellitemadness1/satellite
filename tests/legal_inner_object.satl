@@ -1,0 +1,32 @@
+satellite.include(satellite)
+
+// AN OBJECT MADE AGAIN INSIDE A BLOCK IS THE SAME LIVE NAME (the fresh reader, 2026-10-06): it keeps the block
+// it was first declared in, so it is still legal after the inner block's }. Runs and prints 7, as it did before
+// satellite.legal.
+
+satellite.spacesuit box()
+{
+    satellite.protected
+    {
+        satellite.variable.number value = 7
+    }
+    satellite.public
+    {
+        satellite.capsule call_show()
+        {
+            satellite.console.display(value)
+        }
+    }
+}
+
+satellite.capsule satellite.main()
+{
+    satellite.variable.number n = 1
+    box b
+    satellite.statement.if (n == 2)
+    {
+        box b
+    }
+    b.call_show()
+    satellite.return(satellite)
+}

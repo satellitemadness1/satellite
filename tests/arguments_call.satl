@@ -1,0 +1,35 @@
+// A SETTING CHANGED BY A LINE IN A FILE (the author, 2026-10-06: "arguments.item(value_to_change_to)
+// ... if it's typed in a file it temporarily changes a value, and the alias syntax using = ... does the
+// same thing"): written at the top of the file and in a capsule, by the call and by the =, by main's
+// name for the arguments and by the bare name arguments in a capsule that has none -- each this run's
+// value, read back where it was changed and elsewhere, and none of it written to config.ini. check.sh
+// runs it in a home of its own and asserts every line in order, and that config.ini gained nothing.
+
+satellite.include(satellite)
+arguments.missing(false)
+arguments.float.decimal = 10
+
+satellite.capsule elsewhere()
+{
+    satellite.console.display(arguments.missing)
+    satellite.console.display(arguments.infinity)
+    arguments.infinity(64)
+    satellite.console.display(arguments.infinity)
+}
+
+satellite.capsule satellite.main(satellite.variable.arguments args)
+{
+    satellite.console.display(args.missing)
+    args.access(false)
+    satellite.console.display(args.access)
+    args.access = true
+    satellite.console.display(satellite.library.arguments.access)
+    elsewhere()
+    satellite.console.display(args.infinity)
+    satellite.console.display(1.0 / 3.0)
+    args.float.decimal(3)
+    satellite.console.display(2.0 / 3.0)
+    args.my_value(5)
+    satellite.console.display(args.my_value)
+    satellite.return(satellite)
+}

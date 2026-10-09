@@ -1,0 +1,19 @@
+satellite.include(satellite)
+
+// A COLOUR'S CONVERSIONS AND ITS SAMENESS: what its six digits are worth, the six
+// digits, twenty-four bits, and its display. Two colours are the same when the
+// digits AND the transparency are -- one that lets the screen through is another.
+satellite.capsule satellite.main()
+{
+    satellite.variable.color green = x00FF00
+    satellite.console.display(green.number)
+    satellite.console.display(green.hex)
+    satellite.console.display(green.binary)
+    satellite.console.display(green.string)
+    satellite.variable.color also_green = 00ff00
+    satellite.console.display(green == also_green)
+    also_green.transparency(50)
+    satellite.console.display(green == also_green)
+    satellite.console.display(green != also_green)
+    satellite.return(satellite)
+}

@@ -1,0 +1,27 @@
+ok file new() makes an open handle
+ok file append() adds a last line, lines counted from 1
+ok file insert(n, x) puts x at line n and moves the rest down
+ok file replace(n, x) changes line n
+ok file replace(a, b) changes the text a to b
+ok file index_of() is the line that is exactly x, or 0
+ok file search() is the first line that holds x
+ok file contains() asks for a whole line
+ok file first and last
+ok file close() answers true, the handle is not ok after it, and open() opens it again
+ok file satellite.file.open() reads what close() saved
+ok file a newline inside append() makes two lines
+ok file remove_at(n) and remove(x) take lines out
+ok file remove_first() and remove_last()
+ok file truncate(n) keeps the first n lines
+ok file clear() leaves no lines
+ok file save() puts the change on the disk for another handle
+ok file new() over a file that is there is not ok
+ok file open() of a missing file is not ok, and never makes it
+ok file satellite.file.clear() empties the file and leaves it there
+ok file ends a last line that had no newline before it appends
+ok file keeps a file's \r\n endings when it appends (od reads 0d 0a)
+ok file a method written after satellite.file.new(...) runs
+ok file handed to a capsule is the caller's file
+ok file lock(): two threads appending to one file lose nothing
+ok file closed through one name is closed for both
+ok file nothing is left beside the program

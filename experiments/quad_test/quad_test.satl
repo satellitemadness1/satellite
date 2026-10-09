@@ -1,0 +1,528 @@
+satellite.include(satellite)
+
+// experiments/quad_test/quad_test.satl -- WORDS, WHAT EACH ONE IS, AND THE CONNECTIONS BETWEEN THEM.
+//
+//     satl quad_test.satl              the nine sentences below
+//     satl quad_test.satl some.txt     every sentence of a text file (the author: "we can still try
+//                                      to feed in wikipedia at first anyways")
+//
+// THE AUTHOR, 2026-10-03, in his own order:
+//
+//   "in the sentence "hello, my name is madness" every word is connected to the word "madness"
+//    and the word "name" travels through "is" to get to "madness" ... you need to already know
+//    that madness is a person"
+//   "my name not only "travels" through "is" but "my" and "name" share a "connection" ... they
+//    are connected in a CERTAIN way, and that link is different from the link between "name"
+//    and "is", and "is" travels into "madness" and then the sentence stops"
+//   ""hello," and "my" are connected only slightly, as "hello" is only "slightly" important ...
+//    there is a strength to each connection"
+//   "each of these "things" about a connection, there could be like 100s of things "about" a
+//    connection"
+//   "FOR each sentence, it has to be determined what each "thing" "is", as soon as you know
+//    what the word "is" then instantly half of the properties about the connection ... is all
+//    filled out almost instantly, BUT not until you know what the "thing" or "word" "is" ...
+//    if "is" is often found with "that", that means something, and it means something
+//    different if "is" is found with "the""
+//
+// SO THREE THINGS, AND THEY ARE THE THREE PARTS OF THIS FILE:
+//   1. what each word IS, in each sentence -- known before (madness is a person), or worked out
+//      from the word before it, or not known yet;
+//   2. a CONNECTION between two words is one map of things about it -- as many as there are --
+//      and the moment both words are known, the kinds of the two fill half of it in at once;
+//   3. which words are found with which, counted over every sentence, is a thing about the
+//      connection too: "is" with "that" is a different count from "is" with "the".
+//
+// NO && IN A CONDITION: satl 0153 has not built it yet (`& | << >> !! are undecided`), so two
+// conditions are two ifs, one inside the other. A map handed to a capsule is a copy, so a capsule
+// that adds to one hands it back -- which is why the counts live in an OBJECT (counts, below): an
+// object is a reference, and its own capsule changes its own map in place. And a map has no
+// .to_string(), so one is shown on a line of its own.
+
+// THE CONNECTION, AND EVERY THING ABOUT IT. One map, `about`, a row a thing, so a new thing is a
+// new row and the spacesuit never has to grow a field for it.
+satellite.spacesuit connection()
+{
+    satellite.protected
+    {
+        satellite.container.map about = satellite.container.map()
+    }
+
+    satellite.constructor(satellite.variable.string from, satellite.variable.string to, satellite.variable.number distance)
+    {
+        about["from"] = from
+        about["to"] = to
+        about["distance"] = distance
+    }
+
+    satellite.public
+    {
+        satellite.capsule set_text(satellite.variable.string thing, satellite.variable.string value)
+        {
+            about[thing] = value
+        }
+
+        satellite.capsule set_number(satellite.variable.string thing, satellite.variable.number value)
+        {
+            about[thing] = value
+        }
+
+        satellite.capsule number_of(satellite.variable.string thing)
+        {
+            satellite.return(about[thing])
+        }
+
+        satellite.capsule text_of(satellite.variable.string thing)
+        {
+            satellite.return(about[thing])
+        }
+
+        satellite.capsule things()
+        {
+            satellite.return(about)
+        }
+
+        satellite.capsule how_many_things()
+        {
+            satellite.return(about.size)
+        }
+    }
+}
+
+// ---------------------------------------------------------------------------------------------
+// 1. WHAT EACH WORD IS
+// ---------------------------------------------------------------------------------------------
+
+// WHAT SOME WORDS ARE BEFORE ANY SENTENCE IS READ -- "you need to already know that madness is a
+// person". A word not here is worked out in the sentence, or stays not known.
+satellite.capsule known_before()
+{
+    satellite.container.map known = {"hello": "greeting", "hi": "greeting", "my": "owner", "your": "owner",
+                                     "his": "owner", "her": "owner", "name": "name", "is": "linking",
+                                     "was": "linking", "madness": "person", "the": "pointer", "that": "pointer",
+                                     "a": "pointer", "this": "pointer", "cat": "animal", "dog": "animal",
+                                     "he": "person word", "she": "person word", "him": "person word"}
+    satellite.return(known)
+}
+
+// THE WORDS OF A SENTENCE: small letters, with the commas, full stops and marks taken out.
+satellite.capsule words_of(satellite.variable.string sentence)
+{
+    satellite.variable.string clean = sentence.lower().replace(",", "").replace(".", "").replace("?", "").replace("!", "")
+    satellite.return(clean.split(" "))
+}
+
+// WHAT EACH WORD IS IN THIS SENTENCE, AND HOW THAT WAS FOUND. A word known before any sentence is
+// what it is known to be. Then a word worked out in a sentence BEFORE this one is what it was
+// worked out to be -- the author: "if we knew the "something" that made up the previous sentence,
+// then we could tell what "is" "is"". Then from what the word before it is: after an owner, a thing
+// someone has; after a pointer, a thing pointed at; after a linking word, what something is. With
+// nothing to go on it is not known yet -- "you can tell almost nothing with 1 word".
+//
+// A PERSON WORD -- he, she, him -- means almost nothing alone ("the word "he" doesn't mean very much
+// by itself"). It means the last person a sentence before this one named, when one did.
+//
+// Answers {"kinds": every word's kind, "how": how each was found}, the two lists in word order.
+satellite.capsule what_each_is(satellite.container.list words, satellite.container.map known, satellite.container.map remembered)
+{
+    satellite.container.list kinds = satellite.container.list()
+    satellite.container.list how = satellite.container.list()
+    satellite.statement.for(satellite.variable.number i = 1; i <= words.size; i++)
+    {
+        satellite.variable.string word = words[i]
+        satellite.variable.string kind = "not known yet"
+        satellite.variable.string found = "nothing to go on"
+        satellite.statement.if(known.contains(word))
+        {
+            kind = known[word]
+            found = "known before any sentence"
+        }
+        satellite.statement.else
+        {
+            satellite.statement.if(remembered.contains(word))
+            {
+                kind = remembered[word]
+                found = "worked out in a sentence before"
+            }
+            satellite.statement.else
+            {
+                satellite.statement.if(i > 1)
+                {
+                    satellite.variable.string before = kinds[i - 1]
+                    satellite.statement.if(before == "owner")
+                    {
+                        kind = "a thing someone has"
+                        found = "from the word before it"
+                    }
+                    satellite.statement.if(before == "pointer")
+                    {
+                        kind = "a thing pointed at"
+                        found = "from the word before it"
+                    }
+                    satellite.statement.if(before == "linking")
+                    {
+                        kind = "what something is"
+                        found = "from the word before it"
+                    }
+                }
+            }
+        }
+        satellite.statement.if(kind == "person word")
+        {
+            satellite.statement.if(remembered.contains("(the last person)"))
+            {
+                found = "a person word, and the last person named before it is " + remembered["(the last person)"]
+                kind = "person"
+            }
+            satellite.statement.else
+            {
+                found = "a person word, and no sentence before it named a person"
+            }
+        }
+        kinds.append(kind)
+        how.append(found)
+    }
+    satellite.container.map said = {"kinds": kinds, "how": how}
+    satellite.return(said)
+}
+
+// WHAT THIS SENTENCE TEACHES THE ONES AFTER IT: every word worked out from the word before it, and
+// the last person it named by name. Handed back, because the map handed in is a copy.
+satellite.capsule remember(satellite.container.list words, satellite.container.list kinds, satellite.container.list how,
+                           satellite.container.map remembered)
+{
+    satellite.statement.for(satellite.variable.number i = 1; i <= words.size; i++)
+    {
+        satellite.statement.if(how[i] == "from the word before it")
+        {
+            remembered[words[i]] = kinds[i]
+        }
+        satellite.statement.if(kinds[i] == "person")
+        {
+            satellite.statement.if(how[i] == "known before any sentence")
+            {
+                remembered["(the last person)"] = words[i]
+            }
+        }
+    }
+    satellite.return(remembered)
+}
+
+// ---------------------------------------------------------------------------------------------
+// 3. WHICH WORDS ARE FOUND WITH WHICH (before 2, because 2 asks it)
+// ---------------------------------------------------------------------------------------------
+
+// WHICH WORDS ARE FOUND WITH WHICH, IN AN OBJECT. Handed to a capsule, a map is copied in and copied
+// back out, and counting Wikipedia that way would copy every count there is for every pair counted.
+// An object is a reference: count() changes this object's own map where it stands.
+satellite.spacesuit counts()
+{
+    satellite.protected
+    {
+        satellite.container.map together = satellite.container.map()
+        satellite.variable.number pairs = 0
+    }
+
+    satellite.public
+    {
+        satellite.capsule count(satellite.variable.string a, satellite.variable.string b)
+        {
+            satellite.statement.if(together.contains(a) == satellite.bool.false)
+            {
+                together[a] = satellite.container.map()
+            }
+            satellite.statement.if(together[a].contains(b))
+            {
+                together[a][b] = together[a][b] + 1
+            }
+            satellite.statement.else
+            {
+                together[a][b] = 1
+            }
+            pairs = pairs + 1
+        }
+
+        // EVERY PAIR OF WORDS IN ONE SENTENCE, counted both ways round.
+        satellite.capsule count_sentence(satellite.container.list words)
+        {
+            satellite.statement.for(satellite.variable.number i = 1; i <= words.size; i++)
+            {
+                satellite.statement.for(satellite.variable.number j = 1; j <= words.size; j++)
+                {
+                    satellite.statement.if(i != j)
+                    {
+                        count(words[i], words[j])
+                    }
+                }
+            }
+        }
+
+        satellite.capsule seen(satellite.variable.string a, satellite.variable.string b)
+        {
+            satellite.statement.if(together.contains(a))
+            {
+                satellite.statement.if(together[a].contains(b))
+                {
+                    satellite.return(together[a][b])
+                }
+            }
+            satellite.return(0)
+        }
+
+        satellite.capsule found_with(satellite.variable.string a)
+        {
+            satellite.statement.if(together.contains(a))
+            {
+                satellite.return(together[a])
+            }
+            satellite.return(satellite.container.map())
+        }
+
+        satellite.capsule words_counted()
+        {
+            satellite.return(together.size)
+        }
+
+        satellite.capsule pairs_counted()
+        {
+            satellite.return(pairs)
+        }
+    }
+}
+
+// ---------------------------------------------------------------------------------------------
+// 2. THE CONNECTIONS, HALF FILLED IN THE MOMENT BOTH WORDS ARE KNOWN
+// ---------------------------------------------------------------------------------------------
+
+// THE KIND OF A CONNECTION, HOW STRONG IT IS (out of 100) AND WHAT IT MEANS, from what the two
+// words are and how far apart they stand. These are the things that come "almost instantly".
+satellite.capsule kind_of(satellite.variable.string from_is, satellite.variable.string to_is, satellite.variable.number distance)
+{
+    satellite.container.map kind = {"kind": "in the same sentence", "strength": 30 / distance,
+                                    "meaning": "two words of one sentence, weaker the further apart"}
+    satellite.statement.if(from_is == "greeting")
+    {
+        kind = {"kind": "greeting", "strength": 10, "meaning": "said before the rest, and only slightly about it"}
+    }
+    satellite.statement.if(from_is == "owner")
+    {
+        satellite.statement.if(distance == 1)
+        {
+            kind = {"kind": "whose", "strength": 90, "meaning": "the next word belongs to whoever is speaking"}
+        }
+    }
+    satellite.statement.if(to_is == "linking")
+    {
+        satellite.statement.if(distance == 1)
+        {
+            kind = {"kind": "said about", "strength": 80, "meaning": "what comes after the linking word is said of this"}
+        }
+    }
+    satellite.statement.if(from_is == "linking")
+    {
+        satellite.statement.if(distance == 1)
+        {
+            kind = {"kind": "what it is", "strength": 90, "meaning": "the linking word travels into this, and stops"}
+        }
+    }
+    satellite.statement.if(from_is == "name")
+    {
+        satellite.statement.if(to_is == "person")
+        {
+            kind = {"kind": "is called", "strength": 70, "meaning": "the name travels through the linking word to the person"}
+        }
+    }
+    satellite.return(kind)
+}
+
+// EVERY CONNECTION IN ONE SENTENCE: each word to every word after it. Some things are known the
+// moment the two words are -- where they stand, what each is, how often the two are found
+// together; the rest wait until both words are known, and then come all at once.
+satellite.capsule connections_of(satellite.container.list words, satellite.container.list kinds, satellite.container.list how,
+                                 counts together)
+{
+    satellite.container.list links = satellite.container.list()
+    satellite.statement.for(satellite.variable.number i = 1; i <= words.size; i++)
+    {
+        satellite.statement.for(satellite.variable.number j = i + 1; j <= words.size; j++)
+        {
+            connection link(words[i], words[j], j - i)
+            link.set_text("from is", kinds[i])
+            link.set_text("to is", kinds[j])
+            link.set_text("from found by", how[i])
+            link.set_text("to found by", how[j])
+            link.set_number("seen together", together.seen(words[i], words[j]))
+            satellite.variable.string filled = "nothing more yet: one of the two words is not known"
+            satellite.statement.if(kinds[i] != "not known yet")
+            {
+                satellite.statement.if(kinds[j] != "not known yet")
+                {
+                    satellite.container.map kind = kind_of(kinds[i], kinds[j], j - i)
+                    link.set_text("kind", kind["kind"])
+                    link.set_number("strength", kind["strength"])
+                    link.set_text("meaning", kind["meaning"])
+                    filled = "what the two words are"
+                }
+            }
+            link.set_text("filled by", filled)
+            links.append(link)
+        }
+    }
+    satellite.return(links)
+}
+
+// TRAVELLING: from the first word, along the strongest connection to a later word, until there is
+// no later word -- "and then the sentence stops". A connection not filled in has no strength, and
+// is not travelled.
+satellite.capsule travel(satellite.container.list words, satellite.container.list links)
+{
+    satellite.variable.string path = words[1]
+    satellite.variable.string here = words[1]
+    satellite.variable.bool going = satellite.bool.true
+    satellite.statement.while(going)
+    {
+        satellite.variable.string next = ""
+        satellite.variable.number best = 0
+        satellite.statement.for(satellite.variable.number k = 1; k <= links.size; k++)
+        {
+            connection link = links[k]
+            satellite.statement.if(link.text_of("from") == here)
+            {
+                satellite.statement.if(link.text_of("filled by") == "what the two words are")
+                {
+                    satellite.statement.if(link.number_of("strength") > best)
+                    {
+                        best = link.number_of("strength")
+                        next = link.text_of("to")
+                    }
+                }
+            }
+        }
+        satellite.statement.if(next == "")
+        {
+            going = satellite.bool.false
+        }
+        satellite.statement.else
+        {
+            path = path + " -> " + next + " (" + best.to_string() + ")"
+            here = next
+        }
+    }
+    satellite.return(path + ", and the sentence stops")
+}
+
+// ONE SENTENCE: what each word is, its connections, and where travelling along them goes -- shown
+// when `shown` says so, and read either way, so what it teaches reaches the sentences after it.
+satellite.capsule show(satellite.variable.string sentence, satellite.container.map known, counts together,
+                       satellite.container.map remembered, satellite.variable.bool shown)
+{
+    satellite.container.list words = words_of(sentence)
+    satellite.container.map said = what_each_is(words, known, remembered)
+    satellite.container.list kinds = said["kinds"]
+    satellite.container.list how = said["how"]
+    satellite.statement.if(shown)
+    {
+        satellite.console.display("\nSENTENCE: " + sentence + "\n\nWHAT EACH WORD IS")
+        satellite.statement.for(satellite.variable.number i = 1; i <= words.size; i++)
+        {
+            satellite.console.display("    " + words[i] + ": " + kinds[i] + " -- " + how[i])
+        }
+        satellite.container.list links = connections_of(words, kinds, how, together)
+        satellite.console.display("\nTHE CONNECTIONS, " + links.size.to_string() + " of them, and every thing about each")
+        satellite.statement.for(satellite.variable.number k = 1; k <= links.size; k++)
+        {
+            connection link = links[k]
+            satellite.console.display("    " + link.how_many_things().to_string() + " things about " + link.text_of("from") +
+                                      " -> " + link.text_of("to") + ":")
+            satellite.console.display(link.things())
+        }
+        satellite.console.display("\nTRAVELLING: " + travel(words, links))
+    }
+    satellite.statement.else
+    {
+        satellite.console.display("\nREAD, NOT SHOWN: " + sentence)
+    }
+    satellite.return(remember(words, kinds, how, remembered))
+}
+
+// EVERY SENTENCE OF A TEXT FILE: a line at a time, each line cut at every ". ".
+satellite.capsule sentences_in(satellite.variable.string path)
+{
+    satellite.container.list sentences = satellite.container.list()
+    satellite.variable.file text = satellite.file.open(path, "text")
+    satellite.statement.for(satellite.variable.number i = 1; i <= text.size; i++)
+    {
+        satellite.variable.string line = text[i]
+        satellite.container.list pieces = line.split(". ")
+        satellite.statement.for(satellite.variable.number k = 1; k <= pieces.size; k++)
+        {
+            satellite.variable.string piece = pieces[k]
+            satellite.statement.if(piece.trim() != "")
+            {
+                sentences.append(piece.trim())
+            }
+        }
+    }
+    text.close()
+    satellite.return(sentences)
+}
+
+satellite.capsule satellite.main(satellite.variable.arguments x)
+{
+    satellite.container.list sentences = {"hello, my name is madness", "my name is madness", "that is the cat",
+                                          "that is my dog", "the dog is a dog", "hi, your name is the zorp",
+                                          "zorp is that", "madness wrote satellite", "he is a person"}
+    satellite.container.list shown = {1, 7, 9}
+    satellite.statement.if(x.length > 2)
+    {
+        sentences = sentences_in(x.argument3)
+        shown = {1}
+    }
+    satellite.container.map known = known_before()
+
+    // EVERY PAIR IN EVERY SENTENCE, counted once, before any sentence is shown.
+    counts together
+    satellite.statement.for(satellite.variable.number s = 1; s <= sentences.size; s++)
+    {
+        together.count_sentence(words_of(sentences[s]))
+    }
+
+    // EVERY SENTENCE IN ORDER, and what each one works out carried into the next. A file's are read
+    // without a line each, there being so many of them.
+    satellite.container.map remembered = satellite.container.map()
+    satellite.statement.for(satellite.variable.number s = 1; s <= sentences.size; s++)
+    {
+        satellite.statement.if(shown.contains(s))
+        {
+            remembered = show(sentences[s], known, together, remembered, satellite.bool.true)
+        }
+        satellite.statement.else
+        {
+            satellite.statement.if(x.length == 2)
+            {
+                remembered = show(sentences[s], known, together, remembered, satellite.bool.false)
+            }
+        }
+    }
+
+    satellite.console.display("\n" + sentences.size.to_string() + " sentences, " + together.words_counted().to_string() +
+                              " different words, " + together.pairs_counted().to_string() + " pairs counted")
+    satellite.statement.if(x.length == 2)
+    {
+        satellite.console.display("\nWHAT THE SENTENCES TAUGHT THE ONES AFTER THEM:")
+        satellite.console.display(remembered)
+    }
+    satellite.container.map with_is = together.found_with("is")
+    satellite.console.display("\nWHAT \"is\" IS FOUND WITH, the most often last:")
+    satellite.container.list most = with_is.sort("value").keys
+    satellite.variable.number first = 1
+    satellite.statement.if(most.size > 10)
+    {
+        first = most.size - 9
+    }
+    satellite.statement.for(satellite.variable.number k = first; k <= most.size; k++)
+    {
+        satellite.variable.string word = most[k]
+        satellite.console.display("    " + word + ": " + with_is[word].to_string())
+    }
+    satellite.return(satellite)
+}

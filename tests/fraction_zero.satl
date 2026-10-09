@@ -1,0 +1,11 @@
+satellite.include(satellite)
+
+// A fraction's bottom number cannot be 0, and it is refused at the literal that
+// writes it. "before" reaches the screen: this is the walker's, not the checker's.
+satellite.capsule satellite.main()
+{
+    satellite.console.display("before")
+    satellite.variable.fraction f = 1/0
+    satellite.console.display(f)
+    satellite.return(satellite)
+}

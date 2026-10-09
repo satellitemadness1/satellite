@@ -1,0 +1,33 @@
+satellite.include(satellite)
+
+// full_objects_6 -- REFUSED before anything runs: a field reached from outside its spacesuit.
+// satellite.help(satellite.spacesuit): "Fields are reached from inside the spacesuit only" (S230).
+
+satellite.spacesuit box()
+{
+    satellite.protected
+    {
+        satellite.variable.number value = 0
+
+        satellite.capsule secret()
+        {
+            satellite.return(value)
+        }
+    }
+
+    satellite.public
+    {
+        satellite.capsule call_take()
+        {
+            satellite.return(value)
+        }
+    }
+}
+
+satellite.capsule satellite.main()
+{
+    satellite.variable.number passes = 1
+    box b
+    satellite.console.display(b.value)
+    satellite.return(satellite)
+}

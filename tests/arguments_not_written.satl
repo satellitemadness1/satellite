@@ -1,0 +1,11 @@
+// A ROW satl HOLDS IS READ AND NOT WRITTEN -- memory.total is what the machine has --
+// and the line is refused before anything runs, so "before" is never displayed.
+
+satellite.include(satellite)
+
+satellite.capsule satellite.main(satellite.variable.arguments args)
+{
+    satellite.console.display("before")
+    args.memory.total = 5
+    satellite.return(satellite)
+}

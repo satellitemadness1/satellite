@@ -1,0 +1,12 @@
+satellite.include(satellite)
+
+// full_text_38 -- REFUSED: map a key must never be a list.
+// satellite.help(satellite.container.map). Nothing reaches stdout; satl exits with the refusal's code.
+
+satellite.capsule satellite.main()
+{
+    satellite.variable.number passes = 1
+    satellite.container.map m
+    m[{1}] = 2
+    satellite.return(satellite)
+}

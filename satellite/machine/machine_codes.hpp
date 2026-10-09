@@ -1,0 +1,290 @@
+#pragma once
+// full list of satellite machine codes (do not use a machine code without adding it to this list...)
+//
+// Every satellite-004 function answers one of these. 0 is success; anything
+// else says what went wrong, or which stage of loading was reached.
+//
+// The author's list, 2026-09-14. 13 was added the same day, for a line the
+// runner has no scenario for yet. 14-19 were added the same night for the
+// satellite_string methods, each matching a refusal 003 06 already makes
+// (satellite_scalars/string_methods.cpp). 20 and 21 were added 2026-09-15, when
+// the interpreter first read satellite_config.hpp and started its threads.
+//
+// 24-27 were added 2026-09-16, when the arithmetic tokens were wired to
+// satellite_number's fast paths. 24 is the one to read twice: `2 ^ -1` is a real
+// answer that a WHOLE number cannot hold, and saying so is not the same as
+// calling it an error. It is the seam satellite.variable.float (003 DESIGN §8.6,
+// a bool and two satellite_numbers) arrives at, and the seam a fraction would.
+
+// 255 IS NEVER GIVEN TO A CODE (PLAN D0.5.2). An exit status holds 0 to 255, so a
+// code below 0 or above 254 -- 256, -1, 4294967298 -- exits 255 with the whole
+// code on stderr (exit_status.hpp). A code cut to 8 bits would let 256 exit 0.
+
+namespace satellite004 {
+
+enum MachineCode : signed long long int {
+    success = 0,
+    error = 1,
+    display_error = 2,
+    int_error = 3,
+    string_error = 4,
+    vector_loading_error = 5,
+    number_vector_defined = 6,          // the number index is built
+    satellite_loading_successful = 7,   // end of all loading
+    missing_satl_file = 8,              // cannot run, obviously
+    successfully_loaded_satl_file = 9,  // can run the file
+    satl_file_missing_satellite_include_satellite = 10,
+    satl_file_missing_satellite_main = 11,
+    satl_file_missing_satellite_return_satellite = 12,
+    satl_line_not_understood = 13,      // no scenario for this line yet
+    not_built_yet = 14,                 // the word is numbered, but what it needs does not exist yet
+    text_not_found = 15,                // find: the text is not in the string (003's S0716)
+    position_past_the_end = 16,         // substring / at: past the last character (003's S07xx past-the-end)
+    positions_backwards = 17,           // substring: start is after end (003's backwards refusal)
+    empty_search_text = 18,             // replace: nothing to replace (003 refuses an empty needle)
+    not_a_position = 19,                // a position that is negative
+    config_value_not_understood = 20,   // satellite_config.hpp: a row that cannot mean what its name asks
+    thread_start_error = 21,            // the machine refused a start-up thread (the rest stay warm)
+    division_by_zero = 22,              // satellite_number: a divisor of 0
+    command_line_not_understood = 23,   // satl was given words it does not take (PLAN M0.5)
+    answer_is_not_whole = 24,           // the answer exists but is not a whole number: 2 ^ -1 is 1/2
+    name_not_declared = 25,             // a name used before any satellite.variable line declared it
+    name_declared_twice = 26,           // a second satellite.variable line for a name already in this capsule
+    types_do_not_meet = 27,             // an operator given two kinds it has no scenario for: "a" - "b"
+    directory_not_found = 28,           // change / list: nothing is at that path (PLAN M0.6)
+    not_a_directory = 29,               // something is there, and it is not a directory
+    directory_unreadable = 30,          // it IS a directory and its entries cannot be read; the reason is said
+    path_holds_a_nul = 31,              // a path with a NUL in it: c_str() would act on the part before it
+
+    // 32-35 WERE ADDED 2026-09-18, for the first setting a program can WRITE.
+    // `arguments.access = true` is not a call and not a variable: it is a word
+    // that remembers, so it needs the two ways writing fails (the file, and the
+    // kind) and the two ways the word is wrong.
+    config_file_unwritable = 32,        // $HOME/.satl/config.ini could not be written; the reason is said
+    config_file_unreadable = 33,        // it exists and could not be read
+    setting_is_not_a_flag = 34,         // a true/false setting was given something that is not one
+    word_takes_no_assignment = 35,      // `<word> = ...` for a word that is not a setting
+
+    // 36-38 WERE ADDED 2026-09-18 for `satl --config`, which is the first thing
+    // satl does that ASKS THE MACHINE A QUESTION and can be told nothing.
+    machine_fact_not_read = 36,         // /proc or sysconf states nothing where a fact was expected
+    setting_out_of_range = 37,          // a number satl was given is past what the machine allows
+    machine_conf_unwritable = 38,       // $HOME/.satl/machine.conf could not be written
+
+    // 39-47 WERE ADDED 2026-09-18 for satellite.variable.file (SATELLITE_FILE_OPERATIONS
+    // Part 3.7). A HANDLE HOLDS these -- a file that would not open is a value, not an
+    // error -- so only line_past_the_end (`f[n]` past the last line) and
+    // file_has_no_lines ever stop a program.
+    file_not_found = 39,                // open: nothing is at that path, and open never creates
+    file_already_there = 40,            // new: something is at that path, and new never clobbers
+    not_a_file = 41,                    // something is there, and it is a directory or not a regular file
+    file_unreadable = 42,               // it is a file and could not be read; the reason is said
+    file_not_text = 43,                 // "text" was asked for and the bytes are not UTF-8 text
+    file_unwritable = 44,               // a save or a make could not write; the reason is said
+    file_not_open = 45,                 // a word used on a handle that is closed or never opened
+    file_has_no_lines = 46,             // a line word on a binary file
+    line_past_the_end = 47,             // f[n] with n below 1 or past the last line
+
+    // 48-49 ARE THE TOP OF THE SCALE, 2026-09-18. The author: *"the worst
+    // possible error is that we cannot set the memory for them"*. These are the
+    // two ways the INTERPRETER fails rather than the program -- and until now the
+    // first of them was not a code at all, it was std::terminate and a core dump.
+    out_of_memory = 48,                 // the machine would not give satl memory; S999
+    libraries_not_understood = 49,      // a numbered library loaded and does not describe itself; S980
+
+    // 50-51 WERE ADDED 2026-09-20 for satellite.window (SATELLITE_WINDOW.md WIN-3).
+    // TWO, AND NOT ONE, because they are answered by different people. `no_display`
+    // is the MACHINE saying it has no screen -- true of every build server and
+    // every ssh session, and not a fault in the program. `window_is_closed` is the
+    // PROGRAM using a window it already closed, or one a person closed while it
+    // ran. A single "window error" would have made a headless run and a bug read
+    // the same in an exit status.
+    no_display = 50,                    // GTK found no Wayland or X11 session to draw on
+    window_is_closed = 51,              // a window word used on a window that is not on a screen
+
+    // 52-53 WERE ADDED 2026-09-22 with spacesuits and capsule answers. 52 is 003's
+    // S0516 and S0517 in one: a field, or a capsule in satellite.protected, reached
+    // from outside its spacesuit. 53 is a capsule whose answer is USED and which
+    // reached no satellite.return(...) on the way it went -- only knowable running.
+    member_is_protected = 52,           // obj.field, or obj.m() for a protected m, from outside the spacesuit
+    capsule_gave_no_answer = 53,        // a capsule's answer was used, and it handed none back
+
+    // 54 WAS ADDED 2026-09-23 with satellite.library (bytecode/library_values.hpp): a value
+    // written at the top of a file that a line tries to change, or that is given something
+    // to work out instead of a literal. ONE code, because both break the one rule -- a
+    // satellite.library value is written down and nothing changes it, or it is a global.
+    library_value_is_fixed = 54,        // satellite.library.x changed in a capsule, or given more than a literal
+
+    // 55 WAS ADDED 2026-09-23 with satellite.console.input (bytecode/console_calls.hpp): the
+    // input was asked for a line and there will never be one -- stdin is at its end. 003's
+    // S1001, loud rather than an empty string forever.
+    input_ended = 55,                   // satellite.console.input() asked, and stdin has ended
+
+    // 56-62 WERE ADDED 2026-09-23 with threads (bytecode/thread_calls.hpp): the author's
+    // `satellite.variable.thread t = satellite.thread.new(capsule(args))`, which 003 built as
+    // its M23 and gave S1401-S1405. 57-60 are those; 56 is 003's S1401 at the check; 61 is
+    // the code a thread's walk ends on after `.stop()`, and is never an error of its own;
+    // 62 is what threads may not share yet -- a window (T3). Objects and files are shared (T2).
+    thread_needs_a_capsule_call = 56,   // satellite.thread.new(x) where x is not a call to one of the program's capsules
+    thread_already_started = 57,        // .start() on a thread that has already been started
+    thread_not_started = 58,            // .join() or .wait() on a thread that was never started
+    thread_already_joined = 59,         // a second .join(): the same answer again, and this said once as a notice
+    thread_cannot_start = 60,           // the machine refused to make the thread
+    thread_stopped = 61,                // the walk of a thread that .stop() asked to stop
+    thread_cannot_share_yet = 62,       // a window handed to a thread, or a window word used on one (T3)
+    wait_never_ends = 63,               // a lock or a join whose holder waits, through locks and joins, for this thread
+    // THE AUTHOR, 2026-09-25: "allow the user to satellite.return(satellite) to quit the
+    // interpreter from anywhere". Not a failure: it unwinds every frame as a refusal would,
+    // closing each one's files, and run_main turns it into success -- satl exits 0.
+    program_returned = 64,              // satellite.return(satellite) was reached: the whole program ends here
+    // 65, 2026-09-26, with the printing satellite (display/printing_satellite.hpp). The author:
+    // "if the buffer is holding 131072 std::string objects then it crashes the interpreter".
+    display_string_buffer_overrun = 65, // more displays waited for the console than arguments.display.buffer
+    // 66, 2026-09-26. The author: "We need to build an error report that explains that
+    // satellite starts counting from 1 and not 0". [0] -- of a list, a string, a file -- was
+    // refused before this as "past the end" (S501, S411), which it is not.
+    counts_from_one = 66,               // a position of 0: satellite counts from 1
+    // 67-69, 2026-10-01, with programs (bytecode/program_calls.hpp): the author's
+    // `satellite.variable.program p = {"name", "argument"}` with p.start() and p.join().
+    // A program that cannot START is not one of these: ok() and error() say that.
+    program_already_running = 67,       // .start() on a program that is still running
+    program_not_started = 68,           // .ok(), .error(), .join(), .code() on one never started
+    program_never_joined = 69,          // the run ended, and a program it started was never joined
+    // 70, 2026-10-01, the review of steps 2-5: a program satl may not signal -- it runs as another
+    // user, as sudo and pkexec make it -- cannot be stopped, and is waited for. A notice, not a failure.
+    program_not_stopped = 70,           // end(), or the end of the run, could not stop a program
+    // 71-75, 2026-10-02, with satellite.random (bytecode/random_calls.hpp): the three grades'
+    // shapes, and the ways a call asks for a number that does not exist. The bare shape
+    // drawing nothing and the step having to land on max are 003's rulings of 2026-09-04,
+    // kept; a whole-number argument is what a uniform draw over whole numbers needs.
+    random_needs_a_shape = 71,          // fast(), normal(), ultra(): no width and no bounds
+    random_wants_whole_numbers = 72,    // a digit count, a bound or a step that is not a whole number, or a count below 0
+    random_range_empty = 73,            // min above max: nothing between them to draw
+    random_step_not_a_step = 74,        // a step below 1
+    random_step_misses = 75,            // from min, the step never lands on max
+    // 76, 2026-10-02, with object.pointer() (satellite_object/satellite_pointer.hpp): the author's
+    // pointer "doesn't keep the object living", so the object it points at may be gone when the
+    // pointer is used -- and then there is nothing to run its capsule on.
+    object_is_gone = 76,                // a pointer was used, and the object it pointed at is gone
+    // 78-83, 2026-10-04, MISSING SYNTAX (SCRATCH.md/MISSING_SYNTAX.md section 4, MS-3): what a
+    // program leaves out where the run cannot carry on, because the line has no meaning to run --
+    // the author's "lesser error code, missing syntax element". S151-S156, the lowest stopping
+    // band. Numbered here before any of them is raised (MS-9 to MS-14 raise them).
+    //
+    // 77 IS NEVER GIVEN, ON PURPOSE (MS-3's fresh reader): automake's and meson's test drivers read
+    // an exit of 77 as SKIPPED, so a program refused with it, run as somebody's test, would be
+    // counted as skipped and not as failed. The author's "renumber as you want to" moved the six
+    // up one; nothing had raised them yet.
+    missing_capsule_lines = 78,         // a capsule called, and its lines written nowhere the call reaches
+    missing_declaration = 79,           // a name used, and no satellite.variable line declares it
+    missing_spacesuit = 80,             // an object declared with a spacesuit's name, and no such spacesuit
+    missing_part = 81,                  // a statement without one of its parts: an if with no condition, an else with no if
+    missing_close = 82,                 // a { or a ( never closed
+    missing_argument = 83,              // a call given fewer arguments than it takes
+
+    // 130 AND NOT 32, ON PURPOSE (PLAN M0.6): 128 + SIGINT is what a shell and 003
+    // both answer for Ctrl-C, and exit_status_of passes a code under 255 through as
+    // itself -- so a session stopped by Ctrl-C exits the status everything already reads.
+    interrupted = 130,                  // Ctrl-C stopped a line between entries
+};
+
+inline const char *machine_code_name(signed long long int code)
+{
+    switch (code) {
+    case success: return "success";
+    case error: return "error";
+    case display_error: return "display_error";
+    case int_error: return "int_error";
+    case string_error: return "string_error";
+    case vector_loading_error: return "vector_loading_error";
+    case number_vector_defined: return "number_vector_defined";
+    case satellite_loading_successful: return "satellite_loading_successful";
+    case missing_satl_file: return "missing_satl_file";
+    case successfully_loaded_satl_file: return "successfully_loaded_satl_file";
+    case satl_file_missing_satellite_include_satellite: return "satl_file_missing_satellite_include_satellite";
+    case satl_file_missing_satellite_main: return "satl_file_missing_satellite_main";
+    case satl_file_missing_satellite_return_satellite: return "satl_file_missing_satellite_return_satellite";
+    case satl_line_not_understood: return "satl_line_not_understood";
+    case not_built_yet: return "not_built_yet";
+    case text_not_found: return "text_not_found";
+    case position_past_the_end: return "position_past_the_end";
+    case positions_backwards: return "positions_backwards";
+    case empty_search_text: return "empty_search_text";
+    case not_a_position: return "not_a_position";
+    case config_value_not_understood: return "config_value_not_understood";
+    case thread_start_error: return "thread_start_error";
+    case division_by_zero: return "division_by_zero";
+    case command_line_not_understood: return "command_line_not_understood";
+    case answer_is_not_whole: return "answer_is_not_whole";
+    case name_not_declared: return "name_not_declared";
+    case name_declared_twice: return "name_declared_twice";
+    case types_do_not_meet: return "types_do_not_meet";
+    case directory_not_found: return "directory_not_found";
+    case not_a_directory: return "not_a_directory";
+    case directory_unreadable: return "directory_unreadable";
+    case path_holds_a_nul: return "path_holds_a_nul";
+    case config_file_unwritable: return "config_file_unwritable";
+    case config_file_unreadable: return "config_file_unreadable";
+    case setting_is_not_a_flag: return "setting_is_not_a_flag";
+    case word_takes_no_assignment: return "word_takes_no_assignment";
+    case machine_fact_not_read: return "machine_fact_not_read";
+    case setting_out_of_range: return "setting_out_of_range";
+    case machine_conf_unwritable: return "machine_conf_unwritable";
+    case no_display: return "no_display";
+    case window_is_closed: return "window_is_closed";
+    case member_is_protected: return "member_is_protected";
+    case capsule_gave_no_answer: return "capsule_gave_no_answer";
+    case library_value_is_fixed: return "library_value_is_fixed";
+    case input_ended: return "input_ended";
+    case thread_needs_a_capsule_call: return "thread_needs_a_capsule_call";
+    case thread_already_started: return "thread_already_started";
+    case thread_not_started: return "thread_not_started";
+    case thread_already_joined: return "thread_already_joined";
+    case thread_cannot_start: return "thread_cannot_start";
+    case thread_stopped: return "thread_stopped";
+    case thread_cannot_share_yet: return "thread_cannot_share_yet";
+    case wait_never_ends: return "wait_never_ends";
+    case program_returned: return "program_returned";
+    case display_string_buffer_overrun: return "display_string_buffer_overrun";
+    case counts_from_one: return "counts_from_one";
+    case program_already_running: return "program_already_running";
+    case program_not_started: return "program_not_started";
+    case program_never_joined: return "program_never_joined";
+    case program_not_stopped: return "program_not_stopped";
+    case random_needs_a_shape: return "random_needs_a_shape";
+    case random_wants_whole_numbers: return "random_wants_whole_numbers";
+    case random_range_empty: return "random_range_empty";
+    case random_step_not_a_step: return "random_step_not_a_step";
+    case random_step_misses: return "random_step_misses";
+    case object_is_gone: return "object_is_gone";
+    case missing_capsule_lines: return "missing_capsule_lines";
+    case missing_declaration: return "missing_declaration";
+    case missing_spacesuit: return "missing_spacesuit";
+    case missing_part: return "missing_part";
+    case missing_close: return "missing_close";
+    case missing_argument: return "missing_argument";
+    case out_of_memory: return "out_of_memory";
+    case libraries_not_understood: return "libraries_not_understood";
+    case file_not_found: return "file_not_found";
+    case file_already_there: return "file_already_there";
+    case not_a_file: return "not_a_file";
+    case file_unreadable: return "file_unreadable";
+    case file_not_text: return "file_not_text";
+    case file_unwritable: return "file_unwritable";
+    case file_not_open: return "file_not_open";
+    case file_has_no_lines: return "file_has_no_lines";
+    case line_past_the_end: return "line_past_the_end";
+    case interrupted: return "interrupted";
+    }
+    return "not_on_the_list";
+}
+
+// A code that means the program cannot go on. The loading stages (6, 7, 9)
+// are reports, not failures.
+inline bool stops_the_program(signed long long int code)
+{
+    return code != success && code != number_vector_defined &&
+           code != satellite_loading_successful && code != successfully_loaded_satl_file;
+}
+
+} // namespace satellite004

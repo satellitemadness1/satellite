@@ -1,0 +1,12 @@
+// ERROR.md: an assignment whose expression stops early. `&` has no meaning yet
+// (REGISTRY.satellite marks it QUESTION), so the expression ends there -- and the
+// left half used to be stored as though it were the whole thing: n held 1.
+
+satellite.include(satellite)
+
+satellite.capsule satellite.main()
+{
+    satellite.variable.number n = 1 & 2
+    satellite.console.display(n)
+    satellite.return(satellite)
+}

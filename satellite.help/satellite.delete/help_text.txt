@@ -1,0 +1,74 @@
+--------------------------------------------------------------------------------
+SATELLITE 004: satellite.delete()
+--------------------------------------------------------------------------------
+
+satellite.delete(name) deletes a name, and everything satellite holds about it:
+its value, the type it was declared with, and what was between its < and >. A
+line after it that names it is refused before anything runs, and the name may be
+declared again, as anything.
+
+It deletes from memory and nowhere else. The author: "remove everything about
+"name" when satellite.delete(name) is called, everywhere except exactly two
+places: IN the actual file that is running on the disk, IN the copy of the
+running file that is loaded into memory". So the .satl file, and the bytecode
+satl read from it, are never changed -- and nor is what is already on the
+screen, the lines typed at the prompt (the up arrow still finds them, as the
+file still holds its text), or satellite.log.
+
+What goes with the name:
+
+    its value        freed, when this name was the last thing that held it
+    a file it held   saved and closed at that line, as the end of a capsule
+                     saves and closes one -- unless something else holds it
+    an object        a spacesuit's object is a reference, so b = a is a
+                     second name for ONE object: it goes with the last thing
+                     that held it -- a name, a list, a thread it was handed
+                     to -- and a .pointer() at it then reads as gone
+    a program        one started under the name forgets that name
+    at the prompt    the name is gone for every line typed after it
+
+A thread or a program that was started, and a window that was opened, are the
+run's and not the name's: they carry on, as they do when the capsule that named
+them ends. A started program that no name holds any more can never be joined,
+so the run stops it at the end and says S742, by the line it started on. A
+thread run on an object's capsule is called by its spacesuit's name -- (thread
+box.call_take, running) -- so it keeps no variable's name either.
+
+satellite.delete(name) is a line of its own, with one name in it, and it stands
+in the same block as the line that declared the name: inside an if or a loop it
+deletes only a name declared inside that if or loop, because the lines after the
+block could not know whether the name was still there. A name declared inside a
+block ends at its } anyway (satellite.help(legal)), so the else beside it, or a
+line after it, may declare it again -- unless the file says arguments.access =
+false, when a name deleted inside a block is free again only inside that block.
+A field of an object, satellite.statement.for's own number, and arguments are
+not deleted.
+
+satellite.delete is not satellite.system.delete, the word -- numbered, not built
+-- for deleting a FILE from the disk.
+
+example:
+
+satellite.include(satellite)
+
+satellite.capsule satellite.main()
+{
+    satellite.variable.string big = "a long text"
+    satellite.console.display(big)
+    satellite.delete(big)
+    satellite.variable.number big = 5
+    satellite.console.display(big + 1) // 6
+    satellite.return(satellite)
+}
+
+refused, before anything runs -- a name used after its delete:
+
+satellite.include(satellite)
+
+satellite.capsule satellite.main()
+{
+    satellite.variable.string big = "a long text"
+    satellite.delete(big)
+    satellite.console.display(big) // refused: S201, big was deleted on line 6
+    satellite.return(satellite)
+}

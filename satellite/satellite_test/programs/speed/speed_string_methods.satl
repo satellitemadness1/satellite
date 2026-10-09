@@ -1,0 +1,44 @@
+// speed_string_methods.satl -- satellite.test.speed(): string methods -- substring, find, upper, lower,
+// replace, reverse and reading one character.
+// Each pass takes a 9-character piece of one sentence at a moving place and finds it again four ways:
+// as it is, made upper case in the upper-case sentence, made upper and back to lower in the sentence,
+// and turned round in the sentence turned round. It replaces every copy of the piece's first character
+// with two #s and counts the size that makes, and reads one character of the sentence. Every find
+// looks for text that is there by construction. The checksum line is the total of every answer, and
+// the last piece; its C++ twin is speed_string_methods() in speed_objects_twins.cpp, which prints the
+// same line.
+
+satellite.include(satellite)
+
+satellite.capsule satellite.main()
+{
+    satellite.variable.number passes = 180000
+    satellite.variable.string base = "satellite 547311173 is satellite spelled in digits"
+    satellite.variable.string base_upper = base.upper()
+    satellite.variable.string base_turned = base.reverse()
+    satellite.variable.string piece = ""
+    satellite.variable.string shouted = ""
+    satellite.variable.string swapped = ""
+    satellite.variable.string turned = ""
+    satellite.variable.number total = 0
+
+    satellite.statement.for(satellite.variable.number i = 0; i < passes; i + 1)
+    {
+        piece = base.substring(1 + i % 40, 9 + i % 40)
+        total = total + base.find(piece)
+        shouted = piece.upper()
+        total = total + base_upper.find(shouted)
+        total = total + base.find(shouted.lower())
+        swapped = base.replace(piece[1], "##")
+        total = total + swapped.size
+        turned = piece.reverse()
+        total = total + base_turned.find(turned)
+        satellite.statement.if (base[1 + i % base.size] == "e")
+        {
+            total = total + 1
+        }
+    }
+
+    satellite.console.display("string_methods: passes " + passes + ", total " + total + ", last piece [" + piece + "]")
+    satellite.return(satellite)
+}

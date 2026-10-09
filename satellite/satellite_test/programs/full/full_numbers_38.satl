@@ -1,0 +1,13 @@
+satellite.include(satellite)
+
+// full_numbers_38 -- satellite.test.full(), a program satl must REFUSE.
+// percentage: a percentage compares only with a percentage, 50% == 50.
+// It exits 27, and its report on stderr holds: only compares with a percentage
+// Nothing is printed on stdout.
+
+satellite.capsule satellite.main()
+{
+    satellite.variable.number passes = 1
+    satellite.console.display(50% == 50)
+    satellite.return(satellite)
+}

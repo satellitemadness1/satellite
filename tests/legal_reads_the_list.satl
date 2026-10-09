@@ -1,0 +1,29 @@
+satellite.include(satellite)
+
+// THE CHECKER READS satellite.legal ITSELF (2026-10-07, satellite_legal.hpp's LegalNames): every name here is
+// declared, ended and declared again in satellite.legal.main -- an if's x, a for's i, an inner y -- and each
+// later line is judged against that one place. Expected: 1, 2, 10, 25, 5, then satellite.access(x)'s lines.
+satellite.capsule satellite.main()
+{
+    satellite.variable.number n = 1
+    satellite.statement.if (n == 1)
+    {
+        satellite.variable.number x = 1
+        satellite.statement.for (satellite.variable.number i = 0; i < 2; i++)
+        {
+            satellite.variable.number y = x + i
+            satellite.console.display(y)
+        }
+        satellite.variable.number i = 10      // the for's i ended with its loop
+        satellite.console.display(i)
+    }
+    satellite.variable.number x = 5          // the if's x ended at its }
+    satellite.variable.number i = 20         // and so did the second i
+    satellite.statement.for (satellite.variable.number y = 0; y < 1; y++)
+    {
+        satellite.console.display(x + i + y)
+    }
+    satellite.console.display(x)
+    satellite.access(x)
+    satellite.return(satellite)
+}

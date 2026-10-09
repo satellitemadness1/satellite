@@ -1,0 +1,24 @@
+satellite.include(satellite)
+
+// speed_trillion.satl -- satellite.test.speed(): THE AUTHOR'S SPEED VALUE, 1 TRILLION, IN SUMS AND PRODUCTS.
+// mix = (mix * 1000000000000 + i) % 1000000000039 takes a product of up to 10^24 -- past 64 bits -- and
+// brings it back below 1000000000039; sum adds mix and a trillion every pass; big adds mix times a
+// trillion every pass, so it is past 64 bits from the first pass. The C++ twin uses unsigned __int128.
+// Prints: mix, sum and big.  C++ twin: speed_trillion().
+
+satellite.capsule satellite.main()
+{
+    satellite.variable.number passes = 570000
+    satellite.variable.number trillion = 1000000000000
+    satellite.variable.number mix = 547311173
+    satellite.variable.number sum = 0
+    satellite.variable.number big = 0
+    satellite.statement.for(satellite.variable.number i = 0; i < passes; i + 1)
+    {
+        mix = (mix * trillion + i) % 1000000000039
+        sum = sum + mix + trillion
+        big = big + mix * trillion
+    }
+    satellite.console.display(mix.string + " " + sum.string + " " + big.string)
+    satellite.return(satellite)
+}

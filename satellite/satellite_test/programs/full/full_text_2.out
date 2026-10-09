@@ -1,0 +1,46 @@
+ok string .split
+ok string .split keeps an empty piece
+ok string .split keeps empty pieces at both ends
+ok string .split of a separator not there is one piece
+ok string .split of empty text is every character
+ok string .split read through a name
+ok string .replace swaps every one
+ok string .replace does not swap its own answer again
+ok string .replace goes left to right
+ok string .replace of text not there
+ok string .replace leaves the name as it was
+ok string .trim() of spaces
+ok string .trim of tabs returns and newlines
+ok string .trim keeps the space inside
+ok string .resolved answers the string as it is
+ok string .append(x) changes the name
+ok string .append twice
+ok string .clear empties the name
+ok string .clear() with brackets
+ok string .string
+ok string .str
+ok string .to_string()
+ok string .number
+ok string .as_number
+ok string .to_number()
+ok string .number of a negative
+ok string .number has no size limit
+ok string .number of a substring
+ok string .bin is the bits of the number
+ok string .binary
+ok string .as_binary
+ok string .hex
+ok string .as_hex
+ok string .to_hex
+ok string .find counts characters not bytes
+ok string - takes away a wide character
+ok string .foreground is part of the string
+ok string .foreground keeps the text
+ok string .find sees the colour
+ok string .foreground takes a satellite.variable.color
+ok string .background is part of the string
+ok string .background keeps the text
+ok string colour put round a colour has a code
+ok string colour put round a colour comes back after it
+ok string display writes a coloured string plain into a pipe
+ok string part 2 answers alike on every pass

@@ -1,0 +1,4 @@
+satellite.capsule deep()
+{
+    satellite.console.display("the DECOY at the top -- cwd-per-file is WRONG if you see this")
+}

@@ -1,0 +1,21 @@
+satellite.include(satellite)
+
+// satellite.variable.float (2026-09-22): a literal with a point in it is a float,
+// and it displays as it was written -- less any zero at the end of its fraction.
+satellite.capsule satellite.main()
+{
+    satellite.console.display(12.34)
+    satellite.console.display(12.05)
+    satellite.console.display(12.05 == 12.5)
+    satellite.console.display(12.50)
+    satellite.console.display(12.50 == 12.5)
+    satellite.console.display(2.0)
+    satellite.variable.double d = 1.25
+    satellite.console.display(d)
+    satellite.console.display(-12.5)
+    satellite.console.display(0 - 2.5)
+    satellite.console.display(-0.0)
+    satellite.console.display(12.34.string)
+    satellite.console.display(3.0.number)
+    satellite.return(satellite)
+}

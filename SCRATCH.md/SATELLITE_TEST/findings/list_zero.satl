@@ -1,0 +1,9 @@
+satellite.include(satellite)
+
+satellite.capsule satellite.main()
+{
+    satellite.container.list a = {1, 2}
+    satellite.variable.number k = 0
+    satellite.console.display(a[k])
+    satellite.return(satellite)
+}

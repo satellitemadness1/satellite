@@ -1,0 +1,14 @@
+satellite.include(satellite)
+
+satellite.capsule wider()
+{
+    arguments.infinity(64)
+}
+
+satellite.capsule satellite.main(satellite.variable.arguments args)
+{
+    wider()
+    satellite.console.display(args.infinity)
+    satellite.console.display(args)
+    satellite.return(satellite)
+}

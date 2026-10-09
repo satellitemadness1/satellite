@@ -1,0 +1,14 @@
+satellite.include(satellite)
+
+// full_numbers_40 -- satellite.test.full(), a program satl must REFUSE.
+// percentage: a percentage name refuses a number, p = p * 2.
+// It exits 27, and its report on stderr holds: p was declared satellite.variable.percentage, and it holds a number
+// Nothing is printed on stdout.
+
+satellite.capsule satellite.main()
+{
+    satellite.variable.number passes = 1
+    satellite.variable.percent p = 50%
+    p = p * 2
+    satellite.return(satellite)
+}

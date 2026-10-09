@@ -1,0 +1,215 @@
+// binary_loss.satl -- A DATA-LOSS TEST FOR satellite.variable.binary.
+//
+// THE AUTHOR'S STANDARD (2026-10-06): "for the loss testing, we will use the number 547311173 so we
+// have to start with that number, and end at that number, after say, 1,000,000 million operations...
+// That will be the loss test" -- 547311173 is "satellite" spelled as numbers.
+//
+// 547311173 is b100000100111110100111001000101. A binary's arithmetic answers a number, and a number
+// is never stored back in a binary, so the value is held three ways, all 547311173: bits (the
+// binary), wide (the same number 32 digits wide, b00100000100111110100111001000101, so lost leading
+// zeros would show) and worth (what it is worth). bits and wide go through .reverse(), the minus
+// sign and moves between binary names (satellite.variable.bin among them); worth goes through
+// + - * / % ^ .add .number .binary with every operand a binary (or a binary meeting a hex), past
+// 64 bits, below zero and with leading zeros, bits and wide added in and taken out again.
+// 50 operations go out and 50 undo them in the reverse order: 100 different operations a pass,
+// 10,000 passes = 1,000,000 operations.
+//
+// Every / is written worth / D + worth % D * far: whole-number division would cut a value that came
+// back 1 wrong back to right. The remainder is 0 when nothing was lost; any other remainder, times
+// far (2 ^ 256), lands out of reach of every later operation.
+//
+// FIXED 2026-10-06, after a fresh reviewer proved a loss this test could not see: every .reverse()
+// going out is undone by a .reverse() coming back, and every minus sign by a minus sign, so one
+// lost the same way both times cancels itself -- with every .reverse() taken out, the run still
+// answered 547311173, and made to do nothing, 15 of the 100 operations answered 547311173 too. A
+// value added to worth and taken out again cancels itself the same way, however wrong it was, and a
+// move near the end of a pass that did nothing was hidden too: the passes then swing between two
+// states, and 10,000 is even. So the middle is checked: after the 50 operations out, each of the
+// seven values must be its known middle -- worked out by hand from the start, not read back from
+// satl -- or the run stops there and prints them: pass 0, the middle: <name> = <what it held>. A
+// pass that came back wrong stops at the next pass's middle. The 100 operations are unchanged.
+// Eight moves give a name the value it already holds -- bits = -held.reverse() is one -- so one of
+// those doing nothing loses nothing; a wrong value there is caught at the middle.
+//
+// THE ANSWER IS ALWAYS 547311173. Anything else printed is the value that came back wrong.
+
+satellite.include(satellite)
+
+satellite.capsule satellite.main()
+{
+    satellite.variable.binary start = b100000100111110100111001000101
+    satellite.variable.binary start_wide = b00100000100111110100111001000101
+    satellite.variable.binary bits = b100000100111110100111001000101
+    satellite.variable.binary wide = b00100000100111110100111001000101
+    satellite.variable.bin turned = b0
+    satellite.variable.binary held = b0
+    satellite.variable.bin wide_turned = b0
+    satellite.variable.binary wide_held = b0
+    satellite.variable.number worth = bits
+    satellite.variable.number far = b10 ^ b100000000      // 2 ^ 256: where a / puts a remainder
+    satellite.variable.string seen = ""      // what the middle held, when it was not the middle
+
+    satellite.statement.for(satellite.variable.number pass = 0; pass < 10000; pass + 1)
+    {
+        // the 50 forward operations: the value goes away from 547311173
+        turned = bits.reverse()
+        worth = worth + turned
+        wide_turned = wide.reverse()
+        worth = worth - wide_turned
+        worth = worth * b1101
+        bits = -turned
+        worth = worth - bits
+        worth = worth + b000000000000000000000000000000000010111
+        worth = worth - -b0110
+        worth = worth * -b11
+        worth = b1010 * worth
+        worth = worth.add(b1011)
+        worth = bits.add(worth)
+        wide = -wide_turned
+        worth = worth + wide.binary
+        worth = worth * b10000000000000000000000000000000000000000000000000000000000000000
+        worth = worth + b11111111111111111111111111111111111111111111111111111111111111111111
+        turned = (-bits).reverse()
+        worth = worth - wide * b100
+        worth = worth + (b1100 + xFF)
+        worth = worth * (b10 + b1)
+        worth = worth - xFF * b10
+        worth = worth + (turned + wide)
+        wide_turned = (-wide).reverse()
+        worth = worth + wide_turned.bin
+        worth = worth * b0000000111
+        worth = worth + turned.reverse()
+        worth = worth - -turned
+        held = turned
+        worth = worth + held % b1000
+        worth = worth + held ^ b10
+        worth = worth * (held % b10000000)
+        wide_held = wide_turned
+        worth = worth - held * wide_held
+        worth = worth + wide_held.number
+        bits = -held.reverse()
+        worth = worth * b100000000000
+        worth = worth + -b00000000000000000000000000000000000000000000000000000000000000000000000000000000111
+        wide = -wide_held.reverse()
+        worth = worth + b11 * b101 * b111
+        worth = worth * (b1 + xF)
+        worth = worth + (wide - b1)
+        worth = worth.add(-b10011)
+        worth = worth + xFFFF * b1111
+        worth = worth * -b1001
+        held = -bits
+        worth = worth - (held + held) * b11
+        wide_held = -wide
+        worth = worth + held.add(wide_held)
+        worth = worth * (wide_held % b100000000 + b1)
+        // THE MIDDLE, CHECKED: a .reverse() or a minus sign lost the same way going out and coming back, or a
+        // value added and taken away just as wrong, would cancel itself -- so each value must already be what
+        // the 50 operations out make it, worked out by hand from the start
+        satellite.statement.if (bits != -b101000100111001011111001000001)
+        {
+            seen = seen + " bits = " + bits
+        }
+        satellite.statement.if (wide != -b10100010011100101111100100000100)
+        {
+            seen = seen + " wide = " + wide
+        }
+        satellite.statement.if (turned != b100000100111110100111001000101)
+        {
+            seen = seen + " turned = " + turned
+        }
+        satellite.statement.if (held != b101000100111001011111001000001)
+        {
+            seen = seen + " held = " + held
+        }
+        satellite.statement.if (wide_turned != b00100000100111110100111001000101)
+        {
+            seen = seen + " wide_turned = " + wide_turned
+        }
+        satellite.statement.if (wide_held != b10100010011100101111100100000100)
+        {
+            seen = seen + " wide_held = " + wide_held
+        }
+        satellite.statement.if (worth != 398081835320797841258198485528058659477916450965980613771510)
+        {
+            seen = seen + " worth = " + worth
+        }
+        satellite.statement.if (seen != "")
+        {
+            seen = "pass " + pass + ", the middle:" + seen
+            satellite.statement.break
+        }
+        // the 50 inverse operations, in the reverse order: the value comes back
+        worth = worth / (wide_held % b100000000 + b1) + worth % (wide_held % b100000000 + b1) * far
+        worth = worth - held.add(wide_held)
+        wide = -wide_held
+        worth = worth + (held + held) * b11
+        bits = -held
+        worth = worth / -b1001 + worth % -b1001 * far
+        worth = worth - xFFFF * b1111
+        worth = worth - -b10011
+        worth = worth - (wide - b1)
+        worth = worth / (b1 + xF) + worth % (b1 + xF) * far
+        worth = worth - b11 * b101 * b111
+        wide_held = -wide.reverse()
+        worth = worth - -b00000000000000000000000000000000000000000000000000000000000000000000000000000000111
+        worth = worth / b100000000000 + worth % b100000000000 * far
+        held = -bits.reverse()
+        worth = worth - wide_held.number
+        worth = worth + held * wide_held
+        wide_turned = wide_held
+        worth = worth / (held % b10000000) + worth % (held % b10000000) * far
+        worth = worth - held ^ b10
+        worth = worth - held % b1000
+        turned = held
+        worth = worth + -turned
+        worth = worth - turned.reverse()
+        worth = worth / b0000000111 + worth % b0000000111 * far
+        worth = worth - wide_turned.bin.number
+        wide = -wide_turned.reverse()
+        worth = worth - (turned + wide)
+        worth = worth + xFF * b10
+        worth = worth / (b10 + b1) + worth % (b10 + b1) * far
+        worth = worth - (b1100 + xFF)
+        worth = worth + wide * b100
+        bits = -turned.reverse()
+        worth = worth - b11111111111111111111111111111111111111111111111111111111111111111111
+        worth = worth / b10000000000000000000000000000000000000000000000000000000000000000 + worth % b10000000000000000000000000000000000000000000000000000000000000000 * far
+        worth = worth - wide.binary.number
+        wide_turned = -wide
+        worth = worth - bits.number
+        worth = worth - b1011
+        worth = worth / b1010 + worth % b1010 * far
+        worth = worth / -b11 + worth % -b11 * far
+        worth = worth + -b0110
+        worth = worth - b000000000000000000000000000000000010111
+        worth = worth + bits
+        turned = -bits
+        worth = worth / b1101 + worth % b1101 * far
+        worth = worth + wide_turned
+        wide = wide_turned.reverse()
+        worth = worth - turned
+        bits = turned.reverse()
+    }
+
+    satellite.statement.if (seen != "")
+    {
+        satellite.console.display(seen)
+    }
+    satellite.statement.else satellite.statement.if (bits != start)
+    {
+        satellite.console.display(bits)
+    }
+    satellite.statement.else satellite.statement.if (wide != start_wide)
+    {
+        satellite.console.display(wide)
+    }
+    satellite.statement.else satellite.statement.if (worth != 547311173)
+    {
+        satellite.console.display(worth)
+    }
+    satellite.statement.else
+    {
+        satellite.console.display(547311173)
+    }
+    satellite.return(satellite)
+}

@@ -1,0 +1,11 @@
+satellite.include(satellite)
+// full_structure_22 -- REFUSED by satellite.test.full(): satellite.access: the name must be one the line can see.
+// The rule: satellite.access: satellite.access(nobody) is refused before anything runs.
+// satl refuses it: exit 25, and its report on stderr says "nobody has no satellite.variable line declaring". It prints nothing.
+
+satellite.capsule satellite.main()
+{
+    satellite.variable.number passes = 1
+    satellite.variable.string about = satellite.access(nobody)
+    satellite.return(satellite)
+}

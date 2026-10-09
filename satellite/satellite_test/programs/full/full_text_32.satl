@@ -1,0 +1,11 @@
+satellite.include(satellite)
+
+// full_text_32 -- REFUSED: list a method that changes the list needs a name: {1, 2}.append(3) is refused.
+// satellite.help(satellite.container.list). Nothing reaches stdout; satl exits with the refusal's code.
+
+satellite.capsule satellite.main()
+{
+    satellite.variable.number passes = 1
+    satellite.console.display({1, 2}.append(3))
+    satellite.return(satellite)
+}

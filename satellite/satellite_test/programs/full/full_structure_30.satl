@@ -1,0 +1,14 @@
+satellite.include(satellite)
+// full_structure_30 -- REFUSED by satellite.test.full(): satellite.statement.if given a number, not a true or false.
+// The rule: a condition is a true or false: if(5) is refused where it runs (machine code 27).
+// satl refuses it: exit 27, and its report on stderr says "satellite.statement.if was given a number and needs a true or false". It prints nothing.
+
+satellite.capsule satellite.main()
+{
+    satellite.variable.number passes = 1
+    satellite.statement.if (5)
+    {
+        satellite.variable.number n = 1
+    }
+    satellite.return(satellite)
+}

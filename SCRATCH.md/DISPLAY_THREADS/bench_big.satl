@@ -1,0 +1,15 @@
+satellite.include(satellite)
+
+satellite.capsule satellite.main()
+{
+    satellite.variable.string s = "0123456789abcdef"
+    satellite.statement.for(satellite.variable.number i = 0; i < 16; i++)
+    {
+        s = s + s
+    }
+    satellite.statement.for(satellite.variable.number j = 0; j < 200; j++)
+    {
+        satellite.console.display(s)
+    }
+    satellite.return(satellite)
+}

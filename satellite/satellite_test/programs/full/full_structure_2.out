@@ -1,0 +1,28 @@
+ok satellite.legal: an if and its else each declare x
+ok satellite.legal: a line after the block declares x again, as another type
+ok satellite.legal: two blocks side by side each declare y
+ok satellite.legal: a block inside a block reads the names around it
+ok satellite.legal: satellite.access names the place a name is legal in
+ok satellite.legal: a capsule is a place of its own, satellite.legal.greet
+ok satellite.legal: a space's capsule, satellite.legal.tools.where
+ok satellite.legal: an object's capsule, satellite.legal.box.call_where
+ok satellite.legal's switch: arguments.access reads true, as this file wrote it
+ok satellite.delete: the name is declared again, as anything
+ok satellite.delete: a parameter is its capsule's to delete
+ok satellite.delete: a name a loop declares is deleted and declared every pass
+ok satellite.delete: a list deleted, and the name declared again as a list of strings
+ok satellite.delete in the block that declared it; its else and the lines after may declare it
+ok satellite.delete: an object goes with the last name that held it
+ok satellite.access: a number, a string and a bool -- what each is, holds, and its place
+ok satellite.access: a list, counted from 1
+ok satellite.access: a string keeps it, and it answers the same text again
+ok satellite.access: a list of maps of lists, every level, in its help page's layout
+ok satellite.access: a multiple, each way in marked with the type it needs
+ok satellite.access: an object, its fields with their values, and its capsules
+ok satellite.library: every kind of literal reads back as written
+ok satellite.library: a minus sign in front of a float, a fraction and a percentage
+ok satellite.library: read in a condition and a loop
+ok satellite.library: read in a spacesuit's field and capsule, and a space's capsule
+ok satellite.library: a copy in a variable changes, the value does not
+ok satellite.library: a method on a value
+ok every pass answered alike

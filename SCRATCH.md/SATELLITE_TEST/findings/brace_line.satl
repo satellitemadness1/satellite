@@ -1,0 +1,9 @@
+satellite.include(satellite)
+
+satellite.capsule satellite.main()
+{
+    satellite.console.display("before")
+    {1, 2}.append(3)
+    satellite.console.display("after")
+    satellite.return(satellite)
+}

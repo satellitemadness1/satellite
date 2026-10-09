@@ -1,0 +1,21 @@
+satellite.include(satellite)
+// full_structure_10 -- REFUSED by satellite.test.full(): satellite.capsule: a name declared twice in one file.
+// The rule: satellite.capsule: a name declared twice in one file or space (S202).
+// satl refuses it: exit 26, and its report on stderr says "twice is declared twice in this file". It prints nothing.
+
+satellite.capsule twice(satellite.variable.number n)
+{
+    satellite.return(n * 2)
+}
+
+satellite.capsule twice(satellite.variable.number n)
+{
+    satellite.return(n + n)
+}
+
+satellite.capsule satellite.main()
+{
+    satellite.variable.number passes = 1
+    satellite.variable.number four = twice(2)
+    satellite.return(satellite)
+}

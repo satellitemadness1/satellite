@@ -1,0 +1,13 @@
+satellite.include(satellite)
+
+// full_numbers_32 -- satellite.test.full(), a program satl must REFUSE.
+// fraction: a fraction name given a spaced slash, 1 / 3.
+// It exits 27, and its report on stderr holds: written with a touching slash: 1/3
+// Nothing is printed on stdout.
+
+satellite.capsule satellite.main()
+{
+    satellite.variable.number passes = 1
+    satellite.variable.fraction f = 1 / 3
+    satellite.return(satellite)
+}

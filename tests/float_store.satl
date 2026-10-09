@@ -1,0 +1,14 @@
+satellite.include(satellite)
+
+// A plain number given to a float name becomes a float, in the declaration and
+// in every later assignment.
+satellite.capsule satellite.main()
+{
+    satellite.variable.float f = 3
+    satellite.console.display(f)
+    f = f * 2.5
+    satellite.console.display(f)
+    f = -7
+    satellite.console.display(f)
+    satellite.return(satellite)
+}

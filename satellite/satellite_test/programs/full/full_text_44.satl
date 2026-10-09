@@ -1,0 +1,12 @@
+satellite.include(satellite)
+
+// full_text_44 -- REFUSED: map .sum asks which half: .values.sum or .keys.sum.
+// satellite.help(satellite.container.map). Nothing reaches stdout; satl exits with the refusal's code.
+
+satellite.capsule satellite.main()
+{
+    satellite.variable.number passes = 1
+    satellite.container.map m = {"a": 1}
+    satellite.console.display(m.sum)
+    satellite.return(satellite)
+}

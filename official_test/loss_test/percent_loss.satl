@@ -1,0 +1,328 @@
+// LOSS TEST: satellite.variable.percentage (its second spelling, satellite.variable.percent,
+// declares y below)
+//
+// THE AUTHOR'S STANDARD (2026-10-06): "for the loss testing, we will use the number
+// 547311173 so we have to start with that number, and end at that number, after say,
+// 1,000,000 million operations... That will be the loss test" -- "the way that I memorize
+// the loss number is that it's 'satellite' spelled as numbers, 5 looks like S, 4 looks like
+// A, 7 looks like T" -- "so we will use the number satellite, and the numbers 1 trillion and
+// 1 million for testing" (1 trillion is for the speed tests; 1 million is this one).
+//
+// x starts at 547311173%. Each pass runs 100 DIFFERENT operations, one per line: 50
+// forward, then their 50 inverses in reverse order. They are + and - of percentages, a
+// percentage OF a percentage (*), a share by a number (/) -- a literal, a number below
+// zero, a binary read by its worth, a number name, and numbers made of a number and a
+// percentage (300 * 50%, 1000 - 75%, 80 + 25%, 500 / 50%) -- its sign turned over, and
+// trips through a list, a map, a map keyed by a percentage and both spellings' names.
+// 10,000 passes x 100 = 1,000,000 operations. A percentage keeps 32 digits after the
+// point EXACTLY, and every operand was chosen so that no operation rounds -- each one is
+// exact by the type's own rules, so nothing may be lost. On the way x goes below zero,
+// past 10^47% (48 digits before the point), down to 0.00000000001240227713199902%,
+// and uses as many as 32 digits after the point.
+//
+// THE CHECKS (2026-10-06, after a fresh reviewer injected losses that still ended at
+// 547311173). A share (/), or a * by a percentage below 100%, rounds at the 32nd place --
+// never on the right path, but once something is lost it can round the loss away and carry
+// x back to the right value. A loss made at the turn came back unseen up to about 10^14% --
+// every place after the point and the lowest 15 of the 48 digits before it -- and a loss of
+// 0.00000000000000000000000000000001% came back from nearly every line. So x is kept in
+// `before` just before each of those 30 operations, and just after it x is multiplied back
+// and compared with `before`. On the right path that gives `before` again. When the
+// rounding has carried a loss away, x is the RIGHT value, and multiplied back it gives the
+// right value from before the line -- which is not `before`, so `wrong` counts it. Every
+// other operation is exact, or multiplies x by a number further from zero than a half,
+// which never rounds a loss to nothing. keyed[12.5%] is added and later taken away, so a
+// map that lost its value would cancel itself out: what that line adds is checked against
+// 87.5% every pass. The 100 operations are the same as before.
+//
+// The answer is always 547311173 -- anything else printed is the value it ended at, or
+// "lost:", how many checks failed, and the value it ended at.
+
+satellite.include(satellite)
+
+satellite.capsule satellite.main()
+{
+    satellite.variable.percentage start = 547311173%
+    satellite.variable.percentage x = 547311173%
+    satellite.variable.percent y = 0%
+    satellite.variable.percentage z = 0%
+    satellite.variable.number n7 = 7
+    satellite.container.list<satellite.variable.percentage> l = {0%, 0%, 0%}
+    satellite.container.map m = {"a": 0%, "b": 0%}
+    satellite.container.map keyed = {12.5%: 87.5%}
+    satellite.variable.percentage before = x
+    satellite.variable.number wrong = 0
+    satellite.statement.for(satellite.variable.number pass = 0; pass < 10000; pass + 1)
+    {
+        // FORWARD: 50 operations take it far from where it began
+        before = x
+        x = x / 41
+        satellite.statement.if (x * 4100% != before)
+        {
+            wrong = wrong + 1
+        }
+        x = x * 200%
+        x = -x
+        before = x
+        x = x / 311
+        satellite.statement.if (x * 31100% != before)
+        {
+            wrong = wrong + 1
+        }
+        x = x * 1000000000000%
+        before = x
+        x = x / b1000
+        satellite.statement.if (x * 800% != before)
+        {
+            wrong = wrong + 1
+        }
+        x = x + x
+        before = x
+        x = x / 42923
+        satellite.statement.if (x * 4292300% != before)
+        {
+            wrong = wrong + 1
+        }
+        x = x + 12.5%
+        before = x
+        x = x * 6.25%
+        satellite.statement.if (x * 1600% != before)
+        {
+            wrong = wrong + 1
+        }
+        before = x
+        x = x / -5
+        satellite.statement.if (x * -500% != before)
+        {
+            wrong = wrong + 1
+        }
+        x = x + 1000000000000%
+        x = x * 300%
+        before = x
+        x = x / (300 * 50%)
+        satellite.statement.if (x * 15000% != before)
+        {
+            wrong = wrong + 1
+        }
+        l[1] = x * 700%
+        x = l[1]
+        before = x
+        x = x / (1000 - 75%)
+        satellite.statement.if (x * 25000% != before)
+        {
+            wrong = wrong + 1
+        }
+        m["a"] = x - 0.5%
+        x = m["a"]
+        x = x + 547311173%
+        before = x
+        x = x / (80 + 25%)
+        satellite.statement.if (x * 10000% != before)
+        {
+            wrong = wrong + 1
+        }
+        y = x * -250%
+        x = y
+        x = x * 1000000%
+        before = x
+        x = x / (500 / 50%)
+        satellite.statement.if (x * 100000% != before)
+        {
+            wrong = wrong + 1
+        }
+        x = 0% - x
+        x = x * 640%
+        x = x * 700%
+        before = x
+        x = x / 1000000000000000000000
+        satellite.statement.if (x * 100000000000000000000000% != before)
+        {
+            wrong = wrong + 1
+        }
+        before = x
+        x = x + keyed[12.5%]
+        satellite.statement.if (x - before != 87.5%)
+        {
+            wrong = wrong + 1
+        }
+        before = x
+        x = x * 0.02%
+        satellite.statement.if (x * 500000% != before)
+        {
+            wrong = wrong + 1
+        }
+        z = x + 0.75%
+        x = z
+        x = x * 250%
+        x = x * 1100%
+        before = x
+        x = x / (b1010 * 50%)
+        satellite.statement.if (x * 500% != before)
+        {
+            wrong = wrong + 1
+        }
+        x = x * 125%
+        x = x + -50%
+        x = x * 1000000000000000000000000000000000%
+        before = x
+        x = x * 0.0001%
+        satellite.statement.if (x * 100000000% != before)
+        {
+            wrong = wrong + 1
+        }
+        x = x - 33.33333333333333333333333333333333%
+        x = x * -300%
+        x = x - 99.99999999999999999999999999999999%
+        x = x * 100000000000000000000%
+        x = x - 0.00000000000000000000000000000001%
+        x = x - 1%
+        x = x * 900%
+        x = x + 0.00000000000000000000000000000007%
+        x = x * -1300%
+        x = x - 2.71828182845904523536028747135266%
+        // BACK: the 50 inverses, in reverse order
+        x = x + 2.71828182845904523536028747135266%
+        before = x
+        x = x / -13
+        satellite.statement.if (x * -1300% != before)
+        {
+            wrong = wrong + 1
+        }
+        x = x - 0.00000000000000000000000000000007%
+        before = x
+        x = x / 9
+        satellite.statement.if (x * 900% != before)
+        {
+            wrong = wrong + 1
+        }
+        x = x + 1%
+        x = x + 0.00000000000000000000000000000001%
+        before = x
+        x = x / 1000000000000000000
+        satellite.statement.if (x * 100000000000000000000% != before)
+        {
+            wrong = wrong + 1
+        }
+        x = x + 99.99999999999999999999999999999999%
+        before = x
+        x = x / -3
+        satellite.statement.if (x * -300% != before)
+        {
+            wrong = wrong + 1
+        }
+        x = x + 33.33333333333333333333333333333333%
+        x = x * 100000000%
+        before = x
+        x = x / 10000000000000000000000000000000
+        satellite.statement.if (x * 1000000000000000000000000000000000% != before)
+        {
+            wrong = wrong + 1
+        }
+        x = x - -50%
+        x = x * 80%
+        x = x * 500%
+        before = x
+        x = x / 11
+        satellite.statement.if (x * 1100% != before)
+        {
+            wrong = wrong + 1
+        }
+        before = x
+        x = x * 40%
+        satellite.statement.if (x * 250% != before)
+        {
+            wrong = wrong + 1
+        }
+        y = x - 0.75%
+        x = y * 100%
+        x = x * 500000%
+        x = x - keyed[12.5%]
+        x = x * 100000000000000000000000%
+        before = x
+        x = x / n7
+        satellite.statement.if (x * 700% != before)
+        {
+            wrong = wrong + 1
+        }
+        before = x
+        x = x * 15.625%
+        satellite.statement.if (x * 640% != before)
+        {
+            wrong = wrong + 1
+        }
+        x = x / -1
+        x = x * 100000%
+        before = x
+        x = x / 10000
+        satellite.statement.if (x * 1000000% != before)
+        {
+            wrong = wrong + 1
+        }
+        before = x
+        l[3] = x * -40%
+        x = l[3]
+        satellite.statement.if (x * -250% != before)
+        {
+            wrong = wrong + 1
+        }
+        x = x * 10000%
+        x = x - 547311173%
+        m["b"] = x + 0.5%
+        x = m["b"]
+        x = x * 25000%
+        before = x
+        l[2] = x / 7
+        x = l[2]
+        satellite.statement.if (x * 700% != before)
+        {
+            wrong = wrong + 1
+        }
+        x = x * 15000%
+        before = x
+        x = x / 3
+        satellite.statement.if (x * 300% != before)
+        {
+            wrong = wrong + 1
+        }
+        x = x - 1000000000000%
+        x = x * -500%
+        x = x * 1600%
+        x = x - 12.5%
+        x = x * 4292300%
+        before = x
+        x = x * 50%
+        satellite.statement.if (x * 200% != before)
+        {
+            wrong = wrong + 1
+        }
+        x = x * 800%
+        before = x
+        x = x / 10000000000
+        satellite.statement.if (x * 1000000000000% != before)
+        {
+            wrong = wrong + 1
+        }
+        x = x * 31100%
+        x = x * -100%
+        before = x
+        x = x / 2
+        satellite.statement.if (x * 200% != before)
+        {
+            wrong = wrong + 1
+        }
+        x = x * 4100%
+    }
+    satellite.statement.if (wrong > 0)
+    {
+        satellite.console.display("lost: " + wrong + " checks failed, and x ended at " + x)
+    }
+    satellite.statement.else satellite.statement.if (x == start)
+    {
+        satellite.console.display(547311173)
+    }
+    satellite.statement.else
+    {
+        satellite.console.display(x)
+    }
+    satellite.return(satellite)
+}

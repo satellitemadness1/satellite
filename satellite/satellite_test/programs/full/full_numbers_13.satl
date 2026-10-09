@@ -1,0 +1,14 @@
+satellite.include(satellite)
+
+// full_numbers_13 -- satellite.test.full(), a program satl must REFUSE.
+// number: n.max(3) has no library wired to it yet (M17), so it is not built (S210).
+// It exits 14, and its report on stderr holds: n.max is not built for satellite.variable.number
+// Nothing is printed on stdout.
+
+satellite.capsule satellite.main()
+{
+    satellite.variable.number passes = 1
+    satellite.variable.number n = 1
+    satellite.console.display(n.max(3))
+    satellite.return(satellite)
+}

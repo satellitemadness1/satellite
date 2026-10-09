@@ -1,0 +1,576 @@
+satellite.include(satellite)
+
+// full_structure_1 -- satellite.test.full(): satellite.include, satellite.capsule (parameters, several
+// returns, recursion), satellite.main(), satellite.return, every satellite.statement, and comments.
+// It prints one line a check, and nothing else: "ok <capability>" when the answer is right, or
+// "WRONG <capability>: <what it answered> (expected <the right answer>)". The last check ends the
+// whole program from a capsule 50 deep, so main's own last line never runs -- and exits 0.
+
+// A COUNTER THE CHECKS HAND TO CAPSULES: a spacesuit's object is a reference, so a capsule that
+// counts on it is seen by the caller -- how a check sees that a line did, or did not, run.
+satellite.spacesuit tally()
+{
+    satellite.protected
+    {
+        satellite.variable.number count = 0
+    }
+    satellite.public
+    {
+        satellite.capsule call_add()
+        {
+            count = count + 1
+        }
+        satellite.capsule call_count()
+        {
+            satellite.return(count)
+        }
+    }
+}
+
+// ONE LINE OF THE REPORT.
+satellite.capsule check(satellite.variable.string what, satellite.variable.string got, satellite.variable.string want)
+{
+    satellite.statement.if (got == want)
+    {
+        satellite.return("ok " + what)
+    }
+    satellite.return("WRONG " + what + ": " + got.replace("\n", " | ") + " (expected " + want.replace("\n", " | ") + ")")
+}
+
+// ---------------------------------------------------------------- capsules and their parameters
+
+satellite.capsule five()
+{
+    satellite.return(5)
+}
+
+satellite.capsule twice(satellite.variable.number n)
+{
+    satellite.return(n * 2)
+}
+
+satellite.capsule label(satellite.variable.string word, satellite.variable.number n, satellite.variable.bool loud)
+{
+    satellite.statement.if (loud)
+    {
+        satellite.return(word + "!" + n.string())
+    }
+    satellite.return(word + n.string())
+}
+
+satellite.capsule make_pair()
+{
+    satellite.container.list<satellite.variable.number> pair = {3, 4}
+    satellite.return(pair)
+}
+
+satellite.namespace tools
+{
+    satellite.capsule triple(satellite.variable.number n)
+    {
+        satellite.return(n * 3)
+    }
+    // A BARE NAME is looked for in its own space (triple), then in the space around it (five).
+    satellite.capsule nine_plus_five()
+    {
+        satellite.return(triple(3) + five())
+    }
+    // ONE NAME IN TWO SPACES: this twice is the space's own, and the space's bare twice finds it first.
+    satellite.capsule twice(satellite.variable.number n)
+    {
+        satellite.return(n + 1000)
+    }
+    satellite.capsule own_twice()
+    {
+        satellite.return(twice(1))
+    }
+}
+
+// SEVERAL RETURNS: whichever is reached first ends the capsule.
+satellite.capsule sign_of(satellite.variable.number n)
+{
+    satellite.statement.if (n < 0)
+    {
+        satellite.return("below zero")
+    }
+    satellite.statement.if (n == 0)
+    {
+        satellite.return("zero")
+    }
+    satellite.return("above zero")
+}
+
+// satellite.return ENDS THE CAPSULE WHERE IT STANDS -- inside an if inside a while ...
+satellite.capsule first_square_over(satellite.variable.number limit)
+{
+    satellite.variable.number i = 1
+    satellite.statement.while (satellite.bool.true)
+    {
+        satellite.statement.if (i * i > limit)
+        {
+            satellite.return(i)
+        }
+        i = i + 1
+    }
+}
+
+// ... and inside an if inside a for.
+satellite.capsule place_of_seven(satellite.container.list<satellite.variable.number> items)
+{
+    satellite.statement.for (satellite.variable.number k = 1; k <= items.size; k++)
+    {
+        satellite.statement.if (items[k] == 7)
+        {
+            satellite.return(k)
+        }
+    }
+    satellite.return(0)
+}
+
+// satellite.return() HANDS BACK NOTHING, and ends the capsule: the second call_add never runs.
+satellite.capsule add_once(tally t)
+{
+    t.call_add()
+    satellite.return()
+    t.call_add()
+}
+
+// A CAPSULE WITH NO satellite.return ends at its }: both lines run.
+satellite.capsule add_twice(tally t)
+{
+    t.call_add()
+    t.call_add()
+}
+
+// RECURSION: an exact answer far past 64 bits.
+satellite.capsule factorial(satellite.variable.number n)
+{
+    satellite.statement.if (n <= 1)
+    {
+        satellite.return(1)
+    }
+    satellite.return(n * factorial(n - 1))
+}
+
+// A SELF-CALL WITH WORK LEFT AFTER IT, 10,000 deep: every level adds one on the way back.
+satellite.capsule depth(satellite.variable.number n)
+{
+    satellite.statement.if (n == 0)
+    {
+        satellite.return(0)
+    }
+    satellite.return(depth(n - 1) + 1)
+}
+
+// A CAPSULE WHOSE LAST ACT IS A CALL TO ITSELF, 100,000 deep: the bottom counts once.
+satellite.capsule walk_down(satellite.variable.number n, tally t)
+{
+    satellite.statement.if (n > 0)
+    {
+        walk_down(n - 1, t)
+    }
+    satellite.statement.else
+    {
+        t.call_add()
+    }
+}
+
+// TWO CAPSULES CALLING EACH OTHER, 1,001 calls deep.
+satellite.capsule is_even(satellite.variable.number n)
+{
+    satellite.statement.if (n == 0)
+    {
+        satellite.return(satellite.bool.true)
+    }
+    satellite.return(is_odd(n - 1))
+}
+
+satellite.capsule is_odd(satellite.variable.number n)
+{
+    satellite.statement.if (n == 0)
+    {
+        satellite.return(satellite.bool.false)
+    }
+    satellite.return(is_even(n - 1))
+}
+
+// A COMMENT BETWEEN A CAPSULE'S ) AND ITS { -- on the same line, and on a line of its own.
+satellite.capsule commented(satellite.variable.number n) // the brackets end here
+// and a whole line of comment before the body
+{
+    // a comment inside the body
+    satellite.return(n + 1) // and one after the return
+}
+
+// A COMMENT HOLDS ANYTHING -- braces, quotes, code -- and none of it is read.
+satellite.capsule braces_in_comments() // a { in a comment
+{
+    // a } in a comment, and an "unclosed quote
+    satellite.variable.number n = 1 // }} {{ "
+    satellite.return(n + 1) // satellite.return(99)
+}
+
+satellite.capsule capsule_checks()
+{
+    satellite.container.list<satellite.variable.string> lines
+    lines.append(check("satellite.include(satellite) makes this file a program", "runs", "runs"))
+    lines.append(check("capsule with no parameters", five().string(), "5"))
+    lines.append(check("capsule with one parameter", twice(21).string(), "42"))
+    lines.append(check("capsule with three parameters of three types", label("go", 7, 2 > 1), "go!7"))
+    lines.append(check("capsule arguments worked out where the call is", label("a" + "b", 2 + 3, 1 > 2), "ab5"))
+    lines.append(check("capsule call inside a call", twice(twice(3)).string(), "12"))
+    lines.append(check("capsule answers inside a line", (five() + twice(10) * 2).string(), "45"))
+    lines.append(check("capsule declared after main is called from it", declared_below(6).string(), "36"))
+    lines.append(check("capsule in a satellite.namespace, called by its space", tools.triple(7).string(), "21"))
+    lines.append(check("a bare name in a space is found in its space, then in the file around it", tools.nine_plus_five().string(), "14"))
+    lines.append(check("one name in the file and in a space: each space's bare name finds its own", twice(1).string() + " " + tools.twice(1).string() + " " + tools.own_twice().string(), "2 1001 1001"))
+    lines.append(check("capsule answers a list", make_pair().join(","), "3,4"))
+    satellite.container.list<satellite.variable.number> got = make_pair()
+    lines.append(check("capsule's list answer kept in a variable", got[2].string(), "4"))
+    lines.append(check("comment between a capsule's ) and {", commented(41).string(), "42"))
+    satellite.return(lines.join("\n"))
+}
+
+satellite.capsule return_checks()
+{
+    satellite.container.list<satellite.variable.string> lines
+    lines.append(check("several returns in one capsule: the first one reached ends it", sign_of(-5) + ", " + sign_of(0) + ", " + sign_of(7), "below zero, zero, above zero"))
+    lines.append(check("satellite.return inside an if inside a while ends the capsule", first_square_over(10).string(), "4"))
+    lines.append(check("satellite.return inside an if inside a for ends the capsule, or the one after the loop", place_of_seven({1, 7, 7, 3}).string() + " " + place_of_seven({1, 2}).string(), "2 0"))
+    tally t
+    add_once(t)
+    lines.append(check("satellite.return() hands back nothing and ends the capsule", t.call_count().string(), "1"))
+    add_twice(t)
+    lines.append(check("a capsule with no satellite.return ends at its }", t.call_count().string(), "3"))
+    satellite.return(lines.join("\n"))
+}
+
+satellite.capsule recursion_checks()
+{
+    satellite.container.list<satellite.variable.string> lines
+    lines.append(check("recursion: factorial(25), exact", factorial(25).string(), "15511210043330985984000000"))
+    lines.append(check("recursion with work after the call, 10,000 deep", depth(10000).string(), "10000"))
+    tally bottom
+    walk_down(100000, bottom)
+    lines.append(check("recursion as the last act, 100,000 deep", bottom.call_count().string(), "1"))
+    lines.append(check("two capsules calling each other, 1,001 deep", is_even(1000).string() + " " + is_odd(1000).string(), "true false"))
+    satellite.return(lines.join("\n"))
+}
+
+satellite.capsule statement_checks()
+{
+    satellite.container.list<satellite.variable.string> lines
+    satellite.variable.string path = ""
+
+    // if, else, and an else written onto another if
+    satellite.statement.if (3 > 2)
+    {
+        path = path + "if"
+    }
+    satellite.statement.if (3 < 2)
+    {
+        path = path + "WRONG"
+    }
+    satellite.statement.else
+    {
+        path = path + "+else"
+    }
+    satellite.variable.number n = 15
+    satellite.statement.if (n < 10)
+    {
+        path = path + "+small"
+    }
+    satellite.statement.else satellite.statement.if (n < 20)
+    {
+        path = path + "+middle"
+    }
+    satellite.statement.else
+    {
+        path = path + "+large"
+    }
+    lines.append(check("satellite.statement.if, .else and else-if take the right branch", path, "if+else+middle"))
+    satellite.statement.if (!(n > 20))
+    {
+        path = "not"
+    }
+    lines.append(check("satellite.statement.if (!(...)) -- not", path, "not"))
+
+    // while
+    satellite.variable.number i = 0
+    satellite.statement.while (i < 5)
+    {
+        i = i + 1
+    }
+    satellite.variable.number never = 0
+    satellite.statement.while (i < 0)
+    {
+        never = never + 1
+    }
+    lines.append(check("satellite.statement.while runs until its condition is false, and not at all when it starts false", i.string() + " " + never.string(), "5 0"))
+
+    // for, every step
+    satellite.variable.number total = 0
+    satellite.statement.for (satellite.variable.number a = 0; a < 5; a + 1)
+    {
+        total = total + a
+    }
+    lines.append(check("satellite.statement.for with + 1, and a body that changes the capsule's name", total.string(), "10"))
+    satellite.variable.string order = ""
+    satellite.statement.for (satellite.variable.number up = 0; up < 3; up++)
+    {
+        order = order + up.string()
+    }
+    satellite.statement.for (satellite.variable.number down = 3; down > 0; down--)
+    {
+        order = order + down.string()
+    }
+    lines.append(check("satellite.statement.for with ++ and --", order, "012321"))
+    satellite.variable.string doubled = ""
+    satellite.statement.for (satellite.variable.number d = 1; d < 20; d * 2)
+    {
+        doubled = doubled + d.string() + " "
+    }
+    lines.append(check("satellite.statement.for with * 2", doubled, "1 2 4 8 16 "))
+    satellite.variable.number walked = 0
+    satellite.statement.for (satellite.variable.number w = 0; w < 4; )
+    {
+        walked = walked + 1
+        w = w + 2
+    }
+    lines.append(check("satellite.statement.for with no step, the body moving the number", walked.string(), "2"))
+    satellite.variable.string steps = ""
+    satellite.statement.for (satellite.variable.number h = 64; h > 1; h / 2)
+    {
+        steps = steps + h.string() + " "
+    }
+    satellite.statement.for (satellite.variable.number t = 10; t > 0; t - 3)
+    {
+        steps = steps + t.string() + " "
+    }
+    satellite.statement.for (satellite.variable.number e = 0; e < 10; e + 4)
+    {
+        steps = steps + e.string() + " "
+    }
+    satellite.statement.for (satellite.variable.number z = 5; z < 5; z++)
+    {
+        steps = steps + "WRONG"
+    }
+    lines.append(check("satellite.statement.for with / 2, - 3 and + 4, and one whose condition starts false", steps, "64 32 16 8 4 2 10 7 4 1 0 4 8 "))
+    satellite.variable.number cells = 0
+    satellite.statement.for (satellite.variable.number row = 0; row < 3; row++)
+    {
+        satellite.statement.for (satellite.variable.number col = 0; col < 4; col++)
+        {
+            cells = cells + 1
+        }
+    }
+    lines.append(check("satellite.statement.for inside a for", cells.string(), "12"))
+    satellite.variable.string letters = "abcd"
+    satellite.variable.number spots = 0
+    satellite.statement.for (satellite.variable.number s = 0; s < letters.size; s++)
+    {
+        spots = spots + 1
+    }
+    lines.append(check("satellite.statement.for whose condition calls a method each pass", spots.string(), "4"))
+    satellite.statement.for (satellite.variable.number again = 7; again < 8; again++)
+    {
+        total = again
+    }
+    satellite.variable.number again = 70
+    lines.append(check("a for's own number is a free name after its loop", (again + total).string(), "77"))
+
+    // break and continue
+    satellite.variable.number b = 0
+    satellite.statement.while (satellite.bool.true)
+    {
+        b = b + 1
+        satellite.statement.if (b == 7)
+        {
+            satellite.statement.break
+        }
+    }
+    lines.append(check("satellite.statement.break leaves a while", b.string(), "7"))
+    satellite.variable.number inner = 0
+    satellite.statement.for (satellite.variable.number x = 0; x < 3; x++)
+    {
+        satellite.statement.for (satellite.variable.number y = 0; y < 100; y++)
+        {
+            satellite.statement.if (y == 2)
+            {
+                satellite.statement.break()
+            }
+            inner = inner + 1
+        }
+    }
+    lines.append(check("satellite.statement.break() leaves only the nearest loop", inner.string(), "6"))
+    satellite.variable.number odd_sum = 0
+    satellite.statement.for (satellite.variable.number k = 0; k < 10; k++)
+    {
+        satellite.statement.if (k % 2 == 0)
+        {
+            satellite.statement.continue
+        }
+        odd_sum = odd_sum + k
+    }
+    lines.append(check("satellite.statement.continue starts a for's next pass", odd_sum.string(), "25"))
+    satellite.variable.number j = 0
+    satellite.variable.number kept = 0
+    satellite.statement.while (j < 10)
+    {
+        j = j + 1
+        satellite.statement.if (j > 3)
+        {
+            satellite.statement.continue()
+        }
+        kept = kept + 1
+    }
+    lines.append(check("satellite.statement.continue() starts a while's next pass", kept.string() + " " + j.string(), "3 10"))
+    satellite.variable.string branches = ""
+    satellite.variable.number v = 0
+    satellite.statement.while (v < 10)
+    {
+        v = v + 1
+        satellite.statement.if (v < 3)
+        {
+            branches = branches + "a"
+        }
+        satellite.statement.else
+        {
+            satellite.statement.if (v == 5)
+            {
+                satellite.statement.break
+            }
+            branches = branches + "b"
+        }
+    }
+    branches = branches + " "
+    satellite.statement.for (satellite.variable.number u = 0; u < 5; u++)
+    {
+        satellite.statement.if (u == 1)
+        {
+            satellite.statement.continue
+        }
+        satellite.statement.else satellite.statement.if (u == 3)
+        {
+            satellite.statement.continue
+        }
+        branches = branches + u.string()
+    }
+    lines.append(check("a break inside an else, and a continue inside an else-if", branches + " " + v.string(), "aabb 024 5"))
+
+    // a while inside an if, an if inside a while
+    satellite.variable.string mixed = ""
+    satellite.variable.number m = 0
+    satellite.statement.while (m < 4)
+    {
+        satellite.statement.if (m == 2)
+        {
+            mixed = mixed + "two"
+        }
+        m = m + 1
+    }
+    satellite.statement.if (m == 4)
+    {
+        satellite.variable.number q = 0
+        satellite.statement.while (q < 2)
+        {
+            mixed = mixed + q.string()
+            q = q + 1
+        }
+    }
+    lines.append(check("an if inside a while, and a while inside an if", mixed, "two01"))
+
+    // a name declared inside a loop's body is made again every pass
+    satellite.variable.number fresh_total = 0
+    satellite.statement.for (satellite.variable.number p = 1; p <= 3; p++)
+    {
+        satellite.variable.number fresh = p * 10
+        fresh_total = fresh_total + fresh
+    }
+    lines.append(check("a name declared in a loop's body is made again every pass", fresh_total.string(), "60"))
+    satellite.return(lines.join("\n"))
+}
+
+satellite.capsule comment_checks()
+{
+    satellite.container.list<satellite.variable.string> lines
+    satellite.variable.number n = 5 // a trailing comment ends the value: eight
+    lines.append(check("a trailing comment ends the line it follows", n.string(), "5"))
+    satellite.variable.string text = "a//b" // the // inside the quotes is text
+    lines.append(check("// inside quotes is text, not a comment", text.size.string(), "4"))
+    tally t
+    // t.call_add()
+    t.call_add() // t.call_add()
+    lines.append(check("a line written after // never runs", t.call_count().string(), "1"))
+    satellite.variable.number loops = 0
+    satellite.statement.while (loops < 2) // after a while's condition
+    { // after an opening brace
+        loops = loops + 1 // after a line in a body
+    } // after a while's closing brace
+    lines.append(check("comments after a while, its braces and its lines", loops.string(), "2"))
+    satellite.variable.string quoted = "// not a comment { } \" still text" // a comment "with" quotes
+    lines.append(check("a comment holding braces, quotes and code changes nothing", braces_in_comments().string() + " " + quoted, "2 // not a comment { } \" still text"))
+    satellite.return(lines.join("\n"))
+}
+
+satellite.capsule every_check()
+{
+    satellite.return(capsule_checks() + "\n" + return_checks() + "\n" + recursion_checks() + "\n" + statement_checks() + "\n" + comment_checks())
+}
+
+// satellite.return(satellite) ENDS THE WHOLE PROGRAM, from any capsule at any depth: this one goes
+// 50 deep and returns from inside a for, inside an if. Nothing after it may run -- main's line after
+// the call says WRONG if it does.
+satellite.capsule end_from_deep(satellite.variable.number n)
+{
+    satellite.statement.if (n > 0)
+    {
+        end_from_deep(n - 1)
+    }
+    satellite.statement.else
+    {
+        satellite.statement.for (satellite.variable.number f = 0; f < 3; f++)
+        {
+            satellite.statement.if (f == 1)
+            {
+                satellite.console.display("ok satellite.return(satellite) ends the whole program from a capsule 50 deep, exit 0")
+                satellite.return(satellite)
+            }
+        }
+    }
+}
+
+satellite.capsule declared_below(satellite.variable.number n)
+{
+    satellite.return(n * n)
+}
+
+satellite.capsule satellite.main()
+{
+    satellite.variable.number passes = 1
+    // EVERY CHECK RUNS ONCE A PASS, and the lines of the first pass are printed once, after the last.
+    satellite.variable.number rounds = passes
+    satellite.statement.if (rounds < 1)
+    {
+        rounds = 1
+    }
+    satellite.variable.string first = ""
+    satellite.variable.number differ = 0
+    satellite.statement.for (satellite.variable.number pass = 1; pass <= rounds; pass++)
+    {
+        satellite.variable.string lines = every_check()
+        satellite.statement.if (pass == 1)
+        {
+            first = lines
+        }
+        satellite.statement.else satellite.statement.if (lines != first)
+        {
+            differ = differ + 1
+        }
+    }
+    satellite.console.display(first)
+    satellite.console.display(check("every pass answered alike", differ.string() + " passes differed", "0 passes differed"))
+    end_from_deep(50)
+    satellite.console.display("WRONG satellite.return(satellite) 50 deep: the program went on after it (expected it to end there)")
+    satellite.return(satellite)
+}

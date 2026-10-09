@@ -1,0 +1,137 @@
+satellite.include(satellite)
+
+// full_text_2 -- satellite.variable.string, part 2: .split, .replace, .trim, .resolved,
+// .append and .clear on a name, the conversions (.string .number .binary .hex and their
+// second spellings, with or without brackets), characters not bytes, and a colour that
+// is part of the string. Every expected answer is the help page's own.
+// One line per check, written on the first pass: "ok <what>", or "WRONG <what>: <answer>
+// (expected <right answer>)". Every pass runs every check again, and the last line says
+// whether every pass answered as the first did.
+
+satellite.capsule check(satellite.variable.number round, satellite.variable.string what, satellite.container.multiple got, satellite.container.multiple want)
+{
+    satellite.statement.if (got == want)
+    {
+        satellite.statement.if (round == 1)
+        {
+            satellite.console.display("ok " + what)
+        }
+        satellite.return(0)
+    }
+    satellite.statement.if (round == 1)
+    {
+        satellite.console.display("WRONG " + what + ": ", end="")
+        satellite.console.display(got, end="")
+        satellite.console.display(" (expected ", end="")
+        satellite.console.display(want, end="")
+        satellite.console.display(")")
+    }
+    satellite.return(1)
+}
+
+satellite.capsule satellite.main()
+{
+    satellite.variable.number passes = 1000
+    satellite.variable.number rounds = passes
+    satellite.statement.if (rounds < 1)
+    {
+        rounds = 1
+    }
+    satellite.variable.number first_wrong = 0
+    satellite.variable.number unlike_the_first = 0
+    satellite.statement.for(satellite.variable.number p = 1; p <= rounds; p + 1)
+    {
+        satellite.variable.number wrong = 0
+        satellite.variable.string s = "hello world"
+
+        // .split answers a list of the pieces between separators
+        wrong = wrong + check(p, "string .split", s.split(" "), {"hello", "world"})
+        wrong = wrong + check(p, "string .split keeps an empty piece", "a,,b".split(","), {"a", "", "b"})
+        wrong = wrong + check(p, "string .split keeps empty pieces at both ends", ",a,".split(","), {"", "a", ""})
+        wrong = wrong + check(p, "string .split of a separator not there is one piece", "abc".split(","), {"abc"})
+        wrong = wrong + check(p, "string .split of empty text is every character", "héllo".split(""), {"h", "é", "l", "l", "o"})
+        satellite.container.list<satellite.variable.string> parts = "x;y;z".split(";")
+        wrong = wrong + check(p, "string .split read through a name", parts[2], "y")
+
+        // .replace swaps every a for b, left to right, and leaves the name as it was
+        wrong = wrong + check(p, "string .replace swaps every one", s.replace("o", "0"), "hell0 w0rld")
+        wrong = wrong + check(p, "string .replace does not swap its own answer again", "aaa".replace("a", "aa"), "aaaaaa")
+        wrong = wrong + check(p, "string .replace goes left to right", "aaaa".replace("aa", "b"), "bb")
+        wrong = wrong + check(p, "string .replace of text not there", "abc".replace("x", "y"), "abc")
+        wrong = wrong + check(p, "string .replace leaves the name as it was", s, "hello world")
+
+        // .trim takes spaces, tabs, carriage returns and newlines off both ends
+        wrong = wrong + check(p, "string .trim() of spaces", "  padded  ".trim(), "padded")
+        wrong = wrong + check(p, "string .trim of tabs returns and newlines", " \t\r\n padded \n\t ".trim, "padded")
+        wrong = wrong + check(p, "string .trim keeps the space inside", " a b ".trim, "a b")
+        wrong = wrong + check(p, "string .resolved answers the string as it is", "a\tb".resolved, "a\tb")
+
+        // .append and .clear change the string on the name
+        satellite.variable.string t = "abc"
+        t.append("def")
+        wrong = wrong + check(p, "string .append(x) changes the name", t, "abcdef")
+        t.append("!")
+        wrong = wrong + check(p, "string .append twice", t, "abcdef!")
+        t.clear
+        wrong = wrong + check(p, "string .clear empties the name", t, "")
+        t.append("x")
+        t.clear()
+        wrong = wrong + check(p, "string .clear() with brackets", t.empty, satellite.bool.true)
+
+        // .string .str .to_string answer the text unchanged
+        wrong = wrong + check(p, "string .string", s.string, "hello world")
+        wrong = wrong + check(p, "string .str", s.str, "hello world")
+        wrong = wrong + check(p, "string .to_string()", s.to_string(), "hello world")
+
+        // .number .as_number .to_number read a whole number out of the text
+        wrong = wrong + check(p, "string .number", "42".number + 1, 43)
+        wrong = wrong + check(p, "string .as_number", "42".as_number + 1, 43)
+        wrong = wrong + check(p, "string .to_number()", "42".to_number() + 1, 43)
+        wrong = wrong + check(p, "string .number of a negative", "-42".number, -42)
+        wrong = wrong + check(p, "string .number has no size limit", "123456789012345678901234567890".number + 1, 123456789012345678901234567891)
+        wrong = wrong + check(p, "string .number of a substring", "id=42".substring(4, 5).number * 2, 84)
+
+        // .binary .bin .as_binary and .hex .as_hex .to_hex read the number and answer its digits
+        wrong = wrong + check(p, "string .bin is the bits of the number", "1010".bin, "1111110010")
+        wrong = wrong + check(p, "string .binary", "42".binary, "101010")
+        wrong = wrong + check(p, "string .as_binary", "87".as_binary, "1010111")
+        wrong = wrong + check(p, "string .hex", "255".hex, "FF")
+        wrong = wrong + check(p, "string .as_hex", "4096".as_hex, "1000")
+        wrong = wrong + check(p, "string .to_hex", "48879".to_hex, "BEEF")
+
+        // characters, not bytes
+        wrong = wrong + check(p, "string .find counts characters not bytes", "a😀b".find("b"), 2)
+        wrong = wrong + check(p, "string - takes away a wide character", "a😀b" - "😀", "ab")
+
+        // .foreground and .background: the colour is part of the string
+        satellite.variable.string g = "OK".foreground(x00FF00)
+        satellite.variable.color green = x00FF00
+        wrong = wrong + check(p, "string .foreground is part of the string", g == "OK", satellite.bool.false)
+        wrong = wrong + check(p, "string .foreground keeps the text", g.contains("OK"), satellite.bool.true)
+        wrong = wrong + check(p, "string .find sees the colour", g.find("OK") > 0, satellite.bool.true)
+        wrong = wrong + check(p, "string .foreground takes a satellite.variable.color", "OK".foreground(green), g)
+        satellite.variable.string dark = "OK".background(x000000)
+        wrong = wrong + check(p, "string .background is part of the string", dark != "OK", satellite.bool.true)
+        wrong = wrong + check(p, "string .background keeps the text", dark.contains("OK"), satellite.bool.true)
+        satellite.variable.string nest = ("a" + "b".foreground(x0000FF) + "c").foreground(xFF0000)
+        satellite.container.list<satellite.variable.string> before_a = nest.split("a")
+        satellite.container.list<satellite.variable.string> after_b = nest.split("b")
+        wrong = wrong + check(p, "string colour put round a colour has a code", before_a[1] != "", satellite.bool.true)
+        wrong = wrong + check(p, "string colour put round a colour comes back after it", after_b[2].starts_with(before_a[1]), satellite.bool.true)
+        satellite.statement.if (p == 1)
+        {
+            satellite.variable.string shown = "ok string display writes a coloured string plain into a pipe".foreground(x00FF00)
+            satellite.console.display(shown)
+        }
+        satellite.statement.if (p == 1)
+        {
+            first_wrong = wrong
+        }
+        satellite.statement.if (wrong != first_wrong)
+        {
+            unlike_the_first = unlike_the_first + 1
+        }
+    }
+    check(1, "string part 2 answers alike on every pass", unlike_the_first, 0)
+    satellite.return(satellite)
+}

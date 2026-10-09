@@ -1,0 +1,40 @@
+// A string minus a string (the author, 2026-09-17): "minus takes away the smallest
+// string" -- the FIRST occurrence of the string after the minus. Nothing to take
+// away leaves the left string as it was. A wide character's halves can be 40000
+// or a letter's code, so a match only begins where a character begins.
+
+satellite.include(satellite)
+
+satellite.capsule satellite.main()
+{
+    satellite.console.display("dfksjghjfff" - "fff")
+    satellite.console.display("abcab" - "ab")
+    satellite.console.display("banana" - "an")
+    satellite.console.display("fff" - "dfksjghjfff")
+    satellite.console.display("abc" - "")
+    satellite.console.display("[" + ("abc" - "abc") + "]")
+    satellite.console.display("a" + "b" - "b")
+
+    satellite.variable.string path = "x-y-z"
+    path = path - "-"
+    satellite.console.display(path)
+
+    satellite.variable.string s = "a😀b鱀c𙱀d😀"
+    satellite.console.display(s - "😀")
+    satellite.console.display(s - "鱀")
+    satellite.console.display(s - "𙱀")
+    satellite.variable.string high = "😀a"
+    satellite.console.display(high - "a")
+
+    // U+1F600's high half is 1, the code of "a". A minus that matched the high half and
+    // then counted its way to it would take "b" from "😀ba" and leave "😀a"; "😀" holds
+    // no "a" at all; and "𩱀a鱀" spells U+19C40's units only across three characters
+    // (the count review, 2026-09-17).
+    satellite.variable.string later = "😀ba"
+    satellite.console.display(later - "a")
+    satellite.variable.string alone = "😀"
+    satellite.console.display(alone - "a")
+    satellite.variable.string across = "𩱀a鱀"
+    satellite.console.display(across - "𙱀")
+    satellite.return(satellite)
+}

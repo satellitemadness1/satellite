@@ -1,0 +1,15 @@
+satellite.include(satellite)
+// full_structure_21 -- REFUSED by satellite.test.full(): satellite.delete: it stands in the block that declared the name.
+// The rule: satellite.delete: it stands in the same block as the line that declared the name.
+// satl refuses it: exit 13, and its report on stderr says "stands in a different block". It prints nothing.
+
+satellite.capsule satellite.main()
+{
+    satellite.variable.number passes = 1
+    satellite.variable.number n = 1
+    satellite.statement.if (n == 1)
+    {
+        satellite.delete(n)
+    }
+    satellite.return(satellite)
+}

@@ -1,0 +1,36 @@
+satellite.include(satellite)
+
+// speed_percent.satl -- satellite.test.speed(): PERCENTAGE ARITHMETIC.
+// base is a multiple of 8, so every answer made from it is whole: base * 25%, base grown by 12.5%
+// (base + 12.5%), base reduced by 50% (base - 50%), and what base is 50% of (base / 50%). rate climbs
+// 0.5% a pass and is compared with 100%; parts adds rate * 50% / 4, a percentage of a percentage and
+// a share of it.
+// The C++ twin holds percentages exactly as whole numbers of 0.0001%.
+// Prints: total, rate and parts.  C++ twin: speed_percent().
+
+satellite.capsule satellite.main()
+{
+    satellite.variable.number passes = 155000
+    satellite.variable.number x = 547311173
+    satellite.variable.number base = 0
+    satellite.variable.number total = 0
+    satellite.variable.percent rate = 0%
+    satellite.variable.percent parts = 0%
+    satellite.statement.for(satellite.variable.number i = 0; i < passes; i + 1)
+    {
+        x = x * 48271 % 2147483647
+        base = x % 1000 * 8
+        total = total + base * 25%
+        total = total + (base + 12.5%)
+        total = total - (base - 50%)
+        total = total + base / 50%
+        rate = rate + 0.5%
+        satellite.statement.if (rate > 100%)
+        {
+            rate = rate - 100%
+        }
+        parts = parts + rate * 50% / 4
+    }
+    satellite.console.display(total.string + " " + rate.string + " " + parts.string)
+    satellite.return(satellite)
+}

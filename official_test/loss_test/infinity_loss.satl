@@ -1,0 +1,434 @@
+// infinity_loss.satl -- A DATA-LOSS TEST FOR satellite.variable.infinity, written 2026-10-06.
+//
+// THE AUTHOR'S STANDARD (2026-10-06): "for the loss testing, we will use the number 547311173 so we
+// have to start with that number, and end at that number, after say, 1,000,000 million operations...
+// That will be the loss test" -- "it's 'satellite' spelled as numbers, 5 looks like S, 4 looks like A,
+// 7 looks like T" -- "so we will use the number satellite, and the numbers 1 trillion and 1 million
+// for testing".
+//
+// WHAT IS BUILT of the infinity (satellite.help(satellite.variable.infinity)): satellite.infinity(),
+// its display, its order against numbers, binaries and other infinities (against a hex it is S210,
+// not built yet), the minus that turns it over, and an infinity name that holds a plain number. Its
+// arithmetic is NOT built: + - * / ^ .power_of() on an infinity stop the run (S210, INF-3 to INF-5),
+// so this test does not use them.
+//
+// So x, an infinity name, starts at 547311173 -- a plain number, as the help allows -- and up and held
+// are infinity names too: up is satellite.infinity(), held starts at 0. Each pass runs 100 DIFFERENT
+// operations, 50 forward and then the same 50 undone, last first, each undo spelled differently:
+// + - * / with small, negative and very large operands (10 ^ 40, 2 ^ 100, 3 ^ 40), .add(), the
+// minus in its spellings, .reverse() undone through .string.reverse().number, a digit put on the end
+// through .string and .number, % to split x, x handed into held and an infinity put in its place,
+// the infinity turned over and back, and 28 steps chosen by the ORDER of an infinity -- each an
+// if / else, so a wrong answer from < > <= >= == != on an infinity sends x or held down the other
+// branch. x grows to 78 digits on the way; after the forward half x = -37649937184481655451084...
+// (79 characters), up = (-infinity), held = 759.
+// 10000 passes x 100 operations = 1,000,000 operations.
+//
+// EVERY PASS IS CHECKED, not only the last: a minus undoes itself, so a loss made on every pass could
+// be back where it began after an even number of passes. Each pass ends by comparing x with 547311173,
+// up with satellite.infinity() and held with 0. And EVERY DIVISION (19 lines) keeps its remainder:
+// x / D + x % D * far is just x / D when the remainder is 0 (it always is here), and throws a lost
+// digit 1000 digits up when it is not. The run stops at the first pass that went wrong.
+//
+// FIXED 2026-10-06, after a fresh reviewer showed that a loss could still end at 547311173 here:
+//  1. Each pass was checked only at its end. Every if / else of the way back asks the mirrored question
+//     of the way out (x < up, then up > x), so a comparison that was wrong the same way both times, or a
+//     minus that did nothing to an infinity, took the other branch both ways and cancelled out. up is
+//     turned over an even number of times, so it still ended as (infinity) (shown: all 17 minuses on
+//     infinities taken out still printed 547311173). So the middle is now checked too, after the 50th
+//     operation, against the values exact math gives there: x's 79 characters, up = (-infinity) and
+//     held = 759. The checks read .string, so they do not lean on the order that is being tested.
+//  2. Two results were never read. On the way back, x = -(-(-x)) was overwritten by x = held on the next
+//     line, and on the way out held = held - x - 7 (held turns 0) was overwritten by held = x % 1000
+//     before anything read it (shown: either one changed still printed 547311173). Each is now checked
+//     right after it against its known value: (-infinity) and 0.
+//  3. Each division used to be checked BEFORE it ran, which left a gap between the check and the
+//     division (shown: x = x - 1 slipped in just before x = x / 6 still printed 547311173). The
+//     remainder is now kept inside the division itself (the far pattern above), so there is no gap.
+//  4. .reverse() drops a 0 at the end of a number, so an x that gained a 0 just before the reverse on the
+//     way out, or on the way back, came back exact (shown: x * 10 slipped in before either one). x ends
+//     in 3 at the first and in 8 at the second when nothing was lost, so each now adds (x % 10 - 3) * far
+//     or (x % 10 - 8) * far. A reverse that went wrong the same way both times is caught by the halfway
+//     check.
+//  5. The end of each pass compared up and held only with the order under test (up != infinity(),
+//     held != 0). They are now read as text there too: "(infinity)" and "0". x is printed as text.
+//
+// THE ANSWER IS ALWAYS 547311173 -- x's own text at the end. Anything else printed is the first pass
+// that went wrong, how many checks failed in it, and x, up and held at its end:
+// pass 0: wrong <count>, <x> <up> <held>.
+
+satellite.include(satellite)
+
+satellite.capsule satellite.main()
+{
+    satellite.variable.number start = 547311173
+    satellite.variable.infinity x = 547311173
+    satellite.variable.infinity up = satellite.infinity()
+    satellite.variable.infinity held = 0
+    satellite.variable.number wrong = 0
+    satellite.variable.number far = 10 ^ 1000
+    satellite.variable.string seen = ""
+
+    satellite.statement.for(satellite.variable.number pass = 0; pass < 10000; pass + 1)
+    {
+        // FORWARD: 50 operations
+        x = x + 1
+        x = x * 7
+        up = -up
+        satellite.statement.if (x < up)
+        {
+            x = x + 4
+        }
+        satellite.statement.else
+        {
+            x = x - 5
+        }
+        x = -x
+        x = x - 99
+        x = x * 10 ^ 20
+        x = x + 10 ^ 30
+        satellite.statement.if (up < x)
+        {
+            x = x * 3
+        }
+        satellite.statement.else
+        {
+            x = x * 2
+        }
+        x = x.add(123456789)
+        up = -(up)
+        satellite.statement.if (up > 10 ^ 100)
+        {
+            x = x + 1000
+        }
+        satellite.statement.else
+        {
+            x = x - 1000
+        }
+        x = x * 2 ^ 64
+        held = x
+        x = -up
+        x = -(x)
+        satellite.statement.if (x == up)
+        {
+            held = held + 17
+        }
+        satellite.statement.else
+        {
+            held = held - 17
+        }
+        up = - up
+        satellite.statement.if (x > up)
+        {
+            held = held * 5
+        }
+        satellite.statement.else
+        {
+            held = held * 4
+        }
+        x = (-x)
+        satellite.statement.if (x <= up)
+        {
+            held = held - 2 ^ 70
+        }
+        satellite.statement.else
+        {
+            held = held + 2 ^ 70
+        }
+        satellite.statement.if (x != up)
+        {
+            held = held + 31
+        }
+        satellite.statement.else
+        {
+            held = held - 31
+        }
+        x = held - 7
+        held = held - x - 7
+        satellite.statement.if (held.string != "0")
+        {
+            wrong = wrong + 1
+        }
+        satellite.statement.if (-up < b100000100111110100111001000101)
+        {
+            x = x - 547311173
+        }
+        satellite.statement.else
+        {
+            x = x + 547311173
+        }
+        x = 0 - x
+        x = x - 10 ^ 40
+        satellite.statement.if (up >= 547311173)
+        {
+            x = x * 11
+        }
+        satellite.statement.else
+        {
+            x = x * 13
+        }
+        x = x + -12345
+        x = x * -3
+        held = x % 1000
+        x = x - held
+        x = x / 1000 + x % 1000 * far
+        satellite.statement.if (x > up)
+        {
+            x = x + 2 ^ 100
+        }
+        satellite.statement.else
+        {
+            x = x - 2 ^ 100
+        }
+        x = x.add(-987654321)
+        x = x * 3 ^ 40
+        satellite.statement.if (up <= -547311173)
+        {
+            x = x - 1
+        }
+        satellite.statement.else
+        {
+            x = x + 2
+        }
+        x = x - -77
+        satellite.statement.if (satellite.infinity() > x)
+        {
+            x = x + 5
+        }
+        satellite.statement.else
+        {
+            x = x - 6
+        }
+        x = (x.string + "3").number
+        x = x.reverse() + (x % 10 - 3) * far
+        x = x * -1
+        x = x + 547311173
+        satellite.statement.if (up == -satellite.infinity())
+        {
+            x = x * 17
+        }
+        satellite.statement.else
+        {
+            x = x * 19
+        }
+        x = x - 10 ^ 25
+        x = (x.string + "9").number
+        x = x * 1000003
+        satellite.statement.if (-up > x)
+        {
+            x = x + 8
+        }
+        satellite.statement.else
+        {
+            x = x - 9
+        }
+        x = x + 2 ^ 90
+        x = x * 6
+
+        // HALFWAY: x, up and held are where exact math says they are, read as text
+        satellite.statement.if (x.string != "-376499371844816554510841540749494252040346453616672301458606841097114894823870")
+        {
+            wrong = wrong + 1
+        }
+        satellite.statement.if (up.string != "(-infinity)")
+        {
+            wrong = wrong + 1
+        }
+        satellite.statement.if (held.string != "759")
+        {
+            wrong = wrong + 1
+        }
+
+        // BACK: the same 50 undone, last first, each spelled another way
+        x = x / 6 + x % 6 * far
+        x = x - 2 ^ 90
+        satellite.statement.if (x < -up)
+        {
+            x = x - 8
+        }
+        satellite.statement.else
+        {
+            x = x + 9
+        }
+        x = x / 1000003 + x % 1000003 * far
+        x = (x + 9) / 10 + (x + 9) % 10 * far
+        x = x + 10 ^ 25
+        satellite.statement.if (-satellite.infinity() == up)
+        {
+            x = x / 17 + x % 17 * far
+        }
+        satellite.statement.else
+        {
+            x = x / 19 + x % 19 * far
+        }
+        x = x - 547311173
+        x = x / -1 + x % -1 * far
+        x = x.string.reverse().number + (x % 10 - 8) * far
+        x = (x - 3) / 10 + (x - 3) % 10 * far
+        satellite.statement.if (x < satellite.infinity())
+        {
+            x = x - 5
+        }
+        satellite.statement.else
+        {
+            x = x + 6
+        }
+        x = x + -77
+        satellite.statement.if (-547311173 >= up)
+        {
+            x = x + 1
+        }
+        satellite.statement.else
+        {
+            x = x - 2
+        }
+        x = x / 3 ^ 40 + x % 3 ^ 40 * far
+        x = x + 987654321
+        satellite.statement.if (up < x)
+        {
+            x = x - 2 ^ 100
+        }
+        satellite.statement.else
+        {
+            x = x + 2 ^ 100
+        }
+        x = x * 1000
+        x = x + held
+        held = held - x % 1000
+        x = x / -3 + x % -3 * far
+        x = x - -12345
+        satellite.statement.if (547311173 <= up)
+        {
+            x = x / 11 + x % 11 * far
+        }
+        satellite.statement.else
+        {
+            x = x / 13 + x % 13 * far
+        }
+        x = x + 10 ^ 40
+        x = - x
+        satellite.statement.if (b100000100111110100111001000101 > -up)
+        {
+            x = x + 547311173
+        }
+        satellite.statement.else
+        {
+            x = x - 547311173
+        }
+        held = held + x + 7
+        x = up
+        satellite.statement.if (up != x)
+        {
+            held = held - 31
+        }
+        satellite.statement.else
+        {
+            held = held + 31
+        }
+        satellite.statement.if (up >= x)
+        {
+            held = held + 2 ^ 70
+        }
+        satellite.statement.else
+        {
+            held = held - 2 ^ 70
+        }
+        x = -((x))
+        satellite.statement.if (up < x)
+        {
+            held = held / 5 + held % 5 * far
+        }
+        satellite.statement.else
+        {
+            held = held / 4 + held % 4 * far
+        }
+        up = -(-(-up))
+        satellite.statement.if (up == x)
+        {
+            held = held - 17
+        }
+        satellite.statement.else
+        {
+            held = held + 17
+        }
+        x = -(-(-x))
+        satellite.statement.if (x.string != "(-infinity)")
+        {
+            wrong = wrong + 1
+        }
+        x = held
+        held = held - x
+        x = x / 2 ^ 64 + x % 2 ^ 64 * far
+        satellite.statement.if (10 ^ 100 < up)
+        {
+            x = x - 1000
+        }
+        satellite.statement.else
+        {
+            x = x + 1000
+        }
+        up = (-up)
+        x = x - 123456789
+        satellite.statement.if (x > up)
+        {
+            x = x / 3 + x % 3 * far
+        }
+        satellite.statement.else
+        {
+            x = x / 2 + x % 2 * far
+        }
+        x = x - 10 ^ 30
+        x = x / 10 ^ 20 + x % 10 ^ 20 * far
+        x = x + 99
+        x = -1 * x
+        satellite.statement.if (up > x)
+        {
+            x = x - 4
+        }
+        satellite.statement.else
+        {
+            x = x + 5
+        }
+        up = -((up))
+        x = x / 7 + x % 7 * far
+        x = x - 1
+
+        // THE PASS ENDS WHERE IT BEGAN -- or the run stops at the first pass that does not, and says so
+        satellite.statement.if (x != start)
+        {
+            wrong = wrong + 1
+        }
+        satellite.statement.if (up != satellite.infinity())
+        {
+            wrong = wrong + 1
+        }
+        satellite.statement.if (held != 0)
+        {
+            wrong = wrong + 1
+        }
+        satellite.statement.if (up.string != "(infinity)")
+        {
+            wrong = wrong + 1
+        }
+        satellite.statement.if (held.string != "0")
+        {
+            wrong = wrong + 1
+        }
+        satellite.statement.if (wrong > 0)
+        {
+            satellite.statement.if (seen == "")
+            {
+                seen = "pass " + pass.string + ": wrong " + wrong.string + ", " + x.string + " " + up.string + " " + held.string
+            }
+            satellite.statement.break
+        }
+    }
+
+    // 547311173, x's own text -- or the first pass that went wrong, and what x, up and held were then
+    satellite.statement.if (seen == "")
+    {
+        seen = x.string
+    }
+    satellite.console.display(seen)
+    satellite.return(satellite)
+}

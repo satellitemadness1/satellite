@@ -1,0 +1,15 @@
+satellite.include(satellite)
+
+// THE SECOND SPELLINGS OF 2026-09-22 (words/aliases.tsv): hexadecimal for hex, bin
+// for binary, percent for percentage. Each declares the same type as the first
+// spelling, and each value displays as it was written.
+satellite.capsule satellite.main()
+{
+    satellite.variable.hexadecimal h = x1F
+    satellite.console.display(h)
+    satellite.variable.bin b = b1010
+    satellite.console.display(b)
+    satellite.variable.percent p = 50%
+    satellite.console.display(p)
+    satellite.return(satellite)
+}

@@ -1,0 +1,31 @@
+satellite.include(satellite)
+
+// A REFERENCE IS A COPY OF AN OBJECT THAT IS THERE: asked of a pointer whose object is gone, it
+// stops with S260 OBJECT_IS_GONE, machine code 76.
+
+satellite.spacesuit box()
+{
+    satellite.protected
+    {
+        satellite.variable.number value = 0
+    }
+    satellite.public
+    {
+        satellite.capsule call_take()
+        {
+            satellite.return(value)
+        }
+    }
+}
+
+satellite.capsule satellite.main()
+{
+    box a
+    box p = a.pointer()
+    box other
+    a = other
+    satellite.console.display(p.ok())
+    box r = p.reference()
+    satellite.console.display("THIS LINE MUST NOT RUN")
+    satellite.return(satellite)
+}

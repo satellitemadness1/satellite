@@ -1,0 +1,13 @@
+satellite.include(satellite)
+
+// full_numbers_43 -- satellite.test.full(), a program satl must REFUSE.
+// color: a transparency is 0 to 99, and 100 is refused.
+// It exits 27, and its report on stderr holds: a transparency is a whole number from 0
+// Nothing is printed on stdout.
+
+satellite.capsule satellite.main()
+{
+    satellite.variable.number passes = 1
+    satellite.variable.color c = x000000, 100
+    satellite.return(satellite)
+}

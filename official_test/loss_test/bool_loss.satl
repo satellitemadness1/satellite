@@ -1,0 +1,209 @@
+// bool_loss.satl -- A DATA-LOSS TEST FOR satellite.variable.bool, written 2026-10-06.
+//
+// THE AUTHOR'S STANDARD (2026-10-06): "for the loss testing, we will use the number 547311173 so we
+// have to start with that number, and end at that number, after say, 1,000,000 million operations...
+// That will be the loss test" -- "it's 'satellite' spelled as numbers, 5 looks like S, 4 looks like A,
+// 7 looks like T" -- "so we will use the number satellite, and the numbers 1 trillion and 1 million
+// for testing".
+//
+// A bool cannot hold 547311173, so this test holds its 30 bits: s29 ... s00 are the bits of
+// 547311173 = b100000100111110100111001000101, each one made from the number itself, and at the end
+// the number is put back together from the 30 bools. Each pass runs 100 DIFFERENT bool operations,
+// one a line: 50 forward, then the same 50 undone in reverse order, each undo spelled differently
+// from the line it undoes. Every line puts a function of OTHER bools into one bool with ! (not),
+// != (xor) or == (xnor), so every line undoes itself: not, xor, xnor, xor of two and three bools,
+// xor with satellite.bool.true and .false (the two identities among them), xor with a comparison of
+// numbers, and and/or/and-not of two or three bools through their .string texts ("truetrue",
+// "falsefalse", "false" < "true") -- && || .and() .or() .xor() .not() are not built yet.
+// After the forward half the 30 bits spell 490504512, 17 of the 30 bits changed.
+// 10000 passes x 100 operations = 1,000,000 operations.
+//
+// EVERY PASS IS CHECKED, not only the last: a line that undoes itself also undoes its own mistake
+// on the next pass, so a loss made on every pass would be back at 547311173 after an even number
+// of passes. Each pass therefore ends by comparing all 30 bools with where they began, and the run
+// stops at the first pass that did not come back.
+//
+// THE ANSWER IS ALWAYS 547311173 -- the number the 30 bools spell at the end. Anything else printed
+// is the first pass that did not come back, and the number the bools spelled then: pass 0: ...
+
+satellite.include(satellite)
+
+// the number 30 bools spell, the first one the top bit
+satellite.capsule spelled(satellite.container.list<satellite.variable.bool> bits)
+{
+    satellite.variable.number n = 0
+    satellite.statement.for(satellite.variable.number i = 1; i < 31; i + 1)
+    {
+        n = n * 2
+        satellite.statement.if (bits[i])
+        {
+            n = n + 1
+        }
+    }
+    satellite.return(n)
+}
+
+satellite.capsule satellite.main()
+{
+    satellite.variable.number start = 547311173
+
+    // THE 30 BITS OF 547311173, from the top: b100000100111110100111001000101
+    satellite.variable.bool s29 = (start / 536870912) % 2 == 1
+    satellite.variable.bool s28 = (start / 268435456) % 2 == 1
+    satellite.variable.bool s27 = (start / 134217728) % 2 == 1
+    satellite.variable.bool s26 = (start / 67108864) % 2 == 1
+    satellite.variable.bool s25 = (start / 33554432) % 2 == 1
+    satellite.variable.bool s24 = (start / 16777216) % 2 == 1
+    satellite.variable.bool s23 = (start / 8388608) % 2 == 1
+    satellite.variable.bool s22 = (start / 4194304) % 2 == 1
+    satellite.variable.bool s21 = (start / 2097152) % 2 == 1
+    satellite.variable.bool s20 = (start / 1048576) % 2 == 1
+    satellite.variable.bool s19 = (start / 524288) % 2 == 1
+    satellite.variable.bool s18 = (start / 262144) % 2 == 1
+    satellite.variable.bool s17 = (start / 131072) % 2 == 1
+    satellite.variable.bool s16 = (start / 65536) % 2 == 1
+    satellite.variable.bool s15 = (start / 32768) % 2 == 1
+    satellite.variable.bool s14 = (start / 16384) % 2 == 1
+    satellite.variable.bool s13 = (start / 8192) % 2 == 1
+    satellite.variable.bool s12 = (start / 4096) % 2 == 1
+    satellite.variable.bool s11 = (start / 2048) % 2 == 1
+    satellite.variable.bool s10 = (start / 1024) % 2 == 1
+    satellite.variable.bool s09 = (start / 512) % 2 == 1
+    satellite.variable.bool s08 = (start / 256) % 2 == 1
+    satellite.variable.bool s07 = (start / 128) % 2 == 1
+    satellite.variable.bool s06 = (start / 64) % 2 == 1
+    satellite.variable.bool s05 = (start / 32) % 2 == 1
+    satellite.variable.bool s04 = (start / 16) % 2 == 1
+    satellite.variable.bool s03 = (start / 8) % 2 == 1
+    satellite.variable.bool s02 = (start / 4) % 2 == 1
+    satellite.variable.bool s01 = (start / 2) % 2 == 1
+    satellite.variable.bool s00 = (start / 1) % 2 == 1
+
+    satellite.container.list<satellite.variable.bool> begun = {s29, s28, s27, s26, s25, s24, s23, s22, s21, s20, s19, s18, s17, s16, s15, s14, s13, s12, s11, s10, s09, s08, s07, s06, s05, s04, s03, s02, s01, s00}
+    satellite.variable.string seen = ""
+
+    satellite.statement.for(satellite.variable.number pass = 0; pass < 10000; pass + 1)
+    {
+        // FORWARD: 50 operations
+        s00 = !s00
+        s01 = s01 != s29
+        s02 = s02 == s28
+        s03 = s03 != (s29.string + s23.string == "truetrue")
+        s04 = s04 != (s05.string + s06.string != "falsefalse")
+        s05 = s05 != s20 != s19
+        s06 = s06 != (s07.string < s18.string)
+        s07 = s07 != (s17 == s16)
+        s08 = !s08
+        s09 = s09 != s14
+        s10 = s10 != (s11.string + s09.string + s02.string == "truetruetrue")
+        s11 = s11 == s12
+        s12 = s12 != (s13.string + s14.string == "truetrue")
+        s13 = s13 != (s27.string + s26.string != "falsefalse")
+        s14 = s14 != s00
+        s15 = s15 == satellite.bool.true
+        s16 = s16 != s01 != s03
+        s17 = s17 != (s04.string < s10.string)
+        s18 = s18 != (s25 == s24)
+        s19 = !s19
+        s20 = s20 != s21
+        s21 = s21 == s22
+        s22 = s22 != (s20.string + s19.string == "truetrue")
+        s23 = s23 != (s08.string + s07.string != "falsefalse")
+        s24 = s24 != s29
+        s25 = s25 != (s06.string + s05.string + s04.string == "truetruetrue")
+        s26 = s26 == s15
+        s27 = s27 != (s28.string < s29.string)
+        s28 = !s28
+        s29 = s29 != s10
+        s00 = s00 != (s29.string + s28.string == "truetrue")
+        s01 = s01 != (s02.string + s03.string != "falsefalse")
+        s02 = s02 != s12 != s13
+        s03 = s03 != (s21 == s20)
+        s04 = s04 == s09
+        s05 = s05 != (s19.string < s18.string)
+        s06 = s06 != s27
+        s07 = !s07
+        s08 = s08 != (s01.string + s00.string == "truetrue")
+        s09 = s09 != satellite.bool.false
+        s10 = s10 != (s26.string + s25.string != "falsefalse")
+        s11 = s11 != (s24.string + s23.string + s22.string == "truetruetrue")
+        s12 = s12 != s11
+        s13 = s13 == s14
+        s14 = s14 != (s15.string < s16.string)
+        s15 = s15 != (s29 == s01)
+        s16 = s16 != s17 != s18 != s19
+        s17 = !s17
+        s18 = s18 != (547311173 > 0)
+        s19 = s19 != (s20.string + s21.string == "truetrue")
+
+        // BACK: the same 50 undone, last first, each spelled another way
+        s19 = (s21.string + s20.string != "truetrue") == s19
+        s18 = s18 == (547311173 < 0)
+        s17 = s17 != satellite.bool.true
+        s16 = s16 != s19 != s18 != s17
+        s15 = s15 == (s29 != s01)
+        s14 = s14 == (s15.string >= s16.string)
+        s13 = s13 != !s14
+        s12 = s12 == !s11
+        s11 = s11 == (s22.string + s23.string + s24.string != "truetruetrue")
+        s10 = s10 == (s25.string + s26.string == "falsefalse")
+        s09 = satellite.bool.true == s09
+        s08 = s08 == (s01.string + s00.string != "truetrue")
+        s07 = s07 == satellite.bool.false
+        s06 = !(s06 == s27)
+        s05 = (s18.string > s19.string) != s05
+        s04 = !(s04 != s09)
+        s03 = s03 != (s21.string == s20.string)
+        s02 = s02 == s12 == s13
+        s01 = (s02.string + s03.string == "falsefalse") == s01
+        s00 = (s28.string + s29.string != "truetrue") == s00
+        s29 = !s29 == s10
+        s28 = satellite.bool.false == s28
+        s27 = s27 == (s28.string >= s29.string)
+        s26 = !s26 != s15
+        s25 = s25 == (s04.string + s05.string + s06.string != "truetruetrue")
+        s24 = s29 != s24
+        s23 = s23 == (s07.string + s08.string == "falsefalse")
+        s22 = s22 == (s20.string + s19.string != "truetrue")
+        s21 = s22 == s21
+        s20 = !s21 == s20
+        s19 = (6 < 5) == s19
+        s18 = s18 == (s25 != s24)
+        s17 = (s10.string > s04.string) != s17
+        s16 = s16 != s03 != s01
+        s15 = s15 != (547311173 < 0)
+        s14 = s14 == !s00
+        s13 = (s27.string + s26.string == "falsefalse") == s13
+        s12 = (s14.string + s13.string != "truetrue") == s12
+        s11 = s11 != !s12
+        s10 = s10 == (s02.string + s09.string + s11.string != "truetruetrue")
+        s09 = !(s09 == s14)
+        s08 = ! s08
+        s07 = s07 != (s17.string == s16.string)
+        s06 = s06 == (s07.string >= s18.string)
+        s05 = s05 == s20 == s19
+        s04 = s04 == (s06.string + s05.string == "falsefalse")
+        s03 = s03 == (s29.string + s23.string != "truetrue")
+        s02 = !(s02 != s28)
+        s01 = !s01 == s29
+        s00 = s00 != satellite.bool.true
+
+        // THE PASS ENDS WHERE IT BEGAN -- or the run stops at the first pass that does not, and says so
+        satellite.statement.if ({s29, s28, s27, s26, s25, s24, s23, s22, s21, s20, s19, s18, s17, s16, s15, s14, s13, s12, s11, s10, s09, s08, s07, s06, s05, s04, s03, s02, s01, s00} != begun)
+        {
+            satellite.statement.if (seen == "")
+            {
+                seen = "pass " + pass.string + ": " + spelled({s29, s28, s27, s26, s25, s24, s23, s22, s21, s20, s19, s18, s17, s16, s15, s14, s13, s12, s11, s10, s09, s08, s07, s06, s05, s04, s03, s02, s01, s00}).string
+            }
+            satellite.statement.break
+        }
+    }
+
+    // 547311173, PUT BACK TOGETHER FROM THE 30 BOOLS -- or the first pass that did not come back
+    satellite.statement.if (seen == "")
+    {
+        seen = spelled({s29, s28, s27, s26, s25, s24, s23, s22, s21, s20, s19, s18, s17, s16, s15, s14, s13, s12, s11, s10, s09, s08, s07, s06, s05, s04, s03, s02, s01, s00}).string
+    }
+    satellite.console.display(seen)
+    satellite.return(satellite)
+}

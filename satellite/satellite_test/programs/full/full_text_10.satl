@@ -1,0 +1,12 @@
+satellite.include(satellite)
+
+// full_text_10 -- REFUSED: string a negative position is refused (S410).
+// satellite.help(satellite.variable.string). Nothing reaches stdout; satl exits with the refusal's code.
+
+satellite.capsule satellite.main()
+{
+    satellite.variable.number passes = 1
+    satellite.variable.number k = -1
+    satellite.console.display("hello".substring(k, 2))
+    satellite.return(satellite)
+}

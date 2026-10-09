@@ -1,0 +1,9 @@
+// Four arguments: no shape takes them, said before anything runs (13).
+satellite.include(satellite)
+
+satellite.capsule satellite.main()
+{
+    satellite.console.display("never printed")
+    satellite.console.display(satellite.random.fast(1, 2, 3, 4))
+    satellite.return(satellite)
+}

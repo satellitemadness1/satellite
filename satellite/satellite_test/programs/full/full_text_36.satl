@@ -1,0 +1,12 @@
+satellite.include(satellite)
+
+// full_text_36 -- REFUSED: list .sum adds numbers, and points a list of strings at .join.
+// satellite.help(satellite.container.list). Nothing reaches stdout; satl exits with the refusal's code.
+
+satellite.capsule satellite.main()
+{
+    satellite.variable.number passes = 1
+    satellite.container.list a = {"x", "y"}
+    satellite.console.display(a.sum)
+    satellite.return(satellite)
+}

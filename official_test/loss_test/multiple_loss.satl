@@ -1,0 +1,216 @@
+// multiple_loss.satl -- the loss test for satellite.container.multiple (satellite 004, build 0039)
+//
+// The author's standard, 2026-10-06: "for the loss testing, we will use the number 547311173 so we
+// have to start with that number, and end at that number, after say, 1,000,000 million operations...
+// That will be the loss test" -- 547311173 is "satellite" spelled as numbers: 5 looks like S, 4 like A,
+// 7 like T. And: "so we will use the number satellite, and the numbers 1 trillion and 1 million for
+// testing" -- 1 million operations for a loss test: 100 different operations, run 10,000 times.
+//
+// x is a satellite.container.multiple of a number, a float, a string, a list and a map, and it starts
+// as the number 547311173. Each pass runs 100 different operations on it: 1-50 carry it far from where
+// it began and through every one of its five types -- the number past two 64-bit words with its digits
+// turned round, into text and back, a float with places after the point, that float as text with its
+// minus and its point spelled out, split into a list of its characters, that list inside a map beside
+// a copy changed on its own, the map's values a list inside a list inside a map inside a list, written
+// five levels down -- and 51-100 undo them, the last one first, each by a different operation again,
+// switching it back through the same types.
+// 10,000 passes = 1,000,000 operations.
+// A multiple holding a string refuses .upper() .lower() .replace() .split() and .substring() today
+// (S210, not built for a multiple yet), so those five go through x.string -- the same text, unchanged.
+//
+// FIXED 2026-10-06, after a fresh reviewer injected losses that still ended at 547311173:
+// - EVERY WHOLE-NUMBER / KEEPS ITS REMAINDER (57, 70, 92, 96, 97, 99): a / D is written
+//   a / D + a % D * far, far = 10 ^ 1000. / cuts toward zero, so x + 1 after 2 came back 547311173
+//   from / 547311173, and 70 halved 1094622346 + 1 to 547311173 as well. The remainder is 0 when
+//   nothing was lost; any other remainder, times far, lands out of reach of everything after it.
+// - 89'S .substring DROPS ITS LAST CHARACTER WHATEVER IT IS, so x - 3 after 13 lost the 3 there and
+//   came back 547311173: the text it cuts is checked first, to end in the 0 that 12 wrote.
+// - WHAT AN OPERATION CANNOT SEE IS CHECKED BEFORE IT RUNS, against the exact value it must be given:
+//   lost(held, must) answers 1 when held is not exactly that, and wrong counts them. Each check line
+//   names the operation it guards:
+//     values an undo drops unread -- the 547311173 49 put beside the map (52), the copy 41 made
+//     (59, 60), the count 39 filed (62), "string" and "number" (63, 64: the number came back from 57
+//     and was never compared), the map's keys before 65 drops the map (so a remove that did nothing
+//     is seen), the 5 filed under "s" (68);
+//     .search, which answers the first item whose TEXT CONTAINS what it is given (container_calls.cpp),
+//     so 1547311173 -- or 547311173 with a remainder times far in front -- would pass: before 73;
+//     a text minus, replace or lower, which answer the text unchanged when what they undo never came
+//     -- before 71, 75 and 77 -- and upper (24), which cannot see a letter that changed case;
+//     a number's .reverse(), which drops the zeros it ends with, so x * 10 would come back -- 7, 94;
+//     a number or a float read out of text, which cannot see a 0 too many in front or after the point
+//     -- 13, 80, 89-90;
+//     a float step that rounds a loss in its last places away -- / 1024 (15), * 0.125 (17), / 4
+//     (40, 51), / 3 (83) -- and 21, whose text keeps 32 places of it.
+// - EVERY PASS IS CHECKED, not only the last: a pass must end at the NUMBER 547311173, or the run stops
+//   there -- a minus undone by itself (10, 91) on the next pass would be back after an even number.
+// The answer is always 547311173: it prints 547311173 when every check held and every pass ended with x
+// exactly the NUMBER 547311173 again -- {x} == {start} compares inside lists, which is strict, so the
+// text "547311173" or the float 547311173.0 do not pass -- and otherwise one line: {"pass", the pass
+// that went wrong, "wrong", how many checks failed in it, x at its end}, so a wrong x shows its type:
+// "..." for a string, .0 for a float.
+satellite.include(satellite)
+
+// lost(held, must): 1 when held is not exactly must, 0 when it is. {held} == {must} compares inside
+// lists, which is strict, and answers false -- not a refusal -- when a loss changed held's type.
+satellite.capsule lost(satellite.container.multiple held, satellite.container.multiple must)
+{
+    satellite.statement.if ({held} == {must})
+    {
+        satellite.return(0)
+    }
+    satellite.return(1)
+}
+
+satellite.capsule satellite.main()
+{
+    satellite.container.multiple<satellite.variable.number, satellite.variable.float, satellite.variable.string, satellite.container.list, satellite.container.map> x = 547311173
+    satellite.variable.number start = 547311173
+    satellite.variable.number far = 10 ^ 1000                                                   // where a division puts a remainder: out of reach
+    satellite.variable.number wrong = 0                                                         // how many checks failed
+    satellite.variable.number failed = 0                                                        // the pass they failed in
+    satellite.statement.for(satellite.variable.number pass = 0; pass < 10000; pass + 1)
+    {
+        // 1-50: away from where it began
+        x = x + 452688827                                                                       // 1: 547311173 -> 1000000000
+        x = x * 547311173                                                                       // 2: -> 547311173000000000
+        x = x - 1                                                                               // 3: -> 547311172999999999
+        x = x * 2 ^ 64                                                                          // 4: times 18446744073709551616: past two 64-bit words
+        x = x * 10                                                                              // 5
+        x = x + 7                                                                               // 6: it ends in 7, so its digits turn round and back with no 0 lost
+        wrong = wrong + lost(x, 100961091370127731378102614942904483847)                        // check: .reverse() drops the zeros a number ends with, so x * 10 here would come back
+        x = x.reverse()                                                                         // 7: its digits turned round
+        x = x.add(547311173)                                                                    // 8: + 547311173, with .add
+        x = x + x                                                                               // 9: doubled
+        x = 0 - x                                                                               // 10: below zero
+        x = x.to_string                                                                         // 11: a STRING now: its digits as text
+        x = x + "0"                                                                             // 12: a 0 written on the end
+        wrong = wrong + lost(x, "-14967688184988324037462754421474749603480")                   // check: 13 reads a number out of text, which cannot see a 0 too many in front or after a point
+        x = 0 + x                                                                               // 13: a NUMBER again, ten times larger: a number plus text that spells one
+        x = x * 1.0                                                                             // 14: a FLOAT now
+        wrong = wrong + lost(x, -14967688184988324037462754421474749603480.0)                   // check: / 1024 rounds a loss in the 128th place away
+        x = x / 1024                                                                            // 15
+        x = x + 0.5                                                                             // 16
+        wrong = wrong + lost(x, -14616882993152660192834721114721435159.1484375)                // check: * 0.125 rounds one away too
+        x = x * 0.125                                                                           // 17
+        x = x * 3                                                                               // 18
+        x = x + 0.0000000001                                                                    // 19
+        x = x - 547311173.0625                                                                  // 20
+        wrong = wrong + lost(x, -5481331122432247572313020418567849357.7431640624)              // check: 21's text keeps 32 places, a loss past them would not reach it
+        x = "" + x                                                                              // 21: a STRING: the float as text
+        x = x + "satellite"                                                                     // 22
+        x = x.string.replace("-", "minus")                                                      // 23: the minus spelled out
+        wrong = wrong + lost(x, "minus5481331122432247572313020418567849357.7431640624satellite") // check: 24 cannot see a letter that changed case
+        x = x.string.upper()                                                                    // 24
+        x = x.string.replace(".", "point")                                                      // 25: the point spelled out
+        x = x.add("!")                                                                          // 26: + "!", with .add
+        x = x.string.split("")                                                                  // 27: a LIST of its characters
+        x.append(547311173)                                                                     // 28: a number in the list
+        x.insert(1, 547311173.0)                                                                // 29: a float at its front
+        x[2] = x[2] + x[2].lower()                                                              // 30: "M" -> "Mm"
+        x[x.size] = x[x.size] * 2                                                               // 31: the number in the list doubled
+        x.append({"satellite": 547311173})                                                      // 32: a map in the list
+        x[x.size]["s"] = 5                                                                      // 33: that grows
+        x.insert(x.size, "satellite")                                                           // 34: a word before it
+        x.insert(2, x.size)                                                                     // 35: how many items there are, as item 2
+        x = {"satellite": x}                                                                    // 36: the list inside a MAP: a map now
+        x["number"] = 547311173                                                                 // 37
+        x["string"] = "547311173"                                                               // 38
+        x[547311173] = x["satellite"].size                                                      // 39: how many items the list holds, under a number key
+        wrong = wrong + lost(x["satellite"][1], 547311173.0)                                    // check: / 4 rounds a loss in the 128th place away
+        x["satellite"][1] = x["satellite"][1] / 4                                               // 40: the float in the list in the map, quartered
+        x["copy"] = x["satellite"]                                                              // 41: a copy of the list
+        x["copy"][1] = 0                                                                        // 42: only the copy changes
+        x["string"] = x["string"].reverse()                                                     // 43
+        x["number"] = x["number"] * x[547311173]                                                // 44: times that count
+        x = x.values                                                                            // 45: the map's values: a LIST again
+        x = {x}                                                                                 // 46: that list inside a list
+        x = {"outer": x}                                                                        // 47: inside a map
+        x["outer"][1][2] = x["outer"][1][2] + 1                                                 // 48: three levels down: the number
+        x = {547311173, x}                                                                      // 49: 547311173 and the map, a list
+        x[2]["outer"][1][1][1] = x[2]["outer"][1][1][1] * 4                                     // 50: five levels down: the float, whole again
+        // 51-100: back again, each undoing one of 1-50, the last one first
+        wrong = wrong + lost(x[2]["outer"][1][1][1], 547311173.0)                               // check: / 4 rounds a loss in the 128th place away
+        x[2]["outer"][1][1][1] = x[2]["outer"][1][1][1] / 4                                     // 51: undoes 50
+        wrong = wrong + lost(x[1], 547311173)                                                   // check: the 547311173 49 put beside the map, before 52 drops it unread
+        x = x.last                                                                              // 52: undoes 49, the map back out of the list
+        x["outer"][1][2] = x["outer"][1][2] - 1                                                 // 53: undoes 48
+        x = x["outer"]                                                                          // 54: undoes 47
+        x = x.first                                                                             // 55: undoes 46
+        x = {"satellite": x[1], "number": x[2], "string": x[3], 547311173: x[4], "copy": x[5]}  // 56: undoes 45, the MAP rebuilt from the values
+        x["number"] = x["number"] / x["satellite"].size + x["number"] % x["satellite"].size * far // 57: undoes 44, divided by the list's size, read again, its remainder kept
+        x["string"] = x["string"].split("").reverse().join("")                                  // 58: undoes 43
+        wrong = wrong + lost(x["copy"][1], 0)                                                   // check: the 0 42 wrote, before 59 writes over it
+        x["copy"][1] = x["satellite"][1]                                                        // 59: undoes 42, from the list the copy was made from
+        wrong = wrong + lost(x["copy"], x["satellite"])                                         // check: the copy 41 made, before 60 drops it unread
+        x.remove("copy")                                                                        // 60: undoes 41
+        x["satellite"][1] = x["satellite"][1] * 4                                               // 61: undoes 40
+        wrong = wrong + lost(x[547311173], x["satellite"].size)                                 // check: the count 39 filed, before 62 drops it unread
+        x.remove(547311173)                                                                     // 62: undoes 39
+        wrong = wrong + lost(x["string"], "547311173")                                          // check: "string", before 63 drops it unread
+        x.remove("string")                                                                      // 63: undoes 38
+        wrong = wrong + lost(x["number"], 547311173)                                            // check: "number", before 64 drops it unread
+        x.remove("number")                                                                      // 64: undoes 37
+        wrong = wrong + lost(x.keys, {"satellite"})                                             // check: 60-64 took out the rest, before 65 drops the map whole
+        x = x["satellite"]                                                                      // 65: undoes 36, a LIST again
+        x.remove_at(x.index_of(x.size - 1))                                                     // 66: undoes 35, the item that holds the size the list had
+        x.remove("satellite")                                                                   // 67: undoes 34
+        wrong = wrong + lost(x[x.size]["s"], 5)                                                 // check: the 5 33 filed, before 68 drops it unread
+        x[x.size].remove("s")                                                                   // 68: undoes 33
+        x.remove({"satellite": 547311173})                                                      // 69: undoes 32
+        x[x.size] = x[x.size] / 2 + x[x.size] % 2 * far                                         // 70: undoes 31, its remainder kept
+        wrong = wrong + lost(x[2], "Mm")                                                        // check: 71 answers the text unchanged when its "m" never came
+        x[2] = x[2] - "m"                                                                       // 71: undoes 30
+        x.remove(547311173.0)                                                                   // 72: undoes 29
+        wrong = wrong + lost(x[x.search(547311173)], 547311173)                                 // check: search finds an item whose text CONTAINS 547311173 -- it must BE it
+        x.remove_at(x.search(547311173))                                                        // 73: undoes 28
+        x = x.join("")                                                                          // 74: undoes 27, a STRING again
+        wrong = wrong + lost(x, "MINUS5481331122432247572313020418567849357point7431640624SATELLITE!") // check: 75-79 answer the text unchanged when what they undo never came
+        x = x - "!"                                                                             // 75: undoes 26
+        x = x.string.replace("point", ".")                                                      // 76: undoes 25
+        wrong = wrong + lost(x, "MINUS5481331122432247572313020418567849357.7431640624SATELLITE") // check: 77 cannot see a capital letter that went missing
+        x = x.string.lower()                                                                    // 77: undoes 24
+        x = x.string.replace("minus", "-")                                                      // 78: undoes 23
+        x = x - "satellite"                                                                     // 79: undoes 22
+        wrong = wrong + lost(x, "-5481331122432247572313020418567849357.7431640624")            // check: 80 reads a float out of the text, which cannot see a 0 too many in front or at its end
+        x = 0.0 + x                                                                             // 80: undoes 21, a FLOAT again: a float plus text that spells one
+        x = x + 547311173.0625                                                                  // 81: undoes 20
+        x = x - 0.0000000001                                                                    // 82: undoes 19
+        wrong = wrong + lost(x, -5481331122432247572313020418020538184.6806640625)              // check: / 3 rounds a loss in the 128th place away
+        x = x / 3                                                                               // 83: undoes 18
+        x = x / 0.125                                                                           // 84: undoes 17
+        x = x - 0.5                                                                             // 85: undoes 16
+        x = x * 1024                                                                            // 86: undoes 15
+        x = x.number                                                                            // 87: undoes 14, a NUMBER again
+        x = x.str                                                                               // 88: undoes 13, a STRING again
+        wrong = wrong + lost(x, "-14967688184988324037462754421474749603480")                   // check: 89 drops its last character whatever it is -- the 0 12 wrote -- so the text must be exactly this
+        x = x.string.substring(1, x.size - 1)                                                   // 89: undoes 12, the 0 taken off the end
+        wrong = wrong + lost(x, "-1496768818498832403746275442147474960348")                    // check: 90 reads a number out of the text the same way
+        x = x.to_number                                                                         // 90: undoes 11, a NUMBER again
+        x = x * -1                                                                              // 91: undoes 10
+        x = x / 2 + x % 2 * far                                                                 // 92: undoes 9, its remainder kept
+        x = x - 547311173                                                                       // 93: undoes 8
+        wrong = wrong + lost(x, 748384409249416201873137721073190169001)                        // check: 94's .reverse() drops the zeros a number ends with
+        x = x.string.reverse().number                                                           // 94: undoes 7
+        x = x - 7                                                                               // 95: undoes 6
+        x = x / 10 + x % 10 * far                                                               // 96: undoes 5, its remainder kept
+        x = x / 2 ^ 64 + x % 2 ^ 64 * far                                                       // 97: undoes 4, its remainder kept
+        x = x + 1                                                                               // 98: undoes 3
+        x = x / 547311173 + x % 547311173 * far                                                 // 99: undoes 2, its remainder kept
+        x = x - 452688827                                                                       // 100: undoes 1
+        wrong = wrong + lost(x, start)                                                          // check: every pass ends where it began
+        satellite.statement.if (wrong > 0)
+        {
+            failed = pass
+            satellite.statement.break
+        }
+    }
+    satellite.statement.if (wrong == 0)
+    {
+        satellite.console.display(547311173)
+    }
+    satellite.statement.else
+    {
+        satellite.console.display({"pass", failed, "wrong", wrong, x})
+    }
+    satellite.return(satellite)
+}

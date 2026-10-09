@@ -1,0 +1,15 @@
+satellite.include(satellite)
+
+// satellite.delete(name) ON A FILE THIS NAME ALONE HOLDS: saved and closed at the delete, as a body's
+// end saves and closes one -- so the file opened again after the delete already holds the line.
+// check.sh runs this in a scratch folder, so deleted_notes.se is made there and nowhere else.
+satellite.capsule satellite.main()
+{
+    satellite.variable.file notes = satellite.file.new("deleted_notes.se", "text")
+    notes.append("written before the delete")
+    satellite.delete(notes)
+    satellite.variable.file again = satellite.file.open("deleted_notes.se")
+    satellite.console.display(again.size)
+    satellite.console.display(again[1])
+    satellite.return(satellite)
+}

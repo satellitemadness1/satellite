@@ -1,0 +1,183 @@
+# satellite.test programs -- name<TAB>kind<TAB>what<TAB>exit_code<TAB>phrase<TAB>twin
+# kind: loss | speed | answers | refused. make_test_programs.py builds them into satl.
+# An answers program has its right run beside it as <name>.out, a line a check; a refused one
+# names the code satl stops it with and words its report must hold; a speed one its C++ twin.
+# Written for satellite.test by seven writers, 2026-10-06 (SCRATCH.md/SATELLITE_TEST.md).
+full/full_structure_1.satl	answers	include, capsules (parameters, returns, recursion), main, return, every statement, comments			
+full/full_structure_2.satl	answers	satellite.legal, satellite.delete, satellite.access and satellite.library			
+full/full_structure_3.satl	answers	main's arguments variable, its rows, a file's own settings, and satellite.info			
+full/full_structure_4.satl	answers	the arguments variable's older spelling, and satellite.legal switched off			
+full/full_structure_5.satl	answers	satellite.return on a thread, and satellite.return(satellite) ending the whole program			
+full/full_structure_6.satl	refused	satellite.include: a file without satellite.include(satellite) is a spaceship, not a program	10	S101: MISSING_INCLUDE	
+full/full_structure_7.satl	refused	satellite.main: main must end with satellite.return(satellite)	12	S103: FILE_HAS_NO_RETURN	
+full/full_structure_8.satl	refused	satellite.main: main written without satellite.capsule in front of it	11	satellite.main is a capsule, so it is declared like one	
+full/full_structure_9.satl	refused	satellite.main: no globals -- a line outside every capsule	13	this line is outside every capsule	
+full/full_structure_10.satl	refused	satellite.capsule: a name declared twice in one file	26	twice is declared twice in this file	
+full/full_structure_11.satl	refused	satellite.capsule: a capsule declared inside another capsule	13	satellite.capsule goes at the top of a file or inside a	
+full/full_structure_12.satl	refused	satellite.capsule: a call given the wrong number of arguments	13	twice takes 1 argument, and was given 2	
+full/full_structure_13.satl	refused	satellite.capsule: an argument of the wrong type, refused when the call is reached	27	twice's n was declared satellite.variable.number, and it holds a	
+full/full_structure_14.satl	refused	satellite.capsule: a capsule cannot see the caller's variables -- no globals	25	secret has no satellite.variable line declaring it	
+full/full_structure_15.satl	refused	satellite.return: an answer used from a capsule that can never hand one back	53	S240: CAPSULE_GAVE_NO_ANSWER	
+full/full_structure_16.satl	refused	satellite.return: an answer used, from a capsule that ended without handing one back the way it went	53	maybe's answer is used, and it ended without handing one back	
+full/full_structure_17.satl	refused	satellite.legal: a name used after the } of its block	25	x is not legal here	
+full/full_structure_18.satl	refused	satellite.legal: arguments.access(false) inside a capsule does not change the rule for that run	25	x is not legal here	
+full/full_structure_19.satl	refused	satellite.legal: nothing else may be named satellite	26	satellite is the first legal object of every	
+full/full_structure_20.satl	refused	satellite.delete: a name used after its delete	25	big was deleted by satellite.delete(big) on line	
+full/full_structure_21.satl	refused	satellite.delete: it stands in the block that declared the name	13	stands in a different block	
+full/full_structure_22.satl	refused	satellite.access: the name must be one the line can see	25	nobody has no satellite.variable line declaring	
+full/full_structure_23.satl	refused	satellite.access: its switch takes true or false and nothing else	34	S310: SETTING_IS_NOT_A_FLAG	
+full/full_structure_24.satl	refused	satellite.library: a value is never changed in a capsule	54	S250: LIBRARY_VALUE_IS_FIXED	
+full/full_structure_25.satl	refused	arguments: a name that is not a row is refused where it is read	25	args.usernme is not one of the arguments	
+full/full_structure_26.satl	refused	arguments: a fact satl holds is read and never written	35	args.memory.total is a row satl holds	
+full/full_structure_27.satl	refused	arguments: arguments.missing is the file's switch, never a line in a capsule	35	args.missing is the program's switch	
+full/full_structure_28.satl	refused	satellite.statement.else with no satellite.statement.if before it	13	satellite.statement.else with no	
+full/full_structure_29.satl	refused	satellite.statement.break outside every loop	13	satellite.statement.break leaves the nearest	
+full/full_structure_30.satl	refused	satellite.statement.if given a number, not a true or false	27	satellite.statement.if was given a number and needs a true or false	
+full/full_numbers_1.satl	answers	satellite.variable.number: every operator, method and conversion			
+full/full_numbers_2.satl	answers	satellite.variable.float: 128 places held, 32 shown, decimal all the way down			
+full/full_numbers_3.satl	answers	satellite.variable.infinity and satellite.infinity(): built, shown and put in order			
+full/full_numbers_4.satl	answers	satellite.variable.binary: its width, its sign and its conversions			
+full/full_numbers_5.satl	answers	satellite.variable.hex, and binary and hex together			
+full/full_numbers_6.satl	answers	satellite.variable.fraction: as written, compared by worth			
+full/full_numbers_7.satl	answers	satellite.variable.percentage: 32 places exactly			
+full/full_numbers_8.satl	answers	satellite.variable.color: six hex digits and a transparency			
+full/full_numbers_9.satl	answers	satellite.random, seeded: every draw keeps its rules			
+full/full_numbers_10.satl	refused	number: 1 / 0 is refused (S401)	22	the / of 1 and 0 is a division by zero	
+full/full_numbers_11.satl	refused	number: a touching sign, 4+3, is refused (S110)	13	sign, and this + has none	
+full/full_numbers_12.satl	refused	number: n += 1 is not built yet (S210)	14	n += ... is not built yet -- write n = n + ...	
+full/full_numbers_13.satl	refused	number: n.max(3) has no library wired to it yet (M17), so it is not built (S210)	14	n.max is not built for satellite.variable.number	
+full/full_numbers_14.satl	refused	number: a number name given 12.34 holds a float	27	holds a float	
+full/full_numbers_15.satl	refused	float: 1.0 / 0 is a division by zero (S401)	22	the / of 1.0 and 0 is a division by zero	
+full/full_numbers_16.satl	refused	float: 12.5.number is refused, satellite rounds nothing on its own (S402)	24	12.5 is not a whole number, so there is no number	
+full/full_numbers_17.satl	refused	float: ^ takes a whole-number power only, 2.0 ^ 0.5 (S210)	14	is a power that is not a whole number	
+full/full_numbers_18.satl	refused	infinity: + is not built yet (INF-3)	14	built yet (SATELLITE_INFINITY.md, INF-3)	
+full/full_numbers_19.satl	refused	infinity: a number name refuses an infinity	27	satellite.variable.number, and it holds an infinity	
+full/full_numbers_20.satl	refused	infinity: .number is refused, an infinity is larger than every number	27	there is no number to make of it	
+full/full_numbers_21.satl	refused	infinity: satellite.infinity(x) is not built yet (INF-5)	14	is not built yet (SATELLITE_INFINITY.md INF-5)	
+full/full_numbers_22.satl	refused	binary: the b is mandatory, a binary name given 1010	27	ERROR: expected b1010	
+full/full_numbers_23.satl	refused	binary: b12 is not binary	27	ERROR: b12 is not binary	
+full/full_numbers_24.satl	refused	binary: a sum stored back in a binary name holds a number	27	satellite.variable.binary, and it holds a number	
+full/full_numbers_25.satl	refused	binary: & is not built yet, refused where it runs	13	& | << >> !! are undecided	
+full/full_numbers_26.satl	refused	binary and hex: b1100.and(b1010) is not built yet	13	no capsule named and	
+full/full_numbers_27.satl	refused	hex: the x is required, a hex name given 1F	27	ERROR: expected x1F	
+full/full_numbers_28.satl	refused	hex: x1G is not hex	27	ERROR: x1G is not hex	
+full/full_numbers_29.satl	refused	hex: a hex name holds only a hex, h = h + x01	27	a hex name holds only a hex	
+full/full_numbers_30.satl	refused	hex: a percentage meeting a hex is not built yet	14	a percentage meeting a hex is	
+full/full_numbers_31.satl	refused	fraction: a bottom number of 0 is refused	22	1/0: a fraction's bottom number cannot be 0	
+full/full_numbers_32.satl	refused	fraction: a fraction name given a spaced slash, 1 / 3	27	written with a touching slash: 1/3	
+full/full_numbers_33.satl	refused	fraction: fraction arithmetic is not built yet	14	the + of 1/3 and 1/3 is fraction arithmetic	
+full/full_numbers_34.satl	refused	fraction: .number is not built yet	14	f.number is not built for	
+full/full_numbers_35.satl	refused	percentage: the % is required, a percentage name given 50	27	ERROR: expected 50%	
+full/full_numbers_36.satl	refused	percentage: 50% + 5 is refused, the number goes first	27	number goes first -- 5 + 50%	
+full/full_numbers_37.satl	refused	percentage: 3 * 50% is 1.5, which a whole number cannot hold (S402)	24	3 * 50% is not a whole number	
+full/full_numbers_38.satl	refused	percentage: a percentage compares only with a percentage, 50% == 50	27	only compares with a percentage	
+full/full_numbers_39.satl	refused	percentage: 50% / 50% is refused	27	/ was given a percentage and a percentage	
+full/full_numbers_40.satl	refused	percentage: a percentage name refuses a number, p = p * 2	27	p was declared satellite.variable.percentage, and it holds a number	
+full/full_numbers_41.satl	refused	color: five digits are refused, a color is exactly six	27	ERROR: 00ff0 is 5 hex digits	
+full/full_numbers_42.satl	refused	color: on a later line, digits that start with a number and hold a letter need their x	27	ERROR: write x00ff00	
+full/full_numbers_43.satl	refused	color: a transparency is 0 to 99, and 100 is refused	27	a transparency is a whole number from 0	
+full/full_numbers_44.satl	refused	color: two colors have no order	27	only == and != compare those	
+full/full_numbers_45.satl	refused	color: a color has no arithmetic	27	a color has no arithmetic	
+full/full_numbers_46.satl	refused	random: a bare satellite.random.ultra() draws nothing (S430)	71	satellite.random.ultra() draws nothing	
+full/full_numbers_47.satl	refused	random: min above max is refused before any spin (S432)	73	min 6 is above max 1	
+full/full_numbers_48.satl	refused	random: a step that misses max is refused, naming the last value it reaches (S434)	75	reaches 98 and then passes 100	
+full/full_numbers_49.satl	refused	random: a step below 1 is refused (S433)	74	satellite.random.fast(min, max, step) -- a step is 1 or more	
+full/full_numbers_50.satl	refused	random: a count of digits that is not a whole number, a string, is refused (S431)	72	satellite.random.fast(digits) takes whole numbers	
+full/full_numbers_51.satl	refused	random: a count of digits below 0 is refused (S431)	72	satellite.random.fast(digits) -- a count of digits is 0 or more	
+full/full_text_1.satl	answers	satellite.variable.string, part 1: join, compare, find, cut, reverse, case, escapes			
+full/full_text_2.satl	answers	satellite.variable.string, part 2: split, replace, trim, conversions, characters, colour			
+full/full_text_3.satl	answers	satellite.bool, and conversions between the types			
+full/full_text_4.satl	answers	satellite.container.list: every way to read, write and change one			
+full/full_text_5.satl	answers	satellite.container.map (and .index): keys in order, every method			
+full/full_text_6.satl	answers	satellite.container.multiple, containers inside containers, == and != on containers			
+full/full_text_7.satl	refused	string .find of text not there is refused (S420), not answered as -1	15	that string.find did not find it	
+full/full_text_8.satl	refused	string .number of 3.5 is refused (S120): it reads a whole number only	3	that text is not a whole number this can read	
+full/full_text_9.satl	refused	string .substring past the end is refused (S411)	16	there is no character 9	
+full/full_text_10.satl	refused	string a negative position is refused (S410)	19	was given -1, and characters count from 1	
+full/full_text_11.satl	refused	string a range that runs backwards is refused (S412)	17	starts after it ends	
+full/full_text_12.satl	refused	string a float written into a string name's brackets is refused before anything runs	27	takes a character's position -- a number,	
+full/full_text_13.satl	refused	string characters are read, never written: s[1] = "j" is refused (S301)	27	s is a string, and [ ] = ... changes an item of	
+full/full_text_14.satl	refused	string [ ] straight after a method's answer is not built: s.split(",")[2] is refused	13	[ ] is not built yet straight	
+full/full_text_15.satl	refused	string .replace of empty text is refused (S421)	18	S421: EMPTY_SEARCH_TEXT	
+full/full_text_16.satl	refused	string .append inside an expression has no name to change (S110)	13	that string.append changes a string, and this one has no name to	
+full/full_text_17.satl	refused	string s.trim.append(x) is refused: s.trim is a new string with no name	13	s.trim.append changes a string, and this one has no name to	
+full/full_text_18.satl	refused	string a backslash before any other character is refused before anything runs	13	is not an escape satellite knows	
+full/full_text_19.satl	refused	string a string that never closes is refused where it begins	13	a string that begins on this line is never closed	
+full/full_text_20.satl	refused	string a colour added to a string is refused (S301): write its .string	27	a color is not text	
+full/full_text_21.satl	refused	string a string name refuses a value that is not a string (machine code 27)	27	s was declared satellite.variable.string, and it holds a number	
+full/full_text_22.satl	refused	string satellite.variable.string(x) as a call is not built yet (S210)	14	satellite.variable.string has no library built	
+full/full_text_23.satl	refused	container satellite.container on its own is not a type (S110)	13	satellite.container c is a declaration	
+full/full_text_24.satl	refused	container satellite.container.arguments is numbered and not built (S110)	13	satellite.container.arguments c is a	
+full/full_text_25.satl	refused	container < between two containers is refused: there is no order between them	27	< was given two lists, and only == and != compare those	
+full/full_text_26.satl	refused	list <type> checks the declaration's items	27	a was declared satellite.container.list, and item 2 of it does not	
+full/full_text_27.satl	refused	list <type> checks a[n] = x	27	a[1] does not fit: it holds a string	
+full/full_text_28.satl	refused	list <type> checks .append	27	in a, a.append: it holds a string	
+full/full_text_29.satl	refused	list <type> checks .insert	27	in a, a.insert: it holds a string	
+full/full_text_30.satl	refused	list an n past the end is refused (S501)	47	there is no such item -- the list holds 2 items, counting from	
+full/full_text_31.satl	refused	list writing past the end does not make the list longer (S501)	47	Writing past the end does not make the list longer	
+full/full_text_32.satl	refused	list a method that changes the list needs a name: {1, 2}.append(3) is refused	13	that list.append changes a container, and this one has no name to	
+full/full_text_33.satl	refused	list the old .sort("down") is refused	27	a.sort("down") -- a list is put in order by	
+full/full_text_34.satl	refused	list the old .sort_down() is refused	13	a is satellite.container.list, and sort_down is	
+full/full_text_35.satl	refused	list satellite.container.list() takes nothing	13	satellite.container.list() makes a list of	
+full/full_text_36.satl	refused	list .sum adds numbers, and points a list of strings at .join	27	a.sum adds numbers, and item 1 is a string	
+full/full_text_37.satl	refused	map a key that is not there is refused (S501), not answered with nothing	47	there is no such key in it	
+full/full_text_38.satl	refused	map a key must never be a list	27	the key is a list, and a key must be a number, a	
+full/full_text_39.satl	refused	map .append is refused: a map has keys and not positions	27	an index has keys and not positions	
+full/full_text_40.satl	refused	map .index_of is refused: a map has keys and not positions	27	m.index_of -- an index has keys and not positions	
+full/full_text_41.satl	refused	map .sort() of a number key beside a string key is refused rather than guessed	27	entry 2 have no order between them	
+full/full_text_42.satl	refused	map .sort("value") of two list values is refused: two lists have no order between them	27	entry 1 and entry 2 have no order between them: a comparison was given a list	
+full/full_text_43.satl	refused	map .sort().by_name() is a list's, and a map refuses it	27	m.sort().by_name -- a map is put in order by	
+full/full_text_44.satl	refused	map .sum asks which half: .values.sum or .keys.sum	27	an index holds keys and values, so say	
+full/full_text_45.satl	refused	map satellite.container.map(5) is refused (S110): map() takes nothing	13	satellite.container.map() makes a map of nothing	
+full/full_text_46.satl	refused	map <key, value> checks the value	27	the value does not fit: it holds a string	
+full/full_text_47.satl	refused	multiple a value of a type not on its list is refused, naming the types it takes	27	percentage, and this name takes satellite.variable.string or	
+full/full_text_48.satl	refused	multiple with one type says nothing and is refused (S110)	13	satellite.container.multiple takes two or more	
+full/full_text_49.satl	refused	multiple satellite.variable.variant is numbered and not built (S110)	13	satellite.variable.variant v is a declaration	
+full/full_text_50.satl	refused	multiple as a parameter refuses a type not on its list (machine code 27)	27	this name takes satellite.variable.string or satellite.container.list	
+full/full_text_51.satl	refused	nested <type> is checked on every way in: an inner list's .append	27	in grid, grid[...].append: it holds a string	
+full/full_text_52.satl	refused	nested <type> is checked on every way in: grid[x][y] = v	27	grid[1][1] does not fit: it holds a string	
+full/full_objects_1.satl	answers	spacesuits: fields, constructors, protected and public, suits in suits, extending			
+full/full_objects_2.satl	answers	threads: new, start, join, wait, shared objects, copied lists, lock			
+full/full_objects_3.satl	answers	files: a text file as a list of lines, every method			
+full/full_objects_4.satl	answers	running programs: satellite.variable.program and .bash			
+full/full_objects_5.satl	answers	the console and the terminal: display and its options, into a pipe			
+full/full_objects_6.satl	refused	a field reached from outside its spacesuit is refused (S230)	52	value is a field of box and fields are reached	
+full/full_objects_7.satl	refused	a protected capsule called from outside its spacesuit is refused (S230)	52	secret is inside the satellite.protected part of	
+full/full_objects_8.satl	refused	two objects put in order are refused (S301)	27	only == and != compare those	
+full/full_objects_9.satl	refused	a capsule called through a pointer whose object is gone is refused (S260)	76	S260: OBJECT_IS_GONE	
+full/full_objects_10.satl	refused	join() on a thread never started is refused (S723)	58	S723: JOIN_BEFORE_START	
+full/full_objects_11.satl	refused	satellite.thread.new given no capsule call is refused (S721)	56	S721: THREAD_NEEDS_A_CAPSULE_CALL	
+full/full_objects_12.satl	refused	a question about the lines of a file that did not open is refused (S503)	45	S503: FILE_NOT_OPEN	
+full/full_objects_13.satl	refused	reading a line past the end of a file is refused (S501)	47	S501: LINE_PAST_THE_END	
+full/full_objects_14.satl	refused	join() on a program never started is refused (S741)	68	S741: PROGRAM_NOT_STARTED	
+full/full_objects_15.satl	refused	start() given a word that is not "hide" is refused (S110)	13	p.start(loud) -- start() takes nothing, or	
+full/full_objects_16.satl	refused	a display colour that is not six hex digits is refused (S301)	27	colour, which is exactly six hex digits	
+speed/speed_his_new_object.satl	speed	the author's loop 1: a new object			speed_his_new_object
+speed/speed_his_set_number_list.satl	speed	the author's loop 2: set a list of numbers			speed_his_set_number_list
+speed/speed_his_append_number.satl	speed	the author's loop 3: append a number			speed_his_append_number
+speed/speed_his_set_string.satl	speed	the author's loop 4: set a string			speed_his_set_string
+speed/speed_his_set_string_list.satl	speed	the author's loop 5: set a list of strings			speed_his_set_string_list
+speed/speed_his_append_string.satl	speed	the author's loop 6: append a string			speed_his_append_string
+speed/speed_while.satl	speed	a while loop, counting			speed_while
+speed/speed_for.satl	speed	a for loop inside a for loop			speed_for
+speed/speed_if_else.satl	speed	if, else if and else			speed_if_else
+speed/speed_compare.satl	speed	the six comparisons			speed_compare
+speed/speed_arithmetic.satl	speed	+ - * / % ^ on small whole numbers			speed_arithmetic
+speed/speed_big_numbers.satl	speed	whole numbers past 64 bits			speed_big_numbers
+speed/speed_huge_numbers.satl	speed	whole numbers of nearly 1,000 digits			speed_huge_numbers
+speed/speed_trillion.satl	speed	1 trillion in sums and products			speed_trillion
+speed/speed_float.satl	speed	float + - * / %			speed_float
+speed/speed_percent.satl	speed	percentage arithmetic			speed_percent
+speed/speed_hex_binary.satl	speed	hex and binary in arithmetic			speed_hex_binary
+speed/speed_bool.satl	speed	bool logic			speed_bool
+speed/speed_conversions.satl	speed	a number to text and back			speed_conversions
+speed/speed_fraction.satl	speed	fractions compared by worth			speed_fraction
+speed/speed_capsule_calls.satl	speed	capsule calls			speed_capsule_calls
+speed/speed_object_fields.satl	speed	object fields through methods			speed_object_fields
+speed/speed_list_ops.satl	speed	a list of numbers			speed_list_ops
+speed/speed_map_ops.satl	speed	a map of numbers			speed_map_ops
+speed/speed_nested_containers.satl	speed	containers inside containers			speed_nested_containers
+speed/speed_string_build.satl	speed	building strings			speed_string_build
+speed/speed_string_methods.satl	speed	string methods			speed_string_methods
+speed/speed_string_list.satl	speed	a list of strings			speed_string_list
+loss/loss_chain.satl	loss	547311173 through every type, one test into the next			

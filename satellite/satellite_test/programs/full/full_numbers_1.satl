@@ -1,0 +1,62 @@
+satellite.include(satellite)
+arguments.float.decimal(128)
+arguments.float.whole(4096)
+arguments.infinity_display(32)
+
+// full_numbers_1 -- satellite.test.full(): satellite.variable.number, every operator, method and
+// conversion its help page lists. One line a check: "ok <what>", or "WRONG <what>: <answered>
+// (expected <right answer>)". The three arguments lines above hold a float's precision for this
+// run, so a float answer reads the same whatever ~/.satl/config.ini says.
+// The checks run `passes` times and print on the last pass only, so the lines never change.
+
+satellite.capsule check(satellite.variable.bool show, satellite.variable.string what, satellite.variable.string got, satellite.variable.string want)
+{
+    satellite.statement.if(show)
+    {
+        satellite.statement.if(got == want)
+        {
+            satellite.console.display("ok " + what)
+        }
+        satellite.statement.else
+        {
+            satellite.console.display("WRONG " + what + ": " + got + " (expected " + want + ")")
+        }
+    }
+}
+
+satellite.capsule satellite.main()
+{
+    satellite.variable.number passes = 1
+    satellite.variable.number rounds = passes
+    satellite.statement.if(rounds < 1)
+    {
+        rounds = 1
+    }
+    satellite.statement.for(satellite.variable.number turn = 1; turn <= rounds; turn + 1)
+    {
+        satellite.variable.bool show = turn == rounds
+        satellite.variable.number n = 87
+        check(show, "number + - * add, take away and multiply, below zero too", (n + 13).string + " " + (n - 100).string + " " + (6 * 7).string, "100 -13 42")
+        check(show, "number / is whole-number division, cut toward zero", (4 / 3).string + " " + (-7 / 2).string, "1 -3")
+        check(show, "number % takes the sign of the number divided", (-7 % 2).string + " " + (7 % -2).string, "-1 1")
+        check(show, "number ^ is power, grouped right to left", (2 ^ 10).string + " " + (2 ^ 3 ^ 2).string, "1024 512")
+        check(show, "number ** is the second spelling of ^", (2 ** 3 ** 2).string, "512")
+        check(show, "number * / % bind tighter than + and -", (2 + 3 * 4).string + " " + (2 + 10 % 4).string + " " + (1 - 10 / 3).string, "14 4 -2")
+        check(show, "number - and / group left to right, and brackets come first", (10 - 3 - 2).string + " " + (100 / 10 / 5).string + " " + ((2 + 3) * 4).string, "5 2 20")
+        check(show, "number a touching minus is part of the number, -2 ^ 2 is 4", (-2 ^ 2).string, "4")
+        check(show, "number has no size limit and never wraps", (2 ^ 70).string + " " + (18446744073709551615 + 1).string, "1180591620717411303424 18446744073709551616")
+        check(show, "number * / % past one unsigned long long", (12345678901234567890123 * 98765432109876543210).string + " " + (2 ^ 64 / 3).string + " " + (2 ^ 64 % 1000007).string, "1219326311370217952249611949260778341714830 6148914691236517205 919788")
+        check(show, "number 2 ^ -1 is the float 0.5", (2 ^ -1).string, "0.5")
+        check(show, "number == != < > <= >= answer true or false", (5 == 5).string + " " + (5 != 5).string + " " + (-5 < 3).string + " " + (n > 50).string + " " + (5 <= 5).string + " " + (5 >= 6).string, "true false true true true false")
+        check(show, "number - in front of a name turns it over", (-n).string, "-87")
+        check(show, "number .string .to_string and .str are its base 10 text", n.string + " " + n.to_string + " " + n.str, "87 87 87")
+        check(show, "number .binary and .bin are its base 2 text, .hex its base 16 text", n.binary + " " + n.bin + " " + n.hex + " " + (255).hex, "1010111 1010111 57 FF")
+        check(show, "number .reverse() turns its digits round and keeps the sign", n.reverse().string + " " + (-120).reverse().string, "78 -21")
+        check(show, "number .add(x) is +", n.add(13).string, "100")
+        check(show, "number meets text by what the text says: a number in quotes is added, other text joined", (5 + "2").string + " " + (5 + "a"), "7 5a")
+        satellite.variable.number from_binary = b0011
+        satellite.variable.number from_hex = x1F
+        check(show, "number a number name given a binary or a hex holds what it is worth", from_binary.string + " " + from_hex.string, "3 31")
+    }
+    satellite.return(satellite)
+}

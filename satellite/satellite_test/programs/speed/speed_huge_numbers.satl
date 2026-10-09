@@ -1,0 +1,22 @@
+satellite.include(satellite)
+
+// speed_huge_numbers.satl -- satellite.test.speed(): WHOLE NUMBERS OF NEARLY A THOUSAND DIGITS.
+// x starts as 547311173 ^ 111 (970 digits); each pass multiplies it by 1000003, adds the pass number,
+// divides it by 1000033, and adds it into y, so both stay near a thousand digits and change on every
+// pass. The C++ twin does the same on 64-bit limbs (std::vector<std::uint64_t>).
+// Prints: x % 1000000007, y % 1000000007, and how many digits x and y have.  C++ twin: speed_huge_numbers().
+
+satellite.capsule satellite.main()
+{
+    satellite.variable.number passes = 520000
+    satellite.variable.number x = 547311173 ^ 111
+    satellite.variable.number y = 0
+    satellite.statement.for(satellite.variable.number i = 0; i < passes; i + 1)
+    {
+        x = x * 1000003 + i
+        x = x / 1000033
+        y = y + x
+    }
+    satellite.console.display((x % 1000000007).string + " " + (y % 1000000007).string + " " + x.string.size.string + " " + y.string.size.string)
+    satellite.return(satellite)
+}

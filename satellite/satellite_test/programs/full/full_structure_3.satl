@@ -1,0 +1,139 @@
+satellite.include(satellite)
+arguments.missing = false
+arguments.float.decimal(10)
+
+// full_structure_3 -- satellite.test.full(): satellite.main(satellite.variable.arguments args), the
+// arguments variable's rows, settings a file changes for its own run, and satellite.info. It prints one
+// line a check, and nothing else: "ok <capability>" when the answer is right, or
+// "WRONG <capability>: <what it answered> (expected <the right answer>)".
+// The two lines above are this file's settings, for this run only: config.ini is not touched.
+
+// ONE LINE OF THE REPORT.
+satellite.capsule check(satellite.variable.string what, satellite.variable.string got, satellite.variable.string want)
+{
+    satellite.statement.if (got == want)
+    {
+        satellite.return("ok " + what)
+    }
+    satellite.return("WRONG " + what + ": " + got.replace("\n", " | ") + " (expected " + want.replace("\n", " | ") + ")")
+}
+
+// A CAPSULE WITH NO ARGUMENTS OF ITS OWN reads and changes the run's rows by the bare name.
+satellite.capsule elsewhere()
+{
+    satellite.variable.string seen = "" + arguments.missing + " " + arguments.float.decimal
+    arguments.infinity(64)
+    satellite.return(seen)
+}
+
+// THE RUN'S ROWS BY THE BARE NAME, in a capsule of their own: the command line, and the machine.
+satellite.capsule row_checks()
+{
+    satellite.container.list<satellite.variable.string> lines
+    lines.append(check("arguments.argument2 is the file, as arguments.program is -- and arg2, args2, arguments2, argument02 are argument2", (arguments.argument2 == arguments.program).string() + " " + (arguments.arg2 == arguments.argument2).string() + " " + (arguments.args2 == arguments.argument2).string() + " " + (arguments.arguments2 == arguments.argument2).string() + " " + (arguments.argument02 == arguments.argument2).string(), "true true true true true"))
+    lines.append(check("arguments.argument1 is satl itself, and arguments.length counts every word", (arguments.argument1.size > 0).string() + " " + (arguments.length >= 2).string(), "true true"))
+    lines.append(check("arguments.username, a fact satl gathered at the start", (arguments.username.size > 0).string(), "true"))
+    lines.append(check("arguments.memory.total, .used and .free -- used and free read fresh", (arguments.memory.total > 0).string() + " " + (arguments.memory.used > 0).string() + " " + (arguments.memory.free > 0).string(), "true true true"))
+    lines.append(check("arguments.cores, and the same fact as satellite.library.arguments.cores", (arguments.cores >= 1).string() + " " + (arguments.cores == satellite.library.arguments.cores).string(), "true true"))
+    satellite.variable.bool agree = satellite.bool.false
+    satellite.statement.if (arguments.cpu.architecture == "haswell")
+    {
+        agree = arguments.cpu.features.contains("avx2")
+    }
+    satellite.statement.if (arguments.cpu.architecture == "baseline")
+    {
+        agree = satellite.bool.true
+    }
+    lines.append(check("arguments.cpu.architecture is haswell (with avx2 among its cpu.features) or baseline", agree.string(), "true"))
+    satellite.return(lines.join("\n"))
+}
+
+// satellite.info.file(path): a list of one index about the file -- here this program's own file, whose
+// lines are counted (this file has 139 lines; the word that runs it changes only the passes number).
+satellite.capsule info_checks()
+{
+    satellite.container.list<satellite.variable.string> lines
+    satellite.variable.info mine = satellite.info.file(arguments.program)
+    lines.append(check("satellite.info.file(path) answers a list of one", "" + mine.size, "1"))
+    lines.append(check("satellite.info.file: its type and its line_count", mine[1]["type"] + " " + mine[1]["line_count"], "file 139"))
+    lines.append(check("satellite.info.file: it holds name, size, size_type, permissions and bytes", mine[1].contains("name").string() + " " + mine[1].contains("size").string() + " " + mine[1].contains("size_type").string() + " " + mine[1].contains("permissions").string() + " " + (mine[1]["bytes"] > 0).string(), "true true true true true"))
+    lines.append(check("satellite.info.dir is satellite.info.directory", (satellite.info.dir(".").size == satellite.info.directory(".").size).string(), "true"))
+    satellite.return(lines.join("\n"))
+}
+
+satellite.capsule satellite.main(satellite.variable.arguments args)
+{
+    satellite.variable.number passes = 1
+    // EVERY CHECK RUNS ONCE A PASS, and the lines of the first pass are printed once, after the last.
+    satellite.variable.number rounds = passes
+    satellite.statement.if (rounds < 1)
+    {
+        rounds = 1
+    }
+    // A SETTING A FILE CHANGES IS THAT RUN'S ALONE: this run reads infinity_display as it started -- never
+    // the 5473 the end of this program writes, which a run after this one would read if it had been saved.
+    satellite.variable.number display_at_start = args.infinity_display
+    satellite.variable.string first = ""
+    satellite.variable.number differ = 0
+    satellite.statement.for (satellite.variable.number pass = 1; pass <= rounds; pass++)
+    {
+        satellite.container.list<satellite.variable.string> lines
+
+        // SETTINGS, by main's own name for the arguments.
+        args.float.decimal(10)
+        lines.append(check("arguments.missing = false and arguments.float.decimal(10) at the top of the file are this run's", "" + args.missing + " " + args.float.decimal + " " + (1.0 / 3.0).string(), "false 10 0.3333333333"))
+        args.float.decimal(3)
+        satellite.variable.string three_places = "" + args.float.decimal + " " + (2.0 / 3.0).string()
+        args.float.decimal = 4
+        lines.append(check("args.float.decimal(3) and args.float.decimal = 4, lines in a capsule, change it for the run", three_places + " " + (2.0 / 3.0).string(), "3 0.667 0.6667"))
+        lines.append(check("the bare name arguments reads the run's rows in any capsule", elsewhere(), "false 4"))
+        lines.append(check("arguments.infinity(64) in another capsule changes the run's row", "" + args.infinity + " " + args["infinity"], "64 64"))
+        args.access(false)
+        satellite.variable.string flips = "" + args.access
+        args.access = true
+        flips = flips + " " + args.access
+        satellite.library.arguments.access = false
+        flips = flips + " " + args.access
+        satellite.library.arguments.access = true
+        lines.append(check("the access switch written args.access(false), args.access = true and by its full name", flips + " " + satellite.library.arguments.access, "false true false true"))
+
+        // ROWS, by main's own name: the same rows the bare name reads, by a dot and by a key.
+        lines.append(check("main's name and the bare name read the same rows", (args.program == arguments.program).string() + " " + (args.username == arguments.username).string(), "true true"))
+        lines.append(check("a row by its key in brackets, and asked by .contains", (args["arg2"] == args.argument2).string() + " " + args.contains("arguments2").string() + " " + args.contains("argument99").string(), "true true false"))
+        lines.append(row_checks())
+
+        // ROWS OF THE PROGRAM'S OWN, written on main's arguments.
+        args.some_var = 5
+        args.some_var = args.some_var + 1
+        args.my_value(5)
+        lines.append(check("a row of the program's own, added and changed -- args.my_value(5) the same line as = 5", "" + args.some_var + " " + args["some_var"] + " " + args.my_value, "6 6 5"))
+        args.deep.row = "text"
+        lines.append(check("a dotted name is one row of the program's own", args.deep.row + " " + args.contains("deep.row").string(), "text true"))
+        args.l = satellite.container.list()
+        args.l.append(5)
+        args.l.append(8)
+        lines.append(check("a row holds a list and changes it in place", "" + args.l[2] + " " + args.l.size, "8 2"))
+        args.flag = true
+        satellite.variable.string flags = "" + args.flag
+        args.flag = false
+        lines.append(check("a bare true or false is taken by a write to the arguments", flags + " " + args.flag, "true false"))
+        args.remove("some_var")
+        lines.append(check("args.remove takes a row of the program's own away", args.contains("some_var").string(), "false"))
+
+        lines.append(info_checks())
+        satellite.variable.string all = lines.join("\n")
+        satellite.statement.if (pass == 1)
+        {
+            first = all
+        }
+        satellite.statement.else satellite.statement.if (all != first)
+        {
+            differ = differ + 1
+        }
+    }
+    satellite.console.display(first)
+    satellite.console.display(check("every pass answered alike", differ.string() + " passes differed", "0 passes differed"))
+    args.infinity_display(5473)
+    satellite.console.display(check("a setting a file changes is that run's alone, never the next run's", (display_at_start != 5473).string() + " " + args.infinity_display, "true 5473"))
+    satellite.return(satellite)
+}

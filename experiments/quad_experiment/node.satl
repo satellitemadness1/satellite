@@ -1,0 +1,80 @@
+
+satellite.include(satellite)
+
+satellite.spacesuit quad_language()
+{
+    satellite.protected
+    {
+        satellite.variable.string language_name = "VOID"
+
+        satellite.capsule set_language_name(satellite.variable.string input_name)
+        {
+            language_name = input_name
+        }
+    }
+}
+
+satellite.spacesuit quad_property()
+{
+    satellite.protected
+    {
+        satellite.variable.string
+    }
+}
+
+satellite.spacesuit quad_node()
+{
+    satellite.protected
+    {
+        satellite.variable.number node_id = 0
+        satellite.container.list<quad_property> node_memory
+
+        satellite.capsule set_node_id(satellite.variable.number input_id)
+        {
+            node_id = input_id
+        }
+
+        satellite.capsule add_property(quad_property input_property)
+        {
+            node_memory.append(input_property)
+        }
+    }
+
+    satellite.public
+    {
+        satellite.capsule call_set_node_id(satellite.variable.number call_input_id)
+        {
+            set_node_id(call_input_id)
+        }
+
+        satellite.capsule call_add_property(quad_property call_input_property)
+        {
+            add_property(call_input_property)
+        }
+    }
+}
+
+satellite.capsule satellite.main()
+{
+    satellite.console.display("QUAD EXAMPLE 001")
+
+    quad_language cxx
+
+    cxx.include.iostream.std.cout
+
+    language cxx
+    language english
+    language satellite
+
+    cxx.set_namespace("std")
+    cxx.add_word.namespace("std")
+
+    quad_property property1
+
+    property1.set_language()
+    prope
+
+    property1.set_location()
+
+    satellite.return(satellite)
+}

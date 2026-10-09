@@ -1,0 +1,50 @@
+satellite.include(satellite)
+
+// speed_compare.satl -- satellite.test.speed(): THE SIX COMPARISONS, == != < > <= >=, on whole numbers.
+// x walks the Park-Miller sequence and y keeps the x before it; each pass asks all six questions of
+// them and counts every true answer, so each count depends on every pass.
+// Prints: the six counts, in the order < > <= >= == !=.  C++ twin: speed_compare().
+
+satellite.capsule satellite.main()
+{
+    satellite.variable.number passes = 330000
+    satellite.variable.number x = 547311173
+    satellite.variable.number y = 0
+    satellite.variable.number less = 0
+    satellite.variable.number more = 0
+    satellite.variable.number at_most = 0
+    satellite.variable.number at_least = 0
+    satellite.variable.number same = 0
+    satellite.variable.number differ = 0
+    satellite.statement.for(satellite.variable.number i = 0; i < passes; i + 1)
+    {
+        y = x
+        x = x * 48271 % 2147483647
+        satellite.statement.if (x < y)
+        {
+            less = less + 1
+        }
+        satellite.statement.if (x > y)
+        {
+            more = more + 1
+        }
+        satellite.statement.if (x % 1000 <= 499)
+        {
+            at_most = at_most + 1
+        }
+        satellite.statement.if (x % 1000 >= 750)
+        {
+            at_least = at_least + 1
+        }
+        satellite.statement.if (x % 16 == y % 16)
+        {
+            same = same + 1
+        }
+        satellite.statement.if (x % 3 != 0)
+        {
+            differ = differ + 1
+        }
+    }
+    satellite.console.display(less.string + " " + more.string + " " + at_most.string + " " + at_least.string + " " + same.string + " " + differ.string)
+    satellite.return(satellite)
+}

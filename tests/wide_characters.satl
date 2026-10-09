@@ -1,0 +1,29 @@
+// Wide characters in a string (the author, 2026-09-17): 40000 is the 16-bit value
+// for wide, and the two codes after it are one 32-bit character. size() and
+// .find still count CHARACTERS. U+9C40 is stored wide too, and U+19C40's low half
+// is 40000 -- neither may be mistaken for the marker.
+
+satellite.include(satellite)
+
+satellite.capsule satellite.main()
+{
+    satellite.variable.string s = "a😀b鱀c𙱀d"
+    satellite.console.display(s)
+    satellite.console.display(s.find("b"))
+    satellite.console.display(s.find("鱀"))
+    satellite.console.display(s.find("𙱀"))
+    satellite.console.display(s.find("d"))
+    satellite.console.display(s + "🚀")
+    satellite.console.display("😀" == "😀")
+    satellite.console.display("＀" < "😀")
+
+    // A wide character's high half can be the code of a letter: U+1F600's is 1, which
+    // is "a" in the author's order. find starts only where a character starts: a find
+    // that matched the high half and then counted its way to it would answer 1 for
+    // "😀ba" (the count review, 2026-09-17).
+    satellite.variable.string high = "😀a"
+    satellite.console.display(high.find("a"))
+    satellite.variable.string later = "😀ba"
+    satellite.console.display(later.find("a"))
+    satellite.return(satellite)
+}

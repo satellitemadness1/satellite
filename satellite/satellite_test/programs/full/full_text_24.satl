@@ -1,0 +1,11 @@
+satellite.include(satellite)
+
+// full_text_24 -- REFUSED: container satellite.container.arguments is numbered and not built (S110).
+// satellite.help(satellite.container). Nothing reaches stdout; satl exits with the refusal's code.
+
+satellite.capsule satellite.main()
+{
+    satellite.variable.number passes = 1
+    satellite.container.arguments c
+    satellite.return(satellite)
+}

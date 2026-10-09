@@ -1,0 +1,13 @@
+satellite.include(satellite)
+
+// full_numbers_26 -- satellite.test.full(), a program satl must REFUSE.
+// binary and hex: b1100.and(b1010) is not built yet.
+// It exits 13, and its report on stderr holds: no capsule named and
+// Nothing is printed on stdout.
+
+satellite.capsule satellite.main()
+{
+    satellite.variable.number passes = 1
+    satellite.console.display(b1100.and(b1010))
+    satellite.return(satellite)
+}

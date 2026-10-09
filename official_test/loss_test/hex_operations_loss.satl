@@ -1,0 +1,215 @@
+// hex_operations_loss.satl -- A DATA-LOSS TEST FOR satellite.variable.hex: 100 different operations (hex_loss.satl is the author's walk).
+//
+// THE AUTHOR'S STANDARD (2026-10-06): "for the loss testing, we will use the number 547311173 so we
+// have to start with that number, and end at that number, after say, 1,000,000 million operations...
+// That will be the loss test" -- 547311173 is "satellite" spelled as numbers.
+//
+// 547311173 is x209F4E45. A hex's arithmetic answers a number, and a hex name holds only a hex, so
+// the value is held three ways, all 547311173: hx (the hex), hx_wide (the same number 12 digits
+// wide, x0000209F4E45, so lost leading zeros would show) and worth (what it is worth). hx and
+// hx_wide go through .reverse(), the minus sign and moves between hex names
+// (satellite.variable.hexadecimal among them); worth goes through + - * / % ^ .add .number .binary
+// .width with every operand a hex (or a hex meeting a binary), past 64 bits, below zero, with
+// leading zeros and in lower case, hx and hx_wide added in and taken out again.
+// 50 operations go out and 50 undo them in the reverse order: 100 different operations a pass,
+// 10,000 passes = 1,000,000 operations.
+//
+// Every / is written worth / D + worth % D * far: whole-number division would cut a value that came
+// back 1 wrong back to right. The remainder is 0 when nothing was lost; any other remainder, times
+// far (2 ^ 256), lands out of reach of every later operation.
+//
+// FIXED 2026-10-06, after a fresh reviewer proved a loss this test could not see: every .reverse()
+// going out is undone by a .reverse() coming back, and every minus sign by a minus sign, so one
+// lost the same way both times cancels itself -- with every .reverse() taken out, the run still
+// answered 547311173, and made to do nothing, 14 of the 100 operations answered 547311173 too. A
+// value added to worth and taken out again cancels itself the same way, however wrong it was, and a
+// move near the end of a pass that did nothing was hidden too: the passes then swing between two
+// states, and 10,000 is even. So the middle is checked: after the 50 operations out, each of the
+// seven values must be its known middle -- worked out by hand from the start, not read back from
+// satl -- or the run stops there and prints them: pass 0, the middle: <name> = <what it held>. A
+// pass that came back wrong stops at the next pass's middle. The 100 operations are unchanged.
+// Eight moves give a name the value it already holds -- hx = -hx_held.reverse() is one -- so one of
+// those doing nothing loses nothing; a wrong value there is caught at the middle.
+//
+// THE ANSWER IS ALWAYS 547311173. Anything else printed is the value that came back wrong.
+
+satellite.include(satellite)
+
+satellite.capsule satellite.main()
+{
+    satellite.variable.hex start = x209F4E45
+    satellite.variable.hex start_wide = x0000209F4E45
+    satellite.variable.hex hx = x209F4E45
+    satellite.variable.hex hx_wide = x0000209F4E45
+    satellite.variable.hexadecimal hx_turned = x0
+    satellite.variable.hex hx_held = x0
+    satellite.variable.hexadecimal hx_wide_turned = x0
+    satellite.variable.hex hx_wide_held = x0
+    satellite.variable.number worth = hx
+    satellite.variable.number far = x2 ^ x100      // 2 ^ 256: where a / puts a remainder
+    satellite.variable.string seen = ""      // what the middle held, when it was not the middle
+
+    satellite.statement.for(satellite.variable.number pass = 0; pass < 10000; pass + 1)
+    {
+        // the 50 forward operations: the value goes away from 547311173
+        hx_turned = hx.reverse()
+        worth = worth + hx_turned
+        hx_wide_turned = hx_wide.reverse()
+        worth = worth - hx_wide_turned
+        worth = worth * x0D
+        hx = -hx_turned
+        worth = worth - hx
+        worth = worth + x0000000000000000000000000000001F
+        worth = worth - -x2A
+        worth = worth * -x03
+        worth = x0A * worth
+        worth = worth.add(xB)
+        worth = hx.add(worth)
+        hx_wide = -hx_wide_turned
+        worth = worth + hx_wide.binary
+        worth = worth * x10000000000000000
+        worth = worth + xFFFFFFFFFFFFFFFFFF
+        hx_turned = (-hx).reverse()
+        worth = worth - hx_wide * x04
+        worth = worth + (xFF + b1100)
+        worth = worth * (x02 + x1)
+        worth = worth - b10 * xFF
+        worth = worth + (hx_turned + hx_wide)
+        hx_wide_turned = (-hx_wide).reverse()
+        worth = worth + hx_wide_turned.binary
+        worth = worth * x007
+        worth = worth + hx_turned.reverse()
+        worth = worth - -hx_turned
+        hx_held = hx_turned
+        worth = worth + hx_held % x10
+        worth = worth + hx_held ^ x2
+        worth = worth * (hx_held % x100)
+        hx_wide_held = hx_wide_turned
+        worth = worth - hx_held * hx_wide_held
+        worth = worth + hx_wide_held.number
+        hx = -hx_held.reverse()
+        worth = worth * x800
+        worth = worth + -x0000000000000000000007
+        hx_wide = -hx_wide_held.reverse()
+        worth = worth + x3 * x5 * x7
+        worth = worth * (xF + b1)
+        worth = worth + (hx_wide - x1)
+        worth = worth.add(-x13)
+        worth = worth + xffff * x0F
+        worth = worth * -x9
+        hx_held = -hx
+        worth = worth - (hx_held + hx_held) * x3
+        hx_wide_held = -hx_wide
+        worth = worth + hx_held.add(hx_wide_held)
+        worth = worth * (hx_wide_held.width + x1)
+        // THE MIDDLE, CHECKED: a .reverse() or a minus sign lost the same way going out and coming back, or a
+        // value added and taken away just as wrong, would cancel itself -- so each value must already be what
+        // the 50 operations out make it, worked out by hand from the start
+        satellite.statement.if (hx != -x54E4F902)
+        {
+            seen = seen + " hx = " + hx
+        }
+        satellite.statement.if (hx_wide != -x54E4F9020000)
+        {
+            seen = seen + " hx_wide = " + hx_wide
+        }
+        satellite.statement.if (hx_turned != x209F4E45)
+        {
+            seen = seen + " hx_turned = " + hx_turned
+        }
+        satellite.statement.if (hx_held != x54E4F902)
+        {
+            seen = seen + " hx_held = " + hx_held
+        }
+        satellite.statement.if (hx_wide_turned != x0000209F4E45)
+        {
+            seen = seen + " hx_wide_turned = " + hx_wide_turned
+        }
+        satellite.statement.if (hx_wide_held != x54E4F9020000)
+        {
+            seen = seen + " hx_wide_held = " + hx_wide_held
+        }
+        satellite.statement.if (worth != 3901584805272864908300279016699106455092029704981996314103299179111633313857)
+        {
+            seen = seen + " worth = " + worth
+        }
+        satellite.statement.if (seen != "")
+        {
+            seen = "pass " + pass + ", the middle:" + seen
+            satellite.statement.break
+        }
+        // the 50 inverse operations, in the reverse order: the value comes back
+        worth = worth / (hx_wide_held.width + x1) + worth % (hx_wide_held.width + x1) * far
+        worth = worth - hx_held.add(hx_wide_held)
+        hx_wide = -hx_wide_held
+        worth = worth + (hx_held + hx_held) * x3
+        hx = -hx_held
+        worth = worth / -x9 + worth % -x9 * far
+        worth = worth - xffff * x0F
+        worth = worth - -x13
+        worth = worth - (hx_wide - x1)
+        worth = worth / (xF + b1) + worth % (xF + b1) * far
+        worth = worth - x3 * x5 * x7
+        hx_wide_held = -hx_wide.reverse()
+        worth = worth - -x0000000000000000000007
+        worth = worth / x800 + worth % x800 * far
+        hx_held = -hx.reverse()
+        worth = worth - hx_wide_held.number
+        worth = worth + hx_held * hx_wide_held
+        hx_wide_turned = hx_wide_held
+        worth = worth / (hx_held % x100) + worth % (hx_held % x100) * far
+        worth = worth - hx_held ^ x2
+        worth = worth - hx_held % x10
+        hx_turned = hx_held
+        worth = worth + -hx_turned
+        worth = worth - hx_turned.reverse()
+        worth = worth / x007 + worth % x007 * far
+        worth = worth - hx_wide_turned.binary.number
+        hx_wide = -hx_wide_turned.reverse()
+        worth = worth - (hx_turned + hx_wide)
+        worth = worth + b10 * xFF
+        worth = worth / (x02 + x1) + worth % (x02 + x1) * far
+        worth = worth - (xFF + b1100)
+        worth = worth + hx_wide * x04
+        hx = -hx_turned.reverse()
+        worth = worth - xFFFFFFFFFFFFFFFFFF
+        worth = worth / x10000000000000000 + worth % x10000000000000000 * far
+        worth = worth - hx_wide.binary.number
+        hx_wide_turned = -hx_wide
+        worth = worth - hx.number
+        worth = worth - xB
+        worth = worth / x0A + worth % x0A * far
+        worth = worth / -x03 + worth % -x03 * far
+        worth = worth + -x2A
+        worth = worth - x0000000000000000000000000000001F
+        worth = worth + hx
+        hx_turned = -hx
+        worth = worth / x0D + worth % x0D * far
+        worth = worth + hx_wide_turned
+        hx_wide = hx_wide_turned.reverse()
+        worth = worth - hx_turned
+        hx = hx_turned.reverse()
+    }
+
+    satellite.statement.if (seen != "")
+    {
+        satellite.console.display(seen)
+    }
+    satellite.statement.else satellite.statement.if (hx != start)
+    {
+        satellite.console.display(hx)
+    }
+    satellite.statement.else satellite.statement.if (hx_wide != start_wide)
+    {
+        satellite.console.display(hx_wide)
+    }
+    satellite.statement.else satellite.statement.if (worth != 547311173)
+    {
+        satellite.console.display(worth)
+    }
+    satellite.statement.else
+    {
+        satellite.console.display(547311173)
+    }
+    satellite.return(satellite)
+}

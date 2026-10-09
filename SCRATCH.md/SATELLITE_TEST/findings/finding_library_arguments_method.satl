@@ -1,0 +1,8 @@
+satellite.include(satellite)
+
+satellite.capsule satellite.main()
+{
+    satellite.console.display(arguments.username.size)
+    satellite.console.display(satellite.library.arguments.username.size)
+    satellite.return(satellite)
+}

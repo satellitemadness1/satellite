@@ -1,0 +1,12 @@
+satellite.include(satellite)
+
+// full_text_13 -- REFUSED: string characters are read, never written: s[1] = "j" is refused (S301).
+// satellite.help(satellite.variable.string). Nothing reaches stdout; satl exits with the refusal's code.
+
+satellite.capsule satellite.main()
+{
+    satellite.variable.number passes = 1
+    satellite.variable.string s = "abc"
+    s[1] = "j"
+    satellite.return(satellite)
+}

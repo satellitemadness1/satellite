@@ -1,0 +1,8 @@
+satellite.include(satellite)
+
+satellite.capsule satellite.main()
+{
+    satellite.variable.number n = 87
+    satellite.console.display(n.max(3))
+    satellite.return(satellite)
+}

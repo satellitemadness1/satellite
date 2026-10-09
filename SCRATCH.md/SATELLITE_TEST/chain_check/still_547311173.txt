@@ -1,0 +1,534 @@
+== col_worth_negate_p2
+passes=2
+line 3535: worth = worth + paint.number  ->  worth = 0 - worth + paint.number
+== col_worth_negate_p4
+passes=4
+line 3535: worth = worth + paint.number  ->  worth = 0 - worth + paint.number
+== col_worth_negmul_p2
+passes=2
+line 3537: worth = worth * paint.transparency  ->  worth = 0 - worth * paint.transparency
+== file_bits_line
+passes=3
+line 296: f.append(bits)  ->  f.append(bits + "1")
+== file_first_zero
+passes=3
+line 295: f.append(t)  ->  f.append("0" + t)
+== file_float_line
+passes=3
+line 298: f.append(t + ".0")  ->  f.append(t + ".00")
+== fl_bits_end0
+passes=3
+line 296: f.append(bits)  ->  f.append(bits + "0")
+== fl_bits_front0
+passes=3
+line 296: f.append(bits)  ->  f.append("0" + bits)
+== fl_float_end5
+passes=3
+line 298: f.append(t + ".0")  ->  f.append(t + ".05")
+== fl_float_front0
+passes=3
+line 298: f.append(t + ".0")  ->  f.append("0" + t + ".0")
+== fl_hx_end0
+passes=3
+line 297: f.append(hx_line)  ->  f.append(hx_line + "0")
+== fl_hx_front0
+passes=3
+line 297: f.append(hx_line)  ->  f.append("0" + hx_line)
+== fl_t_front0
+passes=3
+line 295: f.append(t)  ->  f.append("0" + t)
+== hexwalk_const
+passes=3
+line 3485: satellite.variable.hex my_hex = x547311173  ->  satellite.variable.hex my_hex = x547311172
+== hexwalk_down_short
+passes=3
+line 3500: walk = walk - 1  ->  walk = walk - 1 + 0 * walk
+== hexwalk_steps
+passes=3
+line 3486: satellite.variable.number steps = 50 * passes                  // the chain: 500,000 at 10,000 passes  ->  satellite.variable.number steps = 50 * passes + 1                  // the chain: 500,000 at 10,000 passes
+== map_box_extra
+passes=3
+line 163: x["box"] = satellite.container.map()                                                                             // 35: an empty map  ->  x["box"] = {"extra": 1}                                                                             // 35: an empty map
+== map_op27_minus_ulp
+passes=3
+line 155: x[satellite.bool.true] = x[satellite.bool.true] * 2                                                              // 27: 1094622347.0, under the bool key  ->  x[satellite.bool.true] = x[satellite.bool.true] * 2 - 0.00000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000001                                                              // 27: 1094622347.0, under the bool key
+== mult_op46_extra
+passes=3
+line 1114: x = {x}                                                                                 // 46: that list inside a list  ->  x = {x, 0}                                                                                 // 46: that list inside a list
+== p3_swc2_drop_3591
+passes=3
+line 3591: paint_held = paint, paint.transparency  ->  paint_held = paint_held
+== p3_swc2_drop_3597
+passes=3
+line 3597: paint_moved = paint_held, 99 - paint_held.transparency  ->  paint_moved = paint_moved
+== swb2_3733
+passes=2
+line 3733: s05 = s05 != s20 != s19  ->  s05 = s05
+== swb2_3738
+passes=2
+line 3738: s10 = s10 != (s11.string + s09.string + s02.string == "truetruetrue")  ->  s10 = s10
+== swb2_3740
+passes=2
+line 3740: s12 = s12 != (s13.string + s14.string == "truetrue")  ->  s12 = s12
+== swb2_3741
+passes=2
+line 3741: s13 = s13 != (s27.string + s26.string != "falsefalse")  ->  s13 = s13
+== swb2_3742
+passes=2
+line 3742: s14 = s14 != s00  ->  s14 = s14
+== swb2_3743
+passes=2
+line 3743: s15 = s15 == satellite.bool.true  ->  s15 = s15
+== swb2_3744
+passes=2
+line 3744: s16 = s16 != s01 != s03  ->  s16 = s16
+== swb2_3745
+passes=2
+line 3745: s17 = s17 != (s04.string < s10.string)  ->  s17 = s17
+== swb2_3748
+passes=2
+line 3748: s20 = s20 != s21  ->  s20 = s20
+== swb2_3750
+passes=2
+line 3750: s22 = s22 != (s20.string + s19.string == "truetrue")  ->  s22 = s22
+== swb2_3753
+passes=2
+line 3753: s25 = s25 != (s06.string + s05.string + s04.string == "truetruetrue")  ->  s25 = s25
+== swb2_3758
+passes=2
+line 3758: s00 = s00 != (s29.string + s28.string == "truetrue")  ->  s00 = s00
+== swb2_3760
+passes=2
+line 3760: s02 = s02 != s12 != s13  ->  s02 = s02
+== swb2_3763
+passes=2
+line 3763: s05 = s05 != (s19.string < s18.string)  ->  s05 = s05
+== swb2_3766
+passes=2
+line 3766: s08 = s08 != (s01.string + s00.string == "truetrue")  ->  s08 = s08
+== swb2_3767
+passes=2
+line 3767: s09 = s09 != satellite.bool.false  ->  s09 = s09
+== swb2_3769
+passes=2
+line 3769: s11 = s11 != (s24.string + s23.string + s22.string == "truetruetrue")  ->  s11 = s11
+== swb2_3770
+passes=2
+line 3770: s12 = s12 != s11  ->  s12 = s12
+== swb2_3771
+passes=2
+line 3771: s13 = s13 == s14  ->  s13 = s13
+== swb2_3786
+passes=2
+line 3786: s13 = s13 != !s14  ->  s13 = s13
+== swb2_3787
+passes=2
+line 3787: s12 = s12 == !s11  ->  s12 = s12
+== swb2_3788
+passes=2
+line 3788: s11 = s11 == (s22.string + s23.string + s24.string != "truetruetrue")  ->  s11 = s11
+== swb2_3790
+passes=2
+line 3790: s09 = satellite.bool.true == s09  ->  s09 = s09
+== swb2_3791
+passes=2
+line 3791: s08 = s08 == (s01.string + s00.string != "truetrue")  ->  s08 = s08
+== swb2_3794
+passes=2
+line 3794: s05 = (s18.string > s19.string) != s05  ->  s05 = s05
+== swb2_3797
+passes=2
+line 3797: s02 = s02 == s12 == s13  ->  s02 = s02
+== swb2_3799
+passes=2
+line 3799: s00 = (s28.string + s29.string != "truetrue") == s00  ->  s00 = s00
+== swb2_3804
+passes=2
+line 3804: s25 = s25 == (s04.string + s05.string + s06.string != "truetruetrue")  ->  s25 = s25
+== swb2_3807
+passes=2
+line 3807: s22 = s22 == (s20.string + s19.string != "truetrue")  ->  s22 = s22
+== swb2_3809
+passes=2
+line 3809: s20 = !s21 == s20  ->  s20 = s20
+== swb2_3812
+passes=2
+line 3812: s17 = (s10.string > s04.string) != s17  ->  s17 = s17
+== swb2_3813
+passes=2
+line 3813: s16 = s16 != s03 != s01  ->  s16 = s16
+== swb2_3814
+passes=2
+line 3814: s15 = s15 != (547311173 < 0)  ->  s15 = s15
+== swb2_3815
+passes=2
+line 3815: s14 = s14 == !s00  ->  s14 = s14
+== swb2_3816
+passes=2
+line 3816: s13 = (s27.string + s26.string == "falsefalse") == s13  ->  s13 = s13
+== swb2_3817
+passes=2
+line 3817: s12 = (s14.string + s13.string != "truetrue") == s12  ->  s12 = s12
+== swb2_3819
+passes=2
+line 3819: s10 = s10 == (s02.string + s09.string + s11.string != "truetruetrue")  ->  s10 = s10
+== swb2_3824
+passes=2
+line 3824: s05 = s05 == s20 == s19  ->  s05 = s05
+== swc2_drop_3591
+passes=2
+line 3591: paint_held = paint, paint.transparency  ->  paint_held = paint_held
+== swc2_drop_3597
+passes=2
+line 3597: paint_moved = paint_held, 99 - paint_held.transparency  ->  paint_moved = paint_moved
+== swc2_neg_3535
+passes=2
+line 3535: worth = worth + paint.number  ->  worth = 0 - (worth + paint.number)
+== swc2_neg_3537
+passes=2
+line 3537: worth = worth * paint.transparency  ->  worth = 0 - (worth * paint.transparency)
+== swc2_neg_3544
+passes=2
+line 3544: worth = worth + paint_moved.number  ->  worth = 0 - (worth + paint_moved.number)
+== swc2_neg_3546
+passes=2
+line 3546: worth = worth * (paint_moved.transparency + x1)  ->  worth = 0 - (worth * (paint_moved.transparency + x1))
+== swc2_neg_3621
+passes=2
+line 3621: worth = worth + paint_held.number * paint_held.transparency  ->  worth = 0 - (worth + paint_held.number * paint_held.transparency)
+== swc2_neg_3624
+passes=2
+line 3624: worth = worth / (paint_moved.transparency + x1) + worth % (paint_moved.transparency + x1) * far  ->  worth = 0 - (worth / (paint_moved.transparency + x1) + worth % (paint_moved.transparency + x1) * far)
+== swc2_neg_3631
+passes=2
+line 3631: worth = worth + paint.transparency * x1000000  ->  worth = 0 - (worth + paint.transparency * x1000000)
+== swc2_neg_3633
+passes=2
+line 3633: worth = worth / paint.transparency + worth % paint.transparency * far  ->  worth = 0 - (worth / paint.transparency + worth % paint.transparency * far)
+== swc2_neg_3635
+passes=2
+line 3635: worth = worth - paint.number  ->  worth = 0 - (worth - paint.number)
+== swc3_drop_3591
+passes=3
+line 3591: paint_held = paint, paint.transparency  ->  paint_held = paint_held
+== swc3_drop_3597
+passes=3
+line 3597: paint_moved = paint_held, 99 - paint_held.transparency  ->  paint_moved = paint_moved
+== swd2_bin_3165
+passes=2
+line 3165: bits = -held.reverse()  ->  bits = bits
+== swd2_bin_3168
+passes=2
+line 3168: wide = -wide_held.reverse()  ->  wide = wide
+== swd2_bin_3219
+passes=2
+line 3219: wide = -wide_held  ->  wide = wide
+== swd2_bin_3221
+passes=2
+line 3221: bits = -held  ->  bits = bits
+== swd2_bin_3234
+passes=2
+line 3234: wide_turned = wide_held  ->  wide_turned = wide_turned
+== swd2_bin_3238
+passes=2
+line 3238: turned = held  ->  turned = turned
+== swd2_bin_3243
+passes=2
+line 3243: wide = -wide_turned.reverse()  ->  wide = wide
+== swd2_bin_3249
+passes=2
+line 3249: bits = -turned.reverse()  ->  bits = bits
+== swd2_float_2529
+passes=2
+line 2529: x = x ^ 2 / x  ->  x = x
+== swd2_float_2744
+passes=2
+line 2744: x = x ^ 3 / x ^ 2  ->  x = x
+== swd2_frac_2293
+passes=2
+line 2293: h = g  ->  h = h
+== swd2_frac_2306
+passes=2
+line 2306: h = -g  ->  h = h
+== swd2_frac_2322
+passes=2
+line 2322: h = l[3]  ->  h = h
+== swd2_frac_2334
+passes=2
+line 2334: h = -m["c"]  ->  h = h
+== swd2_hexo_3354
+passes=2
+line 3354: hx = -hx_held.reverse()  ->  hx = hx
+== swd2_hexo_3357
+passes=2
+line 3357: hx_wide = -hx_wide_held.reverse()  ->  hx_wide = hx_wide
+== swd2_hexo_3408
+passes=2
+line 3408: hx_wide = -hx_wide_held  ->  hx_wide = hx_wide
+== swd2_hexo_3410
+passes=2
+line 3410: hx = -hx_held  ->  hx = hx
+== swd2_hexo_3423
+passes=2
+line 3423: hx_wide_turned = hx_wide_held  ->  hx_wide_turned = hx_wide_turned
+== swd2_hexo_3427
+passes=2
+line 3427: hx_turned = hx_held  ->  hx_turned = hx_turned
+== swd2_hexo_3432
+passes=2
+line 3432: hx_wide = -hx_wide_turned.reverse()  ->  hx_wide = hx_wide
+== swd2_hexo_3438
+passes=2
+line 3438: hx = -hx_turned.reverse()  ->  hx = hx
+== swd2_inf_1271
+passes=2
+line 1271: x = x + 4  ->  x = x
+== swd2_inf_1287
+passes=2
+line 1287: x = x * 2  ->  x = x
+== swd2_inf_1297
+passes=2
+line 1297: x = x - 1000  ->  x = x
+== swd2_inf_1309
+passes=2
+line 1309: held = held - 17  ->  held = held
+== swd2_inf_1318
+passes=2
+line 1318: held = held * 4  ->  held = held
+== swd2_inf_1327
+passes=2
+line 1327: held = held + 2 ^ 70  ->  held = held
+== swd2_inf_1331
+passes=2
+line 1331: held = held + 31  ->  held = held
+== swd2_inf_1346
+passes=2
+line 1346: x = x - 547311173  ->  x = x
+== swd2_inf_1356
+passes=2
+line 1356: x = x * 11  ->  x = x
+== swd2_inf_1373
+passes=2
+line 1373: x = x - 2 ^ 100  ->  x = x
+== swd2_inf_1383
+passes=2
+line 1383: x = x + 2  ->  x = x
+== swd2_inf_1392
+passes=2
+line 1392: x = x - 6  ->  x = x
+== swd2_inf_1404
+passes=2
+line 1404: x = x * 19  ->  x = x
+== swd2_inf_1415
+passes=2
+line 1415: x = x - 9  ->  x = x
+== swd2_inf_1446
+passes=2
+line 1446: x = x + 9  ->  x = x
+== swd2_inf_1457
+passes=2
+line 1457: x = x / 19 + x % 19 * far  ->  x = x
+== swd2_inf_1475
+passes=2
+line 1475: x = x + 6  ->  x = x
+== swd2_inf_1484
+passes=2
+line 1484: x = x - 2  ->  x = x
+== swd2_inf_1494
+passes=2
+line 1494: x = x + 2 ^ 100  ->  x = x
+== swd2_inf_1503
+passes=2
+line 1503: x = x / 11 + x % 11 * far  ->  x = x
+== swd2_inf_1513
+passes=2
+line 1513: x = x + 547311173  ->  x = x
+== swd2_inf_1523
+passes=2
+line 1523: held = held - 31  ->  held = held
+== swd2_inf_1535
+passes=2
+line 1535: held = held - 2 ^ 70  ->  held = held
+== swd2_inf_1544
+passes=2
+line 1544: held = held / 4 + held % 4 * far  ->  held = held
+== swd2_inf_1553
+passes=2
+line 1553: held = held + 17  ->  held = held
+== swd2_inf_1570
+passes=2
+line 1570: x = x + 1000  ->  x = x
+== swd2_inf_1580
+passes=2
+line 1580: x = x / 2 + x % 2 * far  ->  x = x
+== swd2_inf_1588
+passes=2
+line 1588: x = x - 4  ->  x = x
+== swd2_list_551
+passes=2
+line 551: x.reserve(1000)                                        // 46: room for 1000 items: no item may change  ->  x = x                                        // 46: room for 1000 items: no item may change
+== swd2_list_568
+passes=2
+line 568: x.truncate(x.size + 1000)                              // 55: undoes 46, cut past the end, so nothing goes  ->  x = x                              // 55: undoes 46, cut past the end, so nothing goes
+== swd2_mult_1087
+passes=2
+line 1087: x = "" + x                                                                              // 21: a STRING: the float as text  ->  x = x                                                                              // 21: a STRING: the float as text
+== swd2_num_2129
+passes=2
+line 2129: n = n.string.number                                              // 26: through its own text, back with .number  ->  n = n                                              // 26: through its own text, back with .number
+== swd2_num_2186
+passes=2
+line 2186: n = 0 + n.to_string                                              // 75: undoes 26  ->  n = n                                              // 75: undoes 26
+== swf_350
+passes=3
+line 350: f.replace("1", "one")  ->  f.remove("no such line in the file")
+== swf_351
+passes=3
+line 351: f.replace("3", "three")  ->  f.remove("no such line in the file")
+== swf_352
+passes=3
+line 352: f.replace("5", "five")  ->  f.remove("no such line in the file")
+== swf_353
+passes=3
+line 353: f.replace("7", "seven")  ->  f.remove("no such line in the file")
+== swf_354
+passes=3
+line 354: f.replace("4", "four")  ->  f.remove("no such line in the file")
+== swf_363
+passes=3
+line 363: f.append("a\nb\nc")  ->  f.remove("no such line in the file")
+== swf_368
+passes=3
+line 368: f.append(k)  ->  f.remove("no such line in the file")
+== swf_369
+passes=3
+line 369: f.replace("thirty bits", "30 bits")  ->  f.remove("no such line in the file")
+== swf_373
+passes=3
+line 373: f.append("cleared")  ->  f.remove("no such line in the file")
+== swf_376
+passes=3
+line 376: f.replace(bits, "binary " + t)  ->  f.remove("no such line in the file")
+== swf_377
+passes=3
+line 377: f.replace("is satellite", "IS SATELLITE")  ->  f.remove("no such line in the file")
+== swf_380
+passes=3
+line 380: f.replace("seven", "SEVEN")  ->  f.remove("no such line in the file")
+== swf_381
+passes=3
+line 381: f.append(hx_line)  ->  f.remove("no such line in the file")
+== swf_382
+passes=3
+line 382: f.replace("binary " + t, "binary " + t + " (30 bits)")  ->  f.remove("no such line in the file")
+== swf_384
+passes=3
+line 384: f.replace("SATELLITE", "satellite " + t)  ->  f.remove("no such line in the file")
+== swf_386
+passes=3
+line 386: f.append("the end")  ->  f.remove("no such line in the file")
+== swf_397
+passes=3
+line 397: f.replace(dot, "547,311,173")  ->  f.remove("no such line in the file")
+== swf_423
+passes=3
+line 423: f.append(g)  ->  f.remove("no such line in the file")
+== swf_424
+passes=3
+line 424: f.append(h)  ->  f.remove("no such line in the file")
+== swf_433
+passes=3
+line 433: f.append(e)  ->  f.remove("no such line in the file")
+== swn2_inf_1271
+passes=2
+line 1271: x = x + 4  ->  x = 0 - (x + 4)
+== swn2_inf_1287
+passes=2
+line 1287: x = x * 2  ->  x = 0 - (x * 2)
+== swn2_inf_1297
+passes=2
+line 1297: x = x - 1000  ->  x = 0 - (x - 1000)
+== swn2_inf_1346
+passes=2
+line 1346: x = x - 547311173  ->  x = 0 - (x - 547311173)
+== swn2_inf_1356
+passes=2
+line 1356: x = x * 11  ->  x = 0 - (x * 11)
+== swn2_inf_1373
+passes=2
+line 1373: x = x - 2 ^ 100  ->  x = 0 - (x - 2 ^ 100)
+== swn2_inf_1383
+passes=2
+line 1383: x = x + 2  ->  x = 0 - (x + 2)
+== swn2_inf_1392
+passes=2
+line 1392: x = x - 6  ->  x = 0 - (x - 6)
+== swn2_inf_1404
+passes=2
+line 1404: x = x * 19  ->  x = 0 - (x * 19)
+== swn2_inf_1415
+passes=2
+line 1415: x = x - 9  ->  x = 0 - (x - 9)
+== swn2_inf_1446
+passes=2
+line 1446: x = x + 9  ->  x = 0 - (x + 9)
+== swn2_inf_1457
+passes=2
+line 1457: x = x / 19 + x % 19 * far  ->  x = 0 - (x / 19 + x % 19 * far)
+== swn2_inf_1475
+passes=2
+line 1475: x = x + 6  ->  x = 0 - (x + 6)
+== swn2_inf_1484
+passes=2
+line 1484: x = x - 2  ->  x = 0 - (x - 2)
+== swn2_inf_1494
+passes=2
+line 1494: x = x + 2 ^ 100  ->  x = 0 - (x + 2 ^ 100)
+== swn2_inf_1503
+passes=2
+line 1503: x = x / 11 + x % 11 * far  ->  x = 0 - (x / 11 + x % 11 * far)
+== swn2_inf_1513
+passes=2
+line 1513: x = x + 547311173  ->  x = 0 - (x + 547311173)
+== swn2_inf_1570
+passes=2
+line 1570: x = x + 1000  ->  x = 0 - (x + 1000)
+== swn2_inf_1580
+passes=2
+line 1580: x = x / 2 + x % 2 * far  ->  x = 0 - (x / 2 + x % 2 * far)
+== swn2_inf_1588
+passes=2
+line 1588: x = x - 4  ->  x = 0 - (x - 4)
+== swu2_m_155
+passes=2
+line 155: x[satellite.bool.true] = x[satellite.bool.true] * 2                                                              // 27: 1094622347.0, under the bool key  ->  x[satellite.bool.true] = x[satellite.bool.true] * 2 - 0.00000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000001                                                              // 27: 1094622347.0, under the bool key
+== X_col_neg_3624
+passes=10000
+line 3624: worth = worth / (paint_moved.transparency + x1) + worth % (paint_moved.transparency + x1) * far  ->  worth = 0 - (worth / (paint_moved.transparency + x1) + worth % (paint_moved.transparency + x1) * far)
+== X_col_worth_negate
+passes=10000
+line 3535: worth = worth + paint.number  ->  worth = 0 - worth + paint.number
+== X_file_bits_line
+passes=10000
+line 296: f.append(bits)  ->  f.append(bits + "1")
+== X_file_first_zero
+passes=10000
+line 295: f.append(t)  ->  f.append("0" + t)
+== X_file_float_line
+passes=10000
+line 298: f.append(t + ".0")  ->  f.append(t + ".00")
+== X_hexwalk_const
+passes=10000
+line 3485: satellite.variable.hex my_hex = x547311173  ->  satellite.variable.hex my_hex = x547311172
+== X_map_op27_minus_ulp
+passes=10000
+line 155: x[satellite.bool.true] = x[satellite.bool.true] * 2                                                              // 27: 1094622347.0, under the bool key  ->  x[satellite.bool.true] = x[satellite.bool.true] * 2 - 0.00000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000001                                                              // 27: 1094622347.0, under the bool key
+== X_swf_350
+passes=10000
+line 350: f.replace("1", "one")  ->  f.remove("no such line in the file")
+== X_swf_368
+passes=10000
+line 368: f.append(k)  ->  f.remove("no such line in the file")
+== X_swf_386
+passes=10000
+line 386: f.append("the end")  ->  f.remove("no such line in the file")

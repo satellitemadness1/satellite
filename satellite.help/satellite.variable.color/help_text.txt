@@ -1,0 +1,43 @@
+
+--------------------------------------------------------------------------------
+SATELLITE 004: satellite.variable.color
+--------------------------------------------------------------------------------
+
+satellite.variable.color (second spelling satellite.variable.colour) is a hex
+number of a mandatory width: exactly six hex digits, two each for red, green and
+blue. On the line that declares it the x is optional -- 000000, x000000, ff00aa
+and 00ff00 all work -- and it is shown in upper case with its x: x00FF00. Five
+or seven digits are refused before anything runs: "a color is exactly six hex
+digits, like x00FF00".
+
+On a later line, c = x00ff00 always works, and so do c = 123456 and c = abcdef.
+A later line like c = 00ff00, digits that start with a number and hold a
+letter, needs its x, and the refusal says so.
+
+A colour can be see-through. Its transparency is a whole number from 0 (solid)
+to 99 (almost clear), set either of two ways: c.transparency(50), or a comma
+after the colour, c = x000000, 50. c.transparency reads it back. A colour with
+a transparency shows as x000000, 50, the way you write it.
+
+== and != compare the digits and the transparency; a colour has no order and
+no arithmetic. .number is what the six digits are worth, .hex is the six
+digits, .binary is its 24 bits, and .string is how it is shown. Saturation is
+not part of a colour.
+
+example:
+
+satellite.include(satellite)
+
+satellite.capsule satellite.main(satellite.variable.arguments arguments)
+{
+    satellite.variable.color sky = 87ceeb
+    satellite.variable.colour ink = x000000, 50
+    satellite.console.display(sky) // x87CEEB
+    satellite.console.display(ink) // x000000, 50
+    sky.transparency(40)
+    satellite.console.display(sky.transparency) // 40
+    satellite.console.display(sky) // x87CEEB, 40
+    satellite.console.display(sky.number) // 8900331
+    satellite.console.display(sky.hex) // 87CEEB
+    satellite.return(satellite)
+}

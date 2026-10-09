@@ -1,0 +1,159 @@
+satellite.include(satellite)
+
+// full_text_4 -- satellite.container.list: braces, {} and satellite.container.list(),
+// reading and writing items counted from 1, a copy that is a copy, every method that
+// changes the list (.append .insert .remove .remove_at .remove_first .remove_last
+// .truncate .reserve .clear) and every one that answers a new value (.size .empty .first
+// .last .contains .contain .index_of .search .reverse() .sum .max .min .join
+// .sort().by_name() .sort().by_value()), a list typed with <>, and a walk with a for.
+// Every expected answer is the help page's own (satellite.help(satellite.container.list)).
+// One line per check, written on the first pass: "ok <what>", or "WRONG <what>: <answer>
+// (expected <right answer>)". Every pass runs every check again, and the last line says
+// whether every pass answered as the first did.
+
+satellite.capsule check(satellite.variable.number round, satellite.variable.string what, satellite.container.multiple got, satellite.container.multiple want)
+{
+    satellite.statement.if (got == want)
+    {
+        satellite.statement.if (round == 1)
+        {
+            satellite.console.display("ok " + what)
+        }
+        satellite.return(0)
+    }
+    satellite.statement.if (round == 1)
+    {
+        satellite.console.display("WRONG " + what + ": ", end="")
+        satellite.console.display(got, end="")
+        satellite.console.display(" (expected ", end="")
+        satellite.console.display(want, end="")
+        satellite.console.display(")")
+    }
+    satellite.return(1)
+}
+
+satellite.capsule satellite.main()
+{
+    satellite.variable.number passes = 1000
+    satellite.variable.number rounds = passes
+    satellite.statement.if (rounds < 1)
+    {
+        rounds = 1
+    }
+    satellite.variable.number first_wrong = 0
+    satellite.variable.number unlike_the_first = 0
+    satellite.statement.for(satellite.variable.number p = 1; p <= rounds; p + 1)
+    {
+        satellite.variable.number wrong = 0
+
+        // braces make a list wherever a value goes
+        satellite.container.list nothing = {}
+        satellite.container.list made = satellite.container.list()
+        satellite.container.list mixed = {1, "two", 3.5}
+        wrong = wrong + check(p, "list braces make a list", {1, 2, 3}.size, 3)
+        wrong = wrong + check(p, "list {} holds nothing", nothing.size, 0)
+        wrong = wrong + check(p, "list .empty of {}", nothing.empty, satellite.bool.true)
+        wrong = wrong + check(p, "list satellite.container.list() is {}", made, {})
+        wrong = wrong + check(p, "list holds mixed items", mixed[2], "two")
+        wrong = wrong + check(p, "list of lists", {{1, 2}, {3}}.size, 2)
+
+        // items counted from 1, read and written
+        satellite.container.list<satellite.variable.string> names = {"zoe", "al"}
+        names.append("bo")
+        wrong = wrong + check(p, "list .append adds to the end", names, {"zoe", "al", "bo"})
+        wrong = wrong + check(p, "list [1] is the first item", names[1], "zoe")
+        wrong = wrong + check(p, "list [size] is the last item", names[names.size], "bo")
+        satellite.container.list<satellite.variable.string> copy = names
+        copy[1] = "ZOE"
+        wrong = wrong + check(p, "list [n] = x replaces an item", copy, {"ZOE", "al", "bo"})
+        wrong = wrong + check(p, "list b = a copies, a stays as it was", names[1], "zoe")
+        satellite.container.list grows = {1, 2}
+        satellite.container.list other = grows
+        other.append(3)
+        wrong = wrong + check(p, "list .append on a copy leaves the first alone", grows, {1, 2})
+        wrong = wrong + check(p, "list .append on a copy changes the copy", other, {1, 2, 3})
+
+        // the methods that change the list itself
+        satellite.container.list<satellite.variable.number> a = {1, 2, 3}
+        a.insert(1, 0)
+        wrong = wrong + check(p, "list .insert(n, x) at the front", a, {0, 1, 2, 3})
+        a.insert(3, 7)
+        wrong = wrong + check(p, "list .insert(n, x) in the middle", a, {0, 1, 7, 2, 3})
+        a.remove(7)
+        wrong = wrong + check(p, "list .remove(x) takes the item out", a, {0, 1, 2, 3})
+        a.remove_at(1)
+        wrong = wrong + check(p, "list .remove_at(n)", a, {1, 2, 3})
+        a.remove_first()
+        wrong = wrong + check(p, "list .remove_first()", a, {2, 3})
+        a.remove_last()
+        wrong = wrong + check(p, "list .remove_last()", a, {2})
+        satellite.container.list<satellite.variable.number> t = {5, 6, 7, 8}
+        t.truncate(2)
+        wrong = wrong + check(p, "list .truncate(n) keeps the first n", t, {5, 6})
+        t.truncate(10)
+        wrong = wrong + check(p, "list .truncate past the end keeps them all", t, {5, 6})
+        t.reserve(100)
+        wrong = wrong + check(p, "list .reserve(n) changes no item", t, {5, 6})
+        t.clear
+        wrong = wrong + check(p, "list .clear empties it", t, {})
+        t.append(9)
+        t.clear()
+        wrong = wrong + check(p, "list .clear() with brackets", t.size, 0)
+
+        // the methods that answer a new value and leave the list alone
+        satellite.container.list<satellite.variable.number> row = {30, 4, 100}
+        wrong = wrong + check(p, "list .size", names.size, 3)
+        wrong = wrong + check(p, "list .size()", names.size(), 3)
+        wrong = wrong + check(p, "list .empty of a list with items", names.empty, satellite.bool.false)
+        wrong = wrong + check(p, "list .first", names.first, "zoe")
+        wrong = wrong + check(p, "list .last", names.last, "bo")
+        wrong = wrong + check(p, "list .contains", names.contains("al"), satellite.bool.true)
+        wrong = wrong + check(p, "list .contain is its second spelling", names.contain("al"), satellite.bool.true)
+        wrong = wrong + check(p, "list .contains of an item not there", names.contains("cy"), satellite.bool.false)
+        wrong = wrong + check(p, "list .index_of answers a position", names.index_of("bo"), 3)
+        wrong = wrong + check(p, "list .index_of answers 0 when not there", names.index_of("cy"), 0)
+        wrong = wrong + check(p, "list .search answers a position", names.search("al"), 2)
+        wrong = wrong + check(p, "list .search answers 0 when not there", names.search("cy"), 0)
+        wrong = wrong + check(p, "list .reverse()", names.reverse(), {"bo", "al", "zoe"})
+        wrong = wrong + check(p, "list .reverse() leaves the list alone", names, {"zoe", "al", "bo"})
+        wrong = wrong + check(p, "list .sum", row.sum, 134)
+        wrong = wrong + check(p, "list .sum of nothing is 0", nothing.sum, 0)
+        wrong = wrong + check(p, "list .sum of floats", {1.5, 2.25}.sum, 3.75)
+        wrong = wrong + check(p, "list .max", row.max, 100)
+        wrong = wrong + check(p, "list .min", row.min, 4)
+        wrong = wrong + check(p, "list .max of strings", {"pear", "apple", "zoo"}.max, "zoo")
+        wrong = wrong + check(p, "list .min of strings", {"pear", "apple", "zoo"}.min, "apple")
+        wrong = wrong + check(p, "list .join(separator)", names.join(", "), "zoe, al, bo")
+        wrong = wrong + check(p, "list .join of numbers", row.join("-"), "30-4-100")
+        wrong = wrong + check(p, "list .join of nothing is empty text", nothing.join(","), "")
+
+        // .sort() orders nothing on its own: .by_name() or .by_value(), .reverse() after
+        wrong = wrong + check(p, "list .sort() on its own orders nothing", row.sort(), {30, 4, 100})
+        wrong = wrong + check(p, "list .sort().by_name()", names.sort().by_name(), {"al", "bo", "zoe"})
+        wrong = wrong + check(p, "list .sort().by_name().reverse()", names.sort().by_name().reverse(), {"zoe", "bo", "al"})
+        wrong = wrong + check(p, "list .sort() leaves the list alone", names, {"zoe", "al", "bo"})
+        wrong = wrong + check(p, "list .sort().by_value() puts the smallest first", row.sort().by_value(), {4, 30, 100})
+        wrong = wrong + check(p, "list .sort().by_name() orders numbers by how they read", row.sort().by_name(), {100, 30, 4})
+        wrong = wrong + check(p, "list .sort().by_value().reverse()", row.sort().by_value().reverse(), {100, 30, 4})
+        wrong = wrong + check(p, "list .sort().by_value() of negatives and floats", {3, -1, 2.5, 10, 0}.sort().by_value(), {-1, 0, 2.5, 3, 10})
+        wrong = wrong + check(p, "list .sort().by_name() follows the character table", {" ", "!", "1", "B", "b", "a"}.sort().by_name(), {"a", "b", "B", "1", "!", " "})
+
+        // walk a list with satellite.statement.for and a[i]
+        satellite.variable.number total = 0
+        satellite.statement.for(satellite.variable.number i = 1; i <= row.size; i + 1)
+        {
+            total = total + row[i] + 1
+        }
+        wrong = wrong + check(p, "list walked with a for and a[i]", total, 137)
+        satellite.statement.if (p == 1)
+        {
+            first_wrong = wrong
+        }
+        satellite.statement.if (wrong != first_wrong)
+        {
+            unlike_the_first = unlike_the_first + 1
+        }
+    }
+    check(1, "list answers alike on every pass", unlike_the_first, 0)
+    satellite.return(satellite)
+}

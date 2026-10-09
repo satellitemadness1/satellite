@@ -1,0 +1,16 @@
+// A thread runs once: a second start() is S722. The first run's line comes out, then the refusal.
+satellite.include(satellite)
+
+satellite.capsule say(satellite.variable.string text)
+{
+    satellite.console.display(text)
+}
+
+satellite.capsule satellite.main()
+{
+    satellite.variable.thread t = satellite.thread.new(say("once"))
+    t.start()
+    t.join()
+    t.start()
+    satellite.return(satellite)
+}

@@ -1,0 +1,493 @@
+satellite.include(satellite)
+
+// full_objects_1 -- satellite.test.full(): SPACESUITS, as satellite.help(satellite.spacesuit)
+// says they behave: fields and constructors, satellite.protected and satellite.public,
+// capsules inside a suit, a suit inside a suit, one suit extending another, objects as
+// references, objects in lists and maps, and pointer(), reference(), ok(), == and !=.
+// One line a check: "ok <capability>", or "WRONG <capability>: <answer> (expected <right>)".
+// passes repeats every check; the passes before the last print only what is WRONG.
+
+satellite.spacesuit report()
+{
+    satellite.protected
+    {
+        satellite.variable.bool loud = satellite.bool.false
+        satellite.variable.number wrong = 0
+
+        satellite.capsule word_of(satellite.variable.bool b)
+        {
+            satellite.statement.if (b)
+            {
+                satellite.return("true")
+            }
+            satellite.return("false")
+        }
+
+        satellite.capsule right(satellite.variable.string what)
+        {
+            satellite.statement.if (loud)
+            {
+                satellite.console.display("ok " + what)
+            }
+        }
+
+        satellite.capsule wrong_answer(satellite.variable.string what, satellite.variable.string got, satellite.variable.string want)
+        {
+            wrong = wrong + 1
+            satellite.console.display("WRONG " + what + ": " + got.replace("\n", "\\n") + " (expected " + want.replace("\n", "\\n") + ")")
+        }
+    }
+
+    satellite.constructor(satellite.variable.bool say)
+    {
+        loud = say
+    }
+
+    satellite.public
+    {
+        satellite.capsule check_text(satellite.variable.string what, satellite.variable.string got, satellite.variable.string want)
+        {
+            satellite.statement.if (got == want)
+            {
+                right(what)
+            }
+            satellite.statement.else
+            {
+                wrong_answer(what, got, want)
+            }
+        }
+
+        satellite.capsule check_number(satellite.variable.string what, satellite.variable.number got, satellite.variable.number want)
+        {
+            satellite.statement.if (got == want)
+            {
+                right(what)
+            }
+            satellite.statement.else
+            {
+                wrong_answer(what, got.to_string(), want.to_string())
+            }
+        }
+
+        satellite.capsule check_bool(satellite.variable.string what, satellite.variable.bool got, satellite.variable.bool want)
+        {
+            satellite.statement.if (got == want)
+            {
+                right(what)
+            }
+            satellite.statement.else
+            {
+                wrong_answer(what, word_of(got), word_of(want))
+            }
+        }
+
+        satellite.capsule call_wrong()
+        {
+            satellite.return(wrong)
+        }
+    }
+}
+
+// A FIELD, A CONSTRUCTOR, A PROTECTED CAPSULE CALLED BARE FROM A PUBLIC ONE.
+satellite.spacesuit counter()
+{
+    satellite.protected
+    {
+        satellite.variable.number count = 0
+        satellite.variable.number step = 1
+
+        satellite.capsule bump_by(satellite.variable.number n)
+        {
+            count = count + n
+        }
+    }
+
+    satellite.constructor(satellite.variable.number step_input)
+    {
+        step = step_input
+    }
+
+    satellite.public
+    {
+        satellite.capsule call_bump()
+        {
+            bump_by(step)
+        }
+
+        satellite.capsule call_count()
+        {
+            satellite.return(count)
+        }
+
+        satellite.capsule call_step()
+        {
+            satellite.return(step)
+        }
+    }
+}
+
+// A SUIT WITH NO CONSTRUCTOR: its fields keep the values written beside them.
+satellite.spacesuit box()
+{
+    satellite.protected
+    {
+        satellite.variable.number value = 0
+        satellite.variable.string label = "plain box"
+    }
+
+    satellite.public
+    {
+        satellite.capsule call_put(satellite.variable.number n)
+        {
+            value = n
+        }
+
+        satellite.capsule call_take()
+        {
+            satellite.return(value)
+        }
+
+        satellite.capsule call_label()
+        {
+            satellite.return(label)
+        }
+    }
+}
+
+// A SUIT HOLDING A LIST OF OBJECTS, A FIELD OF A SUIT'S TYPE THAT STARTS EMPTY, AND A POINTER.
+satellite.spacesuit shelf()
+{
+    satellite.protected
+    {
+        satellite.container.list<box> boxes = {}
+        box favourite
+        box back
+    }
+
+    satellite.public
+    {
+        satellite.capsule call_add(box b)
+        {
+            boxes.append(b)
+            back = b.pointer()
+        }
+
+        satellite.capsule call_sum()
+        {
+            satellite.variable.number total = 0
+            satellite.statement.for(satellite.variable.number i = 1; i <= boxes.size(); i + 1)
+            {
+                total = total + boxes[i].call_take()
+            }
+            satellite.return(total)
+        }
+
+        satellite.capsule call_pick(satellite.variable.number i)
+        {
+            favourite = boxes[i]
+        }
+
+        satellite.capsule call_favourite()
+        {
+            satellite.return(favourite)
+        }
+
+        satellite.capsule call_back()
+        {
+            satellite.return(back)
+        }
+    }
+}
+
+// A SUIT INSIDE A SUIT: hull in satellite.public (made from outside as ship.hull), log in
+// satellite.protected (made only by ship's own capsules).
+satellite.spacesuit ship()
+{
+    satellite.protected
+    {
+        satellite.variable.string name = "unnamed"
+
+        satellite.spacesuit log()
+        {
+            satellite.protected
+            {
+                satellite.variable.number written = 0
+            }
+
+            satellite.public
+            {
+                satellite.capsule call_write()
+                {
+                    written = written + 1
+                    satellite.return(written)
+                }
+            }
+        }
+    }
+
+    satellite.constructor(satellite.variable.string name_input)
+    {
+        name = name_input
+    }
+
+    satellite.public
+    {
+        satellite.spacesuit hull()
+        {
+            satellite.protected
+            {
+                satellite.variable.number plates = 0
+            }
+
+            satellite.constructor(satellite.variable.number plates_input)
+            {
+                plates = plates_input
+            }
+
+            satellite.public
+            {
+                satellite.capsule call_plates()
+                {
+                    satellite.return(plates)
+                }
+            }
+        }
+
+        satellite.capsule call_report()
+        {
+            log fresh
+            fresh.call_write()
+            satellite.variable.number times = fresh.call_write()
+            satellite.return(name + " logged " + times.to_string())
+        }
+    }
+}
+
+// ONE SUIT EXTENDING ANOTHER, declared with satellite.class -- the same word as satellite.spacesuit.
+satellite.class view()
+{
+    satellite.protected
+    {
+        satellite.variable.string title = "a view"
+        satellite.variable.number made = 0
+
+        satellite.capsule banner(satellite.variable.string word)
+        {
+            satellite.return("[" + title + ": " + word + "]")
+        }
+    }
+
+    satellite.constructor()
+    {
+        made = made + 1
+    }
+
+    satellite.public
+    {
+        satellite.capsule call_set_title(satellite.variable.string title_input)
+        {
+            title = title_input
+        }
+
+        satellite.capsule call_made()
+        {
+            satellite.return(made)
+        }
+
+        satellite.capsule call_speak()
+        {
+            satellite.return("view speaks")
+        }
+
+        satellite.capsule call_through()
+        {
+            satellite.return(call_speak())
+        }
+    }
+}
+
+satellite.spacesuit eclipse(view)
+{
+    satellite.protected
+    {
+        satellite.variable.number depth = 0
+    }
+
+    satellite.constructor(satellite.variable.number depth_input)
+    {
+        depth = depth_input
+        made = made + 10
+    }
+
+    satellite.public
+    {
+        satellite.capsule call_show()
+        {
+            satellite.return(banner("depth " + depth.to_string()))
+        }
+
+        satellite.capsule call_speak()
+        {
+            satellite.return("eclipse speaks")
+        }
+    }
+}
+
+satellite.capsule bump_three(counter c)
+{
+    c.call_bump()
+    c.call_bump()
+    c.call_bump()
+}
+
+satellite.capsule make_box(satellite.variable.number n)
+{
+    box made
+    made.call_put(n)
+    satellite.return(made)
+}
+
+satellite.capsule pointer_at_a_local()
+{
+    box local
+    local.call_put(5)
+    satellite.return(local.pointer())
+}
+
+satellite.capsule speak_of(view any)
+{
+    satellite.return(any.call_speak())
+}
+
+// FIELDS, CONSTRUCTORS, SECTIONS, AND AN OBJECT AS A REFERENCE.
+satellite.capsule check_fields(report r)
+{
+    counter a(2)
+    r.check_number("spacesuit constructor sets a field", a.call_step(), 2)
+    a.call_bump()
+    r.check_number("spacesuit public capsule calls a protected capsule by its bare name", a.call_count(), 2)
+    box plain
+    r.check_text("spacesuit with no constructor keeps its written field values", plain.call_label(), "plain box")
+    bump_three(a)
+    r.check_number("spacesuit object handed to a capsule is the caller's object", a.call_count(), 8)
+    counter b = a
+    b.call_bump()
+    r.check_number("spacesuit = names the same object", a.call_count(), 10)
+    box m = make_box(4)
+    r.check_number("spacesuit object handed back by a capsule", m.call_take(), 4)
+    counter c(1)
+    satellite.container.list<counter> all = {}
+    all.append(c)
+    counter c(5)
+    all.append(c)
+    r.check_number("spacesuit old object lives on in the list that holds it", all[1].call_step(), 1)
+}
+
+// OBJECTS IN CONTAINERS, AND A FIELD OF A SUIT'S TYPE.
+satellite.capsule check_containers(report r)
+{
+    box a
+    a.call_put(3)
+    box b
+    b.call_put(4)
+    satellite.container.list<box> row = {a, b}
+    r.check_number("spacesuit list index_of() finds an object", row.index_of(b), 2)
+    row[1].call_put(30)
+    r.check_number("spacesuit list item is the object itself, not a copy", a.call_take(), 30)
+    satellite.container.map<satellite.variable.string, box> named
+    named["b"] = b
+    named["b"].call_put(41)
+    r.check_number("spacesuit map value is the object itself, not a copy", b.call_take(), 41)
+    shelf s
+    s.call_add(a)
+    s.call_add(b)
+    s.call_pick(2)
+    box f = s.call_favourite()
+    r.check_bool("spacesuit field of a suit's type given an object by a capsule", f == b, satellite.bool.true)
+}
+
+// A SUIT INSIDE A SUIT, AND ONE SUIT EXTENDING ANOTHER.
+satellite.capsule check_nesting(report r)
+{
+    ship.hull h(7)
+    r.check_number("spacesuit public inner suit made from outside as outer.inner", h.call_plates(), 7)
+    ship s("kestrel")
+    r.check_text("spacesuit protected inner suit made by the outer suit's capsule", s.call_report(), "kestrel logged 2")
+    eclipse moon(4)
+    r.check_number("spacesuit extended: every constructor runs, the supertype's first", moon.call_made(), 11)
+    moon.call_set_title("moon")
+    r.check_text("spacesuit extended: supertype's capsules and fields reached by bare name", moon.call_show(), "[moon: depth 4]")
+    r.check_text("spacesuit extended: a capsule declared again replaces the supertype's", speak_of(moon), "eclipse speaks")
+    r.check_text("spacesuit extended: the supertype's own capsule calls the replacement", moon.call_through(), "eclipse speaks")
+    view plain
+    r.check_text("spacesuit declared with satellite.class keeps its own capsule", speak_of(plain), "view speaks")
+}
+
+// pointer(), reference(), ok(), == AND !=.
+satellite.capsule check_pointers(report r)
+{
+    box a
+    a.call_put(7)
+    box p = a.pointer()
+    r.check_text("spacesuit ok() is true of an object, and of a pointer while its object lives", "ok:" + a.ok() + p.ok(), "ok: true true")
+    satellite.variable.number seen = p.call_take()
+    p.call_put(8)
+    r.check_text("spacesuit pointer reaches its object, and a change through it changes the object", seen.to_string() + " " + a.call_take().to_string(), "7 8")
+    r.check_bool("spacesuit object == a pointer at it", a == p, satellite.bool.true)
+    box c = a.reference()
+    r.check_number("spacesuit reference() is a copy of the fields", c.call_take(), 8)
+    r.check_bool("spacesuit != between an object and its copy", c != a, satellite.bool.true)
+    a.call_put(9)
+    r.check_number("spacesuit change to the original does not reach the reference", c.call_take(), 8)
+    c.call_put(10)
+    box d
+    box e
+    d.call_put(1)
+    e.call_put(1)
+    r.check_bool("spacesuit two objects with equal fields are not ==", d == e, satellite.bool.false)
+    box other
+    a = other
+    r.check_bool("spacesuit pointer empties when nothing else holds its object", p.ok(), satellite.bool.false)
+    r.check_number("spacesuit reference stays after the original is emptied", c.call_take(), 10)
+    box gone = pointer_at_a_local()
+    r.check_bool("spacesuit pointer at a capsule's own object is empty after it ends", gone.ok(), satellite.bool.false)
+    box x
+    x.call_put(3)
+    box y
+    y.call_put(4)
+    shelf s
+    s.call_add(x)
+    s.call_add(y)
+    shelf copied = s.reference()
+    box back = copied.call_back()
+    back.call_put(40)
+    r.check_number("spacesuit reference() copies the objects it holds all the way down", copied.call_sum(), 43)
+    r.check_bool("spacesuit pointer inside a reference points at the copy", back == y, satellite.bool.false)
+}
+
+satellite.capsule run_all(report r)
+{
+    check_fields(r)
+    check_containers(r)
+    check_nesting(r)
+    check_pointers(r)
+}
+
+satellite.capsule satellite.main()
+{
+    satellite.variable.number passes = 1000
+    satellite.variable.number pass = 1
+    satellite.statement.while (pass < passes)
+    {
+        report quiet(satellite.bool.false)
+        run_all(quiet)
+        pass = pass + 1
+        satellite.statement.if (quiet.call_wrong() > 0)
+        {
+            pass = passes
+        }
+    }
+    report loud(satellite.bool.true)
+    run_all(loud)
+    satellite.return(satellite)
+}

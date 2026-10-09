@@ -1,0 +1,7 @@
+satellite.include(satellite)
+
+satellite.capsule satellite.main()
+{
+    satellite.console.display(1 / 0)
+    satellite.return(satellite)
+}

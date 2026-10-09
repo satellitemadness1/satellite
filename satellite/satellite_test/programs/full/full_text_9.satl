@@ -1,0 +1,11 @@
+satellite.include(satellite)
+
+// full_text_9 -- REFUSED: string .substring past the end is refused (S411).
+// satellite.help(satellite.variable.string). Nothing reaches stdout; satl exits with the refusal's code.
+
+satellite.capsule satellite.main()
+{
+    satellite.variable.number passes = 1
+    satellite.console.display("hello".substring(2, 9))
+    satellite.return(satellite)
+}

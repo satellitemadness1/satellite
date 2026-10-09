@@ -1,0 +1,22 @@
+satellite.include(satellite)
+
+// A FILE A BLOCK'S NAME HELD IS SAVED AND CLOSED AT THAT BLOCK'S } even when a name of a block inside it, ended
+// there, held it too -- an ended box keeps no file open (the fresh reader, 2026-10-06). check.sh runs this in a
+// scratch folder; opened again after the block, the file holds its line: prints 1.
+
+satellite.capsule satellite.main()
+{
+    satellite.variable.number n = 1
+    satellite.statement.if (n == 1)
+    {
+        satellite.variable.file notes = satellite.file.new("L23.se", "text")
+        satellite.statement.if (n == 1)
+        {
+            satellite.variable.file alias = notes
+        }
+        notes.append("written inside the block")
+    }
+    satellite.variable.file again = satellite.file.open("L23.se")
+    satellite.console.display(again.size)
+    satellite.return(satellite)
+}

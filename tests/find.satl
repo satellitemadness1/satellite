@@ -1,0 +1,16 @@
+// `.find(` -- the author's three-token trigger, 2026-09-16: period, the method's
+// own code, and a `(`. Both shapes of argument are here on purpose: a quoted
+// literal, and a name that has to be looked up as an object.
+satellite.include(satellite)
+
+satellite.capsule satellite.main(satellite.container.list<satellite.variable.string> arguments)
+{
+    satellite.variable.string s = "hello world"
+    satellite.variable.string needle = "world"
+
+    satellite.console.display(s.find("world"))
+    satellite.console.display(s.find("hello"))
+    satellite.console.display(s.find(needle))
+
+    satellite.return(satellite)
+}

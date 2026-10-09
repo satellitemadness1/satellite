@@ -1,0 +1,13 @@
+satellite.include(satellite)
+
+// ARITHMETIC ON A HEX ANSWERS A NUMBER, and a number is not put back into a hex name
+// with a width the program never wrote -- the binary's rule. The refusal says both
+// ways out.
+satellite.capsule satellite.main()
+{
+    satellite.variable.hex my_number = x1F
+    satellite.console.display("before")
+    my_number = my_number + x01
+    satellite.console.display(my_number)
+    satellite.return(satellite)
+}

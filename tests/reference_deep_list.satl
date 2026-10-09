@@ -1,0 +1,42 @@
+satellite.include(satellite)
+
+// .reference() LOOKS INSIDE EACH LIST ONCE (the review of 2026-10-02): an object at the bottom of a
+// list nested a hundred thousand deep was looked for again at every depth, which took 2.2 s at
+// twenty thousand and would take about a minute here. check.sh gives this 20 seconds.
+
+satellite.spacesuit box()
+{
+    satellite.protected
+    {
+        satellite.variable.number value = 5
+        satellite.container.list stuff = {}
+    }
+    satellite.public
+    {
+        satellite.capsule call_set(satellite.container.list given)
+        {
+            stuff = given
+        }
+        satellite.capsule call_size()
+        {
+            satellite.return(stuff.size)
+        }
+    }
+}
+
+satellite.capsule satellite.main()
+{
+    box leaf
+    satellite.container.list x = {leaf}
+    satellite.variable.number i = 0
+    satellite.statement.while(i < 100000)
+    {
+        x = {x}
+        i = i + 1
+    }
+    box a
+    a.call_set(x)
+    box r = a.reference()
+    satellite.console.display(r.call_size())
+    satellite.return(satellite)
+}

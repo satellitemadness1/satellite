@@ -1,0 +1,74 @@
+satellite.include(satellite)
+
+// full_structure_5 -- satellite.test.full(): satellite.return on a thread. A capsule run on a thread
+// hands what its satellite.return holds back to join(), and satellite.return(satellite) on a thread
+// ends the WHOLE program -- "from any capsule, at any depth, on any thread, and satl exits 0". It
+// prints one line a check, and nothing else: "ok <capability>", or
+// "WRONG <capability>: <what it answered> (expected <the right answer>)". One thread at a time.
+
+// ONE LINE OF THE REPORT.
+satellite.capsule check(satellite.variable.string what, satellite.variable.string got, satellite.variable.string want)
+{
+    satellite.statement.if (got == want)
+    {
+        satellite.return("ok " + what)
+    }
+    satellite.return("WRONG " + what + ": " + got.replace("\n", " | ") + " (expected " + want.replace("\n", " | ") + ")")
+}
+
+satellite.capsule squared(satellite.variable.number n)
+{
+    satellite.return(n * n)
+}
+
+// A SELF-CALL WITH WORK LEFT AFTER IT -- run 10,000 deep on a thread, the language has no limits there either.
+satellite.capsule depth(satellite.variable.number n)
+{
+    satellite.statement.if (n == 0)
+    {
+        satellite.return(0)
+    }
+    satellite.return(depth(n - 1) + 1)
+}
+
+// ON ITS OWN THREAD: the line, then the end of the program.
+satellite.capsule end_on_a_thread()
+{
+    satellite.console.display("ok satellite.return(satellite) on a thread ends the whole program, exit 0")
+    satellite.return(satellite)
+}
+
+satellite.capsule satellite.main()
+{
+    satellite.variable.number passes = 1
+    // EVERY PASS RUNS TWO THREADS, one after the other -- never more than one at a time.
+    satellite.variable.number rounds = passes
+    satellite.statement.if (rounds < 1)
+    {
+        rounds = 1
+    }
+    satellite.variable.number total = 0
+    satellite.variable.number deepest = 0
+    satellite.statement.for (satellite.variable.number pass = 1; pass <= rounds; pass++)
+    {
+        satellite.variable.thread t = satellite.thread.new(squared(pass + 1))
+        t.start()
+        total = total + t.join()
+        satellite.variable.thread deep = satellite.thread.new(depth(10000))
+        deep.start()
+        deepest = deep.join()
+    }
+    // 2*2 + 3*3 + ... + (rounds+1)*(rounds+1), worked out here without a thread
+    satellite.variable.number want = 0
+    satellite.statement.for (satellite.variable.number k = 2; k <= rounds + 1; k++)
+    {
+        want = want + k * k
+    }
+    satellite.console.display(check("a capsule on a thread hands its satellite.return(value) to join()", total.string(), want.string()))
+    satellite.console.display(check("a self-call 10,000 deep, on a thread", deepest.string(), "10000"))
+    satellite.variable.thread last = satellite.thread.new(end_on_a_thread())
+    last.start()
+    last.join()
+    satellite.console.display("WRONG satellite.return(satellite) on a thread: main went on after it (expected the program to end there)")
+    satellite.return(satellite)
+}

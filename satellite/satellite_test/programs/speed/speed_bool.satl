@@ -1,0 +1,29 @@
+satellite.include(satellite)
+
+// speed_bool.satl -- satellite.test.speed(): BOOL LOGIC, with what is built: a comparison kept in a
+// bool, != (exclusive or), == and ! (not), and a bool as an if's condition. && || .and() .or() are not
+// built yet. x walks the Park-Miller sequence, so every bool changes from pass to pass.
+// Prints: how many passes found run true, then odd, flip and run.  C++ twin: speed_bool().
+
+satellite.capsule satellite.main()
+{
+    satellite.variable.number passes = 490000
+    satellite.variable.number x = 547311173
+    satellite.variable.bool odd = satellite.bool.false
+    satellite.variable.bool flip = satellite.bool.false
+    satellite.variable.bool run = satellite.bool.true
+    satellite.variable.number count = 0
+    satellite.statement.for(satellite.variable.number i = 0; i < passes; i + 1)
+    {
+        x = x * 48271 % 2147483647
+        odd = x % 2 == 1
+        flip = flip != odd
+        run = !(run == flip)
+        satellite.statement.if (run)
+        {
+            count = count + 1
+        }
+    }
+    satellite.console.display(count.string + " " + odd.string + " " + flip.string + " " + run.string)
+    satellite.return(satellite)
+}

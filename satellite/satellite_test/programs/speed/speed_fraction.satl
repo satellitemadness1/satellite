@@ -1,0 +1,35 @@
+satellite.include(satellite)
+
+// speed_fraction.satl -- satellite.test.speed(): FRACTIONS, COMPARED BY WHAT THEY ARE WORTH.
+// Fraction arithmetic is not built yet, so this times what is: a whole number given to a fraction
+// name (it becomes that number over 1) and fractions compared with < > and ==, by worth, so 50/2 == 25.
+// Prints: how many passes were below 100/3, above 200/3, and equal to 50/2.  C++ twin: speed_fraction().
+
+satellite.capsule satellite.main()
+{
+    satellite.variable.number passes = 440000
+    satellite.variable.number x = 547311173
+    satellite.variable.fraction f = 0/1
+    satellite.variable.number below = 0
+    satellite.variable.number above = 0
+    satellite.variable.number same = 0
+    satellite.statement.for(satellite.variable.number i = 0; i < passes; i + 1)
+    {
+        x = x * 48271 % 2147483647
+        f = x % 100
+        satellite.statement.if (f < 100/3)
+        {
+            below = below + 1
+        }
+        satellite.statement.if (f > 200/3)
+        {
+            above = above + 1
+        }
+        satellite.statement.if (f == 50/2)
+        {
+            same = same + 1
+        }
+    }
+    satellite.console.display(below.string + " " + above.string + " " + same.string)
+    satellite.return(satellite)
+}

@@ -1,0 +1,11 @@
+satellite.include(satellite)
+
+// full_text_45 -- REFUSED: map satellite.container.map(5) is refused (S110): map() takes nothing.
+// satellite.help(satellite.container.map). Nothing reaches stdout; satl exits with the refusal's code.
+
+satellite.capsule satellite.main()
+{
+    satellite.variable.number passes = 1
+    satellite.container.map age = satellite.container.map(5)
+    satellite.return(satellite)
+}

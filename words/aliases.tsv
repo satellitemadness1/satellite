@@ -1,0 +1,47 @@
+# words/aliases.tsv -- SECOND SPELLINGS of a word: `spelling<TAB>the word it spells`.
+#
+# AN ALIAS HAS NO NUMBER AND NO ROW, which is why it is not in words_004.tsv. A
+# word's 16-bit code is 4097 plus its ROW, so a second row for one word would be a
+# second code for it -- and the checker, the walker and every table that compares a
+# code would then need to be told the two are the same word. Here the lexer turns
+# the second spelling into the FIRST word's code, and nothing after the lexer ever
+# learns there were two. 003 did the same with SAT_ALIAS in words.def.
+#
+# make_word_codes.py reads this file and refuses a row whose spelling is already a
+# word, or whose word is not one: a typo here would otherwise lex as nothing at all.
+#
+# THE AUTHOR, 2026-09-22: "namespace will be namespace/space, and class will be
+# spacesuit alias class, so a class remains a spacesuit and that is my final
+# answer". satellite.namespace and satellite.spacesuit are the words; these are
+# the second spellings, and a refusal names the word, as 003's did for `class`.
+satellite.space	satellite.namespace
+satellite.class	satellite.spacesuit
+#
+# THE AUTHOR, 2026-09-22, naming five types at once as "real_name/alias":
+# "satellite.variable.float/double, satellite.variable.binary/bin
+# satellite.variable.hex/hexadecimal satellite.variable.percent/percentage". He
+# wrote percent first there, but percentage is the word 004 already has
+# (1 6 16, 2026-09-17), so percent is its second spelling. The colour is spelled
+# `color` every time he writes it; `colour` is how a window piece's method is
+# spelled (`.colour("#rrggbb")`), so either spelling reaches the one word.
+satellite.variable.double	satellite.variable.float
+satellite.variable.bin	satellite.variable.binary
+satellite.variable.hexadecimal	satellite.variable.hex
+satellite.variable.percent	satellite.variable.percentage
+satellite.variable.colour	satellite.variable.color
+#
+# THE AUTHOR, 2026-09-25 (satellite.variable.info/README.md): "satellite.info.file OR
+# satellite.info.directory or dir for short".
+satellite.info.dir(path)	satellite.info.directory(path)
+#
+# THE AUTHOR, 2026-09-25: "I want arguments.threads or arguments.thread = how many the
+# interpreter can create, and arguments.machine.thread = how many physical threads exist
+# on the machine". The singular is the second spelling of each, so either reaches one word.
+satellite.library.main.arguments.thread	satellite.library.main.arguments.threads
+satellite.library.main.arguments.machine.thread	satellite.library.main.arguments.machine.threads
+#
+# AND THE SAME TWO WHERE THE ARGUMENTS LIVE NOW (the author, 2026-10-03: "satellite.library.arguments
+# ... because satellite.library.main is just for satellite.main"), so arguments.thread and
+# arguments.machine.thread still reach their words from main's arguments variable.
+satellite.library.arguments.thread	satellite.library.arguments.threads
+satellite.library.arguments.machine.thread	satellite.library.arguments.machine.threads

@@ -1,0 +1,24 @@
+ok arguments.missing = false and arguments.float.decimal(10) at the top of the file are this run's
+ok args.float.decimal(3) and args.float.decimal = 4, lines in a capsule, change it for the run
+ok the bare name arguments reads the run's rows in any capsule
+ok arguments.infinity(64) in another capsule changes the run's row
+ok the access switch written args.access(false), args.access = true and by its full name
+ok main's name and the bare name read the same rows
+ok a row by its key in brackets, and asked by .contains
+ok arguments.argument2 is the file, as arguments.program is -- and arg2, args2, arguments2, argument02 are argument2
+ok arguments.argument1 is satl itself, and arguments.length counts every word
+ok arguments.username, a fact satl gathered at the start
+ok arguments.memory.total, .used and .free -- used and free read fresh
+ok arguments.cores, and the same fact as satellite.library.arguments.cores
+ok arguments.cpu.architecture is haswell (with avx2 among its cpu.features) or baseline
+ok a row of the program's own, added and changed -- args.my_value(5) the same line as = 5
+ok a dotted name is one row of the program's own
+ok a row holds a list and changes it in place
+ok a bare true or false is taken by a write to the arguments
+ok args.remove takes a row of the program's own away
+ok satellite.info.file(path) answers a list of one
+ok satellite.info.file: its type and its line_count
+ok satellite.info.file: it holds name, size, size_type, permissions and bytes
+ok satellite.info.dir is satellite.info.directory
+ok every pass answered alike
+ok a setting a file changes is that run's alone, never the next run's

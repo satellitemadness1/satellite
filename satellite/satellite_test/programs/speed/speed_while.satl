@@ -1,0 +1,20 @@
+satellite.include(satellite)
+
+// speed_while.satl -- satellite.test.speed(): THE WHILE LOOP, counting with a number.
+// Each turn: the condition i < passes, i = i + 1, and one step of h = (h * 3 + i) % 1000003, which is
+// there so that no compiler can skip the loop: h depends on every turn, and has no shortcut.
+// Prints: the count of turns, then h.  C++ twin: speed_while() in speed_values_twins.cpp.
+
+satellite.capsule satellite.main()
+{
+    satellite.variable.number passes = 1200000
+    satellite.variable.number i = 0
+    satellite.variable.number h = 0
+    satellite.statement.while(i < passes)
+    {
+        i = i + 1
+        h = (h * 3 + i) % 1000003
+    }
+    satellite.console.display(i.string + " " + h.string)
+    satellite.return(satellite)
+}

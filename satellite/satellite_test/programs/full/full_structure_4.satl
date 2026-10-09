@@ -1,0 +1,82 @@
+satellite.include(satellite)
+arguments.access = false
+
+// full_structure_4 -- satellite.test.full(): the arguments variable under its older spelling,
+// satellite.main(satellite.container.list<satellite.variable.string> arguments), and satellite.legal
+// with its switch off. It prints one line a check, and nothing else: "ok <capability>" when the answer
+// is right, or "WRONG <capability>: <what it answered> (expected <the right answer>)".
+// arguments.access = false above turns satellite.legal's rule off for this run alone: a name lasts to
+// the end of its capsule, as it did before satellite.legal.
+
+// ONE LINE OF THE REPORT.
+satellite.capsule check(satellite.variable.string what, satellite.variable.string got, satellite.variable.string want)
+{
+    satellite.statement.if (got == want)
+    {
+        satellite.return("ok " + what)
+    }
+    satellite.return("WRONG " + what + ": " + got.replace("\n", " | ") + " (expected " + want.replace("\n", " | ") + ")")
+}
+
+// WITH arguments.access OFF, a name declared inside a block is legal to the end of its capsule.
+satellite.capsule access_off_checks()
+{
+    satellite.container.list<satellite.variable.string> lines
+    satellite.variable.number n = 1
+    satellite.statement.if (n == 1)
+    {
+        satellite.variable.number x = 12345
+    }
+    lines.append(check("satellite.legal off: a name declared in a block is legal after its }", x.string(), "12345"))
+    satellite.statement.while (n < 3)
+    {
+        satellite.variable.number last = n * 100
+        n = n + 1
+    }
+    lines.append(check("satellite.legal off: a name a loop's body declared, after the loop", last.string(), "200"))
+    lines.append(check("satellite.legal off: satellite.access still names the capsule's place", satellite.access(x), "x is a number\n  value  12345\n  legal  satellite.legal.access_off_checks"))
+    satellite.statement.if (n == 3)
+    {
+        satellite.variable.string gone = "deleted"
+        satellite.delete(gone)
+        satellite.variable.number gone = 3
+        n = n + gone
+    }
+    lines.append(check("satellite.legal off: a name deleted in a block is declared again in that block", n.string(), "6"))
+    lines.append(check("arguments.access reads false, as this file wrote it", "" + arguments.access + " " + satellite.library.arguments.access, "false false"))
+    satellite.return(lines.join("\n"))
+}
+
+satellite.capsule satellite.main(satellite.container.list<satellite.variable.string> arguments)
+{
+    satellite.variable.number passes = 1
+    // EVERY CHECK RUNS ONCE A PASS, and the lines of the first pass are printed once, after the last.
+    satellite.variable.number rounds = passes
+    satellite.statement.if (rounds < 1)
+    {
+        rounds = 1
+    }
+    satellite.variable.string first = ""
+    satellite.variable.number differ = 0
+    satellite.statement.for (satellite.variable.number pass = 1; pass <= rounds; pass++)
+    {
+        satellite.container.list<satellite.variable.string> lines
+        lines.append(check("main's older spelling, list<string> arguments, is the arguments variable", (arguments.argument2 == arguments.program).string() + " " + (arguments.length >= 2).string() + " " + (arguments.username.size > 0).string(), "true true true"))
+        arguments.mine = 7
+        arguments.mine = arguments.mine * 6
+        lines.append(check("a row of the program's own, on main's parameter named arguments", "" + arguments.mine + " " + arguments.contains("mine"), "42 true"))
+        lines.append(access_off_checks())
+        satellite.variable.string all = lines.join("\n")
+        satellite.statement.if (pass == 1)
+        {
+            first = all
+        }
+        satellite.statement.else satellite.statement.if (all != first)
+        {
+            differ = differ + 1
+        }
+    }
+    satellite.console.display(first)
+    satellite.console.display(check("every pass answered alike", differ.string() + " passes differed", "0 passes differed"))
+    satellite.return(satellite)
+}

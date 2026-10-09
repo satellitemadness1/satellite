@@ -1,0 +1,12 @@
+satellite.include(satellite)
+
+// full_text_12 -- REFUSED: string a float written into a string name's brackets is refused before anything runs.
+// satellite.help(satellite.variable.string). Nothing reaches stdout; satl exits with the refusal's code.
+
+satellite.capsule satellite.main()
+{
+    satellite.variable.number passes = 1
+    satellite.variable.string s = "abc"
+    satellite.console.display(s[1.5])
+    satellite.return(satellite)
+}

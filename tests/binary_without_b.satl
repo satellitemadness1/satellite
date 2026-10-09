@@ -1,0 +1,12 @@
+// The author, 2026-09-16: "if the user doesn't enter "b" and enters
+// satellite.variable.binary just require them to enter the b, spit out an
+// ERROR: expected "b"+whatever they entered". Refused before anything runs.
+
+satellite.include(satellite)
+
+satellite.capsule satellite.main()
+{
+    satellite.console.display("before")
+    satellite.variable.binary my_number = 10101010
+    satellite.return(satellite)
+}

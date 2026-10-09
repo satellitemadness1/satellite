@@ -1,0 +1,11 @@
+satellite.include(satellite)
+
+// full_text_18 -- REFUSED: string a backslash before any other character is refused before anything runs.
+// satellite.help(satellite.variable.string). Nothing reaches stdout; satl exits with the refusal's code.
+
+satellite.capsule satellite.main()
+{
+    satellite.variable.number passes = 1
+    satellite.console.display("a\qb")
+    satellite.return(satellite)
+}

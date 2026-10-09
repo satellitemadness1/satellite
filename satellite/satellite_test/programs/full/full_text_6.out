@@ -1,0 +1,48 @@
+ok multiple holding text .reverse()
+ok multiple holding text .size
+ok multiple holding text +
+ok multiple holding text .find
+ok multiple holding text [1]
+ok multiple given a number adds
+ok multiple holding a number multiplies
+ok multiple holding a number .binary
+ok multiple with a number on its list keeps a binary
+ok multiple binary counts by its worth in a sum
+ok multiple a plain number name makes the binary a number
+ok multiple with no <> takes every type
+ok multiple as a parameter, given a number
+ok multiple as a parameter, given text
+ok multiple as the type inside a list
+ok multiple as the type inside a map
+ok multiple holding a list appends
+ok nested list [x][y] = v
+ok nested list [x][y] read
+ok nested list [x].append
+ok nested list [x][y] by names
+ok nested list .contains a list
+ok nested list .index_of a list
+ok nested list a method on an inner list
+ok nested map of lists [k].append
+ok nested map of lists [k][n]
+ok nested map of lists [k].join
+ok nested list of maps [n][k]
+ok nested map of maps of lists written at every depth
+ok nested map of maps of lists .sum at the bottom
+ok nested a[1][k][2] read
+ok nested a[1][k][2] = v
+ok nested a[1][k].append
+ok nested a new key three deep
+ok nested b = a copies every depth, a stays
+ok nested b = a copies every depth, b changes
+ok nested == after a change deep inside
+ok nested == once they hold the same again
+ok container list == list
+ok container list order counts in ==
+ok container list != of a longer list
+ok container {} == {}
+ok container lists of text ==
+ok container lists of lists ==
+ok container lists of lists != deep inside
+ok container a list inside a map keeps its order
+ok container a map inside a map ignores order
+ok multiple and nested containers answer alike on every pass

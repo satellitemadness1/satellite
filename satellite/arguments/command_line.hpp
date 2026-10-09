@@ -1,0 +1,83 @@
+#pragma once
+// satl's command line (PLAN M0.5; the author delegated it, 2026-09-15: "`satl
+// --run <file> [args...]` and `satl --repl` look good").
+//
+//     satl                                   the prompt, in satl's own console; into a pipe or
+//                                            a file, the opening lines; exit 0
+//     satl --version | -V                    the title lines; exit 0
+//     satl --help | -h                       the title lines and every way to start; exit 0
+//     satl [--debug] --run <file> [words...] run <file>
+//     satl [--debug] <file> [words...]       the same, when <file> does not begin with -
+//     satl [--debug] --repl                  the prompt (M0.6); until then 14 not_built_yet
+//     satl --console [file] [words...]       the same, in satl's own console even with stdout
+//                                            on a pipe or a file (GTK-17)
+//     satl --rebuild                         compose every setting into one binary and save it
+//     satl --config [most]                   measure what this machine can do, once
+//     satl --feedback                        show what satellite.feedback has kept here
+//     satl --license [n|name|all]            the MIT licence and a menu, or one of them
+//
+// EVERY RUN IS IN A CONSOLE OF satl'S OWN SINCE 2026-10-05 (the author: "we are
+// dropping the whole 'start satl from a console and it runs' thing"), typed in a
+// shell as much as started from a launcher, unless stdout is a pipe or a regular
+// file or SATL_NO_WINDOW is set -- bytecode/window_run.cpp. A machine with no
+// screen is refused, S730, exit 50. --console asks for the console even then.
+//
+// --debug AND --console ARE THE ONLY OPTIONS AND THEY COME BEFORE THE COMMAND
+// WORD, in either order. --version and --help are the whole command line, and
+// so is everything that prints and exits: --console with one of those is
+// refused, because a window that shows a licence and vanishes shows nothing. After the file EVERY word is the program's,
+// --version, --debug and "" included, kept in order. --run takes the next word
+// as the file whatever it is, so `satl --run -x.satl` runs -x.satl and satl needs
+// no `--`. Anything else is refused by name with command_line_not_understood.
+//
+// TWO READINGS OF MINE, EACH ONE LINE TO REVERSE:
+//   - `satl --debug` with nothing after it is bare `satl`: nothing to do is not an
+//     error (003 main.cpp), and --debug has nothing to show.
+//   - `satl --debug --debug x.satl` is --debug once. Saying it twice asks for the
+//     same thing, so it is not refused.
+
+#include <string>
+#include <vector>
+
+namespace satellite004 {
+
+// APPENDED, NEVER INSERTED -- `rebuild` is 2026-09-18's and goes on the end for
+// the same reason a word code does: nothing here should renumber when one is added.
+enum class Command { opening, version, help, run, repl, rebuild, config, feedback, licence };
+
+struct CommandLine {
+    Command command = Command::opening;
+    bool debug = false;
+
+    // THE CONSOLE satl LAUNCHES FOR ITSELF (GTK-17, `satl --console`): a window
+    // with a terminal in it, and satl's own stdin, stdout and stderr on its pty
+    // before a line is printed. With `run` it runs the file there; with nothing
+    // after it, it is the prompt there -- `satl --console` alone is Command::repl,
+    // because the opening lines would flash in a window and be gone.
+    bool console = false;
+    // ARGV[0], SATL ITSELF AS THE SYSTEM STARTED IT -- "satl", "./satl", a whole path. Every
+    // command, because it is arguments.argument1 on every run (MS-1, the author 2026-10-03:
+    // "Let's just put argv as argument1, then argument2 will be filename.satl").
+    std::string satl;
+    std::string file;                  // Command::run only
+    std::vector<std::string> words;    // Command::run only: the program's own, in order
+
+    // Command::config only: the most threads to probe, or 0 for the machine's
+    // own ceiling less headroom. See run_config.hpp for why the cap exists.
+    unsigned long long int most = 0;
+
+    // Command::licence only: a number, a name, "all", or empty for the menu.
+    // KEPT AS THE WORD RATHER THAN RESOLVED HERE, because what counts as a name is
+    // licenses.cpp's business and this file should not need rebuilding when a
+    // licence is added.
+    std::string which;
+};
+
+// Answers success, or command_line_not_understood once it has said why on stderr.
+signed long long int read_command_line(int argc, char **argv, CommandLine &into);
+
+// What --help prints below the start-up block, and bare `satl` the first lines of.
+std::string usage_lines();
+std::string opening_lines();
+
+} // namespace satellite004

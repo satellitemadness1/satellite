@@ -1,0 +1,16 @@
+satellite.include(satellite)
+
+satellite.capsule satellite.main()
+{
+    satellite.variable.number n = 5
+    satellite.statement.if (n == 5)
+    {
+        satellite.console.display("if ran")
+    }
+    // otherwise:
+    satellite.statement.else
+    {
+        satellite.console.display("else ran")
+    }
+    satellite.return(satellite)
+}

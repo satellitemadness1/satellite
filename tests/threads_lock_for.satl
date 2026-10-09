@@ -1,0 +1,73 @@
+// A for's first part, condition and step read a locked list under its lock while two threads change it
+// (the second review, 2026-09-24: S501, a list read half moved).
+satellite.include(satellite)
+
+satellite.spacesuit store()
+{
+    satellite.protected
+    {
+        satellite.container.list<satellite.container.list<satellite.variable.number>> items = satellite.container.list()
+    }
+    satellite.public
+    {
+        satellite.capsule call_setup()
+        {
+            items.append({1, 2, 3})
+            items.append({4, 5, 6})
+            items.append({7, 8, 9})
+        }
+        satellite.capsule call_churn()
+        {
+            items.append({1, 2, 3})
+            items.remove_first()
+        }
+        satellite.capsule call_peek()
+        {
+            satellite.statement.for(satellite.variable.number k = items[1].size + items[2][1]; k < 0; k + 1)
+            {
+                k = k
+            }
+        }
+    }
+}
+
+satellite.capsule churn(store s)
+{
+    satellite.variable.number i = 0
+    satellite.statement.while(i < 20000)
+    {
+        s.call_churn()
+        i = i + 1
+    }
+}
+
+satellite.capsule peek(store s)
+{
+    satellite.variable.number i = 0
+    satellite.statement.while(i < 20000)
+    {
+        s.call_peek()
+        i = i + 1
+    }
+}
+
+satellite.capsule satellite.main()
+{
+    store shared()
+    shared.call_setup()
+    shared.lock()
+    satellite.variable.thread a = satellite.thread.new(churn(shared))
+    satellite.variable.thread b = satellite.thread.new(churn(shared))
+    satellite.variable.thread c = satellite.thread.new(peek(shared))
+    satellite.variable.thread d = satellite.thread.new(peek(shared))
+    a.start()
+    b.start()
+    c.start()
+    d.start()
+    a.join()
+    b.join()
+    c.join()
+    d.join()
+    satellite.console.display("done")
+    satellite.return(satellite)
+}

@@ -1,0 +1,14 @@
+satellite.include(satellite)
+
+// full_numbers_34 -- satellite.test.full(), a program satl must REFUSE.
+// fraction: .number is not built yet.
+// It exits 14, and its report on stderr holds: f.number is not built for
+// Nothing is printed on stdout.
+
+satellite.capsule satellite.main()
+{
+    satellite.variable.number passes = 1
+    satellite.variable.fraction f = 1/3
+    satellite.console.display(f.number)
+    satellite.return(satellite)
+}

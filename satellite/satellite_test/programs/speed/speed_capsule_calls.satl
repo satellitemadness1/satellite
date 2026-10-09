@@ -1,0 +1,45 @@
+// speed_capsule_calls.satl -- satellite.test.speed(): plain capsule calls, with arguments and a returned value.
+// Each pass makes four calls: one capsule that calls another (two numbers in, a number out), one with a
+// string and a number in, and one with nothing in. The total they hand back is the checksum line; its
+// C++ twin is speed_capsule_calls() in speed_objects_twins.cpp, which prints the same line.
+
+satellite.include(satellite)
+
+// two numbers in, their sum out
+satellite.capsule add_two(satellite.variable.number a, satellite.variable.number b)
+{
+    satellite.return(a + b)
+}
+
+// a capsule that calls another, and hands back what that one answered
+satellite.capsule step(satellite.variable.number total, satellite.variable.number i)
+{
+    satellite.return(add_two(total, i % 7))
+}
+
+// a string and a number in, a number out
+satellite.capsule weigh(satellite.variable.string word, satellite.variable.number times)
+{
+    satellite.return(word.size * times)
+}
+
+// nothing in, a number out
+satellite.capsule seven()
+{
+    satellite.return(7)
+}
+
+satellite.capsule satellite.main()
+{
+    satellite.variable.number passes = 340000
+    satellite.variable.number total = 0
+
+    satellite.statement.for(satellite.variable.number i = 0; i < passes; i + 1)
+    {
+        total = step(total, i)
+        total = total + weigh("satellite", i % 3) - seven()
+    }
+
+    satellite.console.display("capsule_calls: passes " + passes + ", total " + total)
+    satellite.return(satellite)
+}

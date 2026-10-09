@@ -1,0 +1,15 @@
+satellite.include(satellite)
+
+satellite.capsule helper()
+{
+    satellite.console.display("helper before")
+    {1, 2}.append(3)
+    satellite.console.display("helper after")
+}
+
+satellite.capsule satellite.main()
+{
+    helper()
+    satellite.console.display("main after helper")
+    satellite.return(satellite)
+}

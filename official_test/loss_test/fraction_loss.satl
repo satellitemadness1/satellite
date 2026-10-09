@@ -1,0 +1,305 @@
+// LOSS TEST: satellite.variable.fraction
+//
+// THE AUTHOR'S STANDARD (2026-10-06): "for the loss testing, we will use the number
+// 547311173 so we have to start with that number, and end at that number, after say,
+// 1,000,000 million operations... That will be the loss test" -- "the way that I memorize
+// the loss number is that it's 'satellite' spelled as numbers, 5 looks like S, 4 looks like
+// A, 7 looks like T" -- "so we will use the number satellite, and the numbers 1 trillion and
+// 1 million for testing" (1 trillion is for the speed tests; 1 million is this one).
+//
+// WHAT A FRACTION CAN DO TODAY: fraction arithmetic is not built (1/3 + 1/3 is refused,
+// S210), nor a fraction of names (a/b), nor a fraction meeting a float or a percentage, and
+// a spaced slash in a fraction's value (f = f.numerator / 2) is refused before anything
+// runs. What IS built: the literal, -f, .numerator, .denominator, .string, comparing by
+// value, a number given to a fraction name becoming that number over 1, and keeping a
+// fraction in a list, a map and another fraction name. So this test sends the value
+// through all of those: f starts at 547311173/1, and each pass runs 100 DIFFERENT
+// operations, one per line -- its sign turned over, its numerator read, worked on as a
+// whole number (+ - *, and * by a percentage to share it back out exactly) and given back
+// as n/1, its .denominator read, its .string read back as a number, trips through a list,
+// a map, another fraction name and two number names: 50 forward, then their 50 inverses
+// in reverse order. 10,000 passes x 100 = 1,000,000 operations. Every one is exact: a
+// fraction's two numbers are floats keeping 4096 whole digits, and nothing here comes
+// near that; the whole-number shares all divide exactly. On the way f goes below zero
+// and past 10^77 (78 digits).
+//
+// FIXED 2026-10-06, after a fresh reviewer showed places where a loss injected into the
+// first version still ended at 547311173:
+//  1. The four whole-number divisions on the way back (f.numerator / -7, / -311, / 41 and
+//     / 3) dropped their remainder, so a 1 added just before one of them could vanish
+//     (shown: f.numerator + 1 before the / -7 still printed 547311173). Each is now
+//     checked right after it runs, while f still holds what it divided: k * -7 must give
+//     f.numerator back, or it counts as wrong. A check placed before the division would
+//     leave a gap between the check and the division.
+//  2. f is always n/1 and is rebuilt from its numerator alone, so after six of its moves
+//     (f = -f, g = f, g = -f, l[3] = f, m["c"] = -f, and l[2] there and back) the
+//     denominator was never read (shown: f = -547311173/7 in place of f = -f still printed
+//     547311173). After each of those moves the denominator is now checked to be 1, and
+//     after the four trips back from the number names too (f = -k, f = -n, f = k, f = n).
+//     The same was true after every line that gives f a number (f = f.numerator * 1000
+//     handing over -547311173000/7 still printed 547311173). So every line that reads a
+//     fraction's numerator or its text now also adds (its .denominator - 1) * far, with far
+//     = 10 ^ 1000. That is 0 for n/1. Any other denominator, a sign moved below the line
+//     included, lands 1000 digits up, far above anything f reaches.
+//  3. A move that set a real denominator back to 1 could not show, because every
+//     denominator was already 1. So a second fraction, h = 547311173/7, now makes the
+//     same moves beside f: its sign turned over, a list there and back, a map there and
+//     back, the other fraction name there and back, and l[3], m["c"], m["b"] and l[2].
+//     These 18 moves of h, marked "h:", ride along; they are not among f's 100. h shares
+//     f's list slots, map keys and g, so a store that did nothing would hand the reader the
+//     OTHER fraction's value and show.
+// And because a minus undoes itself, a pair of wrong minuses could cancel before the end.
+// So f and h are also checked halfway against their known values, worked out by exact
+// math before satl ran. f's halfway text is
+// 235533733560022552984973921055864111603275119958566891331571200000000993600007/1, and
+// h's halfway text is -547311173/7. Both are checked again at the end of every pass.
+// Every check adds 1 to wrong, and the run stops at the first pass that went wrong.
+//
+// The answer is always 547311173. Anything else printed is what went wrong: the first
+// wrong pass, how many checks failed, then f and h: "pass 0: wrong 1, f = ..., h = ...".
+// Or satl's own refusal (S402), when a later share no longer divides exactly.
+
+satellite.include(satellite)
+
+satellite.capsule satellite.main()
+{
+    satellite.variable.fraction start = 547311173/1
+    satellite.variable.fraction f = 547311173/1
+    satellite.variable.fraction g = 0/1
+    satellite.variable.fraction h = 547311173/7
+    satellite.variable.number n = 0
+    satellite.variable.number k = 0
+    satellite.variable.number wrong = 0
+    satellite.variable.number far = 10 ^ 1000
+    satellite.variable.string seen = ""
+    satellite.container.list<satellite.variable.fraction> l = {0/1, 0/1, 0/1}
+    satellite.container.map m = {"a": 0/1, "b": 0/1}
+    satellite.statement.for(satellite.variable.number pass = 0; pass < 10000; pass + 1)
+    {
+        // FORWARD: 50 operations take it far from where it began
+        f = -f
+        satellite.statement.if (f.denominator != 1)
+        {
+            wrong = wrong + 1
+        }
+        h = -h                                         // h: its sign turned over
+        f = f.numerator * 1000 + (f.denominator - 1) * far
+        f = f.numerator + 999999999999999999 + (f.denominator - 1) * far
+        f = f.numerator * 4 + (f.denominator - 1) * far
+        l[1] = -f
+        f = l[1]
+        l[1] = -h                                      // h: a list, there and back
+        h = l[1]
+        f = f.numerator + f.denominator + (f.denominator - 1) * far
+        m["a"] = f
+        f = -m["a"]
+        m["a"] = h                                     // h: a map, there and back
+        h = -m["a"]
+        f = (f.string - "/1").number + 5 + (f.denominator - 1) * far
+        f = f.numerator * -2 + (f.denominator - 1) * far
+        f = f.numerator * 3 + (f.denominator - 1) * far
+        g = f
+        satellite.statement.if (g.denominator != 1)
+        {
+            wrong = wrong + 1
+        }
+        f = g.numerator - 547311173 + (g.denominator - 1) * far
+        g = h                                          // h: the other fraction name, there and back
+        h = g
+        f = f.numerator * 1024 + (f.denominator - 1) * far
+        f = f.numerator * 10000000000 + (f.denominator - 1) * far
+        f = f.numerator * 5 + (f.denominator - 1) * far
+        f = f.numerator * 41 + (f.denominator - 1) * far
+        g = -f
+        satellite.statement.if (g.denominator != 1)
+        {
+            wrong = wrong + 1
+        }
+        f = 7 + g.numerator + (g.denominator - 1) * far
+        g = -h                                         // h: the other fraction name, turned over both ways
+        h = -g
+        f = f.numerator - 1000000000000 + (f.denominator - 1) * far
+        f = f.numerator * 8 + (f.denominator - 1) * far
+        f = f.numerator * f.denominator * 16 + (f.denominator - 1) * far
+        f = f.numerator + 42923 + (f.denominator - 1) * far
+        f = f.numerator * 311 + (f.denominator - 1) * far
+        f = f.numerator * 100 + (f.denominator - 1) * far
+        f = (f.string - "/1").number * 2 + (f.denominator - 1) * far
+        l[3] = f
+        satellite.statement.if (l[3].denominator != 1)
+        {
+            wrong = wrong + 1
+        }
+        f = l[3].numerator + 1 + (l[3].denominator - 1) * far
+        l[3] = h                                       // h: l[3], there and back
+        h = l[3]
+        f = f.numerator - 33333333333333333333 + (f.denominator - 1) * far
+        f = f.numerator * 25 + (f.denominator - 1) * far
+        f = f.numerator * -1 + (f.denominator - 1) * far
+        m["c"] = -f
+        satellite.statement.if (m["c"].denominator != 1)
+        {
+            wrong = wrong + 1
+        }
+        f = m["c"].numerator * 4096 + (m["c"].denominator - 1) * far
+        m["c"] = -h                                    // h: m["c"], turned over both ways
+        h = -m["c"]
+        f = f.numerator * 2000000 + (f.denominator - 1) * far
+        f = f.numerator * 7 + (f.denominator - 1) * far
+        f = f.numerator + 547311173547311173 + (f.denominator - 1) * far
+        f = f.numerator * 50 + (f.denominator - 1) * far
+        f = f.numerator - f.denominator * 1000000 + (f.denominator - 1) * far
+        f = (f.string - "/1").number - 547311173 + (f.denominator - 1) * far
+        f = f.numerator * 128 + (f.denominator - 1) * far
+        f = f.numerator * -10 + (f.denominator - 1) * far
+        f = f.numerator + 2 + (f.denominator - 1) * far
+        f = f.numerator * 1000000000000 + (f.denominator - 1) * far
+        f = f.numerator - 99999999999999999999999999999999 + (f.denominator - 1) * far
+        f = f.numerator * 625 + (f.denominator - 1) * far
+        f = -f.numerator * 20 + (f.denominator - 1) * far
+        f = f.numerator + f.numerator + (f.denominator - 1) * far
+        f = f.numerator * 256 + (f.denominator - 1) * far
+        f = f.numerator + 1000000007 + (f.denominator - 1) * far
+
+        // HALFWAY: both are where exact math says they are
+        satellite.statement.if (f.string != "235533733560022552984973921055864111603275119958566891331571200000000993600007/1")
+        {
+            wrong = wrong + 1
+        }
+        satellite.statement.if (h.string != "-547311173/7")
+        {
+            wrong = wrong + 1
+        }
+
+        // BACK: the 50 inverses, in reverse order
+        f = f.numerator - 1000000007 + (f.denominator - 1) * far
+        f = f.numerator * 0.390625% + (f.denominator - 1) * far
+        f = f.numerator * 50% + (f.denominator - 1) * far
+        f = f.numerator * -5% + (f.denominator - 1) * far
+        f = f.numerator * 0.16% + (f.denominator - 1) * far
+        f = f.numerator + 99999999999999999999999999999999 + (f.denominator - 1) * far
+        f = f.numerator * 0.0000000001% + (f.denominator - 1) * far
+        f = f.numerator - 2 + (f.denominator - 1) * far
+        f = f.numerator * -10% + (f.denominator - 1) * far
+        f = f.numerator * 0.78125% + (f.denominator - 1) * far
+        f = (f.string - "/1").number + 547311173 + (f.denominator - 1) * far
+        f = f.numerator + f.denominator * 1000000 + (f.denominator - 1) * far
+        f = f.numerator * 2% + (f.denominator - 1) * far
+        f = f.numerator - 547311173547311173 + (f.denominator - 1) * far
+        k = f.numerator / -7 + (f.denominator - 1) * far
+        satellite.statement.if (k * -7 != f.numerator)
+        {
+            wrong = wrong + 1
+        }
+        f = -k
+        satellite.statement.if (f.denominator != 1)
+        {
+            wrong = wrong + 1
+        }
+        f = f.numerator * 0.00005% + (f.denominator - 1) * far
+        f = f.numerator * -0.0244140625% + (f.denominator - 1) * far
+        f = 0 - f.numerator + (f.denominator - 1) * far
+        f = f.numerator * 4% + (f.denominator - 1) * far
+        f = f.numerator + 33333333333333333333 + (f.denominator - 1) * far
+        f = f.numerator - 1 + (f.denominator - 1) * far
+        f = (f.string - "/1").number * 50% + (f.denominator - 1) * far
+        f = f.numerator * 1% + (f.denominator - 1) * far
+        n = f.numerator / -311 + (f.denominator - 1) * far
+        satellite.statement.if (n * -311 != f.numerator)
+        {
+            wrong = wrong + 1
+        }
+        f = -n
+        satellite.statement.if (f.denominator != 1)
+        {
+            wrong = wrong + 1
+        }
+        f = f.numerator - 42923 + (f.denominator - 1) * far
+        f = f.numerator * 6.25% + (f.denominator - 1) * far
+        f = f.numerator * 12.5% + (f.denominator - 1) * far
+        f = f.numerator + 1000000000000 + (f.denominator - 1) * far
+        f = 7 - f.numerator + (f.denominator - 1) * far
+        k = f.numerator / 41 + (f.denominator - 1) * far
+        satellite.statement.if (k * 41 != f.numerator)
+        {
+            wrong = wrong + 1
+        }
+        f = k
+        satellite.statement.if (f.denominator != 1)
+        {
+            wrong = wrong + 1
+        }
+        f = f.numerator * 20% + (f.denominator - 1) * far
+        f = f.numerator * 0.00000001% + (f.denominator - 1) * far
+        f = f.numerator * 0.09765625% + (f.denominator - 1) * far
+        f = f.numerator + 547311173 + (f.denominator - 1) * far
+        n = f.numerator / 3 + (f.denominator - 1) * far
+        satellite.statement.if (n * 3 != f.numerator)
+        {
+            wrong = wrong + 1
+        }
+        f = n
+        satellite.statement.if (f.denominator != 1)
+        {
+            wrong = wrong + 1
+        }
+        f = f.numerator * -50% + (f.denominator - 1) * far
+        f = (f.string - "/1").number - 5 + (f.denominator - 1) * far
+        m["b"] = -f
+        f = m["b"]
+        m["b"] = -h                                    // h: m["b"], there and back
+        h = m["b"]
+        f = f.numerator - f.denominator + (f.denominator - 1) * far
+        l[2] = -f
+        f = l[2]
+        satellite.statement.if (f.denominator != 1)
+        {
+            wrong = wrong + 1
+        }
+        l[2] = -h                                      // h: l[2], there and back
+        h = l[2]
+        f = f.numerator * 25% + (f.denominator - 1) * far
+        f = f.numerator - 999999999999999999 + (f.denominator - 1) * far
+        f = f.numerator * 0.1% + (f.denominator - 1) * far
+        f = -f.numerator + (f.denominator - 1) * far
+        h = -h                                         // h: its sign turned back
+
+        // THE PASS ENDS WHERE IT BEGAN -- or the run stops at the first pass that does not, and says so
+        satellite.statement.if (f.string != start.string)
+        {
+            wrong = wrong + 1
+        }
+        satellite.statement.if (h.string != "547311173/7")
+        {
+            wrong = wrong + 1
+        }
+        satellite.statement.if (wrong > 0)
+        {
+            seen = "pass " + pass.string + ": wrong " + wrong.string + ", f = " + f.string + ", h = " + h.string
+            satellite.statement.break
+        }
+    }
+    satellite.statement.if (seen == "")
+    {
+        satellite.statement.if (f == start)
+        {
+            satellite.statement.if (f.string == start.string)
+            {
+                satellite.console.display(547311173)
+            }
+            satellite.statement.else
+            {
+                satellite.console.display(f)
+            }
+        }
+        satellite.statement.else
+        {
+            satellite.console.display(f)
+        }
+    }
+    satellite.statement.else
+    {
+        satellite.console.display(seen)
+    }
+    satellite.return(satellite)
+}

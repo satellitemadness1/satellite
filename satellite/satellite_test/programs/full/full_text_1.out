@@ -1,0 +1,67 @@
+ok string + joins two strings
+ok string .add(x) is the same join
+ok string + number joins the number's digits
+ok string + float joins its text
+ok string + percentage joins its text
+ok string + binary joins b and its bits
+ok string + hex joins x and its digits
+ok number + text that spells a number adds
+ok number + other text joins after it
+ok string + bool joins with one space
+ok string - takes away the first occurrence
+ok string - of a string not there leaves it unchanged
+ok string - takes the first of overlapping places
+ok string == compares
+ok string != compares
+ok string order a < B
+ok string order z before A
+ok string order Z before digits
+ok string order digits before signs
+ok string order signs before the space
+ok string order apple < banana
+ok string order b > a
+ok string .find counts from 0
+ok string .find at the start is 0
+ok string .find answers the first place
+ok string conversions chain left to right
+ok string .size counts characters
+ok string .size() with brackets
+ok string .size of an astral character is 1
+ok string .empty of empty text
+ok string .empty() of text
+ok string .contains
+ok string .contains of text not there
+ok string .contains empty text
+ok string .starts_with
+ok string .starts_with of the wrong end
+ok string .starts_with empty text
+ok string .ends_with
+ok string .ends_with empty text
+ok string [1] is the first character
+ok string .at(n) reads a character
+ok string [size] is the last character
+ok string [find + 1] is the character found
+ok string [2] of an accent is one character
+ok string characters join
+ok string .substring keeps both ends
+ok string .substring from 1
+ok string .substring of one character
+ok string .substring end one before start is empty
+ok string .reverse()
+ok string .reverse() of accents and an arrow
+ok string .reverse() keeps an astral character whole
+ok string .upper() of an accent
+ok string .uppercase()
+ok string .up()
+ok string .lower() of an accent
+ok string .lowercase() of Greek
+ok string .upper() leaves the name unchanged
+ok string .upper() answers a new string
+ok string escape \" is one double quote
+ok string escape \\ is one backslash
+ok string escape \n splits a line
+ok string escape \t is one tab
+ok string escape \r is one character
+ok string escape \' is an apostrophe
+ok string over two lines holds the line break
+ok string part 1 answers alike on every pass

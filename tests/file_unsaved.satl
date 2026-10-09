@@ -1,0 +1,10 @@
+satellite.include(satellite)
+
+// check.sh makes read_only.se unwritable first. The append is held, the save at the
+// end cannot land, and that is said, with 44, rather than exiting 0.
+satellite.capsule satellite.main(satellite.container.list<satellite.variable.string> arguments)
+{
+    satellite.variable.file f = satellite.file.open("read_only.se")
+    f.append("this cannot reach the disk")
+    satellite.return(satellite)
+}

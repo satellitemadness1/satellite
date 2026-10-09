@@ -1,0 +1,27 @@
+satellite.include(satellite)
+
+// speed_conversions.satl -- satellite.test.speed(): A NUMBER TO TEXT AND BACK.
+// Each pass turns x into its base 10 text with .string, reads it back twice -- with .number, and as
+// 1 + text (text that spells a number is added) -- and counts the characters of its base 10, base 16
+// (.hex) and base 2 (.binary) texts. The C++ twin uses std::to_string, std::stoll and std::format.
+// Prints: the total read back, then the total count of characters.  C++ twin: speed_conversions().
+
+satellite.capsule satellite.main()
+{
+    satellite.variable.number passes = 350000
+    satellite.variable.number x = 547311173
+    satellite.variable.string text = ""
+    satellite.variable.number back = 0
+    satellite.variable.number total = 0
+    satellite.variable.number sizes = 0
+    satellite.statement.for(satellite.variable.number i = 0; i < passes; i + 1)
+    {
+        x = x * 48271 % 2147483647
+        text = x.string
+        back = text.number
+        total = total + back + (1 + text)
+        sizes = sizes + text.size + x.hex.size + x.binary.size
+    }
+    satellite.console.display(total.string + " " + sizes.string)
+    satellite.return(satellite)
+}

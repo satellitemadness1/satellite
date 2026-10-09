@@ -1,0 +1,14 @@
+satellite.include(satellite)
+
+// full_objects_15 -- REFUSED before anything runs: start() given a word that is not "hide"
+// (RUNNING_PROGRAMS: "start("hdie"), a word in quotes that is not "hide", is refused before anything
+// runs" -- start() takes nothing, or "hide").
+
+satellite.capsule satellite.main()
+{
+    satellite.variable.number passes = 1
+    satellite.variable.program p = "true"
+    p.start("loud")
+    satellite.console.display(p.join())
+    satellite.return(satellite)
+}

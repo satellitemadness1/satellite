@@ -1,0 +1,28 @@
+// speed_list_ops.satl -- satellite.test.speed(): a list of numbers -- get, set, append, insert, remove, size.
+// The list starts as the digits of 547311173 and each pass adds two items and takes two away, so it
+// holds 9 items after every pass, whatever passes is: .append, .insert at a moving place, an item read
+// and another written, a read and .size, .remove of the first item equal to one read from the list
+// (so it is always there), and .remove_at. The checksum line is the total of what was read and the
+// list at the end; its C++ twin is speed_list_ops() in speed_objects_twins.cpp, which prints the same line.
+
+satellite.include(satellite)
+
+satellite.capsule satellite.main()
+{
+    satellite.variable.number passes = 330000
+    satellite.container.list<satellite.variable.number> row = {5, 4, 7, 3, 1, 1, 1, 7, 3}
+    satellite.variable.number total = 0
+
+    satellite.statement.for(satellite.variable.number i = 0; i < passes; i + 1)
+    {
+        row.append(i)
+        row.insert(1 + i % 10, i % 13)
+        row[1 + i % 11] = row[1 + (i + 5) % 11] + i % 3
+        total = total + row[1 + (i + 2) % 11] + row.size
+        row.remove(row[1 + (i * 3) % 11])
+        row.remove_at(1 + i % 10)
+    }
+
+    satellite.console.display("list_ops: passes " + passes + ", total " + total + ", list " + row.join(","))
+    satellite.return(satellite)
+}

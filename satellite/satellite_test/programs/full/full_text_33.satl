@@ -1,0 +1,12 @@
+satellite.include(satellite)
+
+// full_text_33 -- REFUSED: list the old .sort("down") is refused.
+// satellite.help(satellite.container.list). Nothing reaches stdout; satl exits with the refusal's code.
+
+satellite.capsule satellite.main()
+{
+    satellite.variable.number passes = 1
+    satellite.container.list a = {1, 2}
+    satellite.console.display(a.sort("down"))
+    satellite.return(satellite)
+}

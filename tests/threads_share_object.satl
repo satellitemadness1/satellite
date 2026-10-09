@@ -1,0 +1,38 @@
+// An object handed to a thread is SHARED (THREADS.md T2): what the thread writes through it,
+// main reads after the join. One thread writes it at a time here, so it needs no .lock().
+satellite.include(satellite)
+
+satellite.spacesuit box()
+{
+    satellite.protected
+    {
+        satellite.variable.number held = 0
+    }
+    satellite.public
+    {
+        satellite.capsule call_put(satellite.variable.number n)
+        {
+            held = n
+        }
+        satellite.capsule call_held()
+        {
+            satellite.return(held)
+        }
+    }
+}
+
+satellite.capsule fill(box inside)
+{
+    inside.call_put(5)
+}
+
+satellite.capsule satellite.main()
+{
+    box mine()
+    satellite.console.display(mine.call_held())
+    satellite.variable.thread t = satellite.thread.new(fill(mine))
+    t.start()
+    t.join()
+    satellite.console.display(mine.call_held())
+    satellite.return(satellite)
+}

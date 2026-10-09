@@ -1,0 +1,16 @@
+satellite.include(satellite)
+// full_structure_12 -- REFUSED by satellite.test.full(): satellite.capsule: a call given the wrong number of arguments.
+// The rule: satellite.capsule: a call given the wrong number of arguments (S110).
+// satl refuses it: exit 13, and its report on stderr says "twice takes 1 argument, and was given 2". It prints nothing.
+
+satellite.capsule twice(satellite.variable.number n)
+{
+    satellite.return(n * 2)
+}
+
+satellite.capsule satellite.main()
+{
+    satellite.variable.number passes = 1
+    satellite.variable.number four = twice(2, 3)
+    satellite.return(satellite)
+}

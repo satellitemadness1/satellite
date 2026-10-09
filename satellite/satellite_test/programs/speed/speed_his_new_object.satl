@@ -1,0 +1,122 @@
+// speed_his_new_object.satl -- satellite.test.speed(), the author's own speed test (official_test/speed_test/official_speed_test.satl),
+// loop 1 of 6 on its own: a new object every pass, its number set to 1 trillion + 1 trillion.
+// His spacesuit is unchanged but for two reader capsules at the end of its public section. His loop is
+// unchanged but for its count, which is passes (his was 1000).
+// One line is added inside the loop: number_sum reads each new object's number back.
+// Of his seven counters, op_counter and this loop's own are kept. His banner line (SATELLITE SPEED
+// TEST / VERSION: 001.01) is left out: stdout carries only the checksum line. Its C++ twin is
+// speed_his_new_object() in speed_objects_twins.cpp, which does the same work and prints the same line.
+
+satellite.include(satellite)
+
+satellite.spacesuit test_object()
+{
+    satellite.protected
+    {
+        satellite.variable.number test_number = 0
+        satellite.container.list<satellite.variable.number> test_list = {0, 0, 0, 0}
+        satellite.variable.string test_str = "VOID"
+        satellite.container.list<satellite.variable.string> str_test_list = {"str1", "str2"}
+
+        satellite.container.list<test_object> my_list_of_stuff
+
+        satellite.capsule set_test_number(satellite.variable.number test_input)
+        {
+            test_number = test_input
+        }
+
+        satellite.capsule set_test_list_number(satellite.container.list<satellite.variable.number> test_input)
+        {
+            test_list = test_input
+        }
+
+        satellite.capsule add_test_list_number(satellite.variable.number test_input)
+        {
+            test_list.append(test_input)
+        }
+
+        satellite.capsule set_test_str(satellite.variable.string str_input_test)
+        {
+            test_str = str_input_test
+        }
+
+        satellite.capsule set_test_str_list(satellite.container.list<satellite.variable.string> input_str_list)
+        {
+            str_test_list = input_str_list
+        }
+
+        satellite.capsule add_str_to_list(satellite.variable.string str_input)
+        {
+            str_test_list.append(str_input)
+        }
+    }
+
+    satellite.public
+    {
+        satellite.capsule call_set_test_number(satellite.variable.number test_input)
+        {
+            set_test_number(test_input)
+        }
+
+        satellite.capsule call_set_test_list_number(satellite.container.list<satellite.variable.number> test_input)
+        {
+            set_test_list_number(test_input)
+        }
+
+        satellite.capsule call_set_test_str(satellite.variable.string test_input)
+        {
+            set_test_str(test_input)
+        }
+
+        satellite.capsule call_add_test_list_number(satellite.variable.number test_input)
+        {
+            add_test_list_number(test_input)
+        }
+
+        satellite.capsule call_set_test_str_list(satellite.container.list<satellite.variable.string> test_input)
+        {
+            set_test_str_list(test_input)
+        }
+
+        satellite.capsule call_add_str_to_list(satellite.variable.string test_input)
+        {
+            add_str_to_list(test_input)
+        }
+
+        // ADDED FOR satellite.test.speed() -- the one change to his spacesuit: a field is reached
+        // from inside the spacesuit only, so these two public capsules read the object back for
+        // the section's checksum line.
+        satellite.capsule checksum_number()
+        {
+            satellite.return(test_number)
+        }
+
+        satellite.capsule checksum()
+        {
+            satellite.return("number " + test_number + ", list " + test_list.size + " items summing " + test_list.sum + ", string " + test_str + ", string list " + str_test_list.size + " items of " + str_test_list.join("").size + " characters")
+        }
+    }
+}
+
+satellite.capsule satellite.main()
+{
+    satellite.variable.number passes = 190000
+    // number_sum reads each new object's number back, so the line proves every object was made and set.
+    satellite.variable.number op_counter = 0
+    satellite.variable.number statement1_counter = 0
+    satellite.variable.number number_sum = 0
+
+    satellite.statement.while(statement1_counter < passes)
+    {
+        test_object local_test_object
+
+        local_test_object.call_set_test_number(1000000000000 + 1000000000000)
+
+        number_sum = number_sum + local_test_object.checksum_number()
+
+        statement1_counter = statement1_counter + 1
+    }
+
+    satellite.console.display("his_new_object: passes " + statement1_counter + ", number sum " + number_sum)
+    satellite.return(satellite)
+}

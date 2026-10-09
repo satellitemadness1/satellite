@@ -1,0 +1,72 @@
+#pragma once
+// satellite/machine/console_lock.hpp -- ONE LINE AT A TIME, once a program has threads.
+//
+// Every line satl writes -- a program's display, a report, a notice -- goes through
+// std::cout or std::cerr, and satl runs them with sync_with_stdio(false)
+// (structured-library.cpp), which makes the two streams unsafe to write from two threads
+// at once: a line could land inside another, or worse. 003 queued whole strings for one
+// printer thread; 004 holds this lock for the length of one line instead (threads, 2026-09-23).
+// Since 2026-09-26 004 has a printing thread too (display/printing_satellite.hpp): a display
+// hands its value to it, and this lock still keeps one line's hand-off whole.
+//
+// TAKEN ONLY ONCE A THREAD HAS BEEN STARTED. Until then satl is one walker, and a plain
+// display pays one relaxed load and nothing else -- the author races display, and a lock
+// on every line of every program that never makes a thread would be a cost for nothing.
+// The flag is set by start() BEFORE the new thread exists, and only the thread calling
+// start() can be running satl code at that moment, so no line is ever mid-write unlocked
+// when the first thread appears.
+//
+// RECURSIVE, because a library called under it can fail, and the report of that failure
+// is printed from the same thread while the lock is still held.
+
+#include <atomic>
+#include <mutex>
+
+namespace satellite004 {
+
+inline std::recursive_mutex &console_lock()
+{
+    static std::recursive_mutex one;
+    return one;
+}
+
+// Set once, by the first start(), and never cleared.
+inline std::atomic<bool> &a_thread_was_started()
+{
+    static std::atomic<bool> started{false};
+    return started;
+}
+
+// PROGRAMS BEING WATCHED RIGHT NOW (bytecode/program_calls.cpp): a running program's watcher
+// hands its output to the printing satellite's ring from a thread of its own, so while one is
+// alive the ring takes its lock -- and only then. Counted up by start() BEFORE the watcher
+// exists, on the one thread that is running satl code then, and down by the watcher AFTER its
+// last hand-off: a run that starts one program does not pay for a lock on every display after it
+// (the review, 2026-10-01, measured 15% on three million displays).
+inline std::atomic<int> &programs_watched()
+{
+    static std::atomic<int> count{0};
+    return count;
+}
+
+// WHETHER THE RING HAS MORE THAN ONE WRITER: a thread was started, or a program is watched.
+inline bool the_ring_has_more_than_one_writer()
+{
+    return a_thread_was_started().load(std::memory_order_acquire) ||
+           programs_watched().load(std::memory_order_acquire) > 0;
+}
+
+// HELD FOR ONE LINE. Holds nothing while the program has never started a thread.
+class ConsoleHold {
+public:
+    ConsoleHold()
+    {
+        if (a_thread_was_started().load(std::memory_order_acquire))
+            hold_ = std::unique_lock<std::recursive_mutex>(console_lock());
+    }
+
+private:
+    std::unique_lock<std::recursive_mutex> hold_;
+};
+
+} // namespace satellite004

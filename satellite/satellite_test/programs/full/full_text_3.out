@@ -1,0 +1,60 @@
+ok bool name holds satellite.bool.true
+ok bool == of two different values
+ok bool != of two different values
+ok bool name holds a comparison
+ok bool comparison that is not so
+ok bool ! turns true to false
+ok bool ! turns false to true
+ok bool ! of a comparison
+ok bool name as an if condition
+ok bool name given another bool
+ok bool .string
+ok bool .to_string of false
+ok bool .string of a comparison
+ok bool joins text with one space
+ok bool items in a list
+ok bool list .contains
+ok bool list .join
+ok bool as a map key
+ok convert number .string
+ok convert number .to_string
+ok convert number .str joins as text
+ok convert number .string of a negative
+ok convert number .binary
+ok convert number .bin
+ok convert number .hex
+ok convert number .reverse() turns the digits round
+ok convert number .reverse() keeps the sign
+ok convert number .add(x) is +
+ok convert a big number to text
+ok convert a big number to text and back
+ok convert float .string drops the trailing zero
+ok convert float .number of a whole float
+ok convert binary .string keeps the b and the width
+ok convert binary .number
+ok convert binary .to_number
+ok convert binary .as_number
+ok convert binary .bin is the digits without the b
+ok convert binary .hex
+ok convert hex .string in capitals with its width
+ok convert hex .number
+ok convert hex .hex is its digits
+ok convert hex .binary is four bits a digit
+ok convert percentage .string
+ok convert fraction .string as written
+ok convert fraction .numerator
+ok convert fraction .denominator
+ok convert empty text + number
+ok convert empty text + negative number
+ok convert text + number + number joins left to right
+ok convert number + number + text adds first
+ok convert text + a bracketed sum
+ok convert number + text that spells a negative number
+ok convert number + text with a space joins
+ok convert text + fraction joins its text
+ok convert list .join joins every item's text
+ok convert binary given to a number name holds its worth
+ok convert hex given to a number name keeps its worth
+ok convert whole number given to a float name
+ok convert whole number given to a fraction name
+ok bool and conversions answer alike on every pass

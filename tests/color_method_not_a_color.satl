@@ -1,0 +1,11 @@
+satellite.include(satellite)
+
+// A METHOD A COLOUR HAS NOT GOT is refused before anything runs, with the list of
+// what a colour has.
+satellite.capsule satellite.main()
+{
+    satellite.console.display("before")
+    satellite.variable.color my_color = x000000
+    my_color.append(1)
+    satellite.return(satellite)
+}

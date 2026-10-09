@@ -1,0 +1,14 @@
+ok hex shows in upper case with its x and its width, and .string is that; hexadecimal is its second spelling
+ok hex keeps its width, x00FF is not xFF, and a lower-case digit reads the same
+ok hex in a sum counts as its worth and answers a number, and x1F == 31
+ok hex .number is what it is worth
+ok hex .hex is its digits, .binary its bits four to each digit
+ok hex .width counts its bits
+ok hex .reverse() turns its digits round with the width kept
+ok hex keeps a sign: -x1F is worth -31, and .reverse() and .hex keep it
+ok hex - * / % ^ read a hex by its worth, and it orders by its worth
+ok hex a number name given a hex keeps its worth
+ok hex has no length limit
+ok hex a string joins a hex as its .string
+ok binary and hex together answer a plain number, b1100 + xFF is 267
+ok binary and hex one radix seen as the other, b1100.hex is C and (12).binary is 1100

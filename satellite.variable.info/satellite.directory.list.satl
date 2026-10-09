@@ -1,0 +1,10 @@
+
+satellite.include(satellite)
+
+satellite.capsule satellite.main(satellite.variable.arguments arguments)
+{
+    satellite.console.display("satellite.directory.list(" + arguments.cwd + ")")
+    satellite.console.display("FREE SPACE: " + satellite.directory.free(arguments.cwd))
+    satellite.console.display(" ") // empty space
+    satellite.console.display("NAME         | TYPE | SIZE | COUNT | PERMISSIONS | OWNER  |)
+}

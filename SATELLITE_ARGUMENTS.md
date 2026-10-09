@@ -1,0 +1,1101 @@
+# satellite-004 — SATELLITE_ARGUMENTS
+
+The `arguments` special variable: one class, one variant, one wrapper, and the
+switch in the interpreter that makes looking for it cost nothing when a program
+does not ask for it.
+
+Written 2026-09-17 from the author's brief, which is kept whole in Part 1 --
+this file is that prompt turned into milestones, and the milestones are Part 4.
+
+**A SECOND BRIEF ARRIVED 2026-09-18** -- the values, the units, `satellite.variable.memory`,
+and what all of it is for: the last known name, type and value of everything. It is
+Part 4B, its milestones are Part 4C, and `arguments.access` from it is BUILT.
+
+**WRITING A ROW ARRIVED 2026-09-23** -- `any_name.some_var = some_value`. Part 4D.
+**AND WHAT THE PROCESSOR CAN RUN** -- `arguments.cpu.architecture`, `arguments.cpu.features`. Part 4E.
+
+**THE COMMAND LINE IS NUMBERED AS IT WAS TYPED, 2026-10-03** (SCRATCH.md/MISSING_SYNTAX.md
+MS-1). The author: *"Let's just put argv as argument1, then argument2 will be filename.satl,
+then argument3 will be --help, so it's kept in order"*, and *"no _underscore"*. So
+`satl prog.satl one` is `argument1` = satl itself as the system started it, `argument2` =
+prog.satl, `argument3` = one, and `length` = 3, every one counted -- it was 2. `arg3`, `args3`
+and `arguments3` are the same row as `argument3`, *"you could alias them as the same thing"*,
+and the variable shows the command line first. **The old `argument_1` meant the first word after
+the file, which is `argument3` now -- so it is refused, naming `argument3`, and never read as
+`argument1`.** `arg0` is refused with S413: the arguments count from 1, as satellite does.
+
+**A PROGRAM'S OWN SWITCH, AND A BARE `true` OR `false`, 2026-10-04** (SCRATCH.md/MISSING_SYNTAX.md
+MS-2). `arguments.missing = false`, at the top of a program's file where `satellite.library.span =
+25` stands, is the run's `arguments.missing` before anything is said about the program; and every
+write to the arguments takes a bare `true` or `false`. Part 4F.
+
+**A SETTING CHANGED BY A LINE -- FOR GOOD AT THE PROMPT, FOR THE RUN IN A FILE, 2026-10-06.** The
+author: *"arguments.item(value_to_change_to) and if it's typed ON the prompt it permanently changes
+the value, and if it's typed in a file it temporarily changes a value, and the alias syntax using =
+... that does the same thing"*. Every setting is read back out of config.ini, and `arguments` is
+readable by its bare name anywhere. Part 4G.
+
+**THE ACCEPTANCE TEST IS THE COMPILER.** The author, in the brief: *"none of
+this will be tested or checked or anything -- we just write it, make sure it
+compiles, and if it compiles then we just accept it as the gospel!"* No check.sh
+row, no pty test, no example program. A milestone is done when the tree builds.
+Behaviour is checked later, once the values exist.
+
+---
+
+# Part 1 — the brief, as the author wrote it
+
+**The declaration today (2026-10-06):** `satellite.variable.arguments <name>`, since 2026-09-22
+(Part 4D). The brief's `satellite.container.list<satellite.variable.string> arguments` below still
+declares the same variable -- an older spelling, kept. The brief itself is kept word for word.
+
+> claude, this is the SATELLITE interpreter, and we are working on finishing
+> building the special variable arguments, it has various aliases:
+>
+> arg, argz, args, argv, arguments, argument, argumentz
+>
+> it has a declaration:
+>
+> `satellite.container.list<satellite.variable.string> arguments`
+>
+> that is the only declaration for it, using those names however, and it
+> triggers a special variable inside of the system, but we are going to build a
+> class for it that returns different objects, we need to use multiple functions
+> to create this variable, but a single class,
+>
+> ```cpp
+> class satelliteArguments
+> {
+>     protected:
+>         std::vector<satelliteObject> argument_cases;
+>
+>         bool add_argument(satelliteObject object_input)
+>         {
+>             // code here to check that the object IS an actual argument, we
+>             // wrap the objects in a special class -- this class just has
+>             // specific std::string to it called "argument_name" and it =
+>             // arguments.name.name.name UP TO 3 specific, special std::string
+>             // argument_name_r1 for "register #1" and r2, and r3 and then we
+>             // can just add additional registers as we need them for
+>             // arguments, HERE is the code that calls return_name_register1
+>             // return_name_regsiter2 and these registers are set to "VOID" for
+>             // objects that do not employ that register, so it's kinda like
+>             // the 0 in our number system, so the argument system has it's own
+>             // satellite.numbering system,
+>
+>             // after it has passed through checking that the name is a real
+>             // list from our list of argument names, we check that a value
+>             // exists that is within bounds -- this value is a std::variant and
+>             // has templates for each value type -- when the type is... a
+>             // satellite_number, then we use a template for that type to check
+>             // that the value is in bounds. If after it passes the name and
+>             // template value checks, we can finally add it to our list, all of
+>             // this is done under a wrapper class that uses templates to define
+>             // instances of different variants -- one single std::variant for
+>             // the class encompasses all possible argument types,
+>
+>             // none of this will be tested or checked or anything -- we just
+>             // write it, make sure it compiles, and if it compiles then we just
+>             // accept it as the gospel!
+>             argument_cases.push_back(object_input);
+>
+>             // the only checking we ever do with the arguments variable flies
+>             // at us as just making sure that it does what we set the values to
+>             // do, and the variant object in the class can be of these types:
+>             // satellite string, satellite number, satellite.variable.bool,
+>             // satellite.variable.binary, satellite.variable.hex, unsigned long
+>             // long int, signed long long int, std::string, satelliteObject
+>             // (you may use a shared ptr here), satelliteUserDefinedObject or a
+>             // satelliteUserDefinedSpacesuit, so the argument can be absolutely
+>             // anything that we can make in satellite, some of these will not
+>             // make sense just write every class_name in to the std::variant,
+>             // so that we can just hold anything,
+> ```
+>
+> so this will be how we build our arguments object, and do not test anything,
+> just write the code, make sure it compiles ONLY, and then we just later test
+> the code so that it works as we want it to work, ignoring all other testing,
+>
+> here are all of the values that I want:
+>
+> `arguments.system.memory` (alias `arguments.system.memory.total`) this reports
+> the total amount of memory available on the system....
+>
+> `arguments.system.memory.used`
+>
+> `arguments.system.memory.free`
+>
+> `arguments.system.memory.satellite.total`, `used`, `free`, memory free to the
+> satellite interpreter,
+>
+> `arguments.system.thread` (and `threads`) `()` returns how many threads the
+> machine can make after it runs a test,
+>
+> now see all of these special variables, they can be built in at a later step,
+> so we won't build any of them just yet, we shall only build special class,
+> satelliteArguments, then we will build all of the templates and functions as we
+> have described, let's turn this entire prompt into... SATELLITE_ARGUMENTS.md,
+> then we'll build milestones out of this whole prompt, then we'll finally follow
+> those milestones:
+>
+> 1) define the class satelliteArguments
+>
+> 2) define the std::variant object, as literally any class that we could make,
+>
+> 3) even satelliteCapsule, unless we don't have that yet, we'll build that into
+> a milestone as the very first thing that we do if it's not done yet,
+>
+> 4) we have defined the special class, the varaint object, now we need another
+> special class -- a wrapper for a single satelliteObject that is an std::variant
+> of two different types -- a satelliteUserDefinedObject or a satelliteObject,
+> the special class is to hold the std::string registers that make up the names
+> of that argument, so when someone calls arguments, we don't instantly access
+> the argument, we search through every single argument until we find the name
+> that was typed in, when the arguments variable is turned on, it trips a
+> satellite.variable.bool that is special and while turned on, the interpreter
+> has to run the special code for arguments, and when it's not turned on, while
+> the interpreter doesn't have to look for the arguments variable because of
+> this: `satellite.capsule satellite.main()` (no arguments here)
+>
+> then we skip looking for arguments in the interpreter -- this slows down the
+> interpreter by like 3nanoseconds while it checks if arguments is turned on or
+> not, so we have just slowed down the interpreter to add a new feature, and
+> building this `satellite.variable.bool arguments_active = true/false` is an
+> entire milestone, the very first milestone we do, we build the arguments_active
+> for the interpreter!
+>
+> What a great idea, it works anyways, so fuck it? Let's build this prompt into
+> milestones, small little milestones, and follow them one by one, but we are
+> going to skip the "build the capsule" for this project... but by the end of the
+> project, we shall have an extremely valuable arguments variable, and we can
+> even create two of them if we wanted to -- we can run two satellite
+> interpreters from one master interpreter this way, and I think that is what I
+> want to do, split the interpreter someday into a global system wide machine,
+> and then just have that single machine control every interpreter running, this
+> way we can divide up the parallel code into multiple machines running, you
+> know? This makes parallel easier to make, I guess. Like python, but this is the
+> opposite of the Global Interpreter Lock, it's like, an anti-lock, or something.
+
+---
+
+# Part 2 — what the tree already has
+
+Read before starting: four of the brief's pieces are already built, and two of
+its names do not exist under the spelling it uses.
+
+- **`satelliteCapsule` IS BUILT** -- `satellite/satellite_object/satellite_capsule.hpp`,
+  a name, its parameters and its `satellite_bytecode` body. The brief's step 3
+  costs nothing, and the author's own instruction is to skip it.
+- **`satelliteObject` IS BUILT** -- `satellite/satellite_object/satellite_object.hpp`,
+  a nine-arm variant (nothing, bool, number, string, bytecode, capsule,
+  user-defined handle, binary, percentage). **ARMS ARE APPENDED, NEVER
+  INSERTED**: `Kind` is the variant's index and a static_assert enforces it.
+- **`satelliteUserDefinedObject` IS BUILT** -- `satellite_spacesuit.hpp`, held
+  everywhere as `UserDefinedHandle`, a `std::shared_ptr`, because DESIGN 7.4
+  makes a spacesuit a reference type.
+- **`satelliteSpacesuit` IS BUILT** -- the two-arm variant over "one of ours" and
+  "one the user defined".
+- **`satelliteUserDefinedSpacesuit` DOES NOT EXIST** under that name. The brief's
+  variant asks for it; the built pair is `satelliteSpacesuit` and
+  `satelliteUserDefinedObject`, and A10 takes both rather than inventing a third.
+- **`satellite_hex` DOES NOT EXIST** as a class. Hexadecimal is a *conversion*
+  (`number_to_hexadecimal.hpp`), and `satelliteObject`'s own arm list reserves
+  slot 10 for `satellite_hexadecimal_number`, unbuilt. A10 leaves the arm out and
+  Part 5 records it as the author's call.
+- ~~**`satellite.container.list` IS A WORD, `1 4 2`, and is not built** -- codes
+  4121–4139 in `word_codes.hpp`, no implementation. The declaration the brief
+  names is therefore a *shape the reader recognises*, not a container that runs.~~
+  **BUILT since 2026-09-26** (containers, steps 1 and 2): a list is a container a program
+  can walk. The arguments variable is declared `satellite.variable.arguments <name>` now.
+- **The name tree already exists in `words.tsv`** as
+  `satellite.library.main.arguments.*` (`1 14 1 1`), with `.machine.threads`,
+  `.memory.total`, `.system.hostname` and forty more. The brief writes
+  `arguments.system.memory`. Part 5 records the collision.
+- **There is a `satellite/arguments/` folder already, and it is LOAD-BEARING.**
+  `class Arguments` holds what satl is told at startup, and four places read it:
+  `structured-library.cpp` (the entry point -- `gather_config`, `gather`,
+  `threads_max`), `version/version.hpp` (`--version`, `--help`, the title and
+  startup blocks), `satl/session.cpp` (`threads_startup`, the startup pool) and
+  `satl/satl_file.hpp`. It cannot simply be deleted; A26–A32 move each reader onto
+  the new class first. **`command_line.hpp` is not part of this** -- parsing
+  `argv` is a separate job and it stays untouched.
+- **Variables live in `VariableTable`** (`value.hpp`), one per running body,
+  reached through `ExpressionContext` (`expression.hpp`). There are no globals.
+  That context is where `arguments_active` belongs.
+
+---
+
+# Part 3 — the rulings this file takes
+
+Reversible, one line each to undo, taken so the milestones can be followed
+without stopping.
+
+- **R1. The switch is a C++ `bool`, not a satellite variable.** The brief says
+  `satellite.variable.bool arguments_active`. A satellite bool lives in a
+  `VariableTable` and costs a hash lookup; a `bool` on `ExpressionContext` costs
+  the 3 nanoseconds the brief budgets. The *name* stays `arguments_active`.
+- **R2. `satelliteArguments` holds `satelliteArgumentCase`, not `satelliteObject`.**
+  The brief's literal field is `std::vector<satelliteObject>`, but the same brief
+  then says the objects are *wrapped* in the register-carrying class. The wrapper
+  is what the vector holds; otherwise the registers have nowhere to live.
+- **R3. Four registers, not three.** The author's own value list overflows three:
+  `arguments.system.memory.satellite.free` is four parts. `r4` is built now, with
+  the pattern written down for `r5`.
+- **R4. `"VOID"` is the zero and it is a literal `std::string`.** Compared with
+  `==`, never with a pointer, and never left empty -- an empty register and a
+  VOID register must not be two ways to say one thing.
+- **R5. Nothing is added to `satelliteObject::Held`.** The arguments variant is
+  its own type in its own file. Appending an arm to `Held` renumbers `Kind` for
+  everything and buys nothing here.
+- **R6. `satelliteArguments` replaces `Arguments`' STORAGE, and keeps its
+  GATHERERS.** The author, 2026-09-17: *"remove any other arguments code that we
+  have, except the code we need for the wiring."* What dies is the duplicate
+  store -- `struct Argument` with its five parallel fields, `enum class
+  ArgumentKind`, and the five `add_text`/`add_count`/`add_number`/`add_flag`/
+  `add_bytes` setters -- all of which the one variant and the one `add_argument`
+  now do. What lives is the code that READS THE MACHINE: `physical_cores()`, the
+  `sysconf`/`uname`/`meminfo` readers, and `gather_config()` reading
+  `satellite_config.hpp`. Those become the feeders that call `add_argument()`.
+  Two arguments systems is the thing being removed; reading the machine twice is
+  not the thing being removed.
+
+---
+
+# Part 4 — the milestones
+
+Each one is small enough to finish and check by building. **A1–A32 are this
+project.** C1–C8 are `satl --config`, which stands on its own. D1–D9 are the
+values, which the author has deferred.
+
+## Phase 0 — the switch (the author's first milestone)
+
+- **A1** — ~~Add `bool arguments_active = false` to `MachineState`.~~ **Done 2026-09-18** (`8f909ad`) — next to the feature register, and for the reason that choice already gave: there are no globals, and a flag a thread cannot see the right copy of turns a feature on for some threads and not others.
+- **A2** — Carry `arguments_active` through `ExpressionContext` to every expression.
+- **A3** — Guard the walker's argument lookup behind `if (arguments_active)`.
+
+## Phase 1 — the names
+
+- **A4** — Write the seven aliases as one table: arg…argumentz.
+- **A5** — Recognise the declaration: `satellite.variable.arguments <name>` since 2026-09-22 (Part 4D);
+  the brief's `satellite.container.list<satellite.variable.string> <alias>` still declares the same variable.
+- **A6** — That declaration, and only it, sets `arguments_active` true.
+
+## Phase 2 — the variant, anything satellite can make — **DONE 2026-09-18 (`8f909ad`)**
+
+- **A7** — ~~Create `satellite/arguments/argument_value.hpp` holding one `std::variant`.~~ **Done** — thirteen arms.
+- **A8** — ~~Give it satellite's arms: string, number, bool, binary, percentage.~~ **Done.**
+- **A9** — ~~Give it the plain arms: `unsigned long long`, `signed long long`, `std::string`.~~ **Done.**
+- **A10** — ~~Give it the object arms: object, user-defined handle, spacesuit, capsule.~~ **Done** — all four. Hex is left out (red note 2 stands) and no third spacesuit name was invented.
+
+**THE ARM ASSERTS ASK THE TYPE, NOT A VALUE.** `ArgumentValue(satellite_number()).index()` does not compile: most arms are not literal types, so the index cannot be taken in a constant expression. `std::variant_alternative_t` asks the same question of the type alone and asks it more strictly — one assert per arm, and the count asserted too.
+
+## Phase 3 — the wrapper and its registers — **DONE 2026-09-18 (`8f909ad`)**
+
+- **A11** — ~~Write `satelliteArgumentCase`: one variant value, wrapped.~~ **Done.**
+- **A12** — ~~Give it `argument_name_r1` through `argument_name_r4`, all `std::string`.~~ **Done.**
+- **A13** — ~~Default every unused register to `"VOID"`.~~ **Done** — and a `static_assert` under `set_register_at()` fails until a raised count has its register, so a half-raised `kArgumentRegisters` does not compile.
+- **A14** — ~~Write `return_name_register1` through `return_name_register4`.~~ **Done**, plus `register_at(i)` so a loop does not repeat itself four times.
+- **A15** — ~~Write down how `r5` is added.~~ **Done**, in the header, as three numbered steps.
+
+## Phase 4 — the checks — **DONE 2026-09-18 (`8f909ad`)**
+
+- **A16** — ~~Write the table of every real argument name.~~ **Done, BY NOT WRITING ONE.** `words.tsv` is the table and `word_codes.hpp` is generated from it, byte for byte, by a step `check.sh` runs. A hand-written list here would be a second table free to fall behind the first.
+- **A17** — ~~Write `is_a_real_argument()`.~~ **Done** — the registers are spelled back out and `word::code_of_spelling()` answers. `arguments.memory.satellite.free` is correctly false until that row exists.
+- **A18** — ~~`template <typename T> bool value_in_bounds(T)` accepts by default.~~ **Done** — so an arm added later is accepted rather than silently refused by a check nobody wrote for it.
+- **A19** — ~~Specialise for `satellite_number`.~~ **Done, AND IT IS A FLOOR AND NOT A CEILING.** The language promises no limits and a bound is never the fix, so a number of any size passes; what is refused is a NEGATIVE count, which is a reader that failed and returned -1 rather than a small number.
+
+## Phase 5 — the class — **DONE 2026-09-18 (`8f909ad`)**
+
+- **A20** — ~~`class satelliteArguments`, protected vector.~~ **Done.**
+- **A21** — ~~`add_argument()`: name check, bounds check, then push_back.~~ **Done**, in the brief's order. **A name already held is OVERWRITTEN, never added twice** — the brief's search stops at the first match, so a second row would be unreachable and the value silently stale.
+- **A22** — ~~`find_argument()`: walk every case, compare the registers.~~ **Done**, linear, which is the brief's own shape and the right one: dozens of arguments and not thousands, a miss costs one compare and not four, and there is no map to keep in step with the vector.
+- **A23** — ~~The public reader.~~ **Done** — `nullptr` for a name never gathered, which is a different thing from a name that is not real.
+
+## Phase 6 — it compiles, which is the whole test — **DONE 2026-09-18**
+
+- **A24** — ~~Add the new files to the Makefile.~~ **Done** — headers, so `HEADERS` and not `INTERPRETER_SOURCES`.
+- **A25** — ~~Build the tree clean; no test is written.~~ **Done** — 28 libraries, 0 errors, 0 warnings, and no `check.sh` row, exactly as instructed.
+
+**IT WAS RUN ONCE ANYWAY, OFF THE TREE, AND THIRTEEN BEHAVIOURS ANSWERED RIGHT.** The gospel rule is about not *writing* tests, and it is kept — nothing was added to the suite. But "it compiles" and "it works" are two claims, and only one of them had been checked: aliases fold (`args.` and `argv.` reach the same case), an unknown name is refused, a negative count is out of bounds, `arguments.memory` and `arguments.memory.total` are different names, and the same name overwrites rather than doubling.
+
+## Phase 7 — the wiring, and the old code goes
+
+**A26–A32 WERE BLOCKED AND ARE NOW UNBLOCKED (`62e7e7d`, 2026-09-18).** The
+milestones assumed the old store and the new class name the same things. They do
+not, and the number is decisive: **a real gather produces 29 names and only 11
+are words in `words.tsv`.** The other eighteen — `arguments.file`,
+`arguments.debug_mode`, `arguments.threads_startup`, `arguments.argument_1`,
+`arguments.version`, `arguments.disk.free` and twelve more — have no row, so
+`is_a_real_argument()` refused every one. A straight swap would have dropped
+`arguments.file`, which is how satl knows what to run, and **satl would not have
+started**.
+
+`ArgumentOrigin` is the fix: `word` keeps the word-table check, `satl` does not,
+because the language has no word for a config row and is not supposed to.
+Nothing became unchecked — a config row is checked by `gather_config()` against
+the author's own `return_arguments_vector()`, and a fact satl fills in by
+`filled_in_by_satl()`, which `arguments_cases.cpp` already pins to what
+`gather()` really adds.
+
+**Measured through the real gather into the real `add_argument()`: 29 gathered →
+29 held, 11 words, 18 satl's, 0 refused.** `arguments_a_program_can_read()`
+answers the eleven, which is what the `arguments` variable should expose — a
+program has no business reading `arguments.threads_startup`.
+
+
+The author, 2026-09-17: *"then just wiring it into the interpreter as a single
+step, remove any other arguments code that we have, except the code we need for
+the wiring."* Readers move first, then the duplicate store is deleted -- in that
+order, because the reverse does not compile at any point in between.
+
+- **A26** — Point `version.hpp`'s version, title and startup blocks at `satelliteArguments`.
+- **A27** — Point `session.cpp`'s `threads_startup` read at `satelliteArguments`.
+- **A28** — Point `structured-library.cpp`'s startup and `threads_max` at `satelliteArguments`.
+- **A29** — Delete `struct Argument`, `enum class ArgumentKind` and the five setters.
+- **A30** — Delete `Arguments`' own store; its machine readers now feed `add_argument()`.
+- **A31** — Leave `command_line.hpp` alone: parsing `argv` is a different job.
+- **A32** — Build the tree clean; the removal is done when it compiles.
+
+## Phase 8 — `satl --config`, the step that measures once
+
+The author, 2026-09-17: *"let's just create a function that creates once on a
+config step... we can run a satl --config and it will configure the system, one
+of the things that it does is it checks how many threads it can possibly create
+on the machine."* **This is the right shape and it is the reason the probe is
+affordable at all:** 9.6 seconds is unthinkable at every startup and nothing at
+all once per machine. Independent of A1–A32 -- it can be built before, after, or
+alongside them.
+
+**BUILT 2026-09-18 (`6bff781`)** — `satellite/config/machine_probe.hpp` measures, `run_config.hpp` says. Split that way because `arguments.machine.threads` wants the first and prints nothing.
+
+- **C1** — ~~Add `Command::config`; `--config` is the whole line.~~ **Done, PLUS ONE OPTIONAL WORD.** See below.
+- **C2** — ~~The probe: threads park on a condition variable, never spin.~~ **Done** — raw pthreads, 256 kB stacks, which is what the 2026-09-17 table was measured at.
+- **C3** — ~~Ramp in doubling steps, recording nanoseconds and resident per thread.~~ **Done** — threads stay alive across rungs, so the resident figure is the real cost of holding that many at once.
+- **C4** — ~~Stop at the lowest `/proc` ceiling less headroom, never at failure.~~ **Done** — three quarters, which is the author's own 400,000-of-506,566 rounded to a number a person can hold.
+- **C5** — ~~Write the measured count and date to `~/.satl/machine.conf`.~~ **Done** — its own file and not config.ini, because config.ini is the PERSON'S and this is the MACHINE'S: copying config.ini to a new machine must not copy a thread count measured somewhere else.
+- **C6** — ~~`arguments.machine.threads` answers from that file when it exists.~~ **Done** — `threads_this_machine_allows()`.
+- **C7** — ~~With no file, answer the ceilings' minimum and never probe.~~ **Done** — a person who never runs `--config` still gets a true answer.
+- **C8** — ~~`satl --config` prints what it measured and where.~~ **Done** — every ceiling named, and the binding one marked, so a person can go raise THAT one rather than guess.
+
+**IT REPRODUCED THIS FILE'S OWN TABLE, WHICH IS WHY IT WAS WORTH RUNNING.**
+8,192 threads: **71 MB and 24,792 ns each**, against the recorded 72 MB and
+24,780. The ceilings match too. Two independent measurements, a day apart.
+
+**`satl --config <most>` — ONE WORD MORE THAN C1 ASKED FOR.** C1 said "--config
+is the whole line" and could not have known that the uncapped run here is nine
+seconds and three gigabytes. A command nobody can afford to try once is a
+command nobody tries; capped, it costs 203 ms. It is also the right answer in a
+container. **A cap above the ceiling is REFUSED and not clamped** — asking for
+more threads than the kernel allows is a person who believes something untrue
+about their machine, and the useful answer is the number. **A capped run says so
+in `machine.conf`**, because otherwise a number asked for once while trying the
+command becomes what `arguments.machine.threads` answers forever.
+
+**C4 IS THE ONE THAT MATTERS.** `threads-max` is system-wide, so a probe that
+runs to failure takes the last thread on the machine and the desktop cannot make
+one either. Headroom is not politeness, it is the difference between a stutter
+and a login shell that cannot fork.
+
+## Deferred — the values (the author: *"not just yet"*)
+
+- **D1** — `arguments.system.memory`, alias `.total`: the machine's whole memory.
+- **D2** — `arguments.system.memory.used`: what the machine is using.
+- **D3** — `arguments.system.memory.free`: what the machine has left.
+- **D4** — `arguments.system.memory.satellite.total`: the interpreter's own whole.
+- **D5** — `arguments.system.memory.satellite.used`: what this interpreter is using.
+- **D6** — `arguments.system.memory.satellite.free`: what this interpreter has left.
+- **D7** — Read every thread ceiling the system reports into one list.
+- **D8** — Answer the lowest of them; nothing is ever spawned.
+- **D9** — `arguments.system.thread` and `.threads` both answer that number.
+
+**THE MINIMUM OF THE CEILINGS** (the author, 2026-09-17): *"grab the thread_count
+from all sources, and then settle with the lowest number."* Measured here
+2026-09-17, so nobody has to measure it again:
+
+| source | this machine |
+|---|---|
+| `/proc/sys/kernel/pid_max` | 4,194,304 |
+| `MemAvailable` ÷ 8.33 kB resident per thread (measured) | ~6,799,000 |
+| `satellite_config.hpp` `arguments.threads_max` | 1,000,000 |
+| `/proc/sys/vm/max_map_count` ÷ 2 (two mappings per stack) | 524,288 |
+| **`/proc/sys/kernel/threads-max`** | **506,566** ← binds |
+| `ulimit -u` (RLIMIT_NPROC) | unlimited |
+| cgroup `pids.max` | max |
+| `nproc` / `_SC_NPROCESSORS_ONLN` | 24 (not a ceiling, see below) |
+
+**The lowest ceiling is 506,566, and that is D8's answer here.** Two readings,
+each one line to reverse:
+
+- **`nproc` IS NOT IN THE MINIMUM.** 24 is lower than every ceiling on every
+  machine, so putting it in the set makes the minimum always `nproc` and the
+  other seven sources dead code. It is already reported on its own, as
+  `arguments.machine.threads` (`arguments.cpp:237`).
+- **`arguments.threads_startup` (1,024) IS NOT A CEILING.** It is how many to
+  start, not how many may exist, so it is not in the set either.
+
+**A CORRECTION, RECORDED BECAUSE IT WAS WRITTEN DOWN WRONG FIRST.** This table
+first said the binding limit was `MemAvailable ÷ ulimit -s` = **6,913**, and that
+stack size therefore decided the count. **Both are false, and measuring said so.**
+A thread's stack is *lazily committed*: 50,000 threads asking for the default
+8 MiB each did not take 400 GB, they took **419 MB resident** -- about 8.33 kB of
+real memory apiece, and that figure barely moves whether the stack requested is
+256 kB or 8 MiB. Stack size costs *virtual address space*, which this machine has
+128 TB of. So memory is nowhere near binding, and the kernel's own `threads-max`
+is what stops you.
+
+**AND PARKED THREADS DO NOT FREEZE THE MACHINE -- MEASURED, NOT ARGUED.** The
+author, 2026-09-17: *"this doesn't freeze my machine, it just stutters once doing
+it."* He is right, and the 2026-09-16 freeze was the BUSY-WAIT, not the count:
+
+| parked threads, 256 kB stacks | time | resident | ns per thread |
+|---|---|---|---|
+| 8,192 | 203 ms | 72 MB | 24,780 |
+| 100,000 | 2.4 s | 836 MB | 24,450 |
+| 400,000 | 9.6 s | 3.3 GB | 23,735 |
+
+Perfectly linear across a 50x range, no degradation, no stutter, and it stopped
+at the cap rather than at any limit. 200,000 **runnable** threads against 24 CPUs
+is a scheduler death spiral and it cost a hard reboot; 200,000 **sleeping**
+threads is 1.7 GB and four seconds. The probe must park every thread it makes --
+a condition variable, never a spin -- and that one property is the whole
+difference.
+
+**THE RUN STOPPED AT 400,000 ON PURPOSE, 106k SHORT OF THE LIMIT.** `threads-max`
+is *system-wide*: taking it to zero means nothing else on the machine can make a
+thread either, including the desktop. The probe must always leave headroom rather
+than find the exact ceiling, because the exact ceiling is a number `/proc` states
+for free.
+
+---
+
+# Part 4B — the second brief, 2026-09-18
+
+The author came back with the values, the units, a new type, and the thing all
+of it is for. Kept whole, then turned into milestones below.
+
+## What it is all for — the last known name, type and value
+
+> for satellite.history and for satellite.access we keep the LAST KNOWN
+> variable's name type and value, under any circumstances, because when the
+> program stops, you have to be able to run satellite.access(object_name) for any
+> object in satellite, so we keep a list of everything inside of satellite, but we
+> keep it in satellite.history, satellite.library is cleaned up, history is the
+> lasting copy -- as long as the interpreter runs, we keep the last name, type and
+> value of everything.... but only the last, UNLESS satellite.history is turned
+> on, then we keep everything saved onto disk
+
+So there are **two stores and two valves**, and they are not the same thing:
+
+| | what it keeps | where | valve |
+|---|---|---|---|
+| the last-known store | one row a name: name, type, value | memory, for the life of the interpreter | `arguments.access` |
+| the history | every value a name ever held | disk | `arguments.history` |
+
+`satellite.library` is **cleaned up** — freed as it always was. The last-known
+store is what survives, and it is bounded by the number of NAMES rather than by
+the number of assignments, which is what makes "only the last" the affordable
+one. `satellite.access(object_name)` reads it after the program has stopped.
+
+**`arguments.access` IS BUILT AND WORKING as of 2026-09-18** — `249d748`. It
+reads, it writes, it lasts in `$HOME/.satl/config.ini`, and it defaults to true
+because the author said *"arguments.access will always be on, on this machine, as
+we are testing it"*. **What it does not yet do is govern anything**, because the
+store it is the valve for is not built. That is the order A1 already argues for:
+the switch before the thing it switches.
+
+**`arguments.history` is numbered and deliberately unbuilt** — the author:
+*"let's leave history alone for right now, and add the access stuff"*. It answers
+`not_built_yet` with its own name.
+
+## The values
+
+> arguments.memory() (alias of arguments.memory.total())
+> arguments.memory.total / .free / .used
+> arguments.memory.system (the memory available to the satl interpreter)
+> arguments.memory.system.reserved (memory reserved only for the satl
+>   interpreter, if you run the satl interpreter, this grabs that much memory and
+>   just... holds onto it for only the interpreter, this will be an entire 20
+>   minute block just to build this into the interpreter, it will be alot of work)
+> arguments.memory.system.used (how much memory this interpreter has used, not a
+>   copy of it... just this particular interpreter, this value is always
+>   available...)
+> arguments.memory.swap.total / .free / .used
+> arguments.username = the linux username that is being used,
+> arguments.directory = the current directory,
+> arguments.directory.history = the directory history, in case the user enters
+>   ".." just a list of the directories satl has been in ... when the satl
+>   interpreter enters a new directory to grab an include, then it also ends up in
+>   this list
+> arguments.threads = how many threads the interpreter is allowed to create, this
+>   is set to I think 1024 by default
+> arguments.cores = how many cores exist on the machine, so for this it's 12
+> arguments.system.stack = a satellite.variable.number of kilobytes the stack size
+>   is PER megabyte ... blocked as 8 megabytes ONLY on linux
+> arguments.system.x where x is any size configurable for the machine
+
+**THE SPELLING IS SETTLED BY THIS BRIEF, AND IT SETTLES PART 5's RED NOTE 1.**
+The first brief wrote `arguments.system.memory`; this one writes
+`arguments.memory.total`. That is *exactly* what `words/words.tsv` already
+carries at `1 14 1 1 2 1`. **The word table wins, and the red note is closed.**
+
+**WHAT THE TABLE ALREADY HAS**, so these cost a library and no new row:
+`arguments.memory` `1 14 1 1 2`, `arguments.memory()` `…2 0`,
+`arguments.memory.total` `…2 1`, `arguments.username` `1 14 1 1 3`,
+`arguments.machine.cores` `…1 1`, `arguments.machine.threads` `…1 3`.
+
+**TWO NAMES ARE ALREADY SPELLED ANOTHER WAY**, and the author should pick:
+`arguments.threads` and `arguments.cores` exist as `arguments.machine.threads`
+and `arguments.machine.cores`. Red note 5 below.
+
+## The units
+
+> for some of these, we have to take in "b" to return "bytes" ... and "mb" ... and
+> we need "kb" and the alias "kilobytes" and we need "gb" and the alias gigabytes,
+> and we need "tb" ... and "pb" and the alias "petabytes" and we need all aliases
+> to be "kilobyte" without the S so if we accidentally type in "kilobyte" or
+> "megabyte" or "byte" it accepts it
+
+Six units, three spellings each, eighteen words accepted:
+
+| short | plural | singular |
+|---|---|---|
+| `b` | `bytes` | `byte` |
+| `kb` | `kilobytes` | `kilobyte` |
+| `mb` | `megabytes` | `megabyte` |
+| `gb` | `gigabytes` | `gigabyte` |
+| `tb` | `terabytes` | `terabyte` |
+| `pb` | `petabytes` | `petabyte` |
+
+`arguments.system.stack("kb")` answers the value in kilobytes. **`Arguments`
+already carries a `size` kind** with a `long double` and a unit string, and
+`arguments.hpp` already argues for the `long double`: 18 exact digits, every
+64-bit byte count held exactly, and dividing by 1024 exact too. So the arithmetic
+is built; the eighteen spellings are not.
+
+## The new type
+
+> I am thinking we need a special class inside of satellite that looks like this:
+> satellite.variable.memory mem_name = 1gb or 1mb, or 1kb, or 1b, or 1tb, that is
+> how you write it into code, and this turns it into an object, THEN we use the
+> object to store our arguments... this is such a great idea, I know it's feature
+> creep, but it's just too good of an idea to not use you know?
+
+`satellite.variable.memory` is **a new satellite type**, written as a literal
+with its unit stuck to it — `1gb`, `512mb` — the way `b1010` is a binary and
+`50%` is a percentage. Those two are the precedent and the map:
+
+- a **lexer token** (`binary_token`, `percentage_token` → `memory_token`),
+- a **`satelliteObject` arm**, appended never inserted, because `Kind` is the
+  variant's index and a `static_assert` enforces it,
+- a **`Value` kind** and its `is_*`/`as_*` pair,
+- a **`word::code_of(1, 6, n)`** row for the declaration,
+- **`program_check.cpp`** refusing `satellite.variable.memory m = 5` the way it
+  already refuses a percentage written without its `%`.
+
+The author knows it is feature creep and wants it anyway. Recorded as wanted, and
+milestoned last, because every value above can be built without it and then
+re-answered through it.
+
+---
+
+# Part 4C — the milestones from the second brief
+
+**B1–B9 are the order the author gave.** The author: *"work on arguments until we
+can successfully add arguments.access = true/false"* first, then the values, then
+the type.
+
+## Phase A — the valve (DONE, 2026-09-18, `249d748`)
+
+- **B1** — ~~`arguments.access` reads, writes, and lasts in `$HOME/.satl/config.ini`.~~ **Done.**
+- **B2** — ~~A word a program can assign to: one arm each in the checker, the walker and the expression reader.~~ **Done.**
+- **B3** — ~~The installer writes a config.ini and never overwrites one.~~ **Done.**
+
+## Phase B — the units, before any value needs them
+
+Built first on purpose: every value below answers through them, and a unit added
+after six libraries already parse their own would be six places to fix.
+
+- **B4** — One header: the eighteen spellings to one enum, and the enum to a divisor.
+- **B5** — A word that takes a unit answers `types_do_not_meet` for a spelling not on the list, naming the eighteen.
+- **B6** — `Arguments`' existing `size` kind answers in any of the six.
+
+## Phase C — the values that are free
+
+Every one of these is a `/proc` or `sysconf` read that `arguments.cpp` **already
+does** — they need a library and a row, not a new reader.
+
+- **B7** — ~~`arguments.memory.total`, `.free`, `.used` — `/proc/meminfo`.~~ **Done 2026-09-18.** Verified against `/proc/meminfo` on this machine: total `66509373440`, exact.
+- **B8** — `arguments.memory.swap.total`, `.free`, `.used` — the same file. **The three rows are not in `words.tsv` yet**; B7's two were appended, and swap's three go the same way.
+- **B9** — ~~`arguments.username` — `getpwuid`.~~ **Done** — answers `madness` here. `getpwuid` and **not** `$USER`: the environment's copy is whatever was exported, the passwd entry is who the process really is, and under `sudo` they disagree.
+- **B10** — ~~`arguments.cores`, `arguments.threads`.~~ **Done**, under the word table's spelling (`arguments.machine.cores`, `arguments.machine.threads`) — **red note 5 is still the author's**, and an alias is one row when he picks. Cores answers `24`; threads answers `506566`, which is this machine's `threads-max` exactly, **and is C6**: the measured count from `machine.conf` when `satl --config` has run, the lowest `/proc` ceiling when it has not, and **never a probe**.
+- **B11** — `arguments.directory` — `getcwd`. The reader is written (`machine_facts::working_directory`) and **the word has no row in `words.tsv`** yet.
+
+## What Phase C needed first, and it was not a reader
+
+**A NEW SCENARIO SHAPE.** Every scenario a library could fill in CONSUMED what a
+program handed it and reported how it went; `flag_setting` was the first that
+answered, and it answers a bool. A machine fact answers a **count or some text**
+and can never be written, so it is `FactScenario` — appended last, as that file
+requires.
+
+**READ-ONLY BY HAVING NO WRITE PATH**, rather than by refusing one. Widening
+`flag_setting` to carry a count would have given every fact a write path for
+something that cannot be written — `arguments.memory.total` is what the machine
+has, not a preference — and a word that can be assigned to and must not be needs
+its refusal written somewhere. This version has nothing to get wrong.
+
+**NOTHING IS CACHED, AND THAT IS THE POINT.** `arguments.memory.free` that
+answers what was free a minute ago is a wrong answer wearing a right answer's
+face. Two runs a second apart gave `55091806208` and `54885224448`, which is the
+feature working.
+
+**`used` IS TOTAL LESS `MemAvailable`, NOT TOTAL LESS `MemFree`.** `MemFree`
+leaves out the page cache, which the kernel hands back the moment anything wants
+it — so `free` off `MemFree` reads as almost nothing on a machine that is
+perfectly healthy, and `used` off it reads as almost everything.
+
+**A FAILURE IS SAID, NEVER ANSWERED AS 0.** A machine that does not state a fact
+refuses with `machine_fact_not_read` (36), naming what could not be read. 0 is a
+number a program would divide by.
+
+**A NEW WORD ROW NEEDS THREE REGENERATIONS, AND `make` DOES ONLY SOME OF THEM.**
+`words_004.tsv` → `words.tsv` (`words/make_words.py`) → `word_codes.hpp`
+(`satellite/bytecode/make_word_codes.py`). The libraries built and the word still
+answered `name_not_declared` until `make_word_codes.py` was run by hand. Learned
+the hard way; written here so the next person does not.
+
+## Phase D — the values that need something built
+
+- **B12** — `arguments.memory.system.used`: this process's own resident size, `/proc/self/statm`. The author: *"this value is always available"*.
+- **B13** — `arguments.directory.history`: a list every directory satl has entered, appended to when `satellite.include()` reaches into a folder. **Needs a store with the same bound the last-known store needs** — a directory entered in a loop must not grow it without limit.
+- **B14** — `arguments.system.stack`: the stack size, in the unit asked for. The author remembers 003 having to work around an 8 MiB block on Linux; SATELLITE_ARGUMENTS.md's own thread table is the correction — a thread's stack is *lazily committed*, 8.33 kB resident apiece whatever is requested, so the 8 MiB is address space and not memory.
+- **B15** — `arguments.memory.system.reserved`: grab that much memory at start-up and hold it for this interpreter alone. The author budgets *"an entire 20 minute block"* and is right that it is the hard one — see red note 6.
+
+## Phase E — the type
+
+- **B16** — `memory_token` in the lexer: a number with a unit stuck to it.
+- **B17** — A `satelliteObject` arm, **appended**, and the `static_assert` kept true.
+- **B18** — A `Value` kind, its `is_memory()`/`as_memory()`, and `kind_name()`.
+- **B19** — `satellite.variable.memory` as a `1 6 n` declaration row.
+- **B20** — `program_check.cpp` refuses one written without a unit, the way it refuses a percentage without its `%`.
+- **B21** — Every Phase C and D value re-answers as one.
+
+---
+
+# Part 4D — writing a row, 2026-09-23
+
+The author: *"the syntax is: satellite.variable.arguments any_name then
+any_name.some_var = some_value"*, after the variable itself (8b8b66c) was built.
+
+**003 refused both halves**, run on the exact spelling: a new row was S0532 (*"the
+arguments object has no `some_var` on it"*) and a held one S0724 (*"is not a place a
+program can write"*). So the new half is new in 004, and the held half keeps 003's rule.
+
+| written | what happens |
+|---|---|
+| `any_name.some_var = 5` -- a name of the program's own | added; a second write changes it (A21: overwritten, never added twice); `satellite.console.display(any_name)` shows it after satl's rows. Any value, and a dotted name is one row: `any_name.deep.row` |
+| `any_name.access = satellite.bool.false` -- a setting | written through, as B2's `satellite.library.main.arguments.access = ...` is, so it lasts in `$HOME/.satl/config.ini`; true or false only (34) |
+| `any_name.memory.total = 5` -- a row satl holds | refused, 35 `word_takes_no_assignment`, **before anything runs** |
+| `any_name.n += 1` | refused `not_built_yet`, as `+=` is for every name |
+
+**THE ROWS ARE AN INDEX, AND EVERYTHING AN INDEX DOES FINDS THEM.** `any_name["some_var"]`,
+`.contains("some_var")`, `.remove("some_var")` and `==` see a written row, because every row
+is filed as every index key is (`key_name_of`). They were filed under bare names until the
+review of 2026-09-23 found what that did: a removed row's name pointed past the end, the next
+write went into the destroyed slot, and a list the program still held came out holding
+another list's items. `any_name["x"] = v` is `any_name.x = v`, refused and written the same.
+
+**A ROW CAN HOLD A CONTAINER, AND CHANGE IT IN PLACE:** `any_name.l = satellite.container.list()`,
+then `any_name.l.append(5)`, `any_name.l[1]`, `any_name.l[1] = 7`, `any_name.grid[1].append(3)`.
+The row is its own copy: a list handed to it with `any_name.l = kept` leaves `kept` as it was.
+
+**A NAME INSIDE A ROW IS NOT A ROW.** `any_name.l.size = 99` names something of the row `l`;
+filed as a row of its own it answered every later read of `any_name.l.size` while `any_name.l`
+said otherwise, so it is refused -- by the checker when the row is satl's (`any_name.length.hex`),
+by the walker when it is the program's.
+
+**A ROW SATL HOLDS** is one a library answers or groups (`memory.used`, `memory`), one
+gathered at start-up (`username`, `infinity`, `argument_1`), or one satl fills on some
+run (`argument_7` on a run given two words -- written, `length` would disagree with it).
+Part 4C's rule for facts is the reason, kept: *read-only by having no write path*. A copy
+that said the machine had 5 bytes would be the program lying to itself about the machine,
+and one that changed `infinity` would look like a setting and change nothing.
+
+**THE ORDER IS run_setting_assignment's:** the row is judged before the value is worked out,
+so `any_name.memory.total = satellite.console.input("n")` never asks anybody anything. The
+checker asks the same question (`why_an_argument_is_not_written`, main_arguments.hpp)
+with the rows satl gathered, which is why the refusal comes before the first line runs.
+
+**A CAPSULE HANDED THE VARIABLE WRITES ITS OWN COPY.** The rows are an index, and an index is
+copy-on-write: a capsule's `a.inside = 2` is not seen by main's `argz` afterwards, which is
+what every index handed to a capsule does.
+
+**KNOWN, AND LEFT AS THEY ARE:**
+- **A row wins over a method read without brackets**, as satl's own `length` row already
+  did: after `any_name.keys = "mine"`, `any_name.keys` is "mine"; `any_name.size()` with its
+  brackets still counts the rows.
+- **A name the lexer knows as a method is kept by its first spelling.** `any_name.color` is
+  filed as `colour`, and `any_name.str` and `any_name.string` are one row, because the lexer
+  hands the walker the method's code and not the letters written. Reading and writing agree;
+  only the name displayed differs.
+- **`.remove` and `.clear` take satl's rows out of the variable's copy** as readily as the
+  program's. The machine is not changed, and a live row (`memory.used`) still answers.
+- **Older, reached through this:** a `satellite.main` with two parameters -- the checker
+  takes both for the arguments, and only the first is handed them.
+
+Code: satellite/bytecode/main_arguments.cpp, `run_argument_assignment` in program_walk.cpp
+(and `args["x"] = v` in run_indexed_assignment), `after_an_argument` in expression.cpp, one
+arm in program_check.cpp. check.sh rows after "a row that is not an argument is refused by
+name"; tests/arguments_written.satl and tests/arguments_not_written.satl.
+
+---
+
+# Part 4E — what the processor can run, 2026-09-23
+
+The author: *"there's no argument that has "haswell" like, arguments.cpu.architecture =
+"haswell" then there's no argument that displays what features are on this machine, like
+arguments.cpu.features = AVX, AVX2, 512-bit stuff, all that in a single list ... we should
+keep a list of features, as we enable all haswell features"*.
+
+| row | here (Xeon E5-2670 v3) | what it is |
+|---|---|---|
+| `arguments.cpu.architecture` | `haswell` | 003's word (its `satl-cpu-level`): `haswell` when the processor runs the whole x86-64-v3 set, `baseline` when not, or not x86 |
+| `arguments.cpu.features` | 23 words, `cmov` ... `avx2` ... `x86-64-v3` | every instruction set the processor AND the kernel allow, in the order they arrived, then the x86-64 levels reached |
+
+**003 HAD NO FEATURE LIST**, only the one word, so the list is new. It is the first row that
+is a LIST: `ArgumentKind::list`, appended last; `satl --debug` prints it comma-separated,
+and the variable hands it to a program as a satellite.container.list of strings, so
+`.contains("avx2")`, `.size()` and `[1]` work on it.
+
+**ASKED WITH __builtin_cpu_supports, NOT /proc/cpuinfo**, because the builtin says yes to AVX
+and AVX-512 only when the kernel has switched their registers on -- a feature on the list is
+one a program can use. /proc/cpuinfo's flags line is 105 words here, most of them not
+instructions. check.sh asks /proc/cpuinfo anyway, as the independent second opinion.
+
+**THE ARCHITECTURE IS A BUILD'S NAME, NOT THE CHIP'S CODE NAME** -- a choice the author may
+overrule: a Raptor Lake or a Zen 4 answers `haswell` too, because each runs what 003's
+satl.haswell was compiled for. Since MILESTONES M37 (`make cpus`) there are 53 processor
+builds and `satl-cpu-level` names the best of them for a machine; whether this row should
+answer that word instead is the author's.
+
+Code: satellite/arguments/cpu_facts.hpp, two rows in arguments.cpp's gather().
+
+---
+
+# Part 4F — a program's own switch, and a bare `true` or `false`, 2026-10-04
+
+The author, 2026-10-03 (SCRATCH.md/MISSING_SYNTAX.md D9, D18 and D22): *"the missing syntax ...
+can optionally be turned off with arguments.missing = false, which by default is set to true, and
+gives you the tutorial by default"*; *"arguments.missing = false right where a satellite word would
+go, satellite.something.something"*; and *"let's allow bare false/true on the special arguments
+variable as it breaks all of the rules, and also allow it to take satellite.bool.true, or
+satellite.bool.false as that is clear by what the user meant"*.
+
+| written | what happens |
+|---|---|
+| `arguments.missing = false` at the top of the program's file, outside every capsule | the run's `arguments.missing` is false -- set after the scan and before the file's shape is checked, so before anything is said about the program |
+| `satellite.library.arguments.missing = false` there | the same line, by its full name |
+| no line | true: the row `{"arguments.missing", 0, true, true}` in satellite_config.hpp |
+| `= true`, `= satellite.bool.false`, `= satellite.bool.true` | taken; anything else -- `5`, `"false"`, `false \|\| true` -- refused, S310 (34) |
+| written twice, under either spelling | S202 (26) |
+| `arguments.access = false` at the top | S220 (35): a setting a capsule writes -- it changes config.ini, and nothing outside a capsule runs |
+| `arguments.infinity = 5`, `arguments.my_value = 5`, or any other row, at the top | S110 (13), a line outside every capsule as before switches: a row is read inside one, and a name of the program's own written there |
+| `satellite.library.main.arguments.missing = false` | S110 (13), naming the old place and the spelling; the old place with any other row is refused as that row is |
+| inside a satellite.namespace or a spacesuit | S110 (13): a switch is the file's own, at its top |
+| `args.missing = false`, `args["missing"] = ...`, `arguments.missing = false` or `satellite.library.arguments.missing = false` inside a capsule | S220 (35), before anything runs: one value holds for the whole run, and some of what it turns off is said before main begins. At the prompt, which has no file, it is told so |
+| the line in a file the program includes | judged the same; it is that file's own when that file is run by itself, and the program's row is untouched |
+| the line in a spaceship -- a file with no `satellite.include(satellite)` | S110 (13): it never runs by itself, so nothing would ever read it |
+| `args.access = false`, `args.my_flag = true`, `args["my_flag"] = false`, `satellite.library.arguments.access = false` | the bare word is the bool (D22) |
+| the same after `satellite.variable.bool false = satellite.bool.true` | still the bool: there the bare word is the value, always, and the variable is read as `(false)` |
+| `args.my_flag = false \|\| x` | not bare, so read as it always was: `false` is refused, S201, with "write satellite.bool.false" |
+| `args.l[1] = false` | an item of a row's list is the list's, not the arguments': refused as before |
+
+**NOTHING READS `arguments.missing` YET.** The MISSING codes it turns off are numbered in MS-3
+and raised from MS-5 on; MS-2 is the row and the line, set where every one of them will read it.
+That is why run_satl now scans the files BEFORE `file_can_run`: S030, S150 and S031 are raised
+there (include_shape.cpp), ahead of the checker's S15x and the run's end S032-S034, and all of them
+see the program's own line. Where else the switch may be set -- config.ini, the command line -- is
+Q4 of MISSING_SYNTAX.md, still the author's.
+
+**THREE CHOICES THE AUTHOR MAY REVERSE:**
+- **An included file's switch is its own**, not the program's (`set_the_program_s_switches`, the one
+  place). The other reading -- any file of the program turns it off -- is a loop over every file.
+- **The bare word wins over a variable named `true` or `false`.** Built the other way first, the
+  fresh reader showed the checker and the walker disagreeing -- a `false` declared further down a
+  loop's body gave one line false on the first pass and true on the second. Read off the codes
+  alone they cannot disagree. No program of the author's declares a variable named true or false
+  (measured 2026-10-04); one that does reads it there as `(false)`.
+- **The full name is a spelling of the line only.** `satellite.library.arguments.missing` read in a
+  capsule is not built -- no config row is readable that way (`satellite.library.arguments.infinity`
+  is not either) -- so the row is read back as `args.missing`.
+
+Code: satellite/bytecode/argument_switches.hpp and .cpp (the scan's line, and
+`set_the_program_s_switches`), `a_bare_true_or_false` in main_arguments.cpp, its arms in
+program_check.cpp and program_walk.cpp, and `Arguments::the_program_sets`. check.sh rows after "access,
+a setting, is written through"; tests/arguments_missing*.satl and tests/arguments_bare.satl.
+
+---
+
+# Part 4G — a setting changed by a line: for good at the prompt, for the run in a file, 2026-10-06
+
+The author, 2026-10-06, before MS-4 of SCRATCH.md/MISSING_SYNTAX.md: *"before we build this, we need
+to build into the interpreter the syntax arguments.item(value_to_change_to) and if it's typed ON the
+prompt it permanently changes the value, and if it's typed in a file it temporarily changes a value,
+and the alias syntax using = (which I believe is already built or almost all built) that does the same
+thing, and has the same rules as changing it permanently on the console, or temporarily inside of a
+file"*. And on 2026-10-04: *"the entire arguments variable should be saved into config.ini"*;
+*"use parentheses"*; *"arguments.missing or arguments.anything needs to be able to be read
+anywhere"*.
+
+**THERE IS NO `.permanent`.** On 2026-10-04 he had also ruled *"arguments.missing(value) is temporary
+and arguments.missing.permanent(value) to be the new syntax"*; it was built with the rest on
+2026-10-06 and taken out the same day on his word: *"so you took out the .permanent() right??"* The
+prompt is the one way a setting lasts. `.permanent` is no word: a name ending in it is judged as any
+other name -- refused on a setting (a name inside it), and outside every capsule at a file's top.
+
+**WHERE THE LINE IS SAYS HOW LONG IT LASTS, AND HOW IT IS SPELLED DOES NOT:**
+
+| where | `arguments.x(v)` | `arguments.x = v` |
+|---|---|---|
+| typed at the prompt | for good | for good |
+| in a file, inside a capsule | this run | this run |
+| in a file, at its top | this run | this run |
+
+**For good** is `~/.satl/config.ini`, `key = value` under the row's name without `arguments.`, and the
+run's own row as well, so the next line reads what was saved. **This run** is the run's row alone:
+config.ini is not touched, and the value is gone when satl ends. `interpret file.satl` at the prompt
+runs a satl of its own (satl/prompt_run.cpp), so a file's change never reaches the prompt.
+
+**THE SETTINGS, AND NOTHING ELSE** (satellite/arguments/argument_settings.hpp, one table):
+
+| setting | kind | least | read |
+|---|---|---|---|
+| access | true/false | | while a program runs |
+| missing | true/false | | the program's switch: at the top of its file (MS-2) |
+| startup_display | true/false | | as satl starts |
+| magic | whole number | 0 | by nothing yet |
+| directory.default | a folder, in quotes | | as satl starts (the prompt's console) |
+| log_path | a path, in quotes | | while a program runs |
+| object_bytes_max, file_size_max_bytes | whole number | 0 | by nothing yet |
+| infinity, infinity_display | whole number | 1 | while a program runs |
+| infinity.counter | whole number | 1 | by nothing yet |
+| float.whole, float.decimal | whole number | 1 | while a program runs |
+| display.buffer | whole number | 1 | as satl starts (*"it has to be changed outside of program execution"*, 2026-09-26) |
+| scroll.vertical | true or false | — | while it runs: a console's bar and endless scrollback, on unless written (the author, 2026-10-07: *"so if I ship this program sometime, I can have it turned off by default"*); satl's own console follows a write at once |
+| scroll.horizontal | true or false | — | while it runs: a console 2048 characters wide that wraps nothing, with a bar along the bottom; off, long lines wrap (2026-10-07, *"as well"*) |
+
+A **fact** is not a setting and is refused as before, before anything runs: the machine's rows, the
+command line's, and satl's own numbers (`version`, `revision`, `build`). **Nor are the warm threads**
+(`threads_startup_per_core`, `threads_max`): they stay his rows in satellite_config.hpp, because one line
+saved from the prompt -- `arguments.threads_startup_per_core(100000)` -- would make every start after it
+ask for a million threads, and the prompt that could undo it starts them too (the fresh reader). **A row satl reads as satl
+starts** is read before any file is, so a line in a file is refused for it (S220, 35) and told the way
+that lasts -- typed at the prompt. **The switch** keeps MS-2's rule: at the top of the file, and
+refused inside a capsule as too late, now with the prompt named too.
+
+| written | what happens |
+|---|---|
+| `arguments.missing(false)` or `= false` at a file's top | this run's row, before anything is said about the program (MS-2's line, two spellings) |
+| `arguments.float.decimal(10)` at a file's top | this run's: written, not worked out -- a whole number's digits, words in quotes, true or false |
+| `args.access(false)`, `args.access = false` in main | this run's row and main's copy; config.ini untouched (**until today it wrote config.ini**) |
+| `arguments.infinity(64)` in any capsule, `arguments` undeclared there | this run's row: main's `args.infinity` reads 64 after it |
+| `arguments.missing(false)`, `arguments.magic = 7` typed at the prompt | config.ini and the session's row; the next run reads them |
+| `satellite.library.arguments.access = false` | by the same rule: this run in a file, for good at the prompt |
+| `args.my_value(5)` | `args.my_value = 5`: a name of the program's own, main's |
+| `arguments.my_value(5)` outside main, or at the prompt | refused (35): a name of the program's own is main's |
+| `args.missing.permanent(false)`, `arguments.magic.permanent = 9` | refused (35): `.permanent` is no word -- a name inside a setting, and not a setting |
+| `arguments.startup_display(false)` in a file | refused before anything runs (35): read as satl starts |
+| `args.b.call_put(9)`, `args.b` an object | its capsule runs, as it always did -- not a write |
+| `args.threads_max = 5`, `args.version = 5` | refused (35): rows satl holds |
+| `satellite.variable.string arguments = "x"`, `satellite.namespace arguments` | refused before anything runs (26) |
+| `arguments.infinity[1] = 5`, `display(args.missing(false))` | refused before anything runs (35, 13) |
+| a capsule declared at the prompt writing a setting | for good, as every prompt line |
+| `args.access(2)`, `args.infinity("wide")`, `args.infinity(0)` | refused when the value is worked out: 34, 27, 37 (`setting_out_of_range`) |
+| `magic = banana` in config.ini | satl refuses to start, naming the row (20), as `float.decimal` always did |
+
+**A ROW IS READ AS IT IS NOW.** `args.row` and the bare `arguments.row` read the run's own row, under
+the lock a line takes to change it, and not the copy main was handed: a change by one name is seen by
+every other. The float's precisions are copied again when one changes, and are atomic now, so a thread
+making a float meanwhile reads a whole number (float_precision.hpp); satellite.log's place is set again
+when `log_path` changes. `Arguments::set_for_this_run` changes a row in place and never adds one.
+
+**THE BARE NAME `arguments`** is the run's own rows in any capsule, and at the prompt:
+`arguments.missing` reads, `arguments.infinity(64)` changes, `satellite.console.display(arguments)` shows
+every row as it is now. A method that would change it in place (`arguments.remove`) is refused: it would
+change a copy nothing keeps. **So nothing else is named `arguments`** -- no variable, object, parameter
+or satellite.namespace (S202, 26) -- except satellite.main's parameter, which is the arguments: a body
+that read the run's own and then declared a variable of that name read one line two ways on a loop's
+second pass, and a namespace of that name made `arguments.greet()` mean either (the fresh reader). No
+program of the author's names anything else `arguments` (measured 2026-10-04: 189 files).
+
+**THE FRESH READER (2026-10-06), AND WHAT IT CHANGED:** a capsule of an object held in a row,
+`args.b.call_put(9)`, was taken for a write -- the call that writes is ONE name, or a setting's whole
+name, now; the warm threads came out of the settings; the float's decimal side is read once where it
+was read three times; `args["infinity"]` reads the row as it is now, as `args.infinity` does, and
+`access` taken out of main's copy reads the run's row; a capsule declared at the prompt is judged by the
+prompt's rule, as it runs; `arguments.infinity[1] = 5`, the full name's call
+(`satellite.library.arguments.access(false)`) and a call inside an expression
+(`display(args.missing(false))`) are refused before anything runs, each in its own words; a file's top
+`arguments.update()` gets the sentence `arguments.update = 5` gets; S610 says what it means for a
+setting.
+
+Code: satellite/arguments/argument_settings.hpp (the table), satellite/bytecode/setting_writes.hpp
+and .cpp (`change_a_setting`, the too-late rule, the value checks), main_arguments.cpp
+(`an_argument_call`, `why_an_argument_is_not_written` with `ArgumentWrite`, reads
+as they are now), `run_argument_call` and the bare name in program_walk.cpp, expression.cpp and
+program_check.cpp, argument_switches.cpp (every setting at a file's top), arguments.cpp (every setting
+read back, `access` a row, the lock), `MachineState::at_the_prompt` set by run_session. check.sh rows
+after "a bare true or false is taken by every write"; tests/arguments_call.satl.
+
+**MY CHOICES, THE AUTHOR'S TO OVERRULE:**
+- **A name of the program's own is never saved**, and is written on main's arguments only -- the bare
+  name outside main, and the prompt, refuse one. Put to him 2026-10-04 as "program-made rows never
+  permanent".
+- **A setting read as satl starts is refused in a file**, rather than taking a value that changes
+  nothing this run. Typed at the prompt it is saved, and its row reads the new value.
+- **A value of the wrong kind is refused when it is worked out**, as `args.access = 2` always was --
+  so lines before it have run. The setting's NAME is judged before anything runs.
+- **The full name `satellite.library.arguments.<row>`** stays what MS-2 made it -- a spelling of a
+  file's top line -- except `access = v`, which is a word: in a capsule or at the prompt any other, and
+  the call `satellite.library.arguments.access(false)`, is pointed at `arguments.<row>(value)`.
+- **The name `arguments` is reserved** for the run's own and main's parameter (above).
+- **The warm threads are not settings** (above) -- his to make settings, with a ceiling he chooses.
+
+**LEFT AS THEY ARE, AND SAID:**
+- **`access` saved for good makes every start say S011** until `satl --rebuild` composes the register
+  again -- the register is his design (config/rebuild.hpp), and a program writing `access` did the
+  same before today.
+- **`satellite.console.display(args)` shows main's copy**: a setting changed by another name since
+  main began shows its old value there, while `args.row` reads the new one.
+- **One table for the program's own rows** (2026-10-04's open question) is still his: a row main
+  writes is main's, and a capsule reading `arguments.my_row` is told it is not one of the arguments.
+- **`arguments.infinity(<a huge number>)` typed at the prompt** makes every infinity after it that wide
+  -- slow, but undone the same way, `arguments.infinity(128)`. Unlike the warm threads, the prompt that
+  undoes it is not slowed by it.
+- **The whole bare `arguments`** (shown, `.size()`, a key) is made fresh each time it is asked for: 2000
+  x `arguments.size()` took 0.58 s against 0.01 s for main's `args.size()`. A row read by name is not.
+- **`args.m.set("k", 5)` on a map held in a row** is refused, "no capsule named set" -- on build 0021 as
+  well: older than this, and not changed.
+
+---
+
+# Part 5 — left to the author
+
+Red notes. None of them blocks A1–A25.
+
+1. ~~**`arguments.system.memory` or `satellite.library.main.arguments.memory.total`?**~~
+   **CLOSED 2026-09-18 by the second brief.** The author wrote
+   `arguments.memory.total`, which is exactly what `words.tsv` carries at
+   `1 14 1 1 2 1`. The word table is the spelling; `arguments.system.memory` from
+   the first brief is dead. A row is still only ever APPENDED -- a code is 4097
+   plus the ROW in `words/words.tsv`, so inserting one renumbers every word after
+   it -- and the two rows added that day went on the end for that reason.
+   **AND THE TABLE IS GENERATED**: `words.tsv` comes out of `words_004.tsv`
+   through `make_words.py`, and `check.sh` regenerates it and compares byte for
+   byte. Edit the source, never the output. (Learned by editing the output.)
+2. **Is `satellite_hexadecimal_number` built first, or is hex left out?**
+   The brief's variant names `satellite.variable.hex`; the class does not exist,
+   and `satelliteObject` reserves arm 10 for it. A10 omits it for now.
+3. ~~**Does `satellite.container.list` get built before the declaration means
+   anything?** A5 recognises the shape; the container behind it is unbuilt, so
+   `arguments` is a name the reader knows rather than a list a program can walk.~~
+   **ANSWERED:** the list was built 2026-09-26, and the declaration became
+   `satellite.variable.arguments <name>` (2026-09-22); the list spelling still declares it.
+4. **Two interpreters, one master -- the anti-GIL.** The brief's closing idea:
+   a system-wide machine owning every running interpreter, parallel work split
+   across them. Recorded here, not milestoned. Nothing in A1–A25 forbids a second
+   `satelliteArguments`; that is what makes the idea cheap later.
+
+## From the second brief, 2026-09-18
+
+5. ~~**`arguments.threads` or `arguments.machine.threads`?**~~ **CLOSED
+   2026-09-18 BY THE AUTHOR: the long one, and the short one as an alias.** His
+   words: *"let's set it to arguments.machine then, and let's use the longer
+   choice for each one, can we have an alias for them though?"* So
+   `arguments.machine.cores` and `arguments.machine.threads` are the words, and
+   `arguments.cores` / `arguments.threads` answer the same thing. Both are built
+   and both were checked against each other. The old text is kept below for the
+   record.
+
+   **HOW AN ALIAS IS BUILT HERE, so the next one is a diff and not a decision.**
+   An alias is a second ROW in `words_004.tsv` and a second `.so`, because a code
+   is one number and one library. What it is **never** is a second copy of the
+   answer: every answer lives once, in `machine_facts.hpp`, and both libraries
+   point at it. That is the only way an alias can really go wrong — answering a
+   different number from the word it aliases — and it is designed out rather than
+   tested for.
+
+   **THE ALIASES THAT EXIST**, all verified equal to their canonical word:
+
+   | alias | is | answers here |
+   |---|---|---|
+   | `arguments.cores` | `arguments.machine.cores` | 12 (was 24 until 2026-09-25 -- see below) |
+   | `arguments.threads` | its own word since 2026-09-25 (below) | what satl may create: 506,502 |
+   | `arguments.user` | `arguments.username` | madness |
+   | `arguments.memory` | `arguments.memory.total` | 66509373440 |
+   | `arguments.memory()` | `arguments.memory.total` | 66509373440 |
+   | `arguments.ram` | `arguments.memory.total` | 66509373440 |
+   | `arguments.dir` | `arguments.directory` | the working directory |
+
+   **CORRECTED 2026-09-25: the cores pair did answer differently.** Both libraries
+   counted THREADS (`_SC_NPROCESSORS_ONLN`, 24 here) while the arguments variable's own
+   row counted CORES from /proc/cpuinfo (12), so inside `main(satellite.variable.arguments
+   arguments)` `arguments.machine.cores` said 12 and `arguments.cores` said 24. The
+   author's brief settles which is right -- *"arguments.cores = how many cores exist on
+   the machine, so for this it's 12"* -- and there is one reader now,
+   `machine_facts::physical_cores()`, used by both libraries and by the row. The
+   threads pair still differs, and that one is his: see SCRATCH.md/NEW_ERROR_LIST.md.
+
+   **RULED 2026-09-25, THE THREADS PAIR SPLIT.** The author: *"I want arguments.threads or
+   arguments.thread = how many the interpreter can create, and arguments.machine.thread =
+   how many physical threads exist on the machine"*. So `arguments.threads` (second
+   spelling `arguments.thread`) answers the ceiling machine_probe.hpp reads, 506,502 here,
+   and `arguments.machine.threads` (second spelling `arguments.machine.thread`) answers the
+   processors' hardware threads, 24 here -- which the arguments variable's own row already
+   said. The singular spellings are rows of words/aliases.tsv, not new words.
+
+   `arguments.memory()` is the author's own spelling from the second brief and it
+   reaches a **different code path** — brackets make it a call, so it is answered
+   in `call_word` rather than the bare-word arm. Both give the same number, and a
+   fact given an argument is refused, because a fact is what the machine has and
+   there is nothing to hand it.
+
+   **STILL THE AUTHOR'S:** *"can we alias them as arguments.direct_variable for
+   the arguments?"* — read here as **"give the deep names a short, direct
+   spelling"**, which is the table above. If `arguments.direct_variable` was
+   meant as a literal word of its own, say so and it is one more row.
+
+5b. **The original note, kept:** **`arguments.threads` or `arguments.machine.threads`? `arguments.cores` or
+   `arguments.machine.cores`?** The second brief writes the short pair; the word
+   table carries the long pair, at `1 14 1 1 1 3` and `1 14 1 1 1 1`. Unlike red
+   note 1 these do **not** agree, so one of the two is an alias and the author
+   picks which. An alias is cheap -- a second row pointing at one library -- and
+   picking neither is what is expensive, because a library built under one
+   spelling has to move if the other wins.
+6. **`arguments.memory.system.reserved` -- what does "reserved" mean to the
+   kernel?** The author budgets *"an entire 20 minute block"* and is right that it
+   is the hard one, but the hardness is not the code. Linux does not hand out
+   memory on request: `malloc` of 8 GiB takes address space and no pages until
+   they are touched, which is the same lazy commit SATELLITE_ARGUMENTS.md's own
+   thread table already measured (50,000 threads asking 8 MiB each took 419 MB
+   resident). So "grabs that much memory and just... holds onto it" is one of
+   three different things, and they cost differently:
+   - **touch every page** -- really resident, really unavailable to anything
+     else, and start-up pays for all of it up front;
+   - **`mlock`** -- resident and never swapped, and needs a privilege or a raised
+     `RLIMIT_MEMLOCK`, so it fails on an ordinary account;
+   - **reserve the address space only** -- free and instant, and reserves nothing
+     a person would recognise as memory.
+
+   Which one the author means decides whether B15 is twenty minutes or a day.
+7. **Does the last-known store have a bound?** "Only the last" bounds it by the
+   number of NAMES, which is what makes it affordable -- but
+   `arguments.directory.history` (B13) is bounded by the number of directories
+   ENTERED, and a program that includes in a loop grows it forever. The console
+   queue on 2026-09-17 was exactly this shape and it took the machine's memory.
+   Anything appended per-iteration needs its bound decided before it ships.
+8. **`satellite.variable.memory` -- feature creep the author wants anyway.** His
+   own words: *"I know it's feature creep, but it's just too good of an idea to
+   not use you know?"* Recorded as wanted and milestoned last (B16–B21), because
+   every value in Phase C and D can be built without it and then re-answered
+   through it -- which is the order that makes the type cheap to be wrong about.

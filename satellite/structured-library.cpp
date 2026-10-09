@@ -1,0 +1,811 @@
+// satellite-004 -- the interpreter built from numbered libraries: `satl`.
+//
+//     build/satl                                  the opening lines
+//     build/satl [--debug] <program.satl> [words...]
+//     build/satl [--debug] --run <file> [words...]
+//     build/satl [--debug] --repl                 the prompt (M0.6; 14 until then)
+//     build/satl --version | -V                   the title lines: version, revision, build, compiler
+//     build/satl --help | -h                      the start-up block and every way to start
+//
+// arguments/command_line.hpp has the rules. THE BINARY IS NAMED satl SINCE M0.5
+// (the author, 2026-09-15), and build/satellite-004 is a link to it.
+//
+// THE START-UP BLOCK (version.hpp) goes to stdout for --version and --help, and
+// to STDERR every time a program starts, so a program's stdout stays exactly
+// what the program wrote. arguments.startup_display = false in
+// satellite/config/satellite_config.hpp turns the start-up copy off.
+//
+// Start-up reads the author's satellite_config.hpp, parks
+// arguments.threads_startup threads (threads/startup_threads.hpp), files every word built into satl (satellite-numbers/word_table.hpp) in the
+// number index; then the .satl file is loaded, checked, TURNED INTO 16-BIT
+// TOKENS (bytecode/bytecode_registry.hpp), turned into calls with their
+// functions already chosen, and run. The exit status is the machine code
+// the program stopped on: 0 when it ran to the end, and 255 for a code an exit
+// status cannot hold (machine/exit_status.hpp).
+//
+// (the author, 2026-09-16) "First start 256 threads, then load the tiny C++
+// libraries, then convert the .satl to 16-bit." That order is the order below,
+// and the tokens are the first thing built out of a program.
+
+#include "arguments/arguments.hpp"
+#include "arguments/argument_settings.hpp"
+#include "bytecode/argument_switches.hpp"
+#include "satellite_variable_window/console_scrolling.hpp"
+#include "bytecode/window_calls.hpp"
+#include "bytecode/console_style.hpp"
+#include "bytecode/bytecode_registry.hpp"
+#include "bytecode/float_values.hpp"
+#include "bytecode/function_table.hpp"
+#include "bytecode/program_walk.hpp"
+#include "bytecode/thread_calls.hpp"
+#include "bytecode/program_calls.hpp"
+#include "satellite_variable_program/program_stop.hpp"
+#include "bytecode/word_counts.hpp"
+#include "bytecode/statement_ring.hpp"
+#include "config/config_file.hpp"
+#include "config/feature_register.hpp"
+#include "config/feature_switch.hpp"
+#include "config/rebuild.hpp"
+#include "config/run_config.hpp"
+#include "config/run_feedback.hpp"
+#include "licenses/licenses.hpp"
+#include "machine/s_codes.hpp"
+#include "machine/critical_report.hpp"
+#include "machine/exit_status.hpp"
+#include "machine/machine_codes.hpp"
+#include "machine/machine_state.hpp"
+#include "machine/run_state.hpp"
+#include "machine/stack_share.hpp"
+#include "../satellite-numbers/call_number.hpp"
+#include "../satellite-numbers/machine_facts.hpp"
+#include "satl/satl_file.hpp"
+#include "satl/session.hpp"
+#include "display/printing_satellite.hpp"
+#include "threads/startup_threads.hpp"
+#include "version/version.hpp"
+
+#include <iostream>
+#include <string>
+#include <vector>
+
+#include <cerrno>
+#include <climits>
+#include <csignal>
+#include <atomic>
+#include <cstdlib>
+#include <new>
+#include <cstring>
+#include <unistd.h>
+
+namespace {
+
+// THE PROMPT IN satl'S OWN CONSOLE STARTS IN arguments.directory.default (the
+// author, 2026-09-22: "on this machine set it to /home/madness/code/satl, as
+// thats where all of the satl programs are"). "~" and "~/..." are the home
+// folder. BEFORE arguments.gather(), so arguments.session.directory -- the
+// folder the session is in -- names the folder it moved to.
+//
+// A FOLDER THAT CANNOT BE ENTERED IS SAID, AND THE PROMPT STARTS WHERE satl DID:
+// a setting that points somewhere gone is not a reason to refuse a person the
+// prompt. The sentence lands in the console, which is where they are looking.
+void go_to_the_default_directory(const satellite004::Arguments &arguments)
+{
+    const satellite004::Argument *row = arguments.find("arguments.directory.default");
+    if (row == nullptr)
+        return;
+    std::string where = arguments.text("arguments.directory.default");
+    if (where == "~" || where.rfind("~/", 0) == 0) {
+        const char *home = std::getenv("HOME");
+        if (home == nullptr || *home == '\0') {
+            satellite004::report_error("satl(directory): arguments.directory.default is \"" + where +
+                                           "\" and $HOME is not set, so the prompt starts where satl did",
+                                       satellite004::success);
+            return;
+        }
+        where = std::string(home) + where.substr(1);
+    }
+    if (chdir(where.c_str()) != 0)
+        satellite004::report_error("satl(directory): arguments.directory.default is " + where + ", which cannot be "
+                                       "entered (" + std::strerror(errno) + "), so the prompt starts where satl did",
+                                   satellite004::success);
+}
+
+// Every argument, one line each, while debug mode is on -- what was typed first, from satl
+// itself at argument1 (MS-1), then the rest, as the arguments variable shows them.
+void display_arguments(const satellite004::Arguments &arguments, satellite004::MachineState &state)
+{
+    for (const satellite004::Argument *argument : arguments.every_row_arguments_first())
+        state.set(argument->name + " = " + satellite004::describe(*argument), satellite004::success);
+}
+
+} // namespace
+
+// Everything satl does, answering the machine code it stopped on. main() turns
+// that code into an exit status, in one place.
+signed long long int run_satl(int argc, char **argv)
+{
+    using namespace satellite004;
+
+    // The author's satellite_config.hpp first: the title lines need its numbers.
+    Arguments arguments;
+    signed long long int code = arguments.gather_config();
+    if (stops_the_program(code))
+        return code;
+    // satellite.log's PLACE, the moment the config says it (M5). A report before this
+    // line goes to the default, which is the same file unless config.ini moved it.
+    if (arguments.find("arguments.log_path") != nullptr)
+        set_log_path(arguments.text("arguments.log_path"));
+    // THE SCROLL ROWS, FOR EVERY CONSOLE AND WINDOW THIS RUN MAKES (the author, 2026-10-07):
+    // config.ini's answer, or true; a file's own line changes them from that line on
+    // (bytecode/setting_writes.cpp), and satl's own console follows the change.
+    console_scrolls_vertically().store(arguments.flag("arguments.scroll.vertical"), std::memory_order_relaxed);
+    console_scrolls_horizontally().store(arguments.flag("arguments.scroll.horizontal"), std::memory_order_relaxed);
+
+    CommandLine command_line;
+    code = read_command_line(argc, argv, command_line);
+    if (stops_the_program(code))
+        return code;
+    set_log_program(command_line.command == Command::run ? command_line.file : std::string());
+
+    // THE CONSOLE satl LAUNCHES FOR ITSELF (GTK-17, `satl --console`): a window
+    // with a terminal in it, and satl's own stdin, stdout and stderr moved onto
+    // its pty -- BEFORE a line is printed, so the start-up block and everything
+    // after it land on a screen. In THIS process, so the code this function
+    // answers is still the exit status. window_run.cpp reports why when it
+    // cannot, and that report goes where satl was pointed before.
+    //
+    // AND satl OPENS ONE OF ITS OWN FOR EVERY RUN NOBODY REDIRECTED (the author,
+    // 2026-10-05: "we are dropping the whole 'start satl from a console and it
+    // runs' thing" -- a satl started from a shell opens its console the same as
+    // one started from a launcher; window_run.cpp has the ruling and the two
+    // reasons left, a pipe or a file on stdout and SATL_NO_WINDOW). Only for
+    // what RUNS -- a file, the prompt, or bare satl, which is the prompt in a
+    // console; never for a command that prints and exits, which would flash a
+    // window and be gone, and never for a command line that was refused, which
+    // has returned above. A CONSOLE satl CANNOT HAVE ENDS THE RUN with the
+    // console's own report -- no_display on a machine with no monitor, which is
+    // no longer a machine satl runs on -- where until 2026-10-05 satl carried on
+    // where it was pointed.
+    const bool runs_something = command_line.command == Command::run || command_line.command == Command::repl ||
+                                command_line.command == Command::opening;
+    const bool on_its_own = !command_line.console && runs_something && nobody_gave_satl_a_console();
+    if (command_line.console || on_its_own) {
+        // BARE satl IS THE PROMPT IN THE CONSOLE, as `satl --console` already is
+        // (command_line.cpp): the opening lines would flash in a window and be
+        // gone. Into a pipe or a file, bare satl still prints them.
+        if (command_line.command == Command::opening)
+            command_line.command = Command::repl;
+        const bool the_prompt = command_line.command == Command::repl;
+        code = open_satls_own_console(the_prompt ? std::string("satellite") : "satellite -- " + command_line.file,
+                                      the_prompt);
+        if (stops_the_program(code))
+            return code;
+    }
+    if (satls_own_console_is_open() && command_line.command == Command::repl)
+        go_to_the_default_directory(arguments);
+
+    if (command_line.command == Command::version || command_line.command == Command::help ||
+        command_line.command == Command::opening) {
+        // licence_rows().size() AND NOT A TYPED NUMBER. The two places that state
+        // how much is carried used to disagree -- this block said 24 other projects
+        // and `satl --license all` said 26 -- and the one a person reads first was
+        // the wrong one.
+        const std::size_t carried = licence_rows().size();
+        if (command_line.command == Command::version)
+            std::cout << title_lines(arguments) << licence_lines(carried);
+        else if (command_line.command == Command::help)
+            std::cout << startup_block(arguments) << usage_lines() << licence_lines(carried);
+        else
+            // "Nothing to do is not an error" (003 main.cpp), so bare satl is 0.
+            std::cout << startup_block(arguments) << opening_lines();
+        std::cout.flush();
+        if (!std::cout)
+            return report_error("satl(output): the output refused the lines", display_error);
+        return success;
+    }
+
+    // `satl --rebuild`, BEFORE THE CONFIG NOTICE BELOW. It is the command that
+    // FIXES a missing config.ini, so telling somebody to reinstall on their way
+    // into it would be advice against the thing they are already doing.
+    if (command_line.command == Command::rebuild)
+        return run_rebuild();
+
+    // --license BEFORE the config notice too, and for the same reason --rebuild is:
+    // a person asking what this binary is licensed under has asked a question that
+    // has nothing to do with whether their config.ini exists.
+    if (command_line.command == Command::licence)
+        return run_licence(command_line.which);
+
+    // `satl --config`, for the same reason and one more: it writes machine.conf
+    // and reads nothing out of config.ini, so a missing config.ini has no
+    // bearing on it at all.
+    if (command_line.command == Command::config)
+        return run_config(command_line.most);
+
+    // `satl --feedback`, and it reads config.ini for nothing at all: the book is
+    // its own file and the command only prints it.
+    if (command_line.command == Command::feedback)
+        return run_feedback();
+
+    // THE LASTING SETTINGS, AND SAYING SO WHEN THEY ARE NOT THERE. Checked here
+    // and not above, so `satl --version`, `satl --help` and a bare `satl` stay
+    // quiet: those three answer a question about satl itself and do not run a
+    // program, and a person asking the version does not need to be told about a
+    // file no part of that answer reads.
+    //
+    // THE RUN CARRIES ON. Every setting has its own default, so this costs
+    // nothing but the telling -- see config_file.hpp's exists() for why it is a
+    // notice and why satl does not quietly create the file to make it go away.
+    if (!config_file::exists()) {
+        const std::string where = config_file::path();
+        CriticalReport missing;
+        missing.code = "S010";
+        missing.name = "CONFIG_FILE_MISSING";
+        missing.description =
+            "no config.ini, so every setting is its built-in default. satl --rebuild writes one";
+        missing.directory = where.empty() ? std::string("$HOME is not set, so there is no ~/.satl")
+                                          : where;
+        // A NOTICE AND NOT A REPORT, on the author's severity ruling. The run
+        // carries on and nothing is lost, so it does not get two rules of dashes.
+        print_notice(missing);
+    }
+
+    // THE ONE VALUE, READ ONCE. This is the whole per-run cost of the feature
+    // system: one line out of config.ini and one integer. Everything that hangs
+    // off it -- the last-known store, the frame stack, the statement ring --
+    // tests THIS, and SATELLITE_ERROR Part 10 measured what that costs.
+    const RegisterReading reading = start_register();
+    const FeatureRegister features = reading.features;
+
+    // THE KEY IS THERE AND CANNOT BE READ, which is not the same as absent and
+    // must not print as it (Part 7, rule 3). A fresh install has no register and
+    // wants no noise; a damaged one is a thing somebody has to fix.
+    if (reading.unreadable) {
+        CriticalReport damaged;
+        damaged.code = "S012";
+        damaged.name = "REGISTER_NOT_READABLE";
+        damaged.description =
+            "config.ini has a feature register and it is not a binary satl can read, so this run "
+            "is using the built-in default for every feature. Run satl --rebuild to write a good "
+            "one from your settings.";
+        damaged.directory = config_file::path();
+        damaged.syntax = std::string(kRegisterKey) + " = " + reading.said;
+        damaged.caret_at = std::string(kRegisterKey).size() + 3;
+        damaged.caret_note = "a satellite binary was expected here -- b then 1s and 0s, as "
+                             "satl --rebuild writes it";
+        print_critical(damaged);
+    }
+
+    // SOMEBODY CHANGED A SETTING AND HAS NOT REBUILT, which is the one trap this
+    // design has: the named keys are what a person edits and what a program
+    // writes, and `features` is what satl READS. They can disagree, and a person
+    // whose `arguments.access = satellite.bool.false` seemed to do nothing is
+    // owed the reason rather than left to find it.
+    if (reading.disagrees) {
+        CriticalReport stale;
+        stale.code = "S011";
+        stale.name = "REGISTER_IS_STALE";
+        stale.description =
+            "a setting changed since satl --rebuild last ran, so this run uses the saved register "
+            "and not the setting. satl --rebuild composes them again";
+        stale.directory = config_file::path();
+        print_notice(stale);
+    }
+
+    // A ROW satl DOES NOT KNOW CHANGES NOTHING, AND IS SAID (S016, the author 2026-09-25: an
+    // unknown row "in the config file" gets its own code). `threads_startup = banana` or a
+    // misspelled `acess = false` was read by nothing and the run carried on as though the
+    // person had not written it. THE ROWS satl READS: the register, the feature switches, the
+    // text rows of satellite_config.hpp under their names without `arguments.`, the float's
+    // two precisions (arguments.cpp), the console's font size (console_settings.cpp), its two
+    // colours and the shadow under its text (console_shadow.cpp). A notice, not a refusal:
+    // every setting keeps its default, as with S010.
+    {
+        std::vector<std::string> known{kRegisterKey, "float.whole", "float.decimal", "console.font_size",
+                                       "console.font_weight", "console.background", "console.text", "console.shadow",
+                                       "console.shadow_fuzzy", "display.buffer", machine_facts::kFirstStart,
+                                       machine_facts::kFirstStartAsWritten};
+        for (const char *kept : machine_facts::kKeptRows) known.push_back(kept);
+        for (const char *retired : machine_facts::kRetiredRows) known.push_back(retired);
+        for (const FeatureFact &fact : feature_facts()) known.push_back(fact.name);
+        for (const satellite_argument_row &row : return_arguments_vector())
+            if (row.is_text && row.name.size() > 10) known.push_back(row.name.substr(10));
+        // EVERY SETTING, which start-up reads back and a prompt line saves (argument_settings.hpp, 2026-10-06).
+        for (const Setting &setting : kSettings) known.push_back(setting.key);
+        std::string unknown;
+        for (const config_file::Row &row : config_file::rows()) {
+            bool is_known = false;
+            for (const std::string &key : known) is_known = is_known || key == row.key;
+            if (is_known)
+                continue;
+            unknown += (unknown.empty() ? "" : ", ") + std::string("line ") + std::to_string(row.line) + " " +
+                       (row.key.empty() ? "\"" + row.written + "\" (not key = value)" : row.key);
+        }
+        if (!unknown.empty()) {
+            CriticalReport stray;
+            stray.code = "S016";
+            stray.name = "CONFIG_ROW_NOT_UNDERSTOOD";
+            stray.description = "config.ini has rows satl does not read, so they change nothing: " + unknown +
+                                ". The rows it reads are features, the feature switches (access, word_counts, "
+                                "statements and the rest satl --rebuild lists), the settings (" +
+                                every_setting_named() + "), console.font_size, console.font_weight, "
+                                "console.background, console.text, console.shadow, console.shadow_fuzzy, "
+                                "and first_start "
+                                "with the machine's facts it keeps (machine.cpu, machine.cores, system.hostname, "
+                                "system.distribution, system.distribution_id, system.distribution_version)";
+            stray.directory = config_file::path();
+            print_notice(stray);
+        }
+    }
+
+    // THE MACHINE, READ ONCE (the author, 2026-10-03: "have a variable at the top of it:
+    // FIRST_START=FALSE or TRUE"): its facts come out of config.ini, or -- on a first start --
+    // out of /proc/cpuinfo, /proc/meminfo and /etc/os-release, and are written in. Before
+    // gather(), which is the first thing to ask for the cores (machine_facts.hpp says the rest).
+    const std::string machine_read = machine_facts::remember_the_machine();
+
+    MachineState state;
+    code = arguments.gather(command_line);
+    if (stops_the_program(code))
+        return code;
+    if (arguments.flag("arguments.startup_display"))
+        std::cerr << startup_block(arguments);
+
+    state.debug_mode = arguments.flag("arguments.debug_mode");
+    // THE REGISTER REACHES THE INTERPRETER HERE, and this one line is what makes
+    // every bit readable everywhere: `MachineState &state` is already threaded
+    // through the walker, the expression reader and every call.
+    state.features = features;
+    // AND THE CONFIG ROWS, the same way and for the same reason: `arguments` lives
+    // until run_satl returns, which is after every program and prompt line it runs.
+    state.arguments = &arguments;
+    // THE FLOAT'S PRECISIONS, COPIED ONCE (2026-09-22): a float is made where there
+    // is no state to read a row through, so its rows go to the one holder
+    // (satellite_variable_float/float_precision.hpp) here, before anything runs.
+    float_precision_from(arguments);
+    // arguments.display.buffer, READ ONCE into the printing satellite (display/printing_satellite.hpp):
+    // "we load this value so we don't have to keep getting it from arguments". A row past one limb
+    // is more displays than any machine can hold, so it means no limit that could be reached.
+    {
+        const satellite_number &most = arguments.number("arguments.display.buffer");
+        set_the_display_buffer(most.is_zero() ? kDisplayBufferDefault
+                                              : most.fits_one_limb() ? most.limb(0) : ULLONG_MAX);
+    }
+    state.set("satellite " + version_line(arguments) + " (starting)", success);
+    state.set("arguments(gathered)", success);
+    state.set("machine(" + machine_read + ")", success);
+
+    // THE REGISTER, SPELLED OUT -- SATELLITE_ERROR Part 10's rule 4. A run
+    // gathered with half the features off has holes in it, and a person reading
+    // the output has no way to tell a section that was empty from one that was
+    // never collected. So the bits AND the names, whenever anything is on.
+    if (state.debug_mode) {
+        state.set(std::string("features = ") + written(features) +
+                      (reading.found      ? " (from config.ini)"
+                       : reading.unreadable ? " (built-in defaults; the saved one could not be read)"
+                                            : " (built-in defaults; none saved)"),
+                  success);
+        for (unsigned i = 0; i < kFeatureCount; ++i)
+            if (features.on(static_cast<Feature>(i)))
+                state.set(std::string("features.") + feature_facts()[i].name + " = true" +
+                              (feature_facts()[i].built ? "" : " (listed, NOT BUILT YET)"),
+                          success);
+    }
+    if (state.debug_mode)
+        display_arguments(arguments, state);
+
+    // The start-up threads, warm before anything else loads (the author, 2026-09-15).
+    // Never more than arguments.threads_max; a refused thread is reported, and the
+    // program still runs on the threads that started.
+    satellite_number asked = arguments.number("arguments.threads_startup");
+    if (arguments.find("arguments.threads_max") != nullptr &&
+        satellite_number::compare(asked, arguments.number("arguments.threads_max")) > 0) {
+        const satellite_number &threads_max = arguments.number("arguments.threads_max");
+        // Shown every time, not only in debug mode: the author asked for more threads than start.
+        report_error("threads.startup(capped): arguments.threads_startup " + asked.to_text() +
+                         " is more than arguments.threads_max " + threads_max.to_text() + ", so " +
+                         threads_max.to_text() + " threads start",
+                     success);
+        asked = threads_max;
+    }
+    // THE ROW IS A satellite_number AND A THREAD IS COUNTED BY THE MACHINE. A
+    // maximum is a ceiling, never an instruction (DESIGN §1.2): a row longer than
+    // an unsigned long long is more threads than any machine can start, so it asks
+    // for all it can count, and StartupThreads reports the machine's refusal the
+    // way it reports any count the machine will not give. Both rows are checked
+    // not negative in gather_config, so a one-limb value is the count itself.
+    const unsigned long long int startup = asked.fits_one_limb() ? asked.limb(0) : ~0ull;
+
+    // Declared BEFORE the threads, so they are destroyed after the threads have
+    // run every queued job and stopped: a job may point into them (PLAN M7).
+    NumberIndex index;
+    BytecodeRegistry bytecode_registry;
+    BytecodeFilenames bytecode_filenames;
+    FunctionTable functions;
+
+    // THE TOPOLOGY (the author, 2026-09-16): main starts ONE thread, and that one
+    // starts the rest -- 256 then, the cores x2 now (24 here). Main does not wait for
+    // them -- it loads the number index and builds the function table while they come
+    // up, which is the first time this interpreter does two things at once. Parking
+    // 24 costs ~2.3 ms (1024 took ~34 ms) and neither of those two jobs needs a thread.
+    StartupThreads threads;
+    threads.start_in_background(startup);
+
+    // EVERY WORD IS BUILT INTO satl (2026-10-07): nothing is read from beside the binary, so a
+    // satl installed deeper than the kernel can name its path runs like any other (ERROR #8's
+    // refusal went with the folder it guarded).
+    code = index.load(state);
+    if (stops_the_program(code))
+        return code;
+    // A word's 16-bit code straight to its library: table[code], one load, no
+    // search. call_number.hpp promises a name is never looked up while a
+    // program runs, and this is how that is kept now a word is a code.
+    code = functions.build(index, state);
+    if (stops_the_program(code))
+        return code;
+
+    // The threads are needed from here: load_program tokenises on them. This is
+    // where main pays whatever is LEFT of the 12 ms, which is usually none of it.
+    code = threads.wait_until_warm(state);
+    if (stops_the_program(code))
+        return code;
+
+    // THE PROMPT (PLAN M0.6), and everything it needs is now up: the index is
+    // loaded, the function table is built, and the threads that tokenise a typed
+    // line are warm. There is no file to load and no main to find -- a typed line
+    // is its own row, checked and walked by the same two functions a capsule's
+    // body is (session.hpp).
+    if (command_line.command == Command::repl) {
+        const signed long long int session = run_session(arguments, functions, threads, state);
+        // EVERY PROGRAM A TYPED LINE STARTED is stopped when the prompt ends (the review,
+        // 2026-10-01) -- quietly: a session is not a run that a missing join() fails.
+        close_every_program(error);
+        return session;
+    }
+
+    state.set("satellite(loading)", satellite_loading_successful);
+
+    // THE PROGRAM IS 16-BIT TOKENS, AND THAT IS WHAT RUNS (the author,
+    // 2026-09-16: "we specifically build this into the interpreter"). The main
+    // .satl and every file its includes name become one row each, tokenised on
+    // the threads that are already warm; then main is walked straight out of
+    // those codes. No tree is built and nothing is allocated to run a line.
+    code = load_program(arguments.text("arguments.file"), threads, startup,
+                        bytecode_registry, bytecode_filenames, state);
+    if (stops_the_program(code))
+        return code;
+
+    // WHAT A REPORT READS TO SAY WHERE. SATELLITE_ERROR E6: set once, here,
+    // after the program is loaded and before anything runs, and never written
+    // again. Both outlive the run -- they are this function's own locals and the
+    // walker returns into it -- so the pointers cannot dangle while a report
+    // could still be raised.
+    state.program = &bytecode_registry;
+    state.program_files = &bytecode_filenames;
+
+    // NO .sate (the author, 2026-10-03: "skip .sate altogether"). The codes were written beside
+    // the program as text on every run -- about 3 ms a run for a 3,500-line program, 212 ms at
+    // 100,000 lines -- and nothing read them back: reading them in place of converting would
+    // have saved about 3.5 ms a start at his programs' size (MILESTONES M31).
+
+    // THE FILES' SCOPES, CAPSULES AND SWITCHES (capsule_scopes.hpp), found BEFORE anything is said
+    // about the program, so that its own `arguments.missing = false` (MS-2, argument_switches.hpp)
+    // is the run's row before the file's shape is checked below -- every MISSING code reads it.
+    // The scan says nothing itself (check_program says what it found), and it has always read
+    // every included file whatever shape that file is in, so coming first changes nothing it finds.
+    const CapsuleTable capsules = capsules_in(bytecode_registry, bytecode_filenames);
+    state.capsules = &capsules;
+    set_the_program_s_switches(capsules, arguments, state);
+
+    // No globals: a file must say it is runnable and must have a main to begin
+    // in and a return to end in.
+    code = file_can_run(bytecode_registry.front(), bytecode_filenames.front(), state);
+    if (stops_the_program(code))
+        return code;
+
+    // THE CHECKER IS OWED, AND IT IS THE NEXT PIECE. check.sh asserts "nothing
+    // ran before the refusal", and the prototype earned that by choosing every
+    // call's function up front (compile_satl). This path discovers as it goes,
+    // so four of check.sh's 32 now fail: a line with no scenario, "a" + "b", a
+    // number too large, and nothing-ran-first. They fail HONESTLY -- the
+    // programs they check really are unchecked here, and the bytecode has no
+    // pre-pass yet.
+    //
+    // compile_satl cannot be borrowed for the verdict: it is the PROTOTYPE's
+    // checker and refuses a user's own capsule and every include spelling past
+    // the first, so it rejected test_programs/hello_world.satl outright (13).
+    // The check belongs on the bytecode, walking every capsule body before main
+    // is entered, and that is PLAN work rather than a five-line change.
+    //
+    // EVERY THREAD THE PROGRAM STARTED IS CLOSED BEFORE THESE LOCALS GO (thread_calls.hpp):
+    // a thread still walking after this function returns would walk a freed capsule table.
+    // Declared AFTER the capsules, so it is destroyed BEFORE them, on every way out of here
+    // -- the ordinary end below closes them first, and says what they did.
+    // AND EVERY PROGRAM IT STARTED (program_calls.hpp), on every way out and quietly -- the
+    // ordinary end below is the one that reports a program never joined. PROGRAMS FIRST, so a
+    // thread waiting in a program's join() is let go; then the threads; then any program a
+    // thread started while it was closing (the review, 2026-10-01).
+    struct ThreadsCloseFirst {
+        ~ThreadsCloseFirst()
+        {
+            close_every_program(error);
+            close_every_thread();
+            close_every_program(error);
+        }
+    } const threads_close_before_the_capsules_go;
+    // NOTHING RUNS BEFORE THE WHOLE PROGRAM IS CHECKED.
+    code = check_program(bytecode_registry, capsules, functions, state);
+    if (stops_the_program(code))
+        return code;
+
+    // THROUGH THE SWITCH HIERARCHY (the author, 2026-09-18), and every one of
+    // its eight leaves calls the same run_main -- *"we are just running the exact
+    // same interpreter a bunch of different ways, we don't have to change the
+    // actual interpreter right now"*. The choice is made ONCE, here, outside
+    // every loop, which is the property that measured at the floor: a nested
+    // switch wrapping the loop costs 0.216 ns against a 0.216 ns floor, where the
+    // same switch taken per statement costs 0.708. config/feature_switch.hpp
+    // carries the numbers and the reason it switches on TIERS and not on
+    // features -- fourteen features one to a switch would be 16,384 leaves.
+    if (state.debug_mode)
+        state.set(std::string("features.plan = ") + plan_name(plan_for(features)), success);
+    // RUNNING FOR THE WHOLE OF THE PROGRAM'S LINES (machine/run_state.hpp).
+    the_interpreter_is_running().store(true, std::memory_order_relaxed);
+    code = run_through_the_hierarchy(features, bytecode_registry, capsules, functions, state);
+    the_interpreter_is_running().store(false, std::memory_order_relaxed);
+    // "WHENEVER THE PROGRAM REACHES satellite.return(satellite), CLOSE EVERYTHING" (the author,
+    // 2026-09-12, 003's M23): every thread still running is asked to stop and waited for.
+    // One that failed and that nobody joined still fails the run -- its report was printed
+    // when it happened; this is the exit status it is owed.
+    // EVERY PROGRAM THE RUN STARTED WAS JOINED, OR IS STOPPED AND REPORTED HERE: the author's
+    // "forcing the user to use both .start() and .join() together" (program_calls.hpp). A run
+    // already failing says so itself, and a report about a join would only bury it. PROGRAMS
+    // BEFORE THREADS, so a thread waiting in a join() is let go by its program's end, and once
+    // more after them, for a program a thread started while it closed.
+    const signed long long int a_program_left = close_every_program(stops_the_program(code) ? error : success);
+    const signed long long int a_thread_failed = close_every_thread();
+    close_every_program(error);
+    if (stops_the_program(code))
+        return code;
+    if (stops_the_program(a_thread_failed))
+        return a_thread_failed;
+    if (stops_the_program(a_program_left))
+        return a_program_left;
+
+    // AND NOW THE WINDOW'S OWN RUN, if a window word ever opened one
+    // (SATELLITE_WINDOW.md WIN-11). The program's own lines are finished; what
+    // is left is the presses, one at a time, in the order they were made, ON
+    // THIS THREAD -- window_desk.hpp says why the desk's thread must not walk a
+    // capsule. It answers at once when nothing drew.
+    //
+    // HERE AND NOT IN main(), which is where the WAIT lives: the registry, the
+    // capsules and the walker's state are this function's own locals, and by the
+    // time main() sees anything they are gone. main()'s call is still what takes
+    // the windows down when a run STOPPED, and still what waits out a window
+    // that no button was ever wired to.
+    //
+    // A PRESS THAT STOPS THE PROGRAM STOPS THE RUN, and is returned from here
+    // like any other refusal -- so main() closes the windows and satl exits with
+    // that code, rather than leaving a window up that answers nothing.
+    // WHAT THE PROGRAM ALREADY SAID IS SAID NOW, BEFORE ANYTHING WAITS. std::cout
+    // is buffered -- main() calls sync_with_stdio(false), and
+    // satellite.console.display writes '\n' and never flushes on purpose -- and
+    // the only flush on this path is at the end of this function. A pump that
+    // blocks in FRONT of it makes every line the program printed invisible until
+    // the last window closes.
+    //
+    // IT IS A REGRESSION THE PUMP WOULD HAVE INTRODUCED, and that is how it was
+    // found (a fresh reader, 2026-09-21). Before WIN-11 the only waiting was
+    // main()'s, which happens AFTER run_satl has flushed -- so a program that
+    // opened a window and printed a line really did print it.
+    std::cout.flush();
+    //
+    // WHAT A PRESSED CAPSULE IS HANDED, and it is decided by what the capsule
+    // ITSELF declared (2026-09-21). A press has nobody to write its arguments:
+    // the program said `.pressed(when_pressed)` and then walked away, so the
+    // only thing that can say what `when_pressed` wants is `when_pressed`.
+    //
+    //   ()                       nothing. The capsule answers and asks nothing.
+    //   (piece)                  WHAT was pressed.
+    //   (piece, window)          ...and the window it was pressed in, which is
+    //                            the only way a press can close the window it
+    //                            belongs to: there are no globals, so main's
+    //                            name for that window is not reachable here.
+    //
+    // program_check.cpp refuses any other shape before the program runs, so
+    // this never has to say no.
+    const signed long long int pressed = windows_run_until_they_are_closed(
+        [&bytecode_registry, &capsules, &functions, &state](const std::string &capsule,
+                                                            const WindowHandle &piece,
+                                                            const WindowHandle &window) {
+            // `capsule` IS THE KEY expression.cpp resolved where the button was
+            // wired (capsule_scopes.hpp), so this is the capsule that file meant.
+            std::vector<Value> arguments;
+            const CapsuleSite *wants = capsules.by_key(capsule);
+            if (wants != nullptr && !wants->parameters.empty()) {
+                arguments.push_back(Value::of_window(piece));
+                if (wants->parameters.size() > 1)
+                    arguments.push_back(Value::of_window(window));
+            }
+            const signed long long int stopped =
+                run_capsule(bytecode_registry, capsules, functions, capsule, std::move(arguments), state);
+            // AND EACH PRESS SAYS WHAT IT SAID WHEN IT SAID IT. A person who
+            // pressed a button is owed the answer to THAT press, not a page of
+            // answers when the window finally closes.
+            std::cout.flush();
+            return stopped;
+        });
+    if (stops_the_program(pressed))
+        return pressed;
+    // AND THE THREADS A PRESS STARTED, closed here and not only by the guard (the review,
+    // 2026-09-23): their failures count like main's threads', and the tables and the flush
+    // below are read and written with none of them still running.
+    const signed long long int a_pressed_program_left = close_every_program(success);
+    const signed long long int a_pressed_thread_failed = close_every_thread();
+    close_every_program(error);
+    if (stops_the_program(a_pressed_thread_failed))
+        return a_pressed_thread_failed;
+    if (stops_the_program(a_pressed_program_left))
+        return a_pressed_program_left;
+
+    // THE `word_counts` BIT'S ANSWER, printed when the run is over rather than as
+    // it goes: a profile is a thing you read after, and the hot path must not pay
+    // for the order a person wants it in.
+    if (features.on(Feature::word_counts)) {
+        std::cerr << "\nsatl: per-word call counts (features." << feature_facts()[
+            static_cast<unsigned>(Feature::word_counts)].name << ")\n";
+        std::cerr << word_counts_table(word_counts());
+        std::cerr.flush();
+    }
+
+    // THE `statements` BIT'S ANSWER. Printed after the run whether it stopped or
+    // finished, because "what was it doing" is the same question either way --
+    // and on a failure it is the whole point of having kept them.
+    if (features.on(Feature::statements)) {
+        std::cerr << "\nsatl: the statement ring (features.statements)\n";
+        std::cerr << statement_ring_table(statement_ring(), bytecode_registry, bytecode_filenames, 12);
+        std::cerr.flush();
+    }
+
+    // WHAT WAS HELD BACK, SAID ONCE. Anything reported more than once printed
+    // the first time and was counted after that; this is the count.
+    // (satellite.log gets its own copy from main(), which every way out passes through.)
+    std::cerr << report_tally().repeats();
+
+    // A REFUSED WRITE IS ONLY REFUSED AT THE FLUSH. std::cout buffers, so
+    // writing to a full disk succeeds line by line and fails once, here --
+    // which is why run_calls ended the same way (satl_file.cpp:211). Without
+    // this the program exits 0 having printed nothing, silently.
+    std::cout.flush();
+    // AN OVERRUN THE WALKER NEVER MET: the printing satellite found his buffer full after the
+    // program's last statement had run (display/printing_satellite.hpp), so it is said here.
+    if (display_overrun_is_mine_to_report()) {
+        CriticalReport report;
+        const SCode named = s_code_for(display_string_buffer_overrun);
+        report.code = named.code;
+        report.name = named.name;
+        report.description = "satl(run): " + display_overrun_sentence();
+        report.notes.push_back(named.means);
+        report.notes.push_back("machine code 65 display_string_buffer_overrun -- satl exits with this.");
+        return raise(report, display_string_buffer_overrun);
+    }
+    if (!std::cout)
+        return report_error("satl.run(error): the output refused the last lines", display_error);
+    return code;
+}
+
+namespace {
+
+// THE PARACHUTE, AND THE REASON S999 NEEDS ONE.
+//
+// S999 is "the machine would not give satl memory", and reporting it MEANS
+// ALLOCATING: the report builds strings, the renderer wraps them, iostreams want
+// a buffer. So the one failure at the top of the scale is the one where the
+// reporter is likeliest to fail too, and a report that throws while reporting an
+// out-of-memory is a core dump where a sentence should be.
+//
+// So a block is taken at start-up and handed back the moment `new` first fails.
+// 64 KiB is far more than the report needs and small enough that nobody notices
+// it; what it buys is that the whole way down -- the S-code, the sentence, the
+// flush -- runs in memory that was already ours.
+//
+// TOUCHED, NOT JUST ASKED FOR. Linux hands out address space and no pages until
+// something writes to them (SATELLITE_ARGUMENTS measured exactly this with
+// threads), so a block that is never written is a block that is not really there
+// when it is wanted. One pass writing a byte a page makes it real.
+constexpr std::size_t kParachuteBytes = 64 * 1024;
+// ATOMIC SINCE A PROGRAM CAN HAVE THREADS (the review, 2026-09-23): two threads out of
+// memory at once both run the handler, and a plain pointer could be freed twice.
+std::atomic<char *> parachute{nullptr};
+
+void take_the_parachute()
+{
+    char *block = static_cast<char *>(std::malloc(kParachuteBytes));
+    if (block == nullptr)
+        return;                      // no memory even now; the handler copes
+    for (std::size_t at = 0; at < kParachuteBytes; at += 4096)
+        block[at] = 1;               // make the pages real, not promised
+    parachute.store(block);
+}
+
+// `new` failed. Give the block back and let the throw happen, so the catch in
+// main() reports through the ordinary path with room to do it in.
+void out_of_memory_handler()
+{
+    if (char *block = parachute.exchange(nullptr)) {   // exactly one thread gets it
+        std::free(block);
+        return;                      // one more try, now that there is room
+    }
+    std::set_new_handler(nullptr);   // nothing left to give: let it throw
+}
+
+} // namespace
+
+int main(int argc, char **argv)
+{
+    std::ios::sync_with_stdio(false);
+    // THE PRINTING SATELLITE, BEFORE ANYTHING PRINTS (display/printing_satellite.hpp): "we need to
+    // create a thread off of the satl process" -- which starts the display thread -- and std::cout
+    // pointed at them, so satl's own words and the program's lines keep one order.
+    satellite004::start_the_printing_satellite();
+
+    // 32 KiB OF STACK FOR EVERY MiB OF MEMORY, before anything runs (the author,
+    // 2026-09-22; machine/stack_share.hpp): a capsule calling itself died at
+    // 2,526 deep on the 8 MiB a shell hands out.
+    satellite004::widen_the_stack();
+
+    // A closed pipe is a refused write, reported with its machine code, never a
+    // silent death by SIGPIPE (ERROR #3; the start-up block made it happen before
+    // any program ran, found by review 2026-09-15).
+    std::signal(SIGPIPE, SIG_IGN);
+
+    take_the_parachute();
+    std::set_new_handler(&out_of_memory_handler);
+
+    try {
+        const signed long long int code = run_satl(argc, argv);
+        // THE TERMINAL'S OWN COLOURS BACK, if satellite.terminal.foreground or
+        // .background changed them (console_style.hpp) -- the program is over, and a
+        // shell left orange is a shell somebody else has to fix.
+        satellite004::put_the_terminal_back();
+        // THE CONSOLE satl LAUNCHED IS CLOSED OR HELD FIRST (GTK-17): a run that
+        // stopped keeps it up with the code on its last line until a person
+        // presses a key, the prompt keeps it up when it ends, and a file that
+        // finished closes it. Then the wait below waits for it like any window
+        // -- and never takes it down, because the person is reading it.
+        const bool in_a_console = satellite004::satls_own_console_is_open();
+        if (in_a_console)
+            satellite004::satls_own_console_is_done(code);
+        // THE RUN DOES NOT END WHILE A WINDOW IS OPEN (SATELLITE_WINDOW.md WIN-3).
+        // A program that opens a window and returns would otherwise take it down
+        // with it before anybody saw it -- and the author's own example is four
+        // lines long. HERE AND NOT IN run_satl: that function returns from two
+        // dozen places, and a wait written at each of them is a wait that will be
+        // missed from the next one added.
+        //
+        // IT COSTS NOTHING WHEN THERE IS NO WINDOW. The desk is not started until
+        // a window word runs, and this answers at once when it was never started
+        // -- so `satl batch.satl > log`, the one run that opens no console since
+        // 2026-10-05, is untouched.
+        // A REFUSED RUN TAKES ITS WINDOWS DOWN rather than waiting on them: the
+        // report is already printed, and a person told their program stopped
+        // must not then be left at a prompt that never comes back.
+        satellite004::windows_hold_the_run_open(in_a_console || !satellite004::stops_the_program(code));
+        // satellite.log's "happened N times", after the last thing that could add to them.
+        satellite004::log_the_counts();
+        return satellite004::exit_status_of(code);
+    } catch (const std::bad_alloc &) {
+        satellite004::put_the_terminal_back();
+        // S999, THE TOP OF THE SCALE. Before this, an allocation that failed was
+        // std::terminate and a core dump -- the one failure a person could learn
+        // nothing at all from.
+        satellite004::CriticalReport report;
+        const satellite004::SCode named = satellite004::s_code_for(satellite004::out_of_memory);
+        report.code = named.code;
+        report.name = named.name;
+        report.description = named.means;
+        report.notes.push_back("machine code 48 out_of_memory -- satl exits with this.");
+        satellite004::print_critical(report);
+        return satellite004::exit_status_of(satellite004::out_of_memory);
+    }
+}

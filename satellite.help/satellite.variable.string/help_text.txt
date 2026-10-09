@@ -1,0 +1,142 @@
+
+--------------------------------------------------------------------------------
+SATELLITE 004: satellite.variable.string
+--------------------------------------------------------------------------------
+
+satellite.variable.string holds text, written between double quotes. satellite
+keeps it as characters, not bytes, in its own 16/32-bit form, so an accent or
+an arrow is one character and .reverse() turns a string round by character. A
+string name refuses a value that is not a string (machine code 27).
+
++ joins two strings, and .add(x) is the same join. A number added to a string
+joins as the text its own .string gives: "n = " + 4 is n = 4, and so are
+"f " + 1.5, "p " + 50%, "b " + b1010 and "h " + x1F. With the number first,
+text that spells a number is added -- 4 + "2" is the number 6 -- and any other
+text is joined after it: 4 + "abc" is 4abc. A bool joins as true or false with
+one space between: "flag:" + satellite.bool.true is flag: true. A colour added to
+a string is refused (S301): write its .string. - takes away the FIRST place the right string occurs,
+and answers the left string unchanged when it is not there. == and != compare
+two strings, and < and > order them by satellite's own character table: a to
+z, then A to Z, then digits, then signs, then the space, so "a" < "B" is true.
+
+.find(x) answers where x first begins, counting from 0, so "abc".find("b") is
+1; a string that is not there is refused (S420) rather than answered as -1.
+.number (or .as_number, .to_number) reads a whole number out of the text and
+refuses anything else, "3.5" included (S120). .binary (or .bin, .as_binary)
+and .hex (or .as_hex, .to_hex) read that same number and answer its base-2 or
+base-16 digits as a string, so "1010".bin is the bits of one thousand and ten,
+not b1010. .string (or .str, .to_string) answers the text unchanged. A
+conversion may be written with or without (), and methods chain left to
+right, as "87".bin.find("111") does below.
+
+.foreground(c) and .background(c) answer the string in a colour -- c is six hex
+digits or a satellite.variable.color -- so "status: " + "OK".foreground(x00FF00)
+colours one word of a line. The colour is part of the string wherever the
+program runs, as the terminal's own codes, so .find and == see them and a file
+written with the string holds them; satellite.console.display is what leaves
+them out, writing the string plain into a pipe or a file, and without its
+colours under NO_COLOR. A colour put round a string that already holds one comes
+back after it, so ("a" + "b".foreground(x0000FF) + "c").foreground(xFF0000)
+draws c red.
+
+.upper() (also .uppercase() and .up()) answers the text in capital letters and
+.lower() (also .lowercase()) in small ones -- every language's letters, not only
+a-z, so "héllo".upper() is HÉLLO -- and the string itself is unchanged.
+
+.size is how many characters the string holds, so "héllo".size is 5, and
+.empty is whether it holds none; both may be written with () or without.
+.contains(x), .starts_with(x) and .ends_with(x) answer true or false, and ""
+is inside every string, at both ends.
+
+A character is read by its position, counting from 1 as a list's items do: s[1]
+and s.at(1) are the first character and s[s.size] the last, each answered as a
+string of one character. .substring(start, end) is the characters from start to
+end, both counted from 1 and both kept, so "hello".substring(2, 4) is ell; an
+empty piece is written with its end one before its start. A position of 0 or
+past the end is refused (S411), a negative one too (S410), and so is a range
+that runs backwards (S412). On a string name, a 0, a float or text written
+straight into the brackets is refused before anything runs. .find counts from 0,
+so the character it finds is s[s.find(x) + 1]. A string's characters are read,
+never written: s[1] = "j" is refused (S301).
+
+.split(separator) answers a satellite.container.list of the pieces between
+separators: "a,,b".split(",") is {"a", "", "b"}, the empty piece kept, and
+.split("") is every character on its own. [ ] straight after a method's answer
+is not built yet, so s.split(",")[2] is refused before anything runs: give the
+list a name first, and read [2] of that name. .replace(a, b) swaps every a for
+b, left to right, and refuses an empty a (S421). .trim takes spaces, tabs,
+carriage returns and newlines off both ends, and .resolved answers the string as
+it is: satellite 004 has no live escapes to resolve. Each of these answers a new
+string and leaves the name as it was.
+
+.append(x) and .clear change the string on the name, as a list's .append
+changes the list: s.append("!") adds to the end of s, and s.clear empties it.
+They need a name to change, so "abc".append("d") inside an expression -- as
+display("abc".append("d")) -- is refused (S110), and so is s.trim.append("d"):
+s.trim is a new string, with no name of its own.
+
+Where one of these methods, or .find, takes text and is given a number, it
+takes the number's digits and writes S020 to satellite.log: "n42n".contains(42)
+is true. satellite.variable.string(x) as a call is numbered under word 1 6 1
+and not built yet (S210).
+
+A backslash inside the quotes starts an escape: \" is a double quote, \\ one
+backslash, \n a new line, \t a tab, \r a carriage return, and \' an apostrophe
+(which needs no escape, and is taken anyway). So "say \"hi\"" is say "hi", and a
+program can write a line of satellite that holds a string of its own. A
+backslash before any other character is refused before anything runs, naming
+the six -- "a\qb" is not a string satl will run.
+
+A string may run over as many lines as it needs: a line break inside the quotes
+is part of the text, and the string is whatever stands between its two quotes.
+One that never closes is refused where it begins.
+
+example:
+
+satellite.include(satellite)
+
+satellite.capsule satellite.main()
+{
+    satellite.variable.string s = "hello world"
+    satellite.variable.number n = 4
+    satellite.console.display(s + "!") // hello world!
+    satellite.console.display("n = " + n) // n = 4
+    satellite.console.display(n + "2") // 6
+    satellite.console.display(s.upper()) // HELLO WORLD
+    satellite.console.display(s - "o") // hell world
+    satellite.console.display(s.find("world")) // 6
+    satellite.console.display(s.size) // 11
+    satellite.console.display(s.contains("lo w")) // true
+    satellite.console.display(s.starts_with("hello")) // true
+    satellite.console.display(s[1] + s.at(7)) // hw
+    satellite.console.display(s[s.find("world") + 1]) // w
+    satellite.console.display(s.substring(1, 5)) // hello
+    satellite.console.display(s.split(" ")) // {"hello", "world"}
+    satellite.console.display(s.replace("o", "0")) // hell0 w0rld
+    satellite.console.display("[" + "  padded  ".trim() + "]") // [padded]
+    satellite.variable.string t = "abc"
+    t.append("def")
+    satellite.console.display(t) // abcdef
+    satellite.console.display(s.reverse()) // dlrow olleh
+    satellite.console.display("héllo→".reverse()) // →olléh
+    satellite.console.display("42".number + 1) // 43
+    satellite.console.display("42".bin) // 101010
+    satellite.console.display("255".hex) // FF
+    satellite.console.display("87".bin.find("111")) // 4
+    satellite.console.display("status: " + "OK".foreground(x00FF00)) // status: OK -- the OK green at a terminal
+    satellite.console.display("apple" < "banana") // true
+    satellite.console.display("say \"hi\"") // say "hi"
+    satellite.console.display("one\ntwo") // one, and two on the next line
+    satellite.return(satellite)
+}
+
+refused today:
+
+satellite.include(satellite)
+
+satellite.capsule satellite.main()
+{
+    satellite.variable.color c = x00FF00
+    satellite.console.display("c: " + c) // refused: S301, write c.string
+    satellite.return(satellite)
+}

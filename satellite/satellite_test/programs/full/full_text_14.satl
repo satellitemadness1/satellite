@@ -1,0 +1,12 @@
+satellite.include(satellite)
+
+// full_text_14 -- REFUSED: string [ ] straight after a method's answer is not built: s.split(",")[2] is refused.
+// satellite.help(satellite.variable.string). Nothing reaches stdout; satl exits with the refusal's code.
+
+satellite.capsule satellite.main()
+{
+    satellite.variable.number passes = 1
+    satellite.variable.string s = "a,b"
+    satellite.console.display(s.split(",")[2])
+    satellite.return(satellite)
+}

@@ -1,0 +1,11 @@
+satellite.include(satellite)
+
+// full_text_15 -- REFUSED: string .replace of empty text is refused (S421).
+// satellite.help(satellite.variable.string). Nothing reaches stdout; satl exits with the refusal's code.
+
+satellite.capsule satellite.main()
+{
+    satellite.variable.number passes = 1
+    satellite.console.display("abc".replace("", "x"))
+    satellite.return(satellite)
+}

@@ -1,0 +1,17 @@
+ok thread new() does not run the capsule before start()
+ok thread writes a shared object that main reads after join()
+ok thread join() answers what the capsule handed back
+ok thread wait() is join()'s second name
+ok thread join() answers an object made on the thread
+ok thread gets its own copy of a list: its copy grew to 3, the caller's stayed 2
+ok thread two side by side each answer their own count
+ok thread lock(): three threads adding to one field lose nothing
+ok thread lock(): three threads appending to one list field lose nothing
+ok thread runs an object's own capsule: thread.new(object.capsule())
+ok thread on a capsule by bare name runs the subtype's replacement
+ok thread started through one name, joined through the other
+ok thread two names for one thread are ==
+ok thread two threads are not ==, even running the same call
+ok thread stop() ends a thread that never would, and it writes nothing after join()
+ok thread displays before start() as (thread twice, not started)
+ok thread displays after stop() as (thread forever, stopped)

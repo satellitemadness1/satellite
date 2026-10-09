@@ -1,0 +1,12 @@
+satellite.include(satellite)
+
+// object.pointer() IS AN OBJECT'S -- a satellite.spacesuit's. A list is a value, and `b = a`
+// already copies it, so the checker refuses .pointer() on one before anything runs.
+
+satellite.capsule satellite.main()
+{
+    satellite.console.display("THIS LINE MUST NOT RUN")
+    satellite.container.list<satellite.variable.number> a = {1, 2}
+    satellite.container.list<satellite.variable.number> p = a.pointer()
+    satellite.return(satellite)
+}

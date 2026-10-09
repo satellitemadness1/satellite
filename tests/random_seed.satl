@@ -1,0 +1,16 @@
+// satellite.random.seed(n) (the author, 2026-10-02): this thread's generator starts again from n,
+// as a statement or as a value -- it answers the seed back -- and the grades draw from it after.
+// Any whole number is a seed: past one limb, or below zero.
+satellite.include(satellite)
+
+satellite.capsule satellite.main()
+{
+    satellite.random.seed(42)
+    satellite.console.display("seeded " + satellite.random.seed(7))
+    satellite.console.display("fast range " + satellite.random.fast(1, 6))
+    satellite.variable.number big = 10 ^ 30
+    satellite.random.seed(big)
+    satellite.random.seed(-5)
+    satellite.console.display("done")
+    satellite.return(satellite)
+}

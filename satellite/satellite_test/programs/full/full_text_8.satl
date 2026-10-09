@@ -1,0 +1,11 @@
+satellite.include(satellite)
+
+// full_text_8 -- REFUSED: string .number of 3.5 is refused (S120): it reads a whole number only.
+// satellite.help(satellite.variable.string). Nothing reaches stdout; satl exits with the refusal's code.
+
+satellite.capsule satellite.main()
+{
+    satellite.variable.number passes = 1
+    satellite.console.display("3.5".number)
+    satellite.return(satellite)
+}

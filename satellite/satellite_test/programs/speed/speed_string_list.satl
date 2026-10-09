@@ -1,0 +1,38 @@
+// speed_string_list.satl -- satellite.test.speed(): a list of strings.
+// Each pass appends a string made from the pass, reads an item, asks .contains, writes an item (the one
+// read, in upper case), joins the whole list into one string, and drops the oldest item once there are
+// more than 32 -- so the list stays short whatever passes is. The checksum line is the total of what was
+// read and joined, and the list at the end; its C++ twin is speed_string_list() in
+// speed_objects_twins.cpp, which prints the same line.
+
+satellite.include(satellite)
+
+satellite.capsule satellite.main()
+{
+    satellite.variable.number passes = 210000
+    satellite.container.list<satellite.variable.string> names = {"satellite"}
+    satellite.variable.string word = ""
+    satellite.variable.string joined = ""
+    satellite.variable.number total = 0
+
+    satellite.statement.for(satellite.variable.number i = 0; i < passes; i + 1)
+    {
+        names.append("sat" + i % 100)
+        word = names[1 + (i * 7) % names.size]
+        total = total + word.size
+        satellite.statement.if (names.contains("sat" + i % 50))
+        {
+            total = total + 1
+        }
+        names[1 + i % names.size] = word.upper()
+        joined = names.join(",")
+        total = total + joined.size
+        satellite.statement.if (names.size > 32)
+        {
+            names.remove_first()
+        }
+    }
+
+    satellite.console.display("string_list: passes " + passes + ", total " + total + ", list " + names.size + " items: " + names.join(","))
+    satellite.return(satellite)
+}

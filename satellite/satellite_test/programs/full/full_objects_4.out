@@ -1,0 +1,24 @@
+ok program by name on the PATH: true started (ok) and answers 0
+ok program false: error() says the code it ended with
+ok program from a list: code() waits and answers its exit code
+ok program started again after it ended, and return() answers its code
+ok program an argument with a space in it stays one argument
+ok program not on the PATH: ok() is false and error() says so
+ok program not on the PATH answers 127, as a shell does
+ok program ended by a signal answers 128 + the signal
+ok program start("hide") throws its output away and still answers
+ok program from a list held in a name: its code, then == for two names and for two programs
+ok bash line's pipe and > wrote its file
+ok bash line reads || and $(( ))
+ok bash line's code is the line's
+ok bash line with a missing command started (ok) and answers bash's 127
+ok bash start() answers while the line still waits for its input
+ok bash pass() types lines in, read in order
+ok bash a capsule taking a program takes a bash line
+ok bash a bash parameter makes a line from a string
+ok bash a program name holds a bash line, the same one
+ok program end() stops it and answers 143
+ok program stopped: error() names the signal
+ok program exit(), quit() and shutdown() are end()
+ok program displays as (program sh -c exit 3, ended with 3)
+ok bash line displays as (bash exit 0, ended with 0)

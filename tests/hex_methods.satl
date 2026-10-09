@@ -1,0 +1,17 @@
+satellite.include(satellite)
+
+// A HEX'S METHODS: what it is worth, its text as shown, four bits to the digit, its
+// own digits as wide as written, its width in bits (003 DESIGN 8.5, the author's:
+// "width() COUNTS BITS"), and its digits back to front with the width kept.
+satellite.capsule satellite.main()
+{
+    satellite.variable.hex wide = x00FF
+    satellite.console.display(wide.number)
+    satellite.console.display(wide.string)
+    satellite.console.display(wide.binary)
+    satellite.console.display(wide.hex)
+    satellite.console.display(wide.width)
+    satellite.console.display(wide.reverse())
+    satellite.console.display((-x1F).hex)
+    satellite.return(satellite)
+}

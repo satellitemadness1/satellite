@@ -1,0 +1,13 @@
+satellite.include(satellite)
+
+// 00ff00 ON A LATER LINE IS THE NUMBER 00 AND THEN THE NAME ff00 to the lexer, which
+// keeps no blanks -- so `00ff00` and `00 ff00` are the same two tokens, and only one
+// of them is a colour. Refused, not guessed, naming the spelling that always works.
+satellite.capsule satellite.main()
+{
+    satellite.console.display("before")
+    satellite.variable.color my_color = x000000
+    my_color = 00ff00
+    satellite.console.display(my_color)
+    satellite.return(satellite)
+}

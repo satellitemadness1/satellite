@@ -1,0 +1,10 @@
+satellite.include(satellite)
+
+satellite.capsule satellite.main()
+{
+    satellite.statement.for(satellite.variable.number i = 0; i < 1000000; i++)
+    {
+        satellite.console.display("hello world, this is one line of text")
+    }
+    satellite.return(satellite)
+}

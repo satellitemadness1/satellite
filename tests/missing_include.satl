@@ -1,0 +1,5 @@
+satellite.capsule satellite.main(satellite.container.list<satellite.variable.string> arguments)
+{
+    satellite.console.display("x")
+    satellite.return(satellite)
+}

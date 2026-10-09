@@ -1,0 +1,12 @@
+
+satellite.include(satellite)
+
+satellite.capsule satellite.main()
+{
+    satellite.variable.window local_window = satellite.window.new("gtkcar", 450, 250)
+
+    local_window.open()
+    local_window.close()
+
+    satellite.return(satellite)
+}

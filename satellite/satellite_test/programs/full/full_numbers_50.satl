@@ -1,0 +1,13 @@
+satellite.include(satellite)
+
+// full_numbers_50 -- satellite.test.full(), a program satl must REFUSE.
+// random: a count of digits that is not a whole number, a string, is refused (S431).
+// It exits 72, and its report on stderr holds: satellite.random.fast(digits) takes whole numbers
+// Nothing is printed on stdout.
+
+satellite.capsule satellite.main()
+{
+    satellite.variable.number passes = 1
+    satellite.console.display(satellite.random.fast("ten"))
+    satellite.return(satellite)
+}

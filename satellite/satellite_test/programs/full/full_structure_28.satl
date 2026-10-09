@@ -1,0 +1,14 @@
+satellite.include(satellite)
+// full_structure_28 -- REFUSED by satellite.test.full(): satellite.statement.else with no satellite.statement.if before it.
+// The rule: satellite.statement.else belongs to the satellite.statement.if before it.
+// satl refuses it: exit 13, and its report on stderr says "satellite.statement.else with no". It prints nothing.
+
+satellite.capsule satellite.main()
+{
+    satellite.variable.number passes = 1
+    satellite.statement.else
+    {
+        satellite.variable.number n = 1
+    }
+    satellite.return(satellite)
+}

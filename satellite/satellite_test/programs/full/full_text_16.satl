@@ -1,0 +1,11 @@
+satellite.include(satellite)
+
+// full_text_16 -- REFUSED: string .append inside an expression has no name to change (S110).
+// satellite.help(satellite.variable.string). Nothing reaches stdout; satl exits with the refusal's code.
+
+satellite.capsule satellite.main()
+{
+    satellite.variable.number passes = 1
+    satellite.console.display("abc".append("d"))
+    satellite.return(satellite)
+}

@@ -1,0 +1,10 @@
+// 0b10101010 is how C and Python write it. The lexer reads the 0 and the b10101010
+// apart, and the answer must name the binary, not "b0".
+
+satellite.include(satellite)
+
+satellite.capsule satellite.main()
+{
+    satellite.variable.binary my_number = 0b10101010
+    satellite.return(satellite)
+}

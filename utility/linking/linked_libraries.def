@@ -1,0 +1,88 @@
+// utility/linking/linked_libraries.def -- every library linked into satl, as data.
+//
+// THERE IS NO GENERATOR AND NO BUILD STEP. This is an X-macro list, the same mechanism
+// errors.def and words.def use: link_test.cpp defines SAT_LINKED, includes this file,
+// and undefines it again. Provenance, version identity and header agreement therefore
+// all come from ONE list and cannot drift apart -- a library cannot be checked for its
+// version and forgotten for its provenance.
+//
+// --- how a row is read ------------------------------------------------------------
+//
+//     SAT_LINKED(ident, name, vendored, header, runtime, symbol)
+//
+//     ident     a C identifier, unused today, there so a row can be referred to
+//     name      what the report prints
+//     vendored  the version in vendor/new/, which is what SHOULD be linked
+//     header    the version the HEADER claimed at compile time, as a std::string
+//               expression, or "" if the library publishes no such macro
+//     runtime   the version the LINKED CODE reports right now, as a std::string
+//               expression, or "" if the library has no runtime version API
+//     symbol    the address of a REAL exported symbol, for dladdr()
+//
+// THE `symbol` COLUMN IS THE ONE THAT MUST NEVER BE A MACRO. Three of these libraries
+// publish a version through something that LOOKS like a variable and is not:
+//
+//     zlib.h:218    #define zlib_version    zlibVersion()
+//     png.h:372     #define png_libpng_ver  png_get_header_ver(NULL)
+//     jpeglib.h:972 #define jpeg_create_decompress(cinfo) jpeg_CreateDecompress(...)
+//
+// A macro has no address. Taking one is a compile error at best and the wrong symbol at
+// worst, so every entry below was read out of the actual header rather than remembered.
+//
+// FOUR LIBRARIES PUBLISH NO RUNTIME VERSION AT ALL and get provenance only. That is a
+// real gap, stated rather than papered over: for these, a wrong copy linked statically
+// would still pass. They are covered by check A and by the readelf gate, not by C or D.
+//
+//     libjpeg-turbo   has no version getter; LIBJPEG_TURBO_VERSION is a bare token
+//                     (3.2.0), not a string, and needs stringifying to be compared
+//     graphene        macros only, no runtime call
+//     libepoxy        NOTHING. No installed header carries a version of any kind; the
+//                     version exists only as PACKAGE_VERSION in a build-time config.h
+//                     that is never installed. And epoxy_gl_version() MUST NOT be
+//                     called here -- it needs a current GL context and would crash.
+//     libxkbcommon    same: LIBXKBCOMMON_VERSION goes into an internal config.h with no
+//                     install_dir, so it never leaves the build tree
+
+// --- compression and images -------------------------------------------------------
+SAT_LINKED(zlib,      "zlib",          "1.3.2",   ZLIB_VERSION,              zlibVersion(),                    (void*)&zlibVersion)
+SAT_LINKED(libpng,    "libpng",        "1.6.58",  PNG_LIBPNG_VER_STRING,     png_get_libpng_ver(nullptr),      (void*)&png_access_version_number)
+// libtiff states its version as a whole banner -- "LIBTIFF, Version 4.7.2\nCopyright..."
+// -- from both the macro and the call. They compare equal to each other, and the
+// substring match in versions_agree() is what lets the banner match a bare "4.7.2".
+SAT_LINKED(libtiff,   "libtiff",       "4.7.2",   TIFFLIB_VERSION_STR,       TIFFGetVersion(),                 (void*)&TIFFGetVersion)
+SAT_LINKED(libjpeg,   "libjpeg-turbo", "3.2.0",   SAT_STR(LIBJPEG_TURBO_VERSION), "",                          (void*)&jpeg_std_error)
+
+// --- parsers and the call gate ----------------------------------------------------
+// pcre2_config is a MACRO that mangles to pcre2_config_8 (PCRE2_CODE_UNIT_WIDTH 8), so
+// the symbol below carries the suffix. Its version string is "10.48 <date>", not bare
+// "10.48", which is why the comparison is a substring match rather than equality.
+SAT_LINKED(expat,     "expat",         "2.8.4",   sat_ver3(XML_MAJOR_VERSION, XML_MINOR_VERSION, XML_MICRO_VERSION), XML_ExpatVersion(), (void*)&XML_ExpatVersion)
+SAT_LINKED(pcre2,     "pcre2",         "10.48",   sat_ver2(PCRE2_MAJOR, PCRE2_MINOR),  pcre2_runtime_version(),  (void*)&pcre2_config_8)
+SAT_LINKED(libffi,    "libffi",        "3.8.0",   FFI_VERSION_STRING,        ffi_get_version(),                (void*)&ffi_get_version)
+
+// --- text: shaping, rasterising, matching -----------------------------------------
+// FT_Library_Version needs an initialised FT_Library, so the runtime value is fetched
+// by a helper rather than inline. FcGetVersion() returns an int encoded
+// major*10000 + minor*100 + micro.
+SAT_LINKED(freetype,  "freetype",      "2.14.3",  sat_ver3(FREETYPE_MAJOR, FREETYPE_MINOR, FREETYPE_PATCH), freetype_runtime_version(), (void*)&FT_Library_Version)
+SAT_LINKED(fontconfig,"fontconfig",    "2.18.3",  sat_fc_version(FC_VERSION), sat_fc_version(FcGetVersion()), (void*)&FcGetVersion)
+SAT_LINKED(harfbuzz,  "harfbuzz",      "14.4.0",  HB_VERSION_STRING,         hb_version_string(),              (void*)&hb_version_string)
+SAT_LINKED(fribidi,   "fribidi",       "1.0.17",  FRIBIDI_VERSION,           fribidi_version_info,             (void*)&fribidi_version_info)
+
+// --- drawing ----------------------------------------------------------------------
+SAT_LINKED(pixman,    "pixman",        "0.46.4",  PIXMAN_VERSION_STRING,     pixman_version_string(),          (void*)&pixman_version_string)
+SAT_LINKED(cairo,     "cairo",         "1.18.4",  CAIRO_VERSION_STRING,      cairo_version_string(),           (void*)&cairo_version_string)
+SAT_LINKED(graphene,  "graphene",      "1.10.8",  sat_ver3(GRAPHENE_MAJOR_VERSION, GRAPHENE_MINOR_VERSION, GRAPHENE_MICRO_VERSION), "", (void*)&graphene_rect_alloc)
+
+// --- GNOME stack ------------------------------------------------------------------
+// glib publishes its runtime version as three exported VARIABLES, not a function, so
+// the dladdr symbol is a nearby real function instead. gdk_pixbuf_version is likewise a
+// variable; gdk_pixbuf_error_quark is the stable function beside it.
+SAT_LINKED(glib,      "glib",          "2.90.0",  sat_ver3(GLIB_MAJOR_VERSION, GLIB_MINOR_VERSION, GLIB_MICRO_VERSION), glib_runtime_version(), (void*)&glib_check_version)
+SAT_LINKED(pango,     "pango",         "1.58.2",  PANGO_VERSION_STRING,      pango_version_string(),           (void*)&pango_version_string)
+SAT_LINKED(gdkpixbuf, "gdk-pixbuf",    "2.44.8",  GDK_PIXBUF_VERSION,        gdk_pixbuf_version,               (void*)&gdk_pixbuf_error_quark)
+SAT_LINKED(gtk,       "gtk",           "4.24.0",  sat_ver3(GTK_MAJOR_VERSION, GTK_MINOR_VERSION, GTK_MICRO_VERSION), gtk_runtime_version(), (void*)&gtk_get_major_version)
+
+// --- platform: provenance only, for the reasons at the top ------------------------
+SAT_LINKED(libepoxy,  "libepoxy",      "1.5.10",  "",                        "",                               (void*)&epoxy_extension_in_string)
+SAT_LINKED(xkbcommon, "libxkbcommon",  "1.13.2",  "",                        "",                               (void*)&xkb_context_new)

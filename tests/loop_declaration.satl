@@ -1,0 +1,17 @@
+satellite.include(satellite)
+
+satellite.capsule satellite.main()
+{
+    satellite.variable.number n = 0
+    satellite.statement.while(n < 3)
+    {
+        satellite.variable.number m = 0
+        satellite.statement.while(m < 2)
+        {
+            satellite.console.display(n * 10 + m)
+            m = m + 1
+        }
+        n = n + 1
+    }
+    satellite.return(satellite)
+}

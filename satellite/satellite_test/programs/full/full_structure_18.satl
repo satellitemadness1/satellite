@@ -1,0 +1,18 @@
+satellite.include(satellite)
+// full_structure_18 -- REFUSED by satellite.test.full(): satellite.legal: arguments.access(false) inside a capsule does not change the rule for that run.
+// The rule: satellite.legal: the rule is decided before a run begins, so arguments.access(false) written inside a capsule does not change it for that run.
+// satl refuses it: exit 25, and its report on stderr says "x is not legal here". It prints nothing.
+arguments.access = true
+
+satellite.capsule satellite.main(satellite.variable.arguments args)
+{
+    satellite.variable.number passes = 1
+    args.access(false)
+    satellite.variable.number n = 1
+    satellite.statement.if (n == 1)
+    {
+        satellite.variable.number x = 12345
+    }
+    n = x
+    satellite.return(satellite)
+}

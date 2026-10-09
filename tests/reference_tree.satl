@@ -1,0 +1,105 @@
+satellite.include(satellite)
+
+// object.reference() IS AN EXACT COPY ALL THE WAY DOWN (satellite_object/object_copy.hpp): a tree
+// of nodes, each child holding a POINTER back at its parent and the root a pointer at itself.
+// The copy's children are copies, their pointers point into the copy, and emptying the original
+// leaves the copy whole. check.sh compares every line.
+
+satellite.spacesuit node()
+{
+    satellite.protected
+    {
+        satellite.variable.number value = 0
+        node parent
+        node itself
+        satellite.container.list<node> children = {}
+    }
+    satellite.public
+    {
+        satellite.capsule call_put(satellite.variable.number n)
+        {
+            value = n
+        }
+        satellite.capsule call_take()
+        {
+            satellite.return(value)
+        }
+        satellite.capsule call_adopt(node child)
+        {
+            children.append(child)
+        }
+        satellite.capsule call_set_parent(node given)
+        {
+            parent = given
+        }
+        satellite.capsule call_set_itself(node given)
+        {
+            itself = given
+        }
+        satellite.capsule call_parent_value()
+        {
+            satellite.return(parent.call_take())
+        }
+        satellite.capsule call_itself_value()
+        {
+            satellite.return(itself.call_take())
+        }
+        satellite.capsule call_has_parent()
+        {
+            satellite.return(parent.ok())
+        }
+        satellite.capsule call_child(satellite.variable.number n)
+        {
+            satellite.return(children[n])
+        }
+        satellite.capsule call_count()
+        {
+            satellite.return(children.size)
+        }
+    }
+}
+
+satellite.capsule satellite.main()
+{
+    node root
+    root.call_put(1)
+    root.call_set_itself(root.pointer())
+    node first
+    first.call_put(2)
+    first.call_set_parent(root.pointer())
+    root.call_adopt(first)
+    node second
+    second.call_put(3)
+    second.call_set_parent(root.pointer())
+    root.call_adopt(second)
+
+    node copy = root.reference()
+    copy.call_put(100)
+
+    // THE COPY'S POINTERS POINT INTO THE COPY: its root's pointer at itself, and its children's
+    // pointers back at their parent.
+    satellite.console.display(copy.call_itself_value())
+    node copied_first = copy.call_child(1)
+    satellite.console.display(copied_first.call_parent_value())
+    satellite.console.display(copied_first.call_take())
+    satellite.console.display(copy.call_count())
+
+    // THE ORIGINAL'S STILL POINT AT THE ORIGINAL.
+    satellite.console.display(root.call_itself_value())
+    satellite.console.display(first.call_parent_value())
+
+    // THE COPY'S CHILDREN ARE COPIES: a change to the original's child does not reach them.
+    first.call_put(20)
+    satellite.console.display(copied_first.call_take())
+
+    // EMPTYING THE ORIGINAL: root is given another node, and nothing else holds the first root --
+    // its children hold pointers at it, and a pointer does not keep its object living. The
+    // original's children now point at nothing; the copy is whole.
+    node spare
+    root = spare
+    satellite.console.display(first.call_has_parent())
+    satellite.console.display(copied_first.call_has_parent())
+    satellite.console.display(copied_first.call_parent_value())
+
+    satellite.return(satellite)
+}

@@ -1,0 +1,10 @@
+// tests/arguments_missing.satl WITHOUT ITS SWITCH (MS-2): arguments.missing is true, the author's
+// default -- "which by default is set to true, and gives you the tutorial by default".
+
+satellite.include(satellite)
+
+satellite.capsule satellite.main(satellite.variable.arguments args)
+{
+    satellite.console.display(args.missing)
+    satellite.return(satellite)
+}

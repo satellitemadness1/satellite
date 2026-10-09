@@ -1,0 +1,13 @@
+satellite.include(satellite)
+
+// full_numbers_25 -- satellite.test.full(), a program satl must REFUSE.
+// binary: & is not built yet, refused where it runs.
+// It exits 13, and its report on stderr holds: & | << >> !! are undecided
+// Nothing is printed on stdout.
+
+satellite.capsule satellite.main()
+{
+    satellite.variable.number passes = 1
+    satellite.variable.binary mask = b1100 & b1010
+    satellite.return(satellite)
+}

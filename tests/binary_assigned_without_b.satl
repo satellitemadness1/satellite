@@ -1,0 +1,11 @@
+// The b is required on every value a binary is given, not only the first.
+
+satellite.include(satellite)
+
+satellite.capsule satellite.main()
+{
+    satellite.variable.binary my_number = b10101010
+    satellite.console.display("before")
+    my_number = 1111
+    satellite.return(satellite)
+}

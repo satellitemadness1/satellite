@@ -1,0 +1,9 @@
+// fast(), normal() and ultra() draw nothing (003's ruling, 2026-09-04): S430, before anything runs.
+satellite.include(satellite)
+
+satellite.capsule satellite.main()
+{
+    satellite.console.display("never printed: the check refuses the program first")
+    satellite.console.display(satellite.random.ultra())
+    satellite.return(satellite)
+}

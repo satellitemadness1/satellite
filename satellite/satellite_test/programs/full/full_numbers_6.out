@@ -1,0 +1,12 @@
+ok fraction 1/3 shows 1/3, and .string is that; it stays as written, 2/4 shows 2/4
+ok fraction compares by its worth, 2/4 == 1/2
+ok fraction orders by its worth, and != <= >= too
+ok fraction each part shows as the number it is: 1.5/2, and 1.0/3 shows 1/3
+ok fraction the sign goes on top, -1/3
+ok fraction 1 / 3 with spaces is whole-number division
+ok fraction .numerator and .denominator are its parts, a whole number or a float
+ok fraction compares with a whole number by its worth
+ok fraction compares exactly past 128 places, by cross-multiplying
+ok fraction a whole number given to a fraction name is over 1
+ok fraction a minus turns a fraction name over, on top
+ok fraction a list finds a fraction by its worth

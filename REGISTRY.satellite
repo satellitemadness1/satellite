@@ -1,0 +1,450 @@
+REGISTRY.satellite -- every code satellite uses, and what it means. 16 bits.
+
+CHARACTERS AND TOKENS ARE TWO ALPHABETS (the author, 2026-09-16).
+
+THE CODES ARE 16 BITS, AND THE HIGH BYTE SAYS WHICH (the author, 2026-09-16):
+
+    0000000000000000 - 0000000001111111       0-127    the characters
+    0000000010000000 - 0000000011111111     128-255    kept back, never issued
+    0000000100000000 - 0000101111111111    256-3071    the tokens, 256 to a family
+    0000110000000000 - 0000111111111111   3072-4095    free, and a token may grow into it
+    0001000000000000 - 0001111111111111   4096-8191    THE WORDS, and nothing else
+    0010000000000000 and up                  8192 up    free
+
+so a high byte of zero is a character and any other high byte is a token. One
+test, everywhere, forever -- the 8-bit registry's rule, widened. Because 128-255
+are kept back, an 8-bit ASCII string widens into this by zero-extending each
+code, and nothing is renumbered.
+
+THE CHARACTERS are codes 0-127, and a string is the same at every width: an
+8-BIT STRING HOLDS ASCII ONLY (the author: "8-bit will be ascii only then"), and a
+16-bit string holds everything -- each character above 127 its own Unicode number,
+except a wide one: above U+FFFF, or U+9C40 itself, it is 40000 and then its number
+in two codes (D3.1, the author 2026-09-17: "its the 16-bit value for wide").
+
+THE TOKENS are the stored program's alphabet, never a character and never inside
+a string's value. A string literal's characters travel in the program behind
+string_token.
+
+EVERY PAYLOAD TOKEN CARRIES A COUNT, and this is the rule the 8-bit registry did
+not need. At 8 bits a run of characters ended when the high bit flipped. That
+test is arithmetically FALSE at 16 bits: above 127 a character IS its Unicode
+number (satellite_string.cpp:53), so a string holding one wide character carries
+codes indistinguishable from token codes -- QUAD writes " (infinity)  " as one
+literal and would end its own string early. So a count follows every one of
+family 0000100100000000's tokens, and the counted codes are SKIPPED, never
+classified. long_count_token continues a count that does not fit in 16 bits, so
+no literal has a ceiling (DESIGN §1.2 forbids one).
+
+THE HIGH BYTE ALSO NAMES THE FAMILY, 256 to a family. 0000001100000000 up is
+always arithmetic, 0000100100000000 up is always a literal. One indirect jump
+classifies a token, and a family grows into its own 255 spare codes without any
+other code moving. The character order moved twice in two days (f90fb12,
+1311aec) and cost three files each time; the tokens are laid out so that never
+happens again.
+
+EVERY satellite.something.something HAS ITS OWN CODE, 4096 to 8191 (the author,
+2026-09-16). 4096 itself is reserved and no word has it; the words run from 4097.
+**words/words.tsv is what assigns them** -- a word's code is 4097 plus its row
+there, and satellite/bytecode/make_word_codes.py generates the header from it, so
+this file does not carry 4096 rows it would only be able to get wrong. 004 has
+384 words, which leaves 3711 codes for the ones a user defines. The words sit at
+4096 and not lower because the eleven token families reach 3071, and a range that
+starts under them would have moved seven of them.
+
+AND THE RANGE IS A FAST PATH, NEVER A CEILING. A word with no code in it still
+travels as word_number_token and its numbers, which has no limit at all -- so
+"the language has no limits" survives a 4096th word. Whatever reads a program
+must handle both spellings of the same word.
+
+00000000 nothing is reserved, as the author chose, so a zeroed or half-written
+buffer reads as nothing rather than as a row of a's. 1111111111111111 is kept
+back: it says the next code carries the token.
+
+The order of the characters is the author's (2026-09-16), and comparing codes
+sorts text in that order: a before z before A before 0 before ! before space.
+
+ROWS MARKED "QUESTION" ARE NOT SETTLED. The author named these tokens on
+2026-09-16; 003's DESIGN.md refuses or leaves open nineteen of them, verified
+file and line by a review the same day. They keep their codes until the author
+rules, and the reason stands beside each one. Nothing may rely on a QUESTION row.
+
+ONE FILE, ONE ANSWER. The lexer, the interpreter and the .satc writer all read
+this registry, so none of them can drift about what a code means. Like 003's
+words.def, it is exempt from the 300-line rule.
+
+bits              name                         what it is
+------------------------------------------------------------------------------
+0000000000000000  nothing                      reserved: nothing is here
+0000000000000001  a                            the letter a
+0000000000000010  b                            the letter b
+0000000000000011  c                            the letter c
+0000000000000100  d                            the letter d
+0000000000000101  e                            the letter e
+0000000000000110  f                            the letter f
+0000000000000111  g                            the letter g
+0000000000001000  h                            the letter h
+0000000000001001  i                            the letter i
+0000000000001010  j                            the letter j
+0000000000001011  k                            the letter k
+0000000000001100  l                            the letter l
+0000000000001101  m                            the letter m
+0000000000001110  n                            the letter n
+0000000000001111  o                            the letter o
+0000000000010000  p                            the letter p
+0000000000010001  q                            the letter q
+0000000000010010  r                            the letter r
+0000000000010011  s                            the letter s
+0000000000010100  t                            the letter t
+0000000000010101  u                            the letter u
+0000000000010110  v                            the letter v
+0000000000010111  w                            the letter w
+0000000000011000  x                            the letter x
+0000000000011001  y                            the letter y
+0000000000011010  z                            the letter z
+0000000000011011  A                            the letter A
+0000000000011100  B                            the letter B
+0000000000011101  C                            the letter C
+0000000000011110  D                            the letter D
+0000000000011111  E                            the letter E
+0000000000100000  F                            the letter F
+0000000000100001  G                            the letter G
+0000000000100010  H                            the letter H
+0000000000100011  I                            the letter I
+0000000000100100  J                            the letter J
+0000000000100101  K                            the letter K
+0000000000100110  L                            the letter L
+0000000000100111  M                            the letter M
+0000000000101000  N                            the letter N
+0000000000101001  O                            the letter O
+0000000000101010  P                            the letter P
+0000000000101011  Q                            the letter Q
+0000000000101100  R                            the letter R
+0000000000101101  S                            the letter S
+0000000000101110  T                            the letter T
+0000000000101111  U                            the letter U
+0000000000110000  V                            the letter V
+0000000000110001  W                            the letter W
+0000000000110010  X                            the letter X
+0000000000110011  Y                            the letter Y
+0000000000110100  Z                            the letter Z
+0000000000110101  0                            the digit 0
+0000000000110110  1                            the digit 1
+0000000000110111  2                            the digit 2
+0000000000111000  3                            the digit 3
+0000000000111001  4                            the digit 4
+0000000000111010  5                            the digit 5
+0000000000111011  6                            the digit 6
+0000000000111100  7                            the digit 7
+0000000000111101  8                            the digit 8
+0000000000111110  9                            the digit 9
+0000000000111111  !                            exclamation_mark
+0000000001000000  @                            at_sign
+0000000001000001  #                            hash_sign
+0000000001000010  $                            dollar_sign
+0000000001000011  %                            percent_sign
+0000000001000100  ^                            caret
+0000000001000101  &                            ampersand
+0000000001000110  *                            star
+0000000001000111  (                            left_parenthesis
+0000000001001000  )                            right_parenthesis
+0000000001001001  -                            minus_sign
+0000000001001010  +                            plus_sign
+0000000001001011  _                            underscore
+0000000001001100  =                            equals_sign
+0000000001001101  [                            left_square_bracket
+0000000001001110  ]                            right_square_bracket
+0000000001001111  {                            left_brace
+0000000001010000  }                            right_brace
+0000000001010001  \                            backslash
+0000000001010010  |                            bar
+0000000001010011  ;                            semicolon
+0000000001010100  :                            colon
+0000000001010101  '                            single_quote
+0000000001010110  "                            double_quote
+0000000001010111  ,                            comma
+0000000001011000  .                            full_stop
+0000000001011001  <                            less_than_sign
+0000000001011010  >                            greater_than_sign
+0000000001011011  /                            slash
+0000000001011100  ?                            question_mark
+0000000001011101  `                            backtick
+0000000001011110  ~                            tilde
+0000000001011111                               space
+0000000001100000  \t                           tab
+0000000001100001  \n                           newline
+0000000001100010  0x01                         start_of_heading (ASCII 0x01)
+0000000001100011  0x02                         start_of_text (ASCII 0x02)
+0000000001100100  0x03                         end_of_text (ASCII 0x03)
+0000000001100101  0x04                         end_of_transmission (ASCII 0x04)
+0000000001100110  0x05                         enquiry (ASCII 0x05)
+0000000001100111  0x06                         acknowledge (ASCII 0x06)
+0000000001101000  0x07                         bell (ASCII 0x07)
+0000000001101001  0x08                         backspace (ASCII 0x08)
+0000000001101010  0x0B                         vertical_tab (ASCII 0x0B)
+0000000001101011  0x0C                         form_feed (ASCII 0x0C)
+0000000001101100  0x0D                         carriage_return (ASCII 0x0D)
+0000000001101101  0x0E                         shift_out (ASCII 0x0E)
+0000000001101110  0x0F                         shift_in (ASCII 0x0F)
+0000000001101111  0x10                         data_link_escape (ASCII 0x10)
+0000000001110000  0x11                         device_control_one (ASCII 0x11)
+0000000001110001  0x12                         device_control_two (ASCII 0x12)
+0000000001110010  0x13                         device_control_three (ASCII 0x13)
+0000000001110011  0x14                         device_control_four (ASCII 0x14)
+0000000001110100  0x15                         negative_acknowledge (ASCII 0x15)
+0000000001110101  0x16                         synchronous_idle (ASCII 0x16)
+0000000001110110  0x17                         end_of_transmission_block (ASCII 0x17)
+0000000001110111  0x18                         cancel (ASCII 0x18)
+0000000001111000  0x19                         end_of_medium (ASCII 0x19)
+0000000001111001  0x1A                         substitute (ASCII 0x1A)
+0000000001111010  0x1B                         escape_character (ASCII 0x1B)
+0000000001111011  0x1C                         file_separator (ASCII 0x1C)
+0000000001111100  0x1D                         group_separator (ASCII 0x1D)
+0000000001111101  0x1E                         record_separator (ASCII 0x1E)
+0000000001111110  0x1F                         unit_separator (ASCII 0x1F)
+0000000001111111  0x7F                         delete_character (ASCII 0x7F)
+
+-- THE STREAM  (0000000100000000 up)
+0000000100000000  line_end_token               the end of a statement
+0000000100000001  end_of_file_token            always the last token
+0000000100000010  error_token                  [COUNTED] the character the lexer had no code for. The lexer never throws
+0000000100000011  free                         to 0000000111111111, free for this family
+
+-- BRACKETS  (0000001000000000 up)
+0000001000000000  left_brace_token             {  opens a body
+0000001000000001  right_brace_token            }  closes a body
+0000001000000010  left_parenthesis_token       (  opens arguments
+0000001000000011  right_parenthesis_token      )  closes arguments
+0000001000000100  left_square_bracket_token    [  opens an index
+0000001000000101  right_square_bracket_token   ]  closes an index
+0000001000000110  free                         to 0000001011111111, free for this family
+
+-- ARITHMETIC  (0000001100000000 up)
+-- EVERY ARITHMETIC TOKEN NEEDS WHITESPACE ON BOTH SIDES (the author, 2026-09-16):
+-- "Literally every math operation, ANY math operation has to have spacebar(sign)spacebar".
+-- This was already the rule for / alone; it is now the rule for all six, which is
+-- what frees the TOUCHING spelling of each to mean something else. A touching /
+-- between two numbers is a FRACTION (the author, same day): "when you encounter
+-- number/number with NO space -- that becomes a fraction". So the tight rows below
+-- are not errors-in-waiting, they are the reserved half of each operator.
+0000001100000000  plus_token                   +  with whitespace on BOTH sides
+0000001100000001  minus_token                  -  with whitespace on BOTH sides
+0000001100000010  times_token                  *  with whitespace on BOTH sides
+0000001100000011  divide_token                 /  with whitespace on BOTH sides; a touching / is a path or a fraction
+0000001100000100  modulus_token                %  with whitespace on BOTH sides
+0000001100000101  power_token                  ^  with whitespace on BOTH sides. The author ruled ^ is power, 2026-09-16; ** spaced is its second spelling (SATELLITE_INFINITY.md, INF-1)
+0000001100000110  tight_plus_token             +  touching: not an operation. Reserved
+0000001100000111  tight_minus_token            -  touching: the UNARY minus, which is how -5 is written
+0000001100001000  tight_times_token            *  touching: not an operation. Reserved
+0000001100001001  fraction_token               /  touching, between two numbers: 5/4 is a fraction (not built yet)
+0000001100001010  tight_modulus_token          %  touching: not an operation. Reserved -- except straight after a number's digits, where 50% is percentage_token
+0000001100001011  tight_power_token            ^  touching: not an operation. Reserved
+0000001100001100  free                         to 0000001111111111, free for this family
+
+-- ASSIGNMENT  (0000010000000000 up)
+0000010000000000  assign_token                 =
+0000010000000001  plus_assign_token            +=   QUESTION: 003 DESIGN §6 has one assignment form and no compound
+0000010000000010  minus_assign_token           -=   QUESTION: as above
+0000010000000011  times_assign_token           *=   QUESTION: as above
+0000010000000100  divide_assign_token          /=   QUESTION: as above
+0000010000000101  modulus_assign_token         %=   QUESTION: as above
+0000010000000110  free                         to 0000010011111111, free for this family
+
+-- COMPARISON  (0000010100000000 up)
+0000010100000000  equals_token                 ==
+0000010100000001  not_equals_token             !=
+0000010100000010  less_than_token              <
+0000010100000011  greater_than_token           >
+0000010100000100  less_or_equal_token          <=
+0000010100000101  greater_or_equal_token       >=
+0000010100000110  free                         to 0000010111111111, free for this family
+
+-- LOGIC AND BITS  (0000011000000000 up)
+0000011000000000  and_token                    &&   QUESTION: 003 DESIGN §13 leaves && and || open, and may spell them as words
+0000011000000001  or_token                     ||   QUESTION: as above
+0000011000000010  not_token                    !    QUESTION: §13 leaves open whether ! is the negation
+0000011000000011  bit_and_token                &    QUESTION: §6 has no bitwise row; & ends an expression and is reported
+0000011000000100  bit_or_token                 |    QUESTION: as above
+0000011000000101  bit_exclusive_or_token       ^    ANSWERED 2026-09-16: ^ is POWER (see the arithmetic family). No spelling reaches this code; kept because a code is never reused
+0000011000000110  bit_not_token                ~    QUESTION: as above
+0000011000000111  shift_left_token             <<   QUESTION: 003 DESIGN §5.5 refuses << and >> permanently (the author asked for them 2026-09-16)
+0000011000001000  shift_right_token            >>   QUESTION: as above
+0000011000001001  bit_run_join_token           !!   lays two bit runs end to end; DESIGN §6.6's fifth precedence level, decided 2026-09-09
+0000011000001010  free                         to 0000011011111111, free for this family
+
+-- SEPARATORS AND REACH  (0000011100000000 up)
+0000011100000000  comma_token                  ,  between arguments
+0000011100000001  semicolon_token              ;  inside a for
+0000011100000010  colon_token                  :  in for (TYPE name : list), and in a slice
+0000011100000011  namespace_token              :: QUESTION: satellite joins every segment with a dot; no program uses ::
+0000011100000100  method_token                 .  reaches a member; a following ( makes it a call
+0000011100000101  decimal_point_token          .  QUESTION: 003's lexer folds 3.14 into one number, dot included
+0000011100000110  word_separator_token         .  between a word's numbers: #1.5.1
+0000011100000111  path_separator_token         /  QUESTION: a path with a slash is written in quotes, so it travels as characters
+0000011100001000  linux_home_token             ~  QUESTION: 003 spells $HOME as a live CHARACTER code, not a token
+0000011100001001  question_token               ?  QUESTION: no grammar production accepts it
+0000011100001010  arrow_token                  -> QUESTION: no return type is written; satellite.returns is gone
+0000011100001011  free                         to 0000011111111111, free for this family
+
+-- TEXT AND COMMENTS  (0000100000000000 up)
+0000100000000000  double_quote_token           "  a string literal starts or ends
+0000100000000001  single_quote_token           '  QUESTION: the language has no character type
+0000100000000010  escape_token                 \  QUESTION: an escape lives inside a string's value, which a token may not
+0000100000000011  comment_token                // to the end of the line -- a MARKER only: the text is not stored (003 DESIGN 5.6)
+0000100000000100  comment_start_token          /* QUESTION: 003 DESIGN §5.6 has no block comment, on purpose
+0000100000000101  comment_end_token            */ QUESTION: as above
+0000100000000110  free                         to 0000100011111111, free for this family
+
+-- LITERALS AND PAYLOADS -- [COUNTED] means a count follows, then that many codes  (0000100100000000 up)
+0000100100000000  word_number_token            [COUNTED] a satellite word as its numbers: count, then the numbers
+0000100100000001  name_token                   [COUNTED] a name the user owns: count, then that many character codes
+0000100100000010  number_token                 [COUNTED] a number literal: count, then that many character codes
+0000100100000011  string_token                 [COUNTED] a string literal: count, then that many character codes
+0000100100000100  binary_token                 [COUNTED] b11001100 -- count, then that many character codes
+0000100100000101  hexadecimal_token            [COUNTED] xFFAAC2985765 -- count, then that many character codes
+0000100100000110  option_token                 [COUNTED] 0#down -- a folded option; count, then that many character codes
+0000100100000111  string_index_token           [COUNTED] the string at this index in the .sati, once the program carries no text
+0000100100001000  wide_run_token               [COUNTED] count, then that many characters as their own 16-bit Unicode number
+0000100100001001  wide_run_32_token            [COUNTED] RETIRED by D3.1 (2026-09-16): nothing writes it; a character above U+FFFF is wide_token and two codes
+0000100100001010  long_count_token             the count that follows continues in the next code: no literal has a ceiling
+0000100100001011  percentage_token             [COUNTED] 50% 12.5% 1000000000000% -- count, then the digits before the % (the author, 2026-09-17)
+0000100100001100  free                         to 0000100111111111, free for this family
+
+-- BATCH MARKS -- .satb, a PROPOSAL against open decision D12.1  (0000101000000000 up)
+0000101000000000  batch_start_token            opens a batch: these calls may run on one pool thread
+0000101000000001  batch_end_token              closes a batch
+0000101000000010  wait_token                   the main thread waits here until everything marked before it has finished
+0000101000000011  batch_size_token             how many commands one batch carries; a count follows
+0000101000000100  free                         to 0000101011111111, free for this family
+
+-- THE WORDS  (0001000000000000 up)
+0000101100000000  find_token                   find  [METHOD] object.find(x) -- where x sits inside the receiver
+0000101100000001  replace_token                replace  [METHOD] object.replace(a, b)
+0000101100000010  to_string_token              to_string/str/string  [METHOD] the receiver as base-10 text
+0000101100000011  to_number_token              number/as_number/to_number  [METHOD] the receiver as a whole number
+0000101100000100  to_binary_token              binary/bin/as_binary  [METHOD] the receiver as base-2 text
+0000101100000101  to_hexadecimal_token         hex/as_hex/to_hex  [METHOD] the receiver as base-16 text
+0000101100000110  add_token                    add  [METHOD] object.add(x)
+0000101100000111  append_token                 append  [METHOD] object.append(x) -- a new last line (a file); a new last item (a list) (SATELLITE_FILE_OPERATIONS, 2026-09-18)
+0000101100001000  insert_token                 insert  [METHOD] object.insert(n, x) -- x becomes line n and the rest move down; lines count from 1 (SATELLITE_FILE_OPERATIONS, 2026-09-18)
+0000101100001001  index_of_token               index_of  [METHOD] object.index_of(x) -- the number of the first line that IS x, or 0 (SATELLITE_FILE_OPERATIONS, 2026-09-18)
+0000101100001010  search_token                 search  [METHOD] object.search(x) -- the number of the first line that CONTAINS x, or 0 (SATELLITE_FILE_OPERATIONS, 2026-09-18)
+0000101100001011  contains_token               contains/contain/has  [METHOD] object.contains(x) -- whether any line is x (a file), any item is x (a list), any key is x (an index). `contain` is the author's alias, 2026-09-18; `has` is a map's own numbered word (1 4 1 3), 2026-09-26
+0000101100001100  remove_at_token              remove_at  [METHOD] object.remove_at(n) -- takes line n out (SATELLITE_FILE_OPERATIONS, 2026-09-18)
+0000101100001101  remove_token                 remove  [METHOD] object.remove(x) -- takes out the first line that is x (SATELLITE_FILE_OPERATIONS, 2026-09-18)
+0000101100001110  remove_first_token           remove_first  [METHOD] object.remove_first() (SATELLITE_FILE_OPERATIONS, 2026-09-18)
+0000101100001111  remove_last_token            remove_last  [METHOD] object.remove_last() (SATELLITE_FILE_OPERATIONS, 2026-09-18)
+0000101100010000  truncate_token               truncate  [METHOD] object.truncate(n) -- keeps the first n lines (SATELLITE_FILE_OPERATIONS, 2026-09-18)
+0000101100010001  clear_token                  clear  [METHOD] object.clear -- no lines; the file stays (SATELLITE_FILE_OPERATIONS, 2026-09-18)
+0000101100010010  size_token                   size  [METHOD] object.size -- how many lines (SATELLITE_FILE_OPERATIONS, 2026-09-18)
+0000101100010011  empty_token                  empty  [METHOD] object.empty -- whether there are none (SATELLITE_FILE_OPERATIONS, 2026-09-18)
+0000101100010100  first_token                  first  [METHOD] object.first -- the first line (SATELLITE_FILE_OPERATIONS, 2026-09-18)
+0000101100010101  last_token                   last  [METHOD] object.last -- the last line (SATELLITE_FILE_OPERATIONS, 2026-09-18)
+0000101100010110  save_token                   save  [METHOD] object.save -- every change on the disk now, whole or not at all (SATELLITE_FILE_OPERATIONS, 2026-09-18)
+0000101100010111  read_all_token               read_all  [METHOD] object.read_all -- the whole file as one string (SATELLITE_FILE_OPERATIONS, 2026-09-18)
+0000101100011000  close_token                  close  [METHOD] object.close -- saves, then closes (SATELLITE_FILE_OPERATIONS, 2026-09-18)
+0000101100011001  open_token                   open  [METHOD] object.open -- opens a closed file handle again (SATELLITE_FILE_OPERATIONS, 2026-09-18)
+0000101100011010  ok_token                     ok  [METHOD] object.ok -- whether the file is open (SATELLITE_FILE_OPERATIONS, 2026-09-18)
+0000101100011011  error_text_token             error  [METHOD] object.error -- why the last thing failed, in words (SATELLITE_FILE_OPERATIONS, 2026-09-18)
+0000101100011100  path_token                   path  [METHOD] object.path -- the path the file was opened on (SATELLITE_FILE_OPERATIONS, 2026-09-18)
+0000101100011101  exists_token                 exists  [METHOD] object.exists -- whether the handle's path is still a file (SATELLITE_FILE_OPERATIONS, 2026-09-18)
+0000101100011110  sort_token                   sort  [METHOD] object.sort() -- the receiver, to be ordered by the .by_name() or .by_value() that follows (the author, 2026-09-18)
+0000101100011111  by_name_token                by_name  [METHOD] object.sort().by_name() -- ordered A to Z, ALWAYS; .reverse() is how you get Z to A (the author, 2026-09-18)
+0000101100100000  by_value_token               by_value  [METHOD] object.sort().by_value() -- smallest first, ALWAYS; .reverse() is how you get largest first (the author, 2026-09-18)
+0000101100100001  reverse_token                reverse  [METHOD] object.reverse() -- a list, a string, a number, a binary or a hex, back to front (the author, 2026-09-18)
+0000101100100010  keys_token                   keys  [METHOD] index.keys -- every key, as a list, IN THE ORDER THEY WERE PUT IN (words.tsv already numbers satellite.container.map.keys 1 4 1 8)
+0000101100100011  values_token                 values  [METHOD] index.values -- every value, as a list, in the same order as .keys (words.tsv already numbers satellite.container.map.values 1 4 1 9)
+0000101100100100  power_of_token               power_of/to_the_power_of/power  [METHOD] object.power_of(x) -- the object to the power of x; three spellings, the author's (SATELLITE_INFINITY.md, messages five and nine)
+0000101100100101  resize_token                 resize  [METHOD] infinity.resize(n) -- that one infinity's nines width (SATELLITE_INFINITY.md, message two)
+0000101100100110  nines_token                  nines  [METHOD] infinity.nines() -- the first count shown in nines (SATELLITE_INFINITY.md, Q14)
+0000101100100111  focus_token                  focus  [METHOD] window.focus() -- ask the desktop to bring this window to the front (SATELLITE_WINDOW.md WIN-3)
+0000101100101000  title_token                  title  [METHOD] window.title("text") -- the window's title now; window.title reads it back (SATELLITE_WINDOW.md WIN-3)
+0000101100101001  pressed_token                pressed  [METHOD] button.pressed(a_capsule) -- the capsule to run when it is pressed; button.pressed reads the name back (SATELLITE_WINDOW.md WIN-11)
+0000101100101010  press_token                  press  [METHOD] button.press() -- the PROGRAM presses it, as a click does; it takes nothing (SATELLITE_WINDOW.md WIN-11)
+0000101100101011  text_token                   text  [METHOD] object.text -- the words on a piece of a window, read with no brackets; object.text("x") writes them (GTK_AND_NO_DEPENDENCIES.md GTK-1)
+0000101100101100  on_token                     on  [METHOD] object.on -- whether a checkbox or a switch is turned on; object.on(1) turns it on and object.on(0) off (GTK_AND_NO_DEPENDENCIES.md GTK-3)
+0000101100101101  value_token                  value  [METHOD] object.value -- the number a slider or a number box is at, or the percentage a progress bar shows; object.value(x) sets it (GTK_AND_NO_DEPENDENCIES.md GTK-4)
+0000101100101110  chosen_token                 chosen  [METHOD] choice.chosen -- which of its items is picked, as TEXT; choice.chosen("green") picks that one (GTK_AND_NO_DEPENDENCIES.md GTK-5)
+0000101100101111  changed_token                changed  [METHOD] piece.changed(a_capsule) -- the capsule to run when a person changes it: typed in it, moved it, ticked it, picked in it (GTK_AND_NO_DEPENDENCIES.md GTK-9)
+0000101100110000  closed_token                 closed  [METHOD] window.closed(a_capsule) -- the capsule to run when the window goes away, whoever closed it (GTK_AND_NO_DEPENDENCIES.md GTK-9)
+0000101100110001  width_token                  width  [METHOD] object.width -- how wide it is on the screen right now, in pixels (GTK_AND_NO_DEPENDENCIES.md GTK-8)
+0000101100110010  height_token                 height  [METHOD] object.height -- how tall it is on the screen right now, in pixels (GTK_AND_NO_DEPENDENCIES.md GTK-8)
+0000101100110011  fullscreen_token             fullscreen  [METHOD] window.fullscreen -- whether it fills the screen; window.fullscreen(1) makes it and window.fullscreen(0) gives it back (GTK_AND_NO_DEPENDENCIES.md GTK-8)
+0000101100110100  colour_token                 colour/color  [METHOD] piece.colour("#00ff88") -- the colour its words are drawn in; two spellings, one meaning (GTK_AND_NO_DEPENDENCIES.md GTK-10)
+0000101100110101  background_token             background  [METHOD] piece.background("#222222") -- the colour behind it (GTK_AND_NO_DEPENDENCIES.md GTK-10)
+0000101100110110  font_token                   font  [METHOD] piece.font("IBM Plex Mono", 12) -- the face and the size its words are drawn in (GTK_AND_NO_DEPENDENCIES.md GTK-10)
+0000101100110111  every_token                  every  [METHOD] window.every(a_capsule, 1000) -- run that capsule every so many milliseconds, for as long as the window is open (GTK_AND_NO_DEPENDENCIES.md GTK-13)
+0000101100111000  key_token                    key  [METHOD] window.key(a_capsule) -- the capsule to run when a key is pressed; window.key reads which key it was (GTK_AND_NO_DEPENDENCIES.md GTK-14)
+0000101100111001  clicked_token                clicked  [METHOD] piece.clicked(a_capsule) -- the capsule to run when a person clicks it; a BUTTON uses .pressed instead (GTK_AND_NO_DEPENDENCIES.md GTK-14)
+0000101100111010  message_token                message  [METHOD] window.message("saved") -- say something to a person, with one button to dismiss it (GTK_AND_NO_DEPENDENCIES.md GTK-11)
+0000101100111011  ask_token                    ask  [METHOD] window.ask(a_capsule, "delete it?") -- ask a person yes or no; the capsule runs with the answer in window.answer. The NAME comes first, as every capsule-naming method spells it (GTK_AND_NO_DEPENDENCIES.md GTK-11)
+0000101100111100  answer_token                 answer  [METHOD] window.answer -- what a person last answered: "yes", "no", the path of the file they chose, or "" if they dismissed it (GTK_AND_NO_DEPENDENCIES.md GTK-11)
+0000101100111101  menu_token                   menu  [METHOD] window.menu(the_menu) -- put a menu across the top of this window; a second one goes beside the first (GTK_AND_NO_DEPENDENCIES.md GTK-12)
+0000101100111110  item_token                   item  [METHOD] menu.item(a_capsule, "Open") -- an item on a menu, and the capsule that runs when a person picks it. The NAME comes first, as every capsule-naming method spells it (GTK_AND_NO_DEPENDENCIES.md GTK-12)
+0000101100111111  line_token                   line  [METHOD] canvas.line(from_across, from_down, to_across, to_down) -- a line between two points, in the colour the canvas draws in (GTK_AND_NO_DEPENDENCIES.md GTK-15)
+0000101101000000  box_token                    box  [METHOD] canvas.box(across, down, wide, tall) -- a filled box, from its top-left corner (GTK_AND_NO_DEPENDENCIES.md GTK-15)
+0000101101000001  circle_token                 circle  [METHOD] canvas.circle(across, down, radius) -- a filled circle, around its centre (GTK_AND_NO_DEPENDENCIES.md GTK-15)
+0000101101000010  write_token                  write  [METHOD] canvas.write(across, down, "words") -- words with their top-left corner at a point, in the canvas's font (GTK_AND_NO_DEPENDENCIES.md GTK-15)
+0000101101000011  separator_token              separator  [METHOD] menu.separator() -- a line under the items above it; the items added after it go below the line (GTK_AND_NO_DEPENDENCIES.md GTK-12)
+0000101101000100  across_token                 across  [METHOD] piece.across -- how far across a piece the last click on it landed, in pixels from its left edge; 0 until one has (GTK_AND_NO_DEPENDENCIES.md GTK-15)
+0000101101000101  down_token                   down  [METHOD] piece.down -- how far down a piece the last click on it landed, in pixels from its top edge; 0 until one has (GTK_AND_NO_DEPENDENCIES.md GTK-15)
+0000101101000110  outline_token                outline  [METHOD] canvas.outline -- whether the pen draws a box, a circle or an arc as an outline; canvas.outline(1) makes it and canvas.outline(0) fills again (GTK_AND_NO_DEPENDENCIES.md GTK-15)
+0000101101000111  thickness_token              thickness  [METHOD] canvas.thickness -- how many pixels wide the pen draws a line or an outline; canvas.thickness(3) sets it (GTK_AND_NO_DEPENDENCIES.md GTK-15)
+0000101101001000  arc_token                    arc  [METHOD] canvas.arc(across, down, radius, from_degrees, to_degrees) -- part of a circle, clockwise from three o'clock; filled it is a slice, outlined it is the curve (GTK_AND_NO_DEPENDENCIES.md GTK-15)
+0000101101001001  choose_a_file_token          choose_a_file  [METHOD] window.choose_a_file(a_capsule) -- ask a person for a file; the capsule runs with its path in window.answer, or "" if they dismissed it. The NAME comes first, as every capsule-naming method spells it (GTK_AND_NO_DEPENDENCIES.md GTK-11)
+0000101101001010  display_token                display  [METHOD] console.display("words") -- a line into a console, as satellite.console.display puts one on stdout (GTK_AND_NO_DEPENDENCIES.md GTK-17)
+0000101101001011  typed_token                  typed  [METHOD] console.typed(a_capsule) -- the capsule to run when a person finishes a line in a console; console.typed reads that line back. The NAME comes first, as every capsule-naming method spells it (GTK_AND_NO_DEPENDENCIES.md GTK-17)
+0000101101001100  home_token                   home  [METHOD] console.home() -- the cursor to the top-left corner, as satellite.console.home() does on stdout (GTK_AND_NO_DEPENDENCIES.md GTK-17)
+0000101101001101  columns_token                columns  [METHOD] console.columns -- how many characters fit across a console right now (GTK_AND_NO_DEPENDENCIES.md GTK-17)
+0000101101001110  rows_token                   rows  [METHOD] console.rows -- how many lines fit down a console right now (GTK_AND_NO_DEPENDENCIES.md GTK-17)
+0000101101001111  transparency_token           transparency  [METHOD] color.transparency(50) sets how see-through a colour is, 0 to 99; color.transparency reads it back (the author, 2026-09-22: "my_color.transparency(0 - 99)")
+0000101101010000  numerator_token              numerator  [METHOD] fraction.numerator -- the number above the line of a/b
+0000101101010001  denominator_token            denominator  [METHOD] fraction.denominator -- the number below the line of a/b
+0000101101010010  sum_token                    sum  [METHOD] list.sum -- every item added with +, and 0 for a list of nothing (003's list_sum, taken 2026-09-23)
+0000101101010011  max_token                    max  [METHOD] list.max -- the largest item by what it is worth, one pass and no sort (003's list max, taken 2026-09-23)
+0000101101010100  min_token                    min  [METHOD] list.min -- the smallest item by what it is worth (003's list min, taken 2026-09-23)
+0000101101010101  join_token                   join  [METHOD] list.join(separator) -- one string: every item's text with separator between (003's list_join, taken 2026-09-23)
+0000101101010110  reserve_token                reserve  [METHOD] list.reserve(n) -- room made for n items at once; changes no item (003's list_reserve, taken 2026-09-23)
+0000101101010111  foreground_token             foreground  [METHOD] text.foreground(xFF8800) -- the string in that colour on a terminal; .background(c) is its ground (the author, 2026-09-23: every spelling 003 refused is legal)
+0000101101011000  start_token                  start  [METHOD] thread.start() -- the capsule begins on a thread of its own, and start answers at once (003's M23, built in 004 2026-09-23)
+0000101101011001  stop_token                   stop  [METHOD] thread.stop() -- asks the thread to stop at its next statement; it is never killed mid-statement (the author, 2026-09-23)
+0000101101011010  wait_method_token            wait  [METHOD] thread.wait() -- a second name for thread.join() (the author, 2026-09-23); wait_token above is the batch mark
+0000101101011011  lock_token                   lock  [METHOD] object.lock() -- turns the object's lock ON; it is taken only while something WRITES to the object (the author, 2026-09-23)
+0000101101011100  unlock_token                 unlock  [METHOD] object.unlock() -- turns the object's lock off again: nothing is locked for it until the next .lock()
+0000101101011101  upper_token                  upper/uppercase/up  [METHOD] string.upper() -- the text in capital letters, every language's that has them (the author, 2026-09-25: "str.upper() and str.uppercase() and str.up()")
+0000101101011110  lower_token                  lower/lowercase  [METHOD] string.lower() -- the text in small letters (the author, 2026-09-25: "str.lower() and str.lowercase()")
+0000101101011111  center_token                 center/centre  [METHOD] satellite.console.display(text).center() -- the line in the middle of the console, for the width it has as it is shown (the author, 2026-09-25)
+0000101101100000  starts_with_token            starts_with  [METHOD] string.starts_with(x) -- whether the string begins with x; x of "" always does (M16, word 1 6 1 6)
+0000101101100001  ends_with_token              ends_with  [METHOD] string.ends_with(x) -- whether the string finishes with x (M16, word 1 6 1 7)
+0000101101100010  substring_token              substring  [METHOD] string.substring(start, end) -- the characters from start to end, both counted from 1 and both kept (M16, word 1 6 1 5)
+0000101101100011  split_token                  split  [METHOD] string.split(separator) -- the pieces between separators as a list of strings; "" splits into characters (M16, word 1 6 1 10)
+0000101101100100  trim_token                   trim  [METHOD] string.trim -- the text without space, tab, carriage return or newline at either end (M16, word 1 6 1 11)
+0000101101100101  at_token                     at  [METHOD] string.at(n) -- character n, counting from 1, as a string of one character; the same as string[n] (M16, word 1 6 1 16)
+0000101101100110  resolved_token               resolved  [METHOD] string.resolved -- the string with its live escapes resolved; 004 has none yet, so it answers itself (M16, word 1 6 1 17)
+0000101101100111  code_token                   code  [METHOD] program.code() -- waits for the program to end and answers its exit code; .return() is the same, with a code of its own (the author, 2026-10-01: ".code() .return() ... will be for the return")
+0000101101101000  end_token                    end  [METHOD] program.end() -- stops the program and everything under it, and answers its exit code; .exit(), .quit() and .shutdown() are the same, each with a code of its own (the author, 2026-10-01: ".end() .exit() and .quit() and shutdown() all do the same thing")
+0000101101101001  pass_token                   pass  [METHOD] program.pass(text) -- typed into the running program, a line for a string and one for each item of a list (the author, 2026-10-01: "typed input while the program is running")
+0000101101101010  return_token                 return  [METHOD] program.return() -- the same as program.code(), with its own code: one code for both spellings made a spacesuit's field `code` and its capsule `return` one name (the review of steps 2-5, 2026-10-01)
+0000101101101011  exit_token                   exit  [METHOD] program.exit() -- the same as program.end(), with its own code: one code for the four spellings ran a spacesuit's shutdown() for m.quit() (the review of steps 2-5, 2026-10-01)
+0000101101101100  quit_token                   quit  [METHOD] program.quit() -- the same as program.end(), with its own code, as exit's
+0000101101101101  shutdown_token               shutdown  [METHOD] program.shutdown() -- the same as program.end(), with its own code, as exit's
+0000101101101110  pointer_token                pointer  [METHOD] object.pointer() -- points at the object and does not keep it living: once nothing else holds the object it is gone, and the pointer is empty (the author, 2026-10-02)
+0000101101101111  reference_token              reference  [METHOD] object.reference() -- an exact copy of the object, its own from then on: the object can be emptied and the reference is still there (the author, 2026-10-02)
+0000101101110000  scroll_token                 scroll  [METHOD] window.scroll -- the window itself, so .vertical(on) and .horizontal(on) can follow it as the author spelled them: w.scroll.vertical(false) (2026-10-07)
+0000101101110001  vertical_token               vertical  [METHOD] window.scroll.vertical(on) -- whether a window or a console scrolls up and down; read bare for the answer; the arguments' scroll.vertical row stands in where nothing was set
+0000101101110010  horizontal_token             horizontal  [METHOD] window.scroll.horizontal(on) -- whether it scrolls sideways; a console with it on is 2048 characters wide and wraps nothing (the author, 2026-10-07)
+0000101101110011  free                         to 0000101111111111, free for this family
+
+0001000000000000  word_base                    reserved: no word has this code
+0001000000000001  the first word               satellite -- and every satellite.something.something after it
+0001111111111111  the last word                to here: 4096 codes, words ONLY, nothing else is ever put here
+
+-- FREE  (0010000000000000 up)
+1001110001000000  wide_token                   the author, 2026-09-16: the next TWO codes are one 32-bit integer -- a character above U+FFFF inside a payload (D3.1)
+1001110001000001  free                         to 1001110011111111, free beside the wide token
+
+0010000000000000  free                         to 1001101111111111, unclaimed
+1001110100000000  free                         to 1111111011111111, unclaimed -- the range above wide_token's family (split 2026-09-18, INF-1: one range used to run over it)
+
+-- KEPT BACK  (1111111100000000 up)
+1111111111111111  extend_token                 the next code carries the token; kept back so an all-ones buffer is never a token

@@ -1,0 +1,58 @@
+
+--------------------------------------------------------------------------------
+SATELLITE 004: satellite.variable.infinity
+--------------------------------------------------------------------------------
+
+satellite.variable.infinity holds an infinity, and satellite.infinity() makes
+one. It displays as (infinity), in parentheses because one value is one set of
+them, and a minus in front turns it over: (-infinity). It is larger than every
+number, and (-infinity) is smaller than every number, so it orders with == !=
+< > <= and >= against a number, a binary and another infinity, and a list that
+holds infinities sorts by value.
+
+What is built is INF-1 and INF-2 of SATELLITE_INFINITY.md: the constructor,
+the display and the order. An infinity name also takes a plain number, and it
+refuses a string, a binary and a percentage; a satellite.variable.number name
+refuses an infinity. .string is its display. .number, .binary and .hex are
+refused, because an infinity is larger than every number, and .reverse() is
+refused because it has no digits to turn round.
+
+The arithmetic is not built yet. Each piece is refused by name, with the
+milestone that builds it (S210): + and - name INF-3, * and / name INF-3 and
+INF-4, ^ and ** name INF-4 and INF-5, .power_of(x) names INF-4 and INF-5,
+.resize(n) and .nines() name INF-7, and satellite.infinity(x) names INF-5.
+
+What is planned, in short: every value of the family is one list of terms,
+largest first, each a count and a unit, and every result is put together by
+the author's one rule, "either add the number or flip the sign of the number
+THEN add the number". infinity + infinity will be (2 infinity), infinity + 7
+will be (infinity, +7), and infinity ** infinity ** infinity will be
+(infinity-2), a sat, the level above the power, (infinity-1).
+
+example:
+
+satellite.include(satellite)
+
+satellite.capsule satellite.main(satellite.container.list<satellite.variable.string> arguments)
+{
+    satellite.variable.infinity my_inf = satellite.infinity()
+    satellite.console.display(my_inf)                   // (infinity)
+    satellite.console.display(-my_inf)                  // (-infinity)
+    satellite.console.display(my_inf > 10 ^ 100)        // true
+    satellite.console.display(-my_inf < 0 - 10 ^ 300)   // true
+    satellite.console.display(b1010 < my_inf)           // true
+    satellite.console.display(my_inf == -my_inf)        // false
+    satellite.container.list numbers = {5, my_inf, -my_inf, 0}
+    satellite.console.display(numbers.sort().by_value())   // {(-infinity), 0, 5, (infinity)}
+    satellite.return(satellite)
+}
+
+refused today:
+
+satellite.console.display(satellite.infinity() + 1)
+
+prints:
+
+S210: NOT_BUILT_YET
+satl(run): + was given an infinity and a number, and an infinity's + is not
+built yet (SATELLITE_INFINITY.md, INF-3)

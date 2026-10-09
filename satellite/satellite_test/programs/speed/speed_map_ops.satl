@@ -1,0 +1,34 @@
+// speed_map_ops.satl -- satellite.test.speed(): a map of numbers -- set, get, contains, remove.
+// Keys are 0 to 999. Each pass files the pass under one key (a new key or a changed value), asks
+// whether another key is there and reads it when it is, sets a third from a .get of the first, and
+// takes a fourth out when it is there (.has and .remove). The checksum line is the total of what was
+// read and the map at the end -- its size and the sums of its keys and values, which do not depend on
+// the order of its entries; its C++ twin is speed_map_ops() in speed_objects_twins.cpp, which prints
+// the same line.
+
+satellite.include(satellite)
+
+satellite.capsule satellite.main()
+{
+    satellite.variable.number passes = 62000
+    satellite.container.map<satellite.variable.number, satellite.variable.number> seen
+    satellite.variable.number total = 0
+
+    satellite.statement.for(satellite.variable.number i = 0; i < passes; i + 1)
+    {
+        seen[i % 1000] = i
+        satellite.statement.if (seen.contains((i * 7) % 1000))
+        {
+            total = total + seen[(i * 7) % 1000]
+        }
+        seen.set((i * 3) % 1000, seen.get(i % 1000) + 1)
+        satellite.statement.if (seen.has((i * 11) % 1000))
+        {
+            seen.remove((i * 11) % 1000)
+        }
+        total = total + seen.size
+    }
+
+    satellite.console.display("map_ops: passes " + passes + ", total " + total + ", map " + seen.size + " keys, keys summing " + seen.keys.sum + ", values summing " + seen.values.sum)
+    satellite.return(satellite)
+}

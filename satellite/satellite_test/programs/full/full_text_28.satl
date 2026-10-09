@@ -1,0 +1,12 @@
+satellite.include(satellite)
+
+// full_text_28 -- REFUSED: list <type> checks .append.
+// satellite.help(satellite.container.list). Nothing reaches stdout; satl exits with the refusal's code.
+
+satellite.capsule satellite.main()
+{
+    satellite.variable.number passes = 1
+    satellite.container.list<satellite.variable.number> a = {1, 2}
+    a.append("three")
+    satellite.return(satellite)
+}

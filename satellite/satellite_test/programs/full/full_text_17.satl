@@ -1,0 +1,12 @@
+satellite.include(satellite)
+
+// full_text_17 -- REFUSED: string s.trim.append(x) is refused: s.trim is a new string with no name.
+// satellite.help(satellite.variable.string). Nothing reaches stdout; satl exits with the refusal's code.
+
+satellite.capsule satellite.main()
+{
+    satellite.variable.number passes = 1
+    satellite.variable.string s = " a "
+    s.trim.append("d")
+    satellite.return(satellite)
+}

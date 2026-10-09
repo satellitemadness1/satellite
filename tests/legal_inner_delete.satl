@@ -1,0 +1,36 @@
+satellite.include(satellite)
+
+// ... SO A DELETE OF IT IN THE INNER BLOCK STANDS IN A DIFFERENT BLOCK from its declaration, and is refused
+// before anything runs. It once listed one box for two blocks and the run crashed (the fresh reader, 2026-10-06).
+
+satellite.spacesuit box()
+{
+    satellite.protected
+    {
+        satellite.variable.number value = 7
+    }
+    satellite.public
+    {
+        satellite.capsule call_show()
+        {
+            satellite.console.display(value)
+        }
+    }
+}
+
+satellite.capsule satellite.main()
+{
+    satellite.console.display("the check passed, running")
+    satellite.variable.number n = 1
+    satellite.statement.if (n == 1)
+    {
+        box b
+        satellite.statement.if (n == 1)
+        {
+            box b
+            satellite.delete(b)
+        }
+    }
+    satellite.console.display("after")
+    satellite.return(satellite)
+}

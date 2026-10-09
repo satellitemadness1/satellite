@@ -1,0 +1,29 @@
+satellite.include(satellite)
+
+// end(), exit(), quit() and shutdown() -- the author, 2026-10-01: ".shutdown() kill the process,
+// and same with .end() ... .end() .exit() and .quit() and shutdown() all do the same thing".
+satellite.capsule satellite.main(satellite.variable.arguments args)
+{
+    satellite.variable.program long_one = {"sleep", "30"}
+    long_one.start()
+    satellite.console.display(long_one.end())                // 143
+    satellite.console.display(long_one.error())              // it was ended by signal 15 (SIGTERM)
+    long_one.start()
+    satellite.console.display(long_one.exit())               // 143
+    long_one.start()
+    satellite.console.display(long_one.quit())               // 143
+    long_one.start()
+    satellite.console.display(long_one.shutdown())           // 143
+
+    // ONE THAT HAS ALREADY ENDED answers its own code.
+    satellite.variable.program three = {"sh", "-c", "exit 3"}
+    three.start()
+    three.join()
+    satellite.console.display(three.end())                   // 3
+
+    // AND EVERYTHING UNDER IT: sh's own sleep goes too.
+    satellite.variable.program tree = {"sh", "-c", "sleep 7.43; echo never"}
+    tree.start()
+    satellite.console.display(tree.end())                    // 143
+    satellite.return(satellite)
+}

@@ -1,0 +1,11 @@
+satellite.include(satellite)
+
+// A method call standing alone on its line (SATELLITE_FILE_OPERATIONS FO-1): it
+// runs, and its answer is not kept.
+satellite.capsule satellite.main(satellite.container.list<satellite.variable.string> arguments)
+{
+    satellite.variable.string s = "line_1"
+    s.find("1")
+    satellite.console.display(s)
+    satellite.return(satellite)
+}

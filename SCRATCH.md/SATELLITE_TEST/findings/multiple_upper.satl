@@ -1,0 +1,8 @@
+satellite.include(satellite)
+
+satellite.capsule satellite.main()
+{
+    satellite.container.multiple<satellite.variable.string, satellite.variable.number> either = "abc"
+    satellite.console.display(either.upper())
+    satellite.return(satellite)
+}

@@ -1,0 +1,256 @@
+satellite.include(satellite)
+
+// full_objects_4 -- satellite.test.full(): RUNNING PROGRAMS (SCRATCH.md/RUNNING_PROGRAMS.md,
+// tests/programs.satl, tests/bash.satl): satellite.variable.program by name and as a list,
+// start(), start("hide"), ok(), error(), join(), code(), return(), pass(), end(), exit(),
+// quit(), shutdown(), exit codes, a signal, a program not on the PATH, two names for one;
+// and satellite.variable.bash, a line bash reads -- its pipe, >, ||, $(( )) -- with every
+// method a program has. What a bash line writes goes into one file beside this program, read
+// back with the file words and removed. Every program is started with "hide", or prints nothing.
+// One line a check: "ok <capability>", or "WRONG <capability>: <answer> (expected <right>)".
+// passes repeats every check; the passes before the last print only what is WRONG.
+
+satellite.spacesuit report()
+{
+    satellite.protected
+    {
+        satellite.variable.bool loud = satellite.bool.false
+        satellite.variable.number wrong = 0
+
+        satellite.capsule word_of(satellite.variable.bool b)
+        {
+            satellite.statement.if (b)
+            {
+                satellite.return("true")
+            }
+            satellite.return("false")
+        }
+
+        satellite.capsule right(satellite.variable.string what)
+        {
+            satellite.statement.if (loud)
+            {
+                satellite.console.display("ok " + what)
+            }
+        }
+
+        satellite.capsule wrong_answer(satellite.variable.string what, satellite.variable.string got, satellite.variable.string want)
+        {
+            wrong = wrong + 1
+            satellite.console.display("WRONG " + what + ": " + got.replace("\n", "\\n") + " (expected " + want.replace("\n", "\\n") + ")")
+        }
+    }
+
+    satellite.constructor(satellite.variable.bool say)
+    {
+        loud = say
+    }
+
+    satellite.public
+    {
+        satellite.capsule check_text(satellite.variable.string what, satellite.variable.string got, satellite.variable.string want)
+        {
+            satellite.statement.if (got == want)
+            {
+                right(what)
+            }
+            satellite.statement.else
+            {
+                wrong_answer(what, got, want)
+            }
+        }
+
+        satellite.capsule check_number(satellite.variable.string what, satellite.variable.number got, satellite.variable.number want)
+        {
+            satellite.statement.if (got == want)
+            {
+                right(what)
+            }
+            satellite.statement.else
+            {
+                wrong_answer(what, got.to_string(), want.to_string())
+            }
+        }
+
+        satellite.capsule check_bool(satellite.variable.string what, satellite.variable.bool got, satellite.variable.bool want)
+        {
+            satellite.statement.if (got == want)
+            {
+                right(what)
+            }
+            satellite.statement.else
+            {
+                wrong_answer(what, word_of(got), word_of(want))
+            }
+        }
+
+        satellite.capsule call_wrong()
+        {
+            satellite.return(wrong)
+        }
+    }
+}
+
+// THE ONE FILE THE BASH LINES WRITE, beside this program (satl runs in the program's folder).
+satellite.capsule out_file()
+{
+    satellite.return("full_objects_4_out.txt")
+}
+
+// WHAT A BASH LINE WROTE, read with the file words (the program's folder), then removed by a bash
+// line (satl's folder -- the same one here): its text, or why there was none.
+satellite.capsule take_text(satellite.variable.string name)
+{
+    satellite.variable.string text = ""
+    satellite.variable.file f = satellite.file.open(name)
+    satellite.statement.if (f.ok)
+    {
+        text = f.read_all
+        f.close()
+    }
+    satellite.statement.else
+    {
+        text = "(nothing written: " + f.error + ")"
+    }
+    satellite.variable.bash rm = "rm -f -- " + name
+    rm.start("hide")
+    rm.join()
+    satellite.return(text)
+}
+
+// A CAPSULE THAT TAKES A PROGRAM TAKES A BASH LINE, AND A BASH PARAMETER MAKES ONE FROM A STRING.
+satellite.capsule run_it(satellite.variable.program p)
+{
+    p.start("hide")
+    satellite.return(p.join())
+}
+
+satellite.capsule run_line(satellite.variable.bash command)
+{
+    command.start("hide")
+    satellite.return(command.join())
+}
+
+// satellite.variable.program: a program by name or as a list of strings, never through a shell.
+satellite.capsule check_programs(report r)
+{
+    satellite.variable.program yes = "true"
+    yes.start()
+    r.check_text("program by name on the PATH: true started (ok) and answers 0", "ok:" + yes.ok() + " " + yes.join().to_string(), "ok: true 0")
+    satellite.variable.program no = "false"
+    no.start()
+    no.join()
+    r.check_text("program false: error() says the code it ended with", no.error(), "it ended with code 1")
+    satellite.variable.program seven = {"sh", "-c", "exit 7"}
+    seven.start()
+    r.check_number("program from a list: code() waits and answers its exit code", seven.code(), 7)
+    seven.start()
+    r.check_number("program started again after it ended, and return() answers its code", seven.return(), 7)
+    satellite.variable.program spaced = {"sh", "-c", "[ \"$1\" = 'my file.cpp' ] && [ $# -eq 1 ]", "sh", "my file.cpp"}
+    spaced.start()
+    r.check_number("program an argument with a space in it stays one argument", spaced.join(), 0)
+    satellite.variable.program missing = "no-such-program-for-satl-tests"
+    missing.start()
+    r.check_text("program not on the PATH: ok() is false and error() says so", "ok:" + missing.ok() + " " + missing.error(), "ok: false there is no program named no-such-program-for-satl-tests on the PATH")
+    r.check_number("program not on the PATH answers 127, as a shell does", missing.code(), 127)
+    satellite.variable.program killed = {"sh", "-c", "kill -TERM $$"}
+    killed.start()
+    r.check_number("program ended by a signal answers 128 + the signal", killed.join(), 143)
+    satellite.variable.program quiet = {"sh", "-c", "echo this must not show; echo nor this >&2; exit 4"}
+    quiet.start("hide")
+    r.check_number("program start(\"hide\") throws its output away and still answers", quiet.join(), 4)
+    satellite.container.list<satellite.variable.string> parts = {"sh", "-c", "exit 3"}
+    satellite.variable.program listed = parts
+    listed.start()
+    listed.join()
+    satellite.variable.program same = listed
+    r.check_text("program from a list held in a name: its code, then == for two names and for two programs", listed.code().to_string() + " same:" + (same == listed) + (listed == seven), "3 same: true false")
+}
+
+// satellite.variable.bash: a line bash reads, with every method a program has.
+satellite.capsule check_bash(report r)
+{
+    satellite.variable.bash sorted = "printf '%s\\n' b a c | sort | head -n 1 > " + out_file()
+    sorted.start("hide")
+    sorted.join()
+    r.check_text("bash line's pipe and > wrote its file", take_text(out_file()), "a\n")
+    satellite.variable.bash sums = "false || echo $((6 * 7)) > " + out_file()
+    sums.start("hide")
+    sums.join()
+    r.check_text("bash line reads || and $(( ))", take_text(out_file()), "42\n")
+    satellite.variable.bash seven = "exit 7"
+    seven.start("hide")
+    r.check_number("bash line's code is the line's", seven.code(), 7)
+    satellite.variable.bash nocommand = "no-such-command-for-satl-tests"
+    nocommand.start("hide")
+    r.check_text("bash line with a missing command started (ok) and answers bash's 127", "ok:" + nocommand.ok() + " " + nocommand.join().to_string(), "ok: true 127")
+    satellite.variable.bash reader = "read a; read b; echo got $a and $b > " + out_file()
+    reader.start("hide")
+    r.check_bool("bash start() answers while the line still waits for its input", satellite.file.exists(out_file()), satellite.bool.false)
+    reader.pass({"first", "second"})
+    reader.join()
+    r.check_text("bash pass() types lines in, read in order", take_text(out_file()), "got first and second\n")
+    r.check_number("bash a capsule taking a program takes a bash line", run_it(seven), 7)
+    r.check_number("bash a bash parameter makes a line from a string", run_line("exit 6"), 6)
+    satellite.variable.program held = sorted
+    r.check_bool("bash a program name holds a bash line, the same one", held == sorted, satellite.bool.true)
+}
+
+// end(), exit(), quit() and shutdown(): each stops it, and answers 143 -- SIGTERM's.
+satellite.capsule check_stopping(report r)
+{
+    satellite.variable.bash a = "sleep 7.43"
+    a.start("hide")
+    r.check_number("program end() stops it and answers 143", a.end(), 143)
+    r.check_text("program stopped: error() names the signal", a.error(), "it was ended by signal 15 (SIGTERM)")
+    satellite.variable.program b = {"sleep", "7.43"}
+    b.start("hide")
+    satellite.variable.program c = {"sleep", "7.43"}
+    c.start("hide")
+    satellite.variable.program d = {"sleep", "7.43"}
+    d.start("hide")
+    r.check_text("program exit(), quit() and shutdown() are end()", b.exit().to_string() + " " + c.quit().to_string() + " " + d.shutdown().to_string(), "143 143 143")
+}
+
+satellite.capsule run_all(report r)
+{
+    check_programs(r)
+    check_bash(r)
+    check_stopping(r)
+}
+
+// HOW A PROGRAM AND A BASH LINE DISPLAY (RUNNING_PROGRAMS: "displayed, it reads as its line").
+// Each of these lines is its own subject: right, it reads exactly as the comment beside it.
+satellite.capsule show_programs()
+{
+    satellite.variable.program three = {"sh", "-c", "exit 3"}
+    three.start()
+    three.join()
+    satellite.console.display("ok program displays as ", end="")
+    satellite.console.display(three)                        // (program sh -c exit 3, ended with 3)
+    satellite.variable.bash line = "exit 0"
+    line.start()
+    line.join()
+    satellite.console.display("ok bash line displays as ", end="")
+    satellite.console.display(line)                         // (bash exit 0, ended with 0)
+}
+
+satellite.capsule satellite.main()
+{
+    satellite.variable.number passes = 4
+    satellite.variable.number pass = 1
+    satellite.statement.while (pass < passes)
+    {
+        report quiet(satellite.bool.false)
+        run_all(quiet)
+        pass = pass + 1
+        satellite.statement.if (quiet.call_wrong() > 0)
+        {
+            pass = passes
+        }
+    }
+    report loud(satellite.bool.true)
+    run_all(loud)
+    show_programs()
+    satellite.return(satellite)
+}

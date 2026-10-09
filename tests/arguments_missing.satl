@@ -1,0 +1,14 @@
+// THE PROGRAM'S OWN SWITCH (MS-2, the author 2026-10-03: "arguments.missing = false right where a
+// satellite word would go"): written once at the top of the file, outside every capsule, it is the
+// run's arguments.missing before anything is said about the program or runs in it, and main reads
+// it back. tests/arguments_missing_not_written.satl is this file without the line, and answers true.
+// check.sh runs both, side by side.
+
+satellite.include(satellite)
+arguments.missing = false
+
+satellite.capsule satellite.main(satellite.variable.arguments args)
+{
+    satellite.console.display(args.missing)
+    satellite.return(satellite)
+}

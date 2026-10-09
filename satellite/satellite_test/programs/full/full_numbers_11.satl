@@ -1,0 +1,13 @@
+satellite.include(satellite)
+
+// full_numbers_11 -- satellite.test.full(), a program satl must REFUSE.
+// number: a touching sign, 4+3, is refused (S110).
+// It exits 13, and its report on stderr holds: sign, and this + has none
+// Nothing is printed on stdout.
+
+satellite.capsule satellite.main()
+{
+    satellite.variable.number passes = 1
+    satellite.console.display(4+3)
+    satellite.return(satellite)
+}

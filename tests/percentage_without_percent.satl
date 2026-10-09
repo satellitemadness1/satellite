@@ -1,0 +1,10 @@
+// A percentage is written with its %, by the same rule as a binary's b.
+
+satellite.include(satellite)
+
+satellite.capsule satellite.main()
+{
+    satellite.console.display("before")
+    satellite.variable.percentage share = 50
+    satellite.return(satellite)
+}

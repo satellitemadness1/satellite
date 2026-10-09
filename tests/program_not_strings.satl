@@ -1,0 +1,9 @@
+satellite.include(satellite)
+
+// Every word of a program is a string: a number in the list is refused, and the item named.
+satellite.capsule satellite.main(satellite.variable.arguments args)
+{
+    satellite.variable.program numbered = {"echo", 5}
+    satellite.console.display("never shown")
+    satellite.return(satellite)
+}

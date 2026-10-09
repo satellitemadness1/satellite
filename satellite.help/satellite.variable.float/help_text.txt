@@ -1,0 +1,51 @@
+
+--------------------------------------------------------------------------------
+SATELLITE 004: satellite.variable.float
+--------------------------------------------------------------------------------
+
+satellite.variable.float (second spelling satellite.variable.double) is a number
+with a point in it. It is two satellite_numbers put together, the digits before
+the point and the digits after it, with a sign that is positive unless you write
+a minus. You write one the way you read it: 12.34, 0.5, -2.75. There is no
+scientific notation and no limit on its size.
+
+How many digits it keeps comes from the arguments variable:
+arguments.float.decimal places after the point (128 unless you change it) and
+arguments.float.whole significant digits before it (4096). Set either for your
+machine in ~/.satl/config.ini as float.decimal = 4096 or float.whole = 20000;
+any count of 1 or more works. Where a result has more digits than that, the last
+one kept is rounded half away from zero, so 2.0 / 3 holds 0.666...667. Nothing
+else is ever rounded: 0.1 + 0.2 == 0.3 is true, because a float is decimal all
+the way down. A float shows 32 places (arguments.infinity_display) however many
+it holds, and 12.50 shows 12.5, 2.0 shows 2.0.
+
++ - * / % and ^ work between two floats and between a float and a whole number,
+either way round. 4 / 3 is still whole-number division and answers 1; write
+4.0 / 3 for the float. 2 ^ -1 is 0.5, because an answer a whole number cannot
+hold becomes a float. ^ takes a whole-number power only.
+
+A whole number given to a float name becomes a float: satellite.variable.float
+f = 3 holds 3.0. A float given to a number name is refused ("it holds a float").
+.string is its text, and .number is the whole number when there is nothing
+after the point -- 12.5.number is refused, because satellite rounds nothing on
+its own. A float meeting a percentage, a hex, a binary, a colour, a fraction or
+an infinity is not built yet: the new types are mixed together later.
+
+example:
+
+satellite.include(satellite)
+
+satellite.capsule satellite.main(satellite.variable.arguments arguments)
+{
+    satellite.variable.float price = 12.05
+    satellite.variable.double half = 0.5
+    satellite.console.display(price * 2) // 24.1
+    satellite.console.display(price + half) // 12.55
+    satellite.console.display(4.0 / 3) // 1.33333333333333333333333333333333
+    satellite.console.display(4 / 3) // 1
+    satellite.console.display(2 ^ -1) // 0.5
+    satellite.console.display(12.05 == 12.5) // false
+    satellite.console.display(0.1 + 0.2 == 0.3) // true
+    satellite.console.display(arguments.float.decimal) // 128
+    satellite.return(satellite)
+}

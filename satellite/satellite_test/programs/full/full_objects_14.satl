@@ -1,0 +1,12 @@
+satellite.include(satellite)
+
+// full_objects_14 -- REFUSED when its line runs: join() on a program never started (RUNNING_PROGRAMS:
+// "ok(), error() and join() before any start() are S741").
+
+satellite.capsule satellite.main()
+{
+    satellite.variable.number passes = 1
+    satellite.variable.program p = "true"
+    satellite.console.display(p.join())
+    satellite.return(satellite)
+}

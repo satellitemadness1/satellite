@@ -1,0 +1,37 @@
+// `total = w.join()` on a locked object: the join lets go of the line's lock while it waits (the author,
+// 2026-09-24), so the thread it waits for can read `total`, and the line ends with 1. Before that, S728.
+satellite.include(satellite)
+
+satellite.spacesuit counter()
+{
+    satellite.protected
+    {
+        satellite.variable.number total = 0
+    }
+    satellite.public
+    {
+        satellite.capsule call_next()
+        {
+            satellite.return(total + 1)
+        }
+        satellite.capsule call_step()
+        {
+            satellite.variable.thread w = satellite.thread.new(call_next())
+            w.start()
+            total = w.join()
+        }
+        satellite.capsule call_total()
+        {
+            satellite.return(total)
+        }
+    }
+}
+
+satellite.capsule satellite.main()
+{
+    counter c()
+    c.lock()
+    c.call_step()
+    satellite.console.display(c.call_total())
+    satellite.return(satellite)
+}

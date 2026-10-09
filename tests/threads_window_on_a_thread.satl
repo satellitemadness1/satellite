@@ -1,0 +1,16 @@
+// A window belongs to the main thread: a thread that tries to open one is refused, S727, and join stops main with it.
+satellite.include(satellite)
+
+satellite.capsule open_one()
+{
+    satellite.variable.window w = satellite.window.new("from a thread", 200, 100)
+}
+
+satellite.capsule satellite.main()
+{
+    satellite.variable.thread t = satellite.thread.new(open_one())
+    t.start()
+    t.join()
+    satellite.console.display("never printed")
+    satellite.return(satellite)
+}

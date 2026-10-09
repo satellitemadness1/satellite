@@ -1,0 +1,55 @@
+satellite.include(satellite)
+
+// full_numbers_5 -- satellite.test.full(): satellite.variable.hex (and its second spelling,
+// hexadecimal), and "using binary and hexadecimal numbers together" as far as it is built: a hex
+// keeps its width and its sign, counts as its worth in a sum and answers a number, and has .number
+// .string .hex .binary .width and .reverse(); a binary and a hex together answer a plain number.
+// The checks run `passes` times and print on the last pass only, so the lines never change.
+
+satellite.capsule check(satellite.variable.bool show, satellite.variable.string what, satellite.variable.string got, satellite.variable.string want)
+{
+    satellite.statement.if(show)
+    {
+        satellite.statement.if(got == want)
+        {
+            satellite.console.display("ok " + what)
+        }
+        satellite.statement.else
+        {
+            satellite.console.display("WRONG " + what + ": " + got + " (expected " + want + ")")
+        }
+    }
+}
+
+satellite.capsule satellite.main()
+{
+    satellite.variable.number passes = 1
+    satellite.variable.number rounds = passes
+    satellite.statement.if(rounds < 1)
+    {
+        rounds = 1
+    }
+    satellite.statement.for(satellite.variable.number turn = 1; turn <= rounds; turn + 1)
+    {
+        satellite.variable.bool show = turn == rounds
+        satellite.variable.hex mask = x00ff
+        satellite.variable.hexadecimal red = xFF
+        check(show, "hex shows in upper case with its x and its width, and .string is that; hexadecimal is its second spelling", mask.string + " " + red.string, "x00FF xFF")
+        check(show, "hex keeps its width, x00FF is not xFF, and a lower-case digit reads the same", (mask == red).string + " " + (x00ff == x00FF).string + " " + (xdeadbeef == xDEADBEEF).string, "false true true")
+        check(show, "hex in a sum counts as its worth and answers a number, and x1F == 31", (mask + 1).string + " " + (x1F + 1).string + " " + (x1F == 31).string, "256 32 true")
+        check(show, "hex .number is what it is worth", mask.number.string + " " + xDEADBEEF.number.string, "255 3735928559")
+        check(show, "hex .hex is its digits, .binary its bits four to each digit", mask.hex + " " + mask.binary, "00FF 0000000011111111")
+        check(show, "hex .width counts its bits", mask.width.string + " " + xABC.width.string, "16 12")
+        check(show, "hex .reverse() turns its digits round with the width kept", mask.reverse().string + " " + x1F.reverse().string, "xFF00 xF1")
+        check(show, "hex keeps a sign: -x1F is worth -31, and .reverse() and .hex keep it", (-x1F).string + " " + (-x1F).number.string + " " + (-x1F).reverse().string + " " + (-x1F).hex, "-x1F -31 -xF1 -1F")
+        check(show, "hex - * / % ^ read a hex by its worth, and it orders by its worth", (xFF - x0F).string + " " + (x10 * x10).string + " " + (xFF / x10).string + " " + (xFF % x10).string + " " + (x02 ^ x0A).string + " " + (x1F < x20).string + " " + (xFF > 254).string, "240 256 15 15 1024 true true")
+        satellite.variable.number n = x1F
+        check(show, "hex a number name given a hex keeps its worth", n.string + " " + (n + 1).string, "31 32")
+        check(show, "hex has no length limit", (xFFFFFFFFFFFFFFFFFFFFFFFF + 1).string, "79228162514264337593543950336")
+        check(show, "hex a string joins a hex as its .string", "h " + x1F, "h x1F")
+        satellite.variable.binary low = b1100
+        check(show, "binary and hex together answer a plain number, b1100 + xFF is 267", (low + xFF).string + " " + (xFF + low).string + " " + (low + b0101).string, "267 267 17")
+        check(show, "binary and hex one radix seen as the other, b1100.hex is C and (12).binary is 1100", low.hex + " " + (12).binary, "C 1100")
+    }
+    satellite.return(satellite)
+}

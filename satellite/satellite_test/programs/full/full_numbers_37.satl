@@ -1,0 +1,13 @@
+satellite.include(satellite)
+
+// full_numbers_37 -- satellite.test.full(), a program satl must REFUSE.
+// percentage: 3 * 50% is 1.5, which a whole number cannot hold (S402).
+// It exits 24, and its report on stderr holds: 3 * 50% is not a whole number
+// Nothing is printed on stdout.
+
+satellite.capsule satellite.main()
+{
+    satellite.variable.number passes = 1
+    satellite.console.display(3 * 50%)
+    satellite.return(satellite)
+}

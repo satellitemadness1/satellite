@@ -1,0 +1,129 @@
+
+--------------------------------------------------------------------------------
+SATELLITE 004: satellite.console
+--------------------------------------------------------------------------------
+
+satellite.console is where your program talks to a person.
+satellite.console.display(value) writes one line to satl's standard output:
+text as it is, a number as its digits, a comparison as true or false, a list as
+{1, "two"}, a window as (window "its title"). It takes one value, and after it
+any of five named options, each written name=value, once, after the value:
+
+  end="..."                  what ends the line instead of a newline;
+                             end="" stays on the same line
+  foreground=xFF8800         the colour of the text: six hex digits, or a
+                             satellite.variable.color
+  background=x000000         the colour behind it
+  bold=satellite.bool.true   italic=satellite.bool.true
+
+.center() written after the call -- satellite.console.display("title").center(),
+or .centre() -- puts the line in the middle of the console, for the width the
+console has as the line is shown; a later resize moves nothing, and into a pipe
+or a file the line goes as written.
+
+The style lasts for that one line. satl writes it as the terminal's own codes,
+so it shows in any terminal and in satl's own console; into a pipe or a file the
+text goes plain, and NO_COLOR set drops the colours and keeps bold and italic. A
+colour written into the line that is not six hex digits -- xFFF, "red" -- is
+refused before a line runs; one held in a name is judged when its line runs, and
+is checked even when it will not be shown. satl's own title block goes to
+standard error, so what your program displays can be piped or written to a file
+on its own.
+
+A display hands its line to satl's printing thread and the program goes straight
+on; the line reaches the screen a moment later, always in the order it was
+displayed, and before any report that comes after it. A program must not display
+faster than the console can print: when more than arguments.display.buffer lines
+are waiting for the console -- 131072, unless ~/.satl/config.ini says
+display.buffer = ... -- the program stops with S840 and exits 65. Displaying into
+a pipe nobody reads, or into a less nobody scrolls, reaches it too.
+
+satellite.console.foreground(xFF8800) and .background(x000000) colour every line
+display writes from then on, until .foreground() or .background() puts the
+terminal's own colour back; a line's own foreground= or background= wins over
+them. satellite.terminal.foreground and .background colour the whole terminal
+instead -- satellite.help(satellite.terminal) -- and a string can carry a colour
+of its own, "OK".foreground(x00FF00): satellite.help(satellite.variable.string).
+
+satellite.console.input() and .input(prompt) wait for a person to type a line,
+and answer it as a string without its newline. The prompt goes out with no
+newline after it and takes display's foreground=, background=, bold= and
+italic=. When the input has ended -- a file piped in ran out, or Ctrl-D -- satl
+stops with S830 INPUT_ENDED, exit 55, rather than answering an empty line
+forever.
+
+satellite.console.width and .height, with no brackets, are how many characters
+fit across the terminal and lines fit down it, asked fresh every time -- 80 and
+24 when there is no terminal. satellite.console.clear() empties the screen and
+puts the cursor in the top-left corner; .home() only moves the cursor there,
+for a frame drawn over the last one.
+
+Not built yet in satellite 004: .input(prompt, target) and .typed(). A console
+you make yourself, below, has its own .typed, and that is built.
+
+satellite.console.new(title, width, height) makes a console of your own: a
+window whose whole inside is a terminal. It answers a satellite.variable.window
+and has every method a window has -- .close(), .title, .resize, .closed, .key,
+.every, .message, .ask, .menu -- and these of its own:
+
+  c.display("words")   one line into the console; a number shows as its digits
+  c.typed(a_capsule)   the capsule that runs when a person finishes a line
+  c.typed              read bare, the last line a person finished
+  c.clear()  c.home()  empty the screen; put the cursor in the top-left corner
+  c.columns  c.rows    how many characters fit across, and lines fit down
+  c.colour("#000000")  c.background("#90D5FF")  c.font("IBM Plex Mono", 12)
+
+A console scrolls up and down -- a bar down its right side, and no ceiling on
+the lines it keeps -- and sideways: it is 2048 characters wide, wraps nothing,
+and a bar along the bottom appears when a line runs past the window. Each is on
+unless the rows arguments.scroll.vertical and arguments.scroll.horizontal say
+false (in config.ini, at the prompt, or at the top of a file: arguments.scroll.horizontal
+= false wraps long lines again), and satl's own console follows a change at
+once. A console of your own has c.scroll.vertical(0) and c.scroll.horizontal(0)
+to turn each off, (1) on, and each read bare answers which.
+
+A console holds no pieces: .append is refused, and .text is sent to .display.
+satellite.console.display still writes to standard output, never into a console
+you made -- c.display is how words get into that one.
+
+satl --console [file.satl] [words...] runs your program -- or, with no file,
+the prompt -- in a console of satl's own. satl's input and output ARE that
+console, in the same process, so the exit status is still your program's. A
+program that finishes closes it; one that stops holds it open with
+"[satl] stopped on machine code N (its name) -- press any key to close". Since
+2026-10-05 every run is in this console, typed in a shell or started from a
+launcher alike: satl no longer runs in the terminal it was started from, and a
+machine with no screen is refused with S730 NO_DISPLAY, exit 50, before the
+program runs. Only output sent to a file or a pipe (satl x.satl > log), or
+SATL_NO_WINDOW set for a harness, keeps satl where it was pointed; --console
+opens the console even then.
+
+example:
+
+satellite.include(satellite)
+
+satellite.capsule when_typed(satellite.variable.window the_console)
+{
+    the_console.display("you typed " + the_console.typed)
+}
+
+satellite.capsule satellite.main()
+{
+    satellite.variable.number n = 4
+    satellite.console.display("hello")       // hello
+    satellite.console.display(n + 1)         // 5
+    satellite.console.display(n > 3)         // true
+    satellite.console.display({1, "two"})    // {1, "two"}
+    satellite.console.display("careful", foreground=xFF8800, bold=satellite.bool.true) // careful, orange and bold
+    satellite.console.display("Loading", end="...")
+    satellite.console.display(" done")       // Loading... done
+    satellite.console.foreground(x33FF33)
+    satellite.console.display("green")       // green, in green
+    satellite.console.foreground()
+
+    satellite.variable.window c = satellite.console.new("a console", 800, 600)
+    c.display("type a line and press Enter")
+    c.typed(when_typed)
+
+    satellite.return(satellite)
+}

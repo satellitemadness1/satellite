@@ -1,0 +1,48 @@
+ok satellite.include(satellite) makes this file a program
+ok capsule with no parameters
+ok capsule with one parameter
+ok capsule with three parameters of three types
+ok capsule arguments worked out where the call is
+ok capsule call inside a call
+ok capsule answers inside a line
+ok capsule declared after main is called from it
+ok capsule in a satellite.namespace, called by its space
+ok a bare name in a space is found in its space, then in the file around it
+ok one name in the file and in a space: each space's bare name finds its own
+ok capsule answers a list
+ok capsule's list answer kept in a variable
+ok comment between a capsule's ) and {
+ok several returns in one capsule: the first one reached ends it
+ok satellite.return inside an if inside a while ends the capsule
+ok satellite.return inside an if inside a for ends the capsule, or the one after the loop
+ok satellite.return() hands back nothing and ends the capsule
+ok a capsule with no satellite.return ends at its }
+ok recursion: factorial(25), exact
+ok recursion with work after the call, 10,000 deep
+ok recursion as the last act, 100,000 deep
+ok two capsules calling each other, 1,001 deep
+ok satellite.statement.if, .else and else-if take the right branch
+ok satellite.statement.if (!(...)) -- not
+ok satellite.statement.while runs until its condition is false, and not at all when it starts false
+ok satellite.statement.for with + 1, and a body that changes the capsule's name
+ok satellite.statement.for with ++ and --
+ok satellite.statement.for with * 2
+ok satellite.statement.for with no step, the body moving the number
+ok satellite.statement.for with / 2, - 3 and + 4, and one whose condition starts false
+ok satellite.statement.for inside a for
+ok satellite.statement.for whose condition calls a method each pass
+ok a for's own number is a free name after its loop
+ok satellite.statement.break leaves a while
+ok satellite.statement.break() leaves only the nearest loop
+ok satellite.statement.continue starts a for's next pass
+ok satellite.statement.continue() starts a while's next pass
+ok a break inside an else, and a continue inside an else-if
+ok an if inside a while, and a while inside an if
+ok a name declared in a loop's body is made again every pass
+ok a trailing comment ends the line it follows
+ok // inside quotes is text, not a comment
+ok a line written after // never runs
+ok comments after a while, its braces and its lines
+ok a comment holding braces, quotes and code changes nothing
+ok every pass answered alike
+ok satellite.return(satellite) ends the whole program from a capsule 50 deep, exit 0

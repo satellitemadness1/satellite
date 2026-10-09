@@ -1,0 +1,203 @@
+// list_loss.satl -- the loss test for satellite.container.list (satellite 004, build 0039)
+//
+// The author's standard, 2026-10-06: "for the loss testing, we will use the number 547311173 so we
+// have to start with that number, and end at that number, after say, 1,000,000 million operations...
+// That will be the loss test" -- 547311173 is "satellite" spelled as numbers: 5 looks like S, 4 like A,
+// 7 like T. And: "so we will use the number satellite, and the numbers 1 trillion and 1 million for
+// testing" -- 1 million operations for a loss test: 100 different operations, run 10,000 times.
+//
+// The list starts as the digits of 547311173, {5, 4, 7, 3, 1, 1, 1, 7, 3}. Each pass runs 100 different
+// operations on it: 1-50 carry it far from where it began -- every digit changed by a different
+// operation, numbers past 64 bits, a float, strings, a string split into a list, a list of lists sorted
+// two ways, a copy changed on its own, a map in the list, items moved, counted, joined and searched
+// for -- and 51-100 undo them, the last one first, each by a different operation again. Whatever an
+// undo takes out is found by its value (remove, search, index_of), so an item that changed on its way
+// through is caught. 10,000 passes = 1,000,000 operations.
+//
+// FIXED 2026-10-06, after a fresh reviewer injected losses that still ended at 547311173:
+// - EVERY WHOLE-NUMBER / KEEPS ITS REMAINDER (80, 90, 91, 96, 98): a / D is written a / D + a % D * far,
+//   far = 10 ^ 1000. / cuts toward zero, so x[8] + 1 divided by ten to the 30th came back 3 and the 1
+//   was gone, and 96 let any error up to 3 ^ 40 in 3 ^ 41 vanish. The remainder is 0 when nothing was
+//   lost; any other remainder, times far, lands out of reach of everything after it.
+// - 95 TAKES 547311172000 AWAY instead of % 547311172000, which answered 1 even when 6 had added nothing.
+// - WHAT AN OPERATION CANNOT SEE IS CHECKED BEFORE IT RUNS, against the exact value it must be given:
+//   lost(held, must) answers 1 when held is not exactly that, and wrong counts them. Each check line
+//   names the operation it guards:
+//     a copy dropped or written over unread -- the copy 50 made (51), the copy 33 made (67, 68);
+//     a sort, which puts any order back -- x[13] before 31, 70 and 72;
+//     upper, replace and lower, which cannot see a letter that changed case or a "one" that never
+//     came -- x[1] before 17, 83 and 84;
+//     ^ 2, since -5 squared is 25 too -- x[9] before 11;
+//     a number's .reverse(), which drops the zeros it ends with, so x * 10 would come back -- x[12]
+//     before 22 and 79;
+//     .number, which cannot see a conversion that never happened, since .number of a number is that
+//     number -- x[12], x[6] and x[5] before 77, 93 and 94;
+//     a float step that rounds a loss in the 128th place away -- x[6] before / 8 (25) and * 0.001 (27);
+//     .search, which answers the first item whose TEXT CONTAINS what it is given (container_calls.cpp),
+//     so 120 would pass for 20 -- what it finds, before 56 and 87 take it out.
+// - EVERY PASS IS CHECKED, not only the last: a pass must end at {5, 4, 7, 3, 1, 1, 1, 7, 3}, or the run
+//   stops there -- a loss undone by itself on the next pass would be back after an even number of them.
+// The answer is always 547311173: it prints 547311173 when every check held and every pass ended with
+// the list exactly {5, 4, 7, 3, 1, 1, 1, 7, 3} again -- == on two lists is strict: 3, 3.0 and "3" are
+// three different items -- and otherwise one line: {"pass", the pass that went wrong, "wrong", how many
+// checks failed in it, the list at its end}.
+satellite.include(satellite)
+
+// lost(held, must): 1 when held is not exactly must, 0 when it is. {held} == {must} compares inside
+// lists, which is strict, and answers false -- not a refusal -- when a loss changed held's type.
+satellite.capsule lost(satellite.container.multiple held, satellite.container.multiple must)
+{
+    satellite.statement.if ({held} == {must})
+    {
+        satellite.return(0)
+    }
+    satellite.return(1)
+}
+
+satellite.capsule satellite.main()
+{
+    satellite.container.list x = {5, 4, 7, 3, 1, 1, 1, 7, 3}
+    satellite.container.list start = {5, 4, 7, 3, 1, 1, 1, 7, 3}
+    satellite.variable.number far = 10 ^ 1000                  // where a division puts a remainder: out of reach
+    satellite.variable.number wrong = 0                        // how many checks failed
+    satellite.variable.number failed = 0                       // the pass they failed in
+    satellite.statement.for(satellite.variable.number pass = 0; pass < 10000; pass + 1)
+    {
+        // 1-50: away from where it began
+        x.append(x.first)                                      // 1: the first digit, 5, copied to the end ...
+        x.remove_first()                                       // 2: ... and taken off the front: {4, 7, 3, 1, 1, 1, 7, 3, 5}
+        x[1] = x[1] * 136827793                                // 3: 4 -> 547311172
+        x[2] = x[2] - 547311180                                // 4: 7 -> -547311173
+        x[3] = x[3] ^ 41                                       // 5: 3 -> 36472996377170786403, past one 64-bit word
+        x[4] = x[4] + 547311172000                             // 6: 1 -> 547311172001
+        x[5] = x[5] * 1.0                                      // 7: 1 -> 1.0, a float
+        x[6] = x[6].string                                     // 8: 1 -> "1", a string
+        x[7] = 0 - x[7]                                        // 9: 7 -> -7
+        x[8] = x[8] * 1000000000000000000000000000000          // 10: 3 -> 3 and 30 zeros
+        wrong = wrong + lost(x[9], 5)                          // check: ^ 2 cannot see a sign, -5 squared is 25 too
+        x[9] = x[9] ^ 2                                        // 11: 5 -> 25
+        x.append(547311173)                                    // 12: 547311173 itself, at the end
+        x.insert(1, "547311173")                               // 13: 547311173 as a string, at the front
+        x.insert(6, 547311173.0)                               // 14: 547311173 as a float, in the middle
+        x[1] = x[1].reverse()                                  // 15: "547311173" -> "371113745"
+        x[1] = x[1] + "satellite"                              // 16: -> "371113745satellite"
+        wrong = wrong + lost(x[1], "371113745satellite")       // check: 17 cannot see a letter that changed case
+        x[1] = x[1].upper()                                    // 17: -> "371113745SATELLITE"
+        x[1] = x[1].replace("1", "one")                        // 18: -> "37oneoneone3745SATELLITE"
+        x[1] = x[1].split("one")                               // 19: the string becomes a list: {"37", "", "", "3745SATELLITE"}
+        x[1].append("satellite")                               // 20: and that list grows
+        x[12] = x[12] * 547311173                              // 21: 547311173 -> 547311173 squared
+        wrong = wrong + lost(x[12], 299549520090635929)        // check: a number's .reverse() drops the zeros it ends with, so x * 10 would come back
+        x[12] = x[12].reverse()                                // 22: its digits turned round
+        x[12] = x[12] - 1000000000000000000000000000000000000  // 23: ten to the 36th taken off: far below zero
+        x[12] = x[12].string                                   // 24: and that number as text
+        wrong = wrong + lost(x[6], 547311173.0)                // check: / 8 rounds a loss in the 128th place away
+        x[6] = x[6] / 8                                        // 25: 547311173.0 -> 68413896.625
+        x[6] = x[6] - 68413896.5                               // 26: -> 0.125
+        wrong = wrong + lost(x[6], 0.125)                      // check: * 0.001 rounds one away too
+        x[6] = x[6] * 0.001                                    // 27: -> 0.000125
+        x.append({7, 7, 5, 4, 3, 3, 1, 1, 1})                  // 28: the digits from the largest down, a list in the list
+        x[13] = x[13].reverse()                                // 29: turned round: {1, 1, 1, 3, 3, 4, 5, 7, 7}
+        x[13][9] = x[13][9] + 3                                // 30: {1, 1, 1, 3, 3, 4, 5, 7, 10}
+        wrong = wrong + lost(x[13], {1, 1, 1, 3, 3, 4, 5, 7, 10}) // check: its order, before 31 sorts any order back
+        x[13] = x[13].sort().by_name()                         // 31: {1, 1, 1, 10, 3, 3, 4, 5, 7}: "10" reads before "3"
+        x[13].insert(1, 0)                                     // 32: {0, 1, 1, 1, 10, 3, 3, 4, 5, 7}
+        x.append(x[13])                                        // 33: a copy of that list
+        x[14][1] = 547311173                                   // 34: only the copy changes
+        x.append({"satellite": 547311173})                     // 35: a map in the list
+        x[15]["moved"] = x[2]                                  // 36: 547311172 copied into the map ...
+        x.remove_at(2)                                         // 37: ... and taken out of the list: it lives only in the map now
+        x[14]["satellite"] = x[14]["satellite"] + 1            // 38: the map's own value moves: 547311174
+        x.insert(1, x[12].sum)                                 // 39: the sorted list's sum, 35, at the front
+        x.append(x[14].max)                                    // 40: the copy's largest, 547311173, at the end
+        x.append(x[13].min)                                    // 41: the sorted list's smallest, 0
+        x.append(x[13].join("-"))                              // 42: "0-1-1-1-10-3-3-4-5-7"
+        x.append(x.contains(-7))                               // 43: true
+        x.append(x[15].empty)                                  // 44: false: the map is not empty
+        x.insert(2, x.size)                                    // 45: how many items there are, 20, as item 2
+        x.reserve(1000)                                        // 46: room for 1000 items: no item may change
+        x.insert(1, x[x.size])                                 // 47: the last item copied to the front ...
+        x.truncate(x.size - 1)                                 // 48: ... and cut off the end: the list turned one place right
+        x.append({})                                           // 49: an empty list in the list
+        x[x.size].append(x[5])                                 // 50: -547311173 copied into it
+        // 51-100: back again, each undoing one of 1-50, the last one first
+        wrong = wrong + lost(x[x.size], {-547311173})          // check: the copy 50 made, before 51 clears it unread
+        x[x.size].clear()                                      // 51: undoes 50
+        x.remove({})                                           // 52: undoes 49
+        x.append(x[1])                                         // 53: undoes 48, the front item copied back to the end ...
+        x.remove_at(1)                                         // 54: undoes 47, ... and taken off the front
+        x.truncate(x.size + 1000)                              // 55: undoes 46, cut past the end, so nothing goes
+        wrong = wrong + lost(x[x.search(20)], 20)              // check: search finds an item whose text CONTAINS 20, so 120 would do: it must BE 20
+        x.remove_at(x.search(20))                              // 56: undoes 45
+        x.remove(satellite.bool.false)                         // 57: undoes 44
+        x.remove(satellite.bool.true)                          // 58: undoes 43
+        x.remove("0-1-1-1-10-3-3-4-5-7")                       // 59: undoes 42
+        x.remove(0)                                            // 60: undoes 41
+        x.remove(547311173)                                    // 61: undoes 40
+        x.remove(35)                                           // 62: undoes 39
+        x[14]["satellite"] = x[14]["satellite"] - 1            // 63: undoes 38
+        x.insert(2, x[14]["moved"])                            // 64: undoes 37, 547311172 back into the list, from the map
+        x[15].remove("moved")                                  // 65: undoes 36
+        x.remove({"satellite": 547311173})                     // 66: undoes 35
+        wrong = wrong + lost(x[14], {547311173, 1, 1, 1, 10, 3, 3, 4, 5, 7}) // check: the copy 33 made, before 67 writes over it and 68 drops it
+        x[14][1] = x[13][1]                                    // 67: undoes 34, from the list the copy was made from
+        wrong = wrong + lost(x[14], x[13])                     // check: the copy, written back by 67, before 68 drops it unread
+        x.remove_at(x.size)                                    // 68: undoes 33
+        x[13].remove(0)                                        // 69: undoes 32
+        wrong = wrong + lost(x[13], {1, 1, 1, 10, 3, 3, 4, 5, 7}) // check: its order, before 70 sorts any order back
+        x[13] = x[13].sort().by_value()                        // 70: undoes 31
+        x[13][9] = x[13][9] - 3                                // 71: undoes 30
+        wrong = wrong + lost(x[13], {1, 1, 1, 3, 3, 4, 5, 7, 7})  // check: its order, before 72 sorts any order back
+        x[13] = x[13].sort().by_value().reverse()              // 72: undoes 29, largest first again
+        x.remove({7, 7, 5, 4, 3, 3, 1, 1, 1})                  // 73: undoes 28
+        x[6] = x[6] / 0.001                                    // 74: undoes 27
+        x[6] = x[6] + 68413896.5                               // 75: undoes 26
+        x[6] = x[6] * 8                                        // 76: undoes 25
+        wrong = wrong + lost(x[12], "-999999999999999999070463909974054008") // check: 77's .number cannot see that 24 never made it text
+        x[12] = x[12].number                                   // 77: undoes 24
+        x[12] = x[12] + 1000000000000000000000000000000000000  // 78: undoes 23
+        wrong = wrong + lost(x[12], 929536090025945992)        // check: 79's .reverse() drops a number's end zeros too
+        x[12] = x[12].string.reverse().number                  // 79: undoes 22
+        x[12] = x[12] / 547311173 + x[12] % 547311173 * far    // 80: undoes 21, its remainder kept
+        x[1].remove("satellite")                               // 81: undoes 20
+        x[1] = x[1].join("one")                                // 82: undoes 19
+        wrong = wrong + lost(x[1], "37oneoneone3745SATELLITE") // check: 83 cannot see a "one" that never came
+        x[1] = x[1].replace("one", "1")                        // 83: undoes 18
+        wrong = wrong + lost(x[1], "371113745SATELLITE")       // check: 84 cannot see a capital letter that went missing
+        x[1] = x[1].lower()                                    // 84: undoes 17
+        x[1] = x[1] - "satellite"                              // 85: undoes 16
+        x[1] = x[1].split("").reverse().join("")               // 86: undoes 15
+        wrong = wrong + lost(x[x.search(547311173.0)], 547311173.0) // check: what search finds CONTAINS 547311173.0 -- it must BE it
+        x.remove_at(x.search(547311173.0))                     // 87: undoes 14
+        x.remove("547311173")                                  // 88: undoes 13
+        x.remove_at(x.index_of(547311173))                     // 89: undoes 12
+        x[9] = x[9] / 5 + x[9] % 5 * far                       // 90: undoes 11, its remainder kept
+        x[8] = x[8] / 1000000000000000000000000000000 + x[8] % 1000000000000000000000000000000 * far // 91: undoes 10, its remainder kept
+        x[7] = x[7] * -1                                       // 92: undoes 9
+        wrong = wrong + lost(x[6], "1")                        // check: 93's .number cannot see that 8 never made it text
+        x[6] = x[6].number                                     // 93: undoes 8
+        wrong = wrong + lost(x[5], 1.0)                        // check: 94's .number cannot see that 7 never made it a float
+        x[5] = x[5].number                                     // 94: undoes 7
+        x[4] = x[4] - 547311172000                             // 95: undoes 6
+        x[3] = x[3] / 12157665459056928801 + x[3] % 12157665459056928801 * far // 96: undoes 5, 3 ^ 41 / 3 ^ 40, its remainder kept
+        x[2] = x[2] + 547311180                                // 97: undoes 4
+        x[1] = x[1] / 136827793 + x[1] % 136827793 * far       // 98: undoes 3, its remainder kept
+        x.insert(1, x.last)                                    // 99: undoes 2, the last item copied to the front ...
+        x.remove_last()                                        // 100: undoes 1, ... and taken off the end
+        wrong = wrong + lost(x, start)                         // check: every pass ends where it began
+        satellite.statement.if (wrong > 0)
+        {
+            failed = pass
+            satellite.statement.break
+        }
+    }
+    satellite.statement.if (wrong == 0)
+    {
+        satellite.console.display(547311173)
+    }
+    satellite.statement.else
+    {
+        satellite.console.display({"pass", failed, "wrong", wrong, x})
+    }
+    satellite.return(satellite)
+}

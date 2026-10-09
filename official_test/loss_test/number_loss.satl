@@ -1,0 +1,182 @@
+// number_loss.satl -- a DATA-LOSS test for satellite.variable.number.
+//
+// The author's standard, 2026-10-06: "for the loss testing, we will use the number 547311173 so we have
+// to start with that number, and end at that number, after say, 1,000,000 million operations... That
+// will be the loss test" -- 547311173 is "satellite" spelled as numbers (5 looks like S, 4 like A, 7 like T).
+//
+// n starts at 547311173 and goes through 100 different operations, 10,000 times:
+// 1,000,000 operations. Operations 1-50 take it far away -- through the 64-bit and 128-bit edges, below zero
+// and back, out to 656 digits -- with + - * / % and ^, decimal, hex, binary and text operands,
+// .add(), .reverse(), its own text, and percentages; 47 and 49 also force the two rare corrections inside
+// satl's own long division. Operations 51-100 undo them in reverse order, so every pass ends exactly
+// where it began. Every step was checked against exact math before satl ran it.
+//
+// Every division keeps its remainder, so a loss cannot hide in one: n / k + n % k * far is just n / k
+// when the remainder is 0 (it always is here), and throws a lost digit 1000 digits up when it is not.
+// (A copy with plain n / k and a 1 slipped in at operation 50 still printed 547311173; this one cannot.)
+//
+// FIXED 2026-10-06, after a fresh reviewer, for the places below where a loss could still hide:
+//  1. Operation 55 undid 46 with (n.string - "547").number. Text minus takes out the FIRST "547" anywhere,
+//     or nothing, and the 350 digits behind the 547 have no 547 in them. So if 46 lost its prefix, nothing
+//     was taken out and the run still came back exact (shown: 46 as 0 + ("" + n.str) still printed
+//     547311173). 55 still takes the 547 out as text, and now adds (n / 10 ^ 350 - 547) * far: that is 0
+//     only when the three digits in front of exactly 350 more are 547. Anything else there lands 1000
+//     digits up.
+//  2. .reverse() drops a 0 at the end of the number (1230 turns into 321, the same as 123 does), so a
+//     number that gained a 0 just before 19 or 82 came back exact (shown: n * 10 slipped in before either
+//     one still printed 547311173). Both of those numbers end in 3 when nothing was lost, so each reverse
+//     now adds (n % 10 - 3) * far.
+//  3. 82 undoes 19 with another reverse. A reversal that went wrong the same way in both, for example
+//     one that did nothing, undid itself (shown: 19 and 82 both doing nothing still printed 547311173).
+//     So n is now checked halfway, after 50, against its value worked out by exact math before satl ran:
+//     656 digits, written out in the check and compared as text. And it is checked against 547311173 at
+//     the end of every pass. The run stops at the first pass that went wrong.
+//  4. The four rotations (20, 33, 68 and 81) are exact only while the value fits: past 2^640 (20, 81) or
+//     10^309 (33, 68) the top part wraps into the bottom, and a value that grew by exactly the wrap came
+//     back exact (shown: n + 2 ^ 640 - 1 slipped in before 81, or n - 10 ^ 309 + 1 before 68, still
+//     printed 547311173). Each now adds n / 2 ^ 640 * far or n / 10 ^ 309 * far, which is 0 while it fits.
+//  5. The answer printed is n's own text, as the infinity test does, not a 547311173 written in the test
+//     behind n == start -- so a == that said yes to everything could not print it either.
+//
+// The answer is always 547311173 -- n's own text at the end. Anything else printed is what went wrong:
+// the first wrong pass, how many checks failed there, and n at its end -- "pass 0: wrong 1, n = ..." --
+// or satl's own refusal.
+
+satellite.include(satellite)
+
+satellite.capsule satellite.main()
+{
+    satellite.variable.number start = 547311173
+    satellite.variable.number far = 10 ^ 1000
+    satellite.variable.number n = 547311173
+    satellite.variable.number wrong = 0
+    satellite.variable.string seen = ""
+    satellite.statement.for(satellite.variable.number pass = 0; pass < 10000; pass + 1)
+    {
+        n = n + 18446744073162240442                                     // 1: 2^64 - 1, the most one unsigned long long holds
+        n = n + 1                                                        // 2: 2^64: a carry through 64 bits into a second limb
+        n = n * 547311173                                                // 3: the satellite digits in the high limb
+        n = n - b1                                                       // 4: a borrow back through 64 bits (binary 1)
+        n = n * x10000000000000000                                       // 5: a whole limb shifted in (hex 2^64)
+        n = n + xFFFFFFFFFFFFFFFF                                        // 6: the low limb all ones (hex)
+        n = n.add(1)                                                     // 7: a carry through 128 bits
+        n = -n                                                           // 8: below zero
+        n = n + 10 ^ 50                                                  // 9: above zero again, past a 3-limb value
+        n = n * -7                                                       // 10: a negative multiplier
+        n = n - 99999999999999999999999999999999999999999999999999999999999999 // 11: 62 nines
+        n = 1000000007 * n                                               // 12: constant first, a prime
+        n = n + "123456789012345678901234567890123456789012345678901234567890123456789012345" // 13: text that spells a number: below zero to above it
+        n = n * 18446744073709551557                                     // 14: the largest prime below 2^64
+        n = n * 2 ^ 3 ^ 2                                                // 15: 2 ^ 9: ^ groups right to left
+        n = n * 340282366920938463463374607431768211507                  // 16: 2^128 + 51
+        n = n - 3 ** 100                                                 // 17: ** is ^
+        n = n * 10 ^ 40 + 547311173                                      // 18: the satellite digits appended
+        n = n.reverse() + (n % 10 - 3) * far                             // 19: its digits turned round (a 0 at its end would vanish: kept up in far)
+        n = n % 2 ^ 64 * 2 ^ 576 + n / 2 ^ 64 + n / 2 ^ 640 * far        // 20: the lowest limb rotated to the top (a value past 2^640 would wrap: kept up in far)
+        n = (n + 5) ^ 2 - (n - 5) ^ 2                                    // 21: its own squares: 20 n
+        n = n / 4 + n % 4 * far                                          // 22: an exact division, its remainder kept
+        n = n.add(n)                                                     // 23: .add() its own value
+        n = n - 547311173547311173547311173547311173547311173547311173547311173547311173 // 24: satellite 8 times
+        n = n * 3 + 1                                                    // 25: * before +
+        n = n.string.number                                              // 26: through its own text, back with .number
+        n = n * 800%                                                     // 27: 800% of it
+        n = n + 12.5%                                                    // 28: grown by 12.5%
+        n = n / 0.00000000000000000000000000000001%                      // 29: divided by the smallest percent: n * 10^34
+        n = 547311173 - n                                                // 30: a reflection below zero
+        n = n * xFF                                                      // 31: hex
+        n = n - b1111111111111111111111111111111111111111111111111111111111111111111111111111111 // 32: 79 binary ones
+        n = n % 10 ^ 9 * 10 ^ 300 + n / 10 ^ 9 + n / 10 ^ 309 * far      // 33: the last 9 digits moved up above the rest (past 10^309 it would wrap: kept up in far)
+        n = n + n                                                        // 34: the value added to itself with +
+        n = n.add(xDEADBEEF)                                             // 35: .add() a hex
+        n = n.add("547311173")                                           // 36: .add() text
+        n = n.add(2 ^ 200)                                               // 37: .add() a power
+        n = (n + 1) ^ 2 - n ^ 2 - 1                                      // 38: its own squares again: 2 n
+        n = n * 3 ** 40                                                  // 39: 3 ** 40
+        n = n - 7 ** 77                                                  // 40: a 66-digit power
+        n = 2 * n - 1                                                    // 41: constant first: 2 n - 1
+        n = n * 9223372036854775807                                      // 42: 2^63 - 1
+        n = n + 9223372036854775808                                      // 43: 2^63
+        n = 0 - n                                                        // 44: above zero again
+        n = 0 + (n.string + "173")                                       // 45: three digits appended as text
+        n = 0 + ("547" + n.str)                                          // 46: three digits put in front as text
+        n = (n + xFFFFFFFFFFFFFFFEFFFFFFFFFFFFFFFF * 2 ^ 1408) * x200000000000000000000000000000003 // 47: forces Knuth D's rare add-back when undone
+        n = n * 4294967296                                               // 48: 2^32
+        n = (n + x7FFFFFFFFFFFFFFF * 2 ^ 2048) * x8000000000000003       // 49: forces one-limb division's rare second correction when undone
+        n = n * 10                                                       // 50: * 10
+
+        // HALFWAY: n is where exact math says it is, so a step that undoes itself cannot cancel out
+        satellite.statement.if (n.string != "27492268294360120508912033380221923927668579884630881103392555925645403049218412427639005488220055195833773988772922471650476294404764235835713376087727872762804076306709507192010049471986023828917685393991576842156624154142878871507043732727540257319696113156082112621309331459845155882659178399780206080473286239965583450871340034087953933386206935741410186561391157494582649652631461711098796083688727064344897596812865293531298299809778286521023719165540063052920605572592903000622897346574865954158724462669667943029645491509452792153150579151320344282193164884098746946986535548161729935081254053753514036292901351223550264145440506258127807494225920")
+        {
+            wrong = wrong + 1
+        }
+
+        n = n / 10 + n % 10 * far                                        // 51: undoes 50
+        n = n / x8000000000000003 + n % x8000000000000003 * far - x7FFFFFFFFFFFFFFF * 2 ^ 2048 // 52: undoes 49
+        n = n / 4294967296 + n % 4294967296 * far                        // 53: undoes 48
+        n = n / x200000000000000000000000000000003 + n % x200000000000000000000000000000003 * far - xFFFFFFFFFFFFFFFEFFFFFFFFFFFFFFFF * 2 ^ 1408 // 54: undoes 47
+        n = (n.string - "547").number + (n / 10 ^ 350 - 547) * far      // 55: undoes 46 (anything but 547 in front of 350 digits: kept up in far)
+        n = n / 1000 + (n % 1000 - 173) * far                            // 56: undoes 45
+        n = -1 * n                                                       // 57: undoes 44
+        n = n - 9223372036854775808                                      // 58: undoes 43
+        n = n / 9223372036854775807 + n % 9223372036854775807 * far      // 59: undoes 42
+        n = (n + 1) / 2 + (n + 1) % 2 * far                              // 60: undoes 41
+        n = n + 7 ** 77                                                  // 61: undoes 40
+        n = n / 3 ** 40 + n % 3 ** 40 * far                              // 62: undoes 39
+        n = n / b10 + n % b10 * far                                      // 63: undoes 38
+        n = n - 2 ^ 200                                                  // 64: undoes 37
+        n = n.add("-547311173")                                          // 65: undoes 36
+        n = n.add(-xDEADBEEF)                                            // 66: undoes 35
+        n = n / 2 + n % 2 * far                                          // 67: undoes 34
+        n = n % 10 ^ 300 * 10 ^ 9 + n / 10 ^ 300 + n / 10 ^ 309 * far    // 68: undoes 33 (the same guard)
+        n = n + b1111111111111111111111111111111111111111111111111111111111111111111111111111111 // 69: undoes 32
+        n = n / xFF + n % xFF * far                                      // 70: undoes 31
+        n = -(n - 547311173)                                             // 71: undoes 30
+        n = n * 0.00000000000000000000000000000001%                      // 72: undoes 29
+        n = n / 112.5%                                                   // 73: undoes 28
+        n = n * 12.5%                                                    // 74: undoes 27
+        n = 0 + n.to_string                                              // 75: undoes 26
+        n = (n - 1) / 3 + (n - 1) % 3 * far                              // 76: undoes 25
+        n = n + 547311173547311173547311173547311173547311173547311173547311173547311173 // 77: undoes 24
+        n = n * 50%                                                      // 78: undoes 23
+        n = n * 4                                                        // 79: undoes 22
+        n = n / 20 + n % 20 * far                                        // 80: undoes 21
+        n = n % 2 ^ 576 * 2 ^ 64 + n / 2 ^ 576 + n / 2 ^ 640 * far       // 81: undoes 20 (the same guard)
+        n = (0 + n.string.reverse()) + (n % 10 - 3) * far                // 82: undoes 19 (a 0 at its end would vanish: kept up in far)
+        n = n / 10 ^ 40 + (n % 10 ^ 40 - 547311173) * far                // 83: undoes 18
+        n = n + 3 ** 100                                                 // 84: undoes 17
+        n = n / 340282366920938463463374607431768211507 + n % 340282366920938463463374607431768211507 * far // 85: undoes 16
+        n = n / 2 ^ 3 ^ 2 + n % 2 ^ 3 ^ 2 * far                          // 86: undoes 15
+        n = n / 18446744073709551557 + n % 18446744073709551557 * far    // 87: undoes 14
+        n = n + "-123456789012345678901234567890123456789012345678901234567890123456789012345" // 88: undoes 13
+        n = n / 1000000007 + n % 1000000007 * far                        // 89: undoes 12
+        n = n + 99999999999999999999999999999999999999999999999999999999999999 // 90: undoes 11
+        n = n / -7 + n % -7 * far                                        // 91: undoes 10
+        n = n - 10 ^ 50                                                  // 92: undoes 9
+        n = n * -1                                                       // 93: undoes 8
+        n = n.add(-1)                                                    // 94: undoes 7
+        n = n - xFFFFFFFFFFFFFFFF                                        // 95: undoes 6
+        n = n / x10000000000000000 + n % x10000000000000000 * far        // 96: undoes 5
+        n = n + "1"                                                      // 97: undoes 4
+        n = n / 547311173 + n % 547311173 * far                          // 98: undoes 3
+        n = n - 1                                                        // 99: undoes 2
+        n = n - 18446744073162240442                                     // 100: undoes 1
+
+        // THE PASS ENDS WHERE IT BEGAN -- or the run stops at the first pass that does not, and says so
+        satellite.statement.if (n != start)
+        {
+            wrong = wrong + 1
+        }
+        satellite.statement.if (wrong > 0)
+        {
+            seen = "pass " + pass.string + ": wrong " + wrong.string + ", n = " + n.string
+            satellite.statement.break
+        }
+    }
+    // 547311173, n's own text -- or the first pass that went wrong, and what n was then
+    satellite.statement.if (seen == "")
+    {
+        seen = n.string
+    }
+    satellite.console.display(seen)
+    satellite.return(satellite)
+}

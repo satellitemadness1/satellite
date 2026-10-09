@@ -1,0 +1,32 @@
+satellite.include(satellite)
+
+// satellite.delete(name) (NEW_MILESTONES.md NM-2): the name and its value go, and the name may be
+// declared again as anything; a capsule's parameter is its own to delete; a name declared inside a
+// loop is deleted on every pass, and declared again on the next. check.sh reads every line.
+satellite.capsule doubled(satellite.variable.number n)
+{
+    satellite.variable.number twice = n * 2
+    satellite.delete(n)
+    satellite.return(twice)
+}
+
+satellite.capsule satellite.main()
+{
+    satellite.variable.string big = "a long text"
+    satellite.console.display(big)
+    satellite.delete(big)
+    satellite.variable.number big = 5
+    satellite.console.display(big + 1)
+    satellite.console.display(doubled(21))
+    satellite.statement.for(satellite.variable.number i = 0; i < 3; i + 1)
+    {
+        satellite.variable.number each = i * 10
+        satellite.console.display(each)
+        satellite.delete(each)
+    }
+    satellite.container.list<satellite.variable.number> numbers = {1, 2, 3}
+    satellite.delete(numbers)
+    satellite.container.list<satellite.variable.string> numbers = {"one"}
+    satellite.console.display(numbers)
+    satellite.return(satellite)
+}

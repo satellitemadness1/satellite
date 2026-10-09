@@ -1,0 +1,11 @@
+satellite.include(satellite)
+
+// full_text_22 -- REFUSED: string satellite.variable.string(x) as a call is not built yet (S210).
+// satellite.help(satellite.variable.string). Nothing reaches stdout; satl exits with the refusal's code.
+
+satellite.capsule satellite.main()
+{
+    satellite.variable.number passes = 1
+    satellite.variable.string s = satellite.variable.string(5)
+    satellite.return(satellite)
+}

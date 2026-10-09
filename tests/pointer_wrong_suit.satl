@@ -1,0 +1,36 @@
+satellite.include(satellite)
+
+// A POINTER IS ITS OBJECT'S SPACESUIT, so a name declared as another spacesuit refuses it, as it
+// would the object itself (S301) -- when the line runs, after the line before it.
+
+satellite.spacesuit box()
+{
+    satellite.protected
+    {
+        satellite.variable.number value = 0
+    }
+    satellite.public
+    {
+        satellite.capsule call_take()
+        {
+            satellite.return(value)
+        }
+    }
+}
+
+satellite.spacesuit crate()
+{
+    satellite.protected
+    {
+        satellite.variable.number size = 0
+    }
+}
+
+satellite.capsule satellite.main()
+{
+    box a
+    satellite.console.display("before")
+    crate c = a.pointer()
+    satellite.console.display("THIS LINE MUST NOT RUN")
+    satellite.return(satellite)
+}

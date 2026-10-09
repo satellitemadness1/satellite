@@ -1,0 +1,13 @@
+satellite.include(satellite)
+
+// full_text_21 -- REFUSED: string a string name refuses a value that is not a string (machine code 27).
+// satellite.help(satellite.variable.string). Nothing reaches stdout; satl exits with the refusal's code.
+
+satellite.capsule satellite.main()
+{
+    satellite.variable.number passes = 1
+    satellite.variable.string s = "a"
+    satellite.variable.number n = 5
+    s = n
+    satellite.return(satellite)
+}

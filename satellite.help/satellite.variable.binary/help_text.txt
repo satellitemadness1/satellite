@@ -1,0 +1,61 @@
+
+--------------------------------------------------------------------------------
+SATELLITE 004: satellite.variable.binary
+--------------------------------------------------------------------------------
+
+satellite.variable.binary is a number written in bits, with a b in front:
+b1010. satellite.variable.bin is its second spelling. The width is part of the
+value, so a binary shows exactly as you wrote it, leading zeros and all, and
+b0011 is not b11. The bits are held in a satellite.variable.number, so a binary
+has no length limit.
+
+The b is mandatory (the author, 2026-09-22: "just make the prefix b
+mandatory"). A binary name given 1010 is refused before anything runs, with
+"ERROR: expected b1010", and so is 0b1010, the C spelling. b12 is refused with
+"ERROR: b12 is not binary -- a binary digit is 0 or 1". A binary keeps a sign:
+-b0101 is a binary, shown as -b0101, worth -5, width kept, and not equal to
+b0101. -b0000 is b0000, because zero has no sign.
+
+Its methods: .number (also .to_number and .as_number) is what the bits are
+worth; .string is the binary as text, b and all; .binary (also .bin) is the
+digits without the b; .hex is its worth as base 16 text; .reverse() turns the
+bits round and keeps the width, so b1000 gives b0001; and .add(x) is +. .width,
+.digits and .clear are numbered and not built yet.
+
+Arithmetic reads a binary by what it is worth, and today it answers a NUMBER:
+b1000 + b0101 is 13, not b1101. A binary meets a number the same way, so
+b1010 == 10 is true, and a number name given b0011 holds 3. Storing a sum back
+in a binary name is refused, "it holds a number". binary + binary answering a
+binary is coming, with the bit operators & | ~ << >> -- see
+satellite.help(binary_and_hexadecimal).
+
+example:
+
+satellite.include(satellite)
+
+satellite.capsule satellite.main(satellite.container.list<satellite.variable.string> arguments)
+{
+    satellite.variable.binary flags = b0010
+    satellite.console.display(flags)                // b0010
+    satellite.console.display(flags == b10)         // false
+    satellite.console.display(flags.number)         // 2
+    satellite.console.display(flags.string)         // b0010
+    satellite.console.display(flags.bin)            // 0010
+    satellite.console.display(b10101010.hex)        // AA
+    satellite.console.display(b1000.reverse())      // b0001
+    satellite.console.display(b1000 + b0101)        // 13
+    satellite.variable.bin below = -b0101
+    satellite.console.display(below)                // -b0101
+    satellite.console.display(below.number)         // -5
+    satellite.console.display(below < b0001)        // true
+    satellite.return(satellite)
+}
+
+refused today:
+
+satellite.variable.binary flags = 1010
+
+prints:
+
+S301: TYPES_DO_NOT_MEET
+satl(check): in satellite.main, ERROR: expected b1010

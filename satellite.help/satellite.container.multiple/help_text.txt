@@ -1,0 +1,58 @@
+
+--------------------------------------------------------------------------------
+SATELLITE 004: satellite.container.multiple
+--------------------------------------------------------------------------------
+
+satellite.container.multiple allows one name to hold any one of several types,
+the way a std::variant does. It is not a container and it holds nothing of its
+own: it is a declaration that says which types a name accepts, checked every
+time the name is given a value. What the name holds is an ordinary string, an
+ordinary number or an ordinary list, and it behaves exactly as one declared the
+plain way would: "abc" in it reverses, and 7 in it adds.
+
+You list two or more types between < and >, and any type a name can be
+declared as may be one of them, containers included. A value of a type that is
+not on the list is refused (machine code 27), and the refusal names the types
+the name takes. multiple with one type is refused as saying nothing (S110), and
+multiple with no <> takes every type. A multiple can also be a capsule's
+parameter, or the type inside another container, as in
+satellite.container.list<satellite.container.multiple<...>>.
+
+A number on the list also takes a binary, and it stays a binary: b101 put into
+a multiple<satellite.variable.string, satellite.variable.number> shows b101,
+where a name declared satellite.variable.number would make it 5.
+
+Not built yet in satellite 004: a way to ask which type the name holds right
+now. satellite.variable.variant (word 1 6 14) numbers .holding, .holds(x),
+.held and .clear, and a line that declares one is refused (S110).
+
+example:
+
+satellite.include(satellite)
+
+satellite.capsule satellite.main()
+{
+    satellite.container.multiple<satellite.variable.string, satellite.variable.number> either = "abc"
+    satellite.console.display(either.reverse()) // cba
+    either = 7
+    satellite.console.display(either + 1) // 8
+    show("one")
+    show({"two", "three"})
+    satellite.return(satellite)
+}
+
+satellite.capsule show(satellite.container.multiple<satellite.variable.string, satellite.container.list> what)
+{
+    satellite.console.display(what) // one, then {"two", "three"}
+}
+
+refused today:
+
+satellite.include(satellite)
+
+satellite.capsule satellite.main()
+{
+    satellite.container.multiple<satellite.variable.string, satellite.variable.number> either = "a"
+    either = 50% // refused: 27, it holds a percentage
+    satellite.return(satellite)
+}

@@ -1,0 +1,11 @@
+ok console width and height are 80 and 24 when the output is not a terminal
+ok display end="" keeps the next display on the same line
+ok display end= writes its own ending in place of the newline
+ok display foreground= into a pipe is plain text
+ok display a satellite.variable.color and background= into a pipe are plain text
+ok display bold= and italic= into a pipe are plain text
+ok display .center() into a pipe goes as written
+ok console.foreground() and .background() into a pipe are plain text
+ok terminal.foreground() and .background() write nothing into a pipe
+ok display shows a number as its digits: 42
+ok display shows a list as {1, "two"}

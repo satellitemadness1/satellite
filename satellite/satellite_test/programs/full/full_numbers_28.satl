@@ -1,0 +1,13 @@
+satellite.include(satellite)
+
+// full_numbers_28 -- satellite.test.full(), a program satl must REFUSE.
+// hex: x1G is not hex.
+// It exits 27, and its report on stderr holds: ERROR: x1G is not hex
+// Nothing is printed on stdout.
+
+satellite.capsule satellite.main()
+{
+    satellite.variable.number passes = 1
+    satellite.variable.hex h = x1G
+    satellite.return(satellite)
+}

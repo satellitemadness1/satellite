@@ -1,0 +1,149 @@
+satellite.include(satellite)
+
+// full_text_1 -- satellite.variable.string, part 1: joining and taking away, comparing
+// and ordering, finding, size and empty, contains / starts_with / ends_with, reading
+// characters, substring, reverse, upper and lower, escapes and a string over two lines.
+// Every expected answer is the help page's own (satellite.help(satellite.variable.string)).
+// One line per check, written on the first pass: "ok <what>", or "WRONG <what>: <answer>
+// (expected <right answer>)". Every pass runs every check again, and the last line says
+// whether every pass answered as the first did.
+
+satellite.capsule check(satellite.variable.number round, satellite.variable.string what, satellite.container.multiple got, satellite.container.multiple want)
+{
+    satellite.statement.if (got == want)
+    {
+        satellite.statement.if (round == 1)
+        {
+            satellite.console.display("ok " + what)
+        }
+        satellite.return(0)
+    }
+    satellite.statement.if (round == 1)
+    {
+        satellite.console.display("WRONG " + what + ": ", end="")
+        satellite.console.display(got, end="")
+        satellite.console.display(" (expected ", end="")
+        satellite.console.display(want, end="")
+        satellite.console.display(")")
+    }
+    satellite.return(1)
+}
+
+satellite.capsule satellite.main()
+{
+    satellite.variable.number passes = 1000
+    satellite.variable.number rounds = passes
+    satellite.statement.if (rounds < 1)
+    {
+        rounds = 1
+    }
+    satellite.variable.number first_wrong = 0
+    satellite.variable.number unlike_the_first = 0
+    satellite.statement.for(satellite.variable.number p = 1; p <= rounds; p + 1)
+    {
+        satellite.variable.number wrong = 0
+        satellite.variable.string s = "hello world"
+
+        // + joins, .add is the same join, a number joins as its own .string
+        wrong = wrong + check(p, "string + joins two strings", "some" + "str", "somestr")
+        wrong = wrong + check(p, "string .add(x) is the same join", s.add("!"), "hello world!")
+        wrong = wrong + check(p, "string + number joins the number's digits", "n = " + 4, "n = 4")
+        wrong = wrong + check(p, "string + float joins its text", "f " + 1.5, "f 1.5")
+        wrong = wrong + check(p, "string + percentage joins its text", "p " + 50%, "p 50%")
+        wrong = wrong + check(p, "string + binary joins b and its bits", "b " + b1010, "b b1010")
+        wrong = wrong + check(p, "string + hex joins x and its digits", "h " + x1F, "h x1F")
+        wrong = wrong + check(p, "number + text that spells a number adds", 4 + "2", 6)
+        wrong = wrong + check(p, "number + other text joins after it", 4 + "abc", "4abc")
+        wrong = wrong + check(p, "string + bool joins with one space", "flag:" + satellite.bool.true, "flag: true")
+
+        // - takes away the FIRST place the right string occurs
+        wrong = wrong + check(p, "string - takes away the first occurrence", s - "o", "hell world")
+        wrong = wrong + check(p, "string - of a string not there leaves it unchanged", s - "xyz", "hello world")
+        wrong = wrong + check(p, "string - takes the first of overlapping places", "banana" - "an", "bana")
+
+        // == != and the character table: a-z, A-Z, digits, signs, the space
+        wrong = wrong + check(p, "string == compares", s == "hello world", satellite.bool.true)
+        wrong = wrong + check(p, "string != compares", s != "hello world", satellite.bool.false)
+        wrong = wrong + check(p, "string order a < B", "a" < "B", satellite.bool.true)
+        wrong = wrong + check(p, "string order z before A", "z" < "A", satellite.bool.true)
+        wrong = wrong + check(p, "string order Z before digits", "Z" < "0", satellite.bool.true)
+        wrong = wrong + check(p, "string order digits before signs", "9" < "!", satellite.bool.true)
+        wrong = wrong + check(p, "string order signs before the space", "~" < " ", satellite.bool.true)
+        wrong = wrong + check(p, "string order apple < banana", "apple" < "banana", satellite.bool.true)
+        wrong = wrong + check(p, "string order b > a", "b" > "a", satellite.bool.true)
+
+        // .find counts from 0
+        wrong = wrong + check(p, "string .find counts from 0", s.find("world"), 6)
+        wrong = wrong + check(p, "string .find at the start is 0", s.find("h"), 0)
+        wrong = wrong + check(p, "string .find answers the first place", "banana".find("an"), 1)
+        wrong = wrong + check(p, "string conversions chain left to right", "87".bin.find("111"), 4)
+
+        // .size counts characters, .empty, with or without ()
+        wrong = wrong + check(p, "string .size counts characters", "héllo".size, 5)
+        wrong = wrong + check(p, "string .size() with brackets", s.size(), 11)
+        wrong = wrong + check(p, "string .size of an astral character is 1", "a😀b".size, 3)
+        wrong = wrong + check(p, "string .empty of empty text", "".empty, satellite.bool.true)
+        wrong = wrong + check(p, "string .empty() of text", "x".empty(), satellite.bool.false)
+
+        // contains / starts_with / ends_with, and "" is inside every string
+        wrong = wrong + check(p, "string .contains", s.contains("lo w"), satellite.bool.true)
+        wrong = wrong + check(p, "string .contains of text not there", s.contains("xyz"), satellite.bool.false)
+        wrong = wrong + check(p, "string .contains empty text", s.contains(""), satellite.bool.true)
+        wrong = wrong + check(p, "string .starts_with", s.starts_with("hello"), satellite.bool.true)
+        wrong = wrong + check(p, "string .starts_with of the wrong end", s.starts_with("world"), satellite.bool.false)
+        wrong = wrong + check(p, "string .starts_with empty text", s.starts_with(""), satellite.bool.true)
+        wrong = wrong + check(p, "string .ends_with", s.ends_with("world"), satellite.bool.true)
+        wrong = wrong + check(p, "string .ends_with empty text", s.ends_with(""), satellite.bool.true)
+
+        // characters counted from 1, each a string of one character
+        satellite.variable.string w = "héllo"
+        wrong = wrong + check(p, "string [1] is the first character", s[1], "h")
+        wrong = wrong + check(p, "string .at(n) reads a character", s.at(7), "w")
+        wrong = wrong + check(p, "string [size] is the last character", s[s.size], "d")
+        wrong = wrong + check(p, "string [find + 1] is the character found", s[s.find("world") + 1], "w")
+        wrong = wrong + check(p, "string [2] of an accent is one character", w[2], "é")
+        wrong = wrong + check(p, "string characters join", s[1] + s.at(7), "hw")
+
+        // .substring(start, end): both counted from 1 and both kept
+        wrong = wrong + check(p, "string .substring keeps both ends", "hello".substring(2, 4), "ell")
+        wrong = wrong + check(p, "string .substring from 1", s.substring(1, 5), "hello")
+        wrong = wrong + check(p, "string .substring of one character", "hello".substring(5, 5), "o")
+        wrong = wrong + check(p, "string .substring end one before start is empty", "hello".substring(3, 2), "")
+
+        // .reverse() by character
+        wrong = wrong + check(p, "string .reverse()", s.reverse(), "dlrow olleh")
+        wrong = wrong + check(p, "string .reverse() of accents and an arrow", "héllo→".reverse(), "→olléh")
+        wrong = wrong + check(p, "string .reverse() keeps an astral character whole", "a😀b".reverse(), "b😀a")
+
+        // .upper() .lower() and their spellings, every language's letters
+        wrong = wrong + check(p, "string .upper() of an accent", "héllo".upper(), "HÉLLO")
+        wrong = wrong + check(p, "string .uppercase()", "abc".uppercase(), "ABC")
+        wrong = wrong + check(p, "string .up()", "abc".up(), "ABC")
+        wrong = wrong + check(p, "string .lower() of an accent", "HÉLLO Wörld".lower(), "héllo wörld")
+        wrong = wrong + check(p, "string .lowercase() of Greek", "ΑΒΓ".lowercase(), "αβγ")
+        satellite.variable.string loud = s.upper()
+        wrong = wrong + check(p, "string .upper() leaves the name unchanged", s, "hello world")
+        wrong = wrong + check(p, "string .upper() answers a new string", loud, "HELLO WORLD")
+
+        // escapes, and a string over two lines
+        wrong = wrong + check(p, "string escape \\\" is one double quote", "say \"hi\"".size, 8)
+        wrong = wrong + check(p, "string escape \\\\ is one backslash", "\\".size, 1)
+        wrong = wrong + check(p, "string escape \\n splits a line", "one\ntwo".split("\n"), {"one", "two"})
+        wrong = wrong + check(p, "string escape \\t is one tab", "a\tb".size, 3)
+        wrong = wrong + check(p, "string escape \\r is one character", "\r".size, 1)
+        wrong = wrong + check(p, "string escape \\' is an apostrophe", "it\'s", "it's")
+        satellite.variable.string two = "one
+two"
+        wrong = wrong + check(p, "string over two lines holds the line break", two, "one\ntwo")
+        satellite.statement.if (p == 1)
+        {
+            first_wrong = wrong
+        }
+        satellite.statement.if (wrong != first_wrong)
+        {
+            unlike_the_first = unlike_the_first + 1
+        }
+    }
+    check(1, "string part 1 answers alike on every pass", unlike_the_first, 0)
+    satellite.return(satellite)
+}

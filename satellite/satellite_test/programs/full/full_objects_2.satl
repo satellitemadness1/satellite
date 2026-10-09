@@ -1,0 +1,371 @@
+satellite.include(satellite)
+
+// full_objects_2 -- satellite.test.full(): THREADS (THREADS.md T1 and T2, tests/threads*.satl):
+// satellite.thread.new does not run the capsule, start(), join() and wait() answering numbers,
+// strings and objects, an object shared and a list copied, the author's .lock() and .unlock(),
+// a thread on an object's own capsule, two names for one thread, == between threads, stop(),
+// and how a thread displays. Never more than three threads of the program's at once.
+// One line a check: "ok <capability>", or "WRONG <capability>: <answer> (expected <right>)".
+// passes repeats every check; the passes before the last print only what is WRONG.
+
+satellite.spacesuit report()
+{
+    satellite.protected
+    {
+        satellite.variable.bool loud = satellite.bool.false
+        satellite.variable.number wrong = 0
+
+        satellite.capsule word_of(satellite.variable.bool b)
+        {
+            satellite.statement.if (b)
+            {
+                satellite.return("true")
+            }
+            satellite.return("false")
+        }
+
+        satellite.capsule right(satellite.variable.string what)
+        {
+            satellite.statement.if (loud)
+            {
+                satellite.console.display("ok " + what)
+            }
+        }
+
+        satellite.capsule wrong_answer(satellite.variable.string what, satellite.variable.string got, satellite.variable.string want)
+        {
+            wrong = wrong + 1
+            satellite.console.display("WRONG " + what + ": " + got.replace("\n", "\\n") + " (expected " + want.replace("\n", "\\n") + ")")
+        }
+    }
+
+    satellite.constructor(satellite.variable.bool say)
+    {
+        loud = say
+    }
+
+    satellite.public
+    {
+        satellite.capsule check_text(satellite.variable.string what, satellite.variable.string got, satellite.variable.string want)
+        {
+            satellite.statement.if (got == want)
+            {
+                right(what)
+            }
+            satellite.statement.else
+            {
+                wrong_answer(what, got, want)
+            }
+        }
+
+        satellite.capsule check_number(satellite.variable.string what, satellite.variable.number got, satellite.variable.number want)
+        {
+            satellite.statement.if (got == want)
+            {
+                right(what)
+            }
+            satellite.statement.else
+            {
+                wrong_answer(what, got.to_string(), want.to_string())
+            }
+        }
+
+        satellite.capsule check_bool(satellite.variable.string what, satellite.variable.bool got, satellite.variable.bool want)
+        {
+            satellite.statement.if (got == want)
+            {
+                right(what)
+            }
+            satellite.statement.else
+            {
+                wrong_answer(what, word_of(got), word_of(want))
+            }
+        }
+
+        satellite.capsule call_wrong()
+        {
+            satellite.return(wrong)
+        }
+    }
+}
+
+// A COUNTER THREADS SHARE: an object handed to a thread is the SAME object on both (THREADS.md T2).
+satellite.spacesuit tally()
+{
+    satellite.protected
+    {
+        satellite.variable.number total = 0
+        satellite.container.list<satellite.variable.number> seen = {}
+    }
+
+    satellite.public
+    {
+        satellite.capsule call_add()
+        {
+            total = total + 1
+        }
+
+        satellite.capsule call_note(satellite.variable.number n)
+        {
+            seen.append(n)
+        }
+
+        satellite.capsule call_total()
+        {
+            satellite.return(total)
+        }
+
+        satellite.capsule call_seen()
+        {
+            satellite.return(seen.size)
+        }
+    }
+}
+
+satellite.spacesuit box()
+{
+    satellite.protected
+    {
+        satellite.variable.number held = 0
+    }
+
+    satellite.constructor(satellite.variable.number n)
+    {
+        held = n
+    }
+
+    satellite.public
+    {
+        satellite.capsule call_held()
+        {
+            satellite.return(held)
+        }
+    }
+}
+
+// A THREAD RUN ON AN OBJECT'S CAPSULE BY ITS BARE NAME RUNS THE SUBTYPE'S REPLACEMENT.
+satellite.spacesuit animal()
+{
+    satellite.public
+    {
+        satellite.capsule call_speak()
+        {
+            satellite.return("animal")
+        }
+
+        satellite.capsule call_speak_on_a_thread()
+        {
+            satellite.variable.thread t = satellite.thread.new(call_speak())
+            t.start()
+            satellite.return(t.join())
+        }
+    }
+}
+
+satellite.spacesuit dog(animal)
+{
+    satellite.public
+    {
+        satellite.capsule call_speak()
+        {
+            satellite.return("dog")
+        }
+    }
+}
+
+satellite.capsule twice(satellite.variable.number n)
+{
+    satellite.return(n * 2)
+}
+
+satellite.capsule make_box(satellite.variable.number n)
+{
+    box made(n)
+    satellite.return(made)
+}
+
+satellite.capsule pound(tally t, satellite.variable.number times)
+{
+    satellite.variable.number i = 0
+    satellite.statement.while (i < times)
+    {
+        t.call_add()
+        i = i + 1
+    }
+}
+
+satellite.capsule note(tally t, satellite.variable.number times)
+{
+    satellite.variable.number i = 0
+    satellite.statement.while (i < times)
+    {
+        t.call_note(i)
+        i = i + 1
+    }
+}
+
+satellite.capsule grow(satellite.container.list<satellite.variable.number> items)
+{
+    items.append(99)
+    satellite.return(items.size())
+}
+
+// A COUNT OF ITS OWN, ON NOTHING SHARED: two of these side by side must not mix.
+satellite.capsule count_alone(satellite.variable.number from)
+{
+    satellite.variable.number right = 0
+    satellite.variable.number i = 0
+    satellite.statement.while (i < 200)
+    {
+        satellite.variable.number n = from * 1000 + i
+        satellite.statement.if (n + n == n * 2)
+        {
+            right = right + from
+        }
+        i = i + 1
+    }
+    satellite.return(right)
+}
+
+satellite.capsule forever(tally t)
+{
+    satellite.variable.number spins = 0
+    satellite.statement.while (spins >= 0)
+    {
+        t.call_add()
+        spins = spins + 1
+    }
+}
+
+satellite.capsule check_answers(report r)
+{
+    tally shared
+    satellite.variable.thread filler = satellite.thread.new(pound(shared, 5))
+    r.check_number("thread new() does not run the capsule before start()", shared.call_total(), 0)
+    filler.start()
+    filler.join()
+    r.check_number("thread writes a shared object that main reads after join()", shared.call_total(), 5)
+    satellite.variable.thread doubler = satellite.thread.new(twice(21))
+    doubler.start()
+    r.check_number("thread join() answers what the capsule handed back", doubler.join(), 42)
+    satellite.variable.thread waiter = satellite.thread.new(twice(50))
+    waiter.start()
+    r.check_number("thread wait() is join()'s second name", waiter.wait(), 100)
+    satellite.variable.thread maker = satellite.thread.new(make_box(7))
+    maker.start()
+    box made = maker.join()
+    r.check_number("thread join() answers an object made on the thread", made.call_held(), 7)
+    satellite.container.list<satellite.variable.number> mine = {1, 2}
+    satellite.variable.thread grower = satellite.thread.new(grow(mine))
+    grower.start()
+    satellite.variable.number grown = grower.join()
+    r.check_text("thread gets its own copy of a list: its copy grew to 3, the caller's stayed 2", grown.to_string() + " " + mine.size().to_string(), "3 2")
+    satellite.variable.thread one = satellite.thread.new(count_alone(1))
+    satellite.variable.thread two = satellite.thread.new(count_alone(2))
+    one.start()
+    two.start()
+    satellite.variable.number first = one.join()
+    satellite.variable.number second = two.join()
+    r.check_text("thread two side by side each answer their own count", first.to_string() + " " + second.to_string(), "200 400")
+}
+
+satellite.capsule check_lock(report r)
+{
+    tally shared
+    shared.lock()
+    satellite.variable.thread a = satellite.thread.new(pound(shared, 300))
+    satellite.variable.thread b = satellite.thread.new(pound(shared, 300))
+    satellite.variable.thread c = satellite.thread.new(pound(shared, 300))
+    a.start()
+    b.start()
+    c.start()
+    a.join()
+    b.join()
+    c.join()
+    r.check_number("thread lock(): three threads adding to one field lose nothing", shared.call_total(), 900)
+    satellite.variable.thread d = satellite.thread.new(note(shared, 100))
+    satellite.variable.thread e = satellite.thread.new(note(shared, 100))
+    satellite.variable.thread f = satellite.thread.new(note(shared, 100))
+    d.start()
+    e.start()
+    f.start()
+    d.join()
+    e.join()
+    f.join()
+    r.check_number("thread lock(): three threads appending to one list field lose nothing", shared.call_seen(), 300)
+    satellite.variable.thread direct = satellite.thread.new(shared.call_add())
+    direct.start()
+    direct.join()
+    r.check_number("thread runs an object's own capsule: thread.new(object.capsule())", shared.call_total(), 901)
+    shared.unlock()
+    dog rex
+    r.check_text("thread on a capsule by bare name runs the subtype's replacement", rex.call_speak_on_a_thread(), "dog")
+}
+
+satellite.capsule check_names_and_stop(report r)
+{
+    satellite.variable.thread one = satellite.thread.new(twice(7))
+    satellite.variable.thread also = one
+    also.start()
+    r.check_number("thread started through one name, joined through the other", one.join(), 14)
+    r.check_bool("thread two names for one thread are ==", one == also, satellite.bool.true)
+    satellite.variable.thread other = satellite.thread.new(twice(7))
+    other.start()
+    other.join()
+    r.check_bool("thread two threads are not ==, even running the same call", one == other, satellite.bool.false)
+    tally spun
+    satellite.variable.thread spinner = satellite.thread.new(forever(spun))
+    spinner.start()
+    spinner.stop()
+    spinner.join()
+    satellite.variable.number at_join = spun.call_total()
+    satellite.variable.thread later = satellite.thread.new(twice(1))
+    later.start()
+    later.join()
+    r.check_number("thread stop() ends a thread that never would, and it writes nothing after join()", spun.call_total(), at_join)
+}
+
+satellite.capsule run_all(report r)
+{
+    check_answers(r)
+    check_lock(r)
+    check_names_and_stop(r)
+}
+
+// HOW A THREAD DISPLAYS (THREADS.md T1: "which capsule and how far it has got"). Each of these
+// lines is its own subject: right, it reads exactly as written in the comment beside it.
+satellite.capsule show_states()
+{
+    satellite.variable.thread waiting = satellite.thread.new(twice(3))
+    satellite.console.display("ok thread displays before start() as ", end="")
+    satellite.console.display(waiting)                       // (thread twice, not started)
+    waiting.start()
+    waiting.join()
+    tally spun
+    satellite.variable.thread spinner = satellite.thread.new(forever(spun))
+    spinner.start()
+    spinner.stop()
+    spinner.join()
+    satellite.console.display("ok thread displays after stop() as ", end="")
+    satellite.console.display(spinner)                       // (thread forever, stopped)
+}
+
+satellite.capsule satellite.main()
+{
+    satellite.variable.number passes = 100
+    satellite.variable.number pass = 1
+    satellite.statement.while (pass < passes)
+    {
+        report quiet(satellite.bool.false)
+        run_all(quiet)
+        pass = pass + 1
+        satellite.statement.if (quiet.call_wrong() > 0)
+        {
+            pass = passes
+        }
+    }
+    report loud(satellite.bool.true)
+    run_all(loud)
+    show_states()
+    satellite.return(satellite)
+}

@@ -1,0 +1,37 @@
+// speed_nested_containers.satl -- satellite.test.speed(): containers inside containers.
+// A list of lists of numbers (a 3 x 4 grid), a map of string to list of numbers (three teams), and a
+// list of maps (two rows of counters). Each pass reads and writes an item of the grid, appends to a
+// team's list through the map and drops its oldest item past 8, reads into the team's list and the
+// grid, and writes two values of a row's map. The checksum line is the total of what was read, and
+// every container at the end; its C++ twin is speed_nested_containers() in speed_objects_twins.cpp,
+// which prints the same line.
+
+satellite.include(satellite)
+
+satellite.capsule satellite.main()
+{
+    satellite.variable.number passes = 155000
+    satellite.container.list<satellite.container.list<satellite.variable.number>> grid = {{0, 0, 0, 0}, {0, 0, 0, 0}, {0, 0, 0, 0}}
+    satellite.container.map<satellite.variable.string, satellite.container.list<satellite.variable.number>> teams = {"red": {}, "green": {}, "blue": {}}
+    satellite.container.list<satellite.container.map<satellite.variable.string, satellite.variable.number>> rows = {{"seen": 0, "sum": 0}, {"seen": 0, "sum": 0}}
+    satellite.container.list<satellite.variable.string> colours = {"red", "green", "blue"}
+    satellite.variable.string key = ""
+    satellite.variable.number total = 0
+
+    satellite.statement.for(satellite.variable.number i = 0; i < passes; i + 1)
+    {
+        grid[1 + i % 3][1 + i % 4] = grid[1 + i % 3][1 + i % 4] + i % 10
+        key = colours[1 + i % 3]
+        teams[key].append(i % 100)
+        satellite.statement.if (teams[key].size > 8)
+        {
+            teams[key].remove_first()
+        }
+        total = total + teams[key][teams[key].size] + grid[1 + (i + 1) % 3][1 + (i + 2) % 4]
+        rows[1 + i % 2]["seen"] = rows[1 + i % 2]["seen"] + 1
+        rows[1 + i % 2]["sum"] = rows[1 + i % 2]["sum"] + teams[key].size
+    }
+
+    satellite.console.display("nested_containers: passes " + passes + ", total " + total + ", grid " + grid[1].join(",") + "/" + grid[2].join(",") + "/" + grid[3].join(",") + ", red " + teams["red"].join(",") + ", green " + teams["green"].join(",") + ", blue " + teams["blue"].join(",") + ", rows " + rows[1]["seen"] + " " + rows[1]["sum"] + " " + rows[2]["seen"] + " " + rows[2]["sum"])
+    satellite.return(satellite)
+}

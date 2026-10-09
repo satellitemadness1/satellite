@@ -1,0 +1,213 @@
+
+satellite.include(satellite)
+
+satellite.spacesuit satl_18_vars()
+{
+    satellite.protected
+    {
+        satellite.variable.binary my_binary_number = b10101010
+        satellite.variable.color my_color = xABCDEF
+        satellite.variable.file my_file = satellite.file.new("something.txt", text)
+        satellite.variable.float my_float = 0.0
+        satellite.variable.fraction my_fraction = 1/2
+        satellite.variable.hex my_hex_code = x000000
+        satellite.variable.infinity my_infinite_number = satellite.infinity()
+        satellite.variable.number my_number = 111
+        satellite.variable.percentage my_percent = 99.00%
+        satellite.variable.program my_program = {"echo", "hello, world!"}
+        satellite.variable.string my_str = "void"
+        satellite.variable.thread my_thread
+        satellite.variable.window my_window = satellite.window.new("title", 800, 600)
+        satellite.variable.bool my_bool = satellite.bool.false
+        satellite.variable.bash my_bash = "echo hello"
+        satellite.container.list<satellite.variable.number> my_list = {1, 2, 3}
+        satellite.container.map<satellite.variable.string, satellite.variable.number> my_map
+        satellite.container.multiple<satellite.variable.string, satellite.variable.number> my_multiple = "void"
+    }
+
+    // satellite.file.new never writes over a file and satellite.file.open never makes one, so the
+    // first object makes something.txt and every object after it empties it and opens it again.
+    satellite.constructor()
+    {
+        satellite.statement.if (satellite.file.exists("something.txt"))
+        {
+            satellite.file.clear("something.txt")
+            my_file = satellite.file.open("something.txt")
+        }
+        satellite.statement.else
+        {
+            my_file = satellite.file.new("something.txt", "text")
+        }
+    }
+
+    satellite.public
+    {
+        satellite.capsule binary_number()
+        {
+            // binary + binary is a NUMBER, and a binary cannot hold one -- so the sum is shown, not kept
+            satellite.console.display(my_binary_number + b10101010)
+        }
+
+        satellite.capsule use_color()
+        {
+            satellite.console.display("hello, world!".foreground(my_color))
+
+            satellite.console.display(my_color)
+        }
+
+        satellite.capsule write_to_file()
+        {
+            my_file.append("hello, world!")
+
+            my_file.close()
+
+            my_file.open()
+
+            satellite.console.display(my_file[1])
+        }
+
+        satellite.capsule add_to_float()
+        {
+            satellite.variable.float to_add = 9.9
+
+            my_float = my_float + to_add
+
+            satellite.console.display("my_float: " + my_float)
+        }
+
+        satellite.capsule add_to_fraction()
+        {
+            satellite.variable.fraction to_add = 1/2
+
+            // fraction + fraction is not built yet (S210): a fraction is written, shown and compared
+            satellite.console.display(my_fraction == to_add)
+
+            satellite.console.display("my_fraction: " + my_fraction)
+        }
+
+        satellite.capsule change_hex_code()
+        {
+            my_hex_code = x0000FFCC
+
+            satellite.console.display("hex code: " + my_hex_code)
+        }
+
+        satellite.capsule add_infinity()
+        {
+            satellite.console.display("infinite_number: " + my_infinite_number.string)
+
+            satellite.variable.infinity to_add = satellite.infinity()
+
+            // no sum on an infinity is built yet -- + - * / all stop with S210 (SATELLITE_INFINITY.md
+            // INF-3) -- but turning one negative is, and so is comparing two
+            my_infinite_number = -to_add
+
+            satellite.console.display("infinite_number: " + my_infinite_number.string)
+        }
+
+        satellite.capsule add_number()
+        {
+            my_number = my_number + 100000000000
+
+            satellite.console.display("my_number: " + my_number)
+        }
+
+        satellite.capsule add_percent()
+        {
+            satellite.variable.percent to_add = 99.1%
+
+            my_percent = my_percent + to_add
+
+            satellite.console.display("my_percent: " + my_percent)
+        }
+
+        satellite.capsule run_program()
+        {
+            my_program.start()
+
+            // .join() waits for it and answers its exit code; .end() STOPS it (143, SIGTERM)
+            satellite.console.display(my_program.join())
+        }
+
+        satellite.capsule display_str()
+        {
+            satellite.console.display("my_str: " + my_str)
+        }
+
+        satellite.capsule start_thread()
+        {
+            // made here and not as a field: a field's value is worked out before the object exists
+            my_thread = satellite.thread.new(binary_number())
+
+            my_thread.start()
+
+            my_thread.join()
+        }
+
+        satellite.capsule open_window()
+        {
+            my_window.close()
+        }
+
+        satellite.capsule flip_bool()
+        {
+            my_bool = my_number > 1000
+
+            satellite.console.display("my_bool: " + my_bool)
+        }
+
+        satellite.capsule run_bash()
+        {
+            my_bash.start()
+
+            satellite.console.display(my_bash.join())
+        }
+
+        satellite.capsule add_to_list()
+        {
+            my_list.append(4)
+
+            satellite.console.display(my_list)
+        }
+
+        satellite.capsule add_to_map()
+        {
+            my_map["hello"] = 1
+
+            satellite.console.display(my_map)
+        }
+
+        satellite.capsule change_multiple()
+        {
+            my_multiple = 5
+
+            satellite.console.display(my_multiple + 1)
+        }
+    }
+}
+
+satellite.capsule satellite.main(satellite.variable.arguments arguments)
+{
+    satl_18_vars local_object
+
+    local_object.binary_number()
+    local_object.use_color()
+    local_object.write_to_file()
+    local_object.add_to_float()
+    local_object.add_to_fraction()
+    local_object.change_hex_code()
+    local_object.add_infinity()
+    local_object.add_number()
+    local_object.add_percent()
+    local_object.run_program()
+    local_object.display_str()
+    local_object.start_thread()
+    local_object.open_window()
+    local_object.flip_bool()
+    local_object.run_bash()
+    local_object.add_to_list()
+    local_object.add_to_map()
+    local_object.change_multiple()
+
+    satellite.return(satellite)
+}

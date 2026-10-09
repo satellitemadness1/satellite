@@ -1,0 +1,65 @@
+satellite.include(satellite)
+arguments.float.decimal(128)
+arguments.float.whole(4096)
+arguments.infinity_display(32)
+
+// full_numbers_2 -- satellite.test.full(): satellite.variable.float (and its second spelling,
+// double). Its rules: 128 places held and 32 shown, the last one rounded half away from zero
+// (SATELLITE_INFINITY.md Q17b), decimal all the way down, + - * / % ^ with whole numbers either
+// way round. The three arguments lines above hold that precision for this run, whatever
+// ~/.satl/config.ini says. Every answer was worked out with Python's decimal module as well.
+// The checks run `passes` times and print on the last pass only, so the lines never change.
+
+satellite.capsule check(satellite.variable.bool show, satellite.variable.string what, satellite.variable.string got, satellite.variable.string want)
+{
+    satellite.statement.if(show)
+    {
+        satellite.statement.if(got == want)
+        {
+            satellite.console.display("ok " + what)
+        }
+        satellite.statement.else
+        {
+            satellite.console.display("WRONG " + what + ": " + got + " (expected " + want + ")")
+        }
+    }
+}
+
+satellite.capsule satellite.main()
+{
+    satellite.variable.number passes = 1
+    satellite.variable.number rounds = passes
+    satellite.statement.if(rounds < 1)
+    {
+        rounds = 1
+    }
+    satellite.statement.for(satellite.variable.number turn = 1; turn <= rounds; turn + 1)
+    {
+        satellite.variable.bool show = turn == rounds
+        satellite.variable.float price = 12.05
+        satellite.variable.double half = 0.5
+        check(show, "float a literal shows as written, less a zero at its end, and always keeps one place", 12.34.string + " " + (-2.75).string + " " + 12.50.string + " " + 2.0.string, "12.34 -2.75 12.5 2.0")
+        check(show, "float double is its second spelling", half.string, "0.5")
+        check(show, "float + - * between floats, and with a whole number either way round", (price + half).string + " " + (10 - 0.5).string + " " + (2.5 - 10).string + " " + (price * 2).string + " " + (3 * 1.5).string, "12.55 9.5 -7.5 24.1 4.5")
+        check(show, "float / with a float on either side", (4.0 / 3).string + " " + (3 / 4.0).string, "1.33333333333333333333333333333333 0.75")
+        check(show, "float % takes the sign of the number divided", (5.5 % 2).string + " " + (-7.5 % 2).string + " " + (7.5 % -2).string, "1.5 -1.5 1.5")
+        check(show, "float ^ takes a whole-number power, below zero too", (1.5 ^ 3).string + " " + (2.0 ^ -3).string + " " + (0.5 ^ 10).string, "3.375 0.125 0.0009765625")
+        check(show, "float 0.1 + 0.2 == 0.3 is true, decimal all the way down", (0.1 + 0.2 == 0.3).string, "true")
+        check(show, "float == != < > <= >= with floats and whole numbers", (12.05 == 12.5).string + " " + (2.5 != 2.50).string + " " + (1.5 < 2).string + " " + (3 > 2.5).string + " " + (2.5 <= 2.4).string + " " + (2.5 >= 2.5).string + " " + (2.0 == 2).string, "false false true true false true true")
+        check(show, "float shows 32 places, the last rounded half away from zero", (2.0 / 3).string + " " + (-2.0 / 3).string + " " + (100 / 7.0).string + " " + (22.0 / 7).string, "0.66666666666666666666666666666667 -0.66666666666666666666666666666667 14.28571428571428571428571428571429 3.14285714285714285714285714285714")
+        satellite.variable.float two_thirds = 2.0 / 3
+        check(show, "float 2.0 / 3 holds 128 places, the last rounded up to 7", (two_thirds * 10 ^ 128).string, "66666666666666666666666666666666666666666666666666666666666666666666666666666666666666666666666666666666666666666666666666666667.0")
+        satellite.variable.float third = 1.0 / 3
+        check(show, "float 1.0 / 3 * 3 shows 1.0 but holds 128 nines, so it is not 1", (third * 3).string + " " + (third * 3 == 1).string, "1.0 false")
+        check(show, "float 0.5 ^ 400 shows 0.0 but is not 0 at 128 places", (0.5 ^ 400).string + " " + (0.5 ^ 400 == 0).string, "0.0 false")
+        check(show, "float has no limit on its size, and multiplies every digit", (10 ^ 50 + 0.5).string + " " + (123456789.123456789 * 987654321.987654321).string, "100000000000000000000000000000000000000000000000000.5 121932631356500531.347203169112635269")
+        satellite.variable.float g = 3
+        satellite.variable.string stored = g.string
+        g = g * 2.5
+        check(show, "float a whole number given to a float name becomes a float, and the name keeps a product", stored + " " + g.string, "3.0 7.5")
+        g = -7
+        check(show, "float .number is the whole number when nothing is after the point", g.number.string + " " + 3.0.number.string, "-7 3")
+        check(show, "float arguments.float.decimal is the places held", arguments.float.decimal.string, "128")
+    }
+    satellite.return(satellite)
+}

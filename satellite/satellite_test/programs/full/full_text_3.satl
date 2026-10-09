@@ -1,0 +1,150 @@
+satellite.include(satellite)
+
+// full_text_3 -- satellite.bool and the conversions between types: a bool name, the two
+// values, comparisons that answer one, ! and == and != on bools, a bool as text, in a list
+// and as a key; then .string .binary .hex .number between number, float, binary, hex,
+// percentage and fraction, + between text and a number either way round, and a value
+// given to a name of another type. Every expected answer is a help page's own.
+// One line per check, written on the first pass: "ok <what>", or "WRONG <what>: <answer>
+// (expected <right answer>)". Every pass runs every check again, and the last line says
+// whether every pass answered as the first did.
+
+satellite.capsule check(satellite.variable.number round, satellite.variable.string what, satellite.container.multiple got, satellite.container.multiple want)
+{
+    satellite.statement.if (got == want)
+    {
+        satellite.statement.if (round == 1)
+        {
+            satellite.console.display("ok " + what)
+        }
+        satellite.return(0)
+    }
+    satellite.statement.if (round == 1)
+    {
+        satellite.console.display("WRONG " + what + ": ", end="")
+        satellite.console.display(got, end="")
+        satellite.console.display(" (expected ", end="")
+        satellite.console.display(want, end="")
+        satellite.console.display(")")
+    }
+    satellite.return(1)
+}
+
+satellite.capsule satellite.main()
+{
+    satellite.variable.number passes = 1000
+    satellite.variable.number rounds = passes
+    satellite.statement.if (rounds < 1)
+    {
+        rounds = 1
+    }
+    satellite.variable.number first_wrong = 0
+    satellite.variable.number unlike_the_first = 0
+    satellite.statement.for(satellite.variable.number p = 1; p <= rounds; p + 1)
+    {
+        satellite.variable.number wrong = 0
+
+        // satellite.variable.bool holds satellite.bool.true or satellite.bool.false
+        satellite.variable.bool yes = satellite.bool.true
+        satellite.variable.bool no = satellite.bool.false
+        wrong = wrong + check(p, "bool name holds satellite.bool.true", yes, satellite.bool.true)
+        wrong = wrong + check(p, "bool == of two different values", yes == no, satellite.bool.false)
+        wrong = wrong + check(p, "bool != of two different values", yes != no, satellite.bool.true)
+        satellite.variable.bool bigger = 3 > 2
+        wrong = wrong + check(p, "bool name holds a comparison", bigger, satellite.bool.true)
+        wrong = wrong + check(p, "bool comparison that is not so", 2 > 3, satellite.bool.false)
+        wrong = wrong + check(p, "bool ! turns true to false", !yes, satellite.bool.false)
+        wrong = wrong + check(p, "bool ! turns false to true", !no, satellite.bool.true)
+        wrong = wrong + check(p, "bool ! of a comparison", !(3 > 2), satellite.bool.false)
+        satellite.variable.string went = "no"
+        satellite.statement.if (yes)
+        {
+            went = "yes"
+        }
+        wrong = wrong + check(p, "bool name as an if condition", went, "yes")
+        yes = no
+        wrong = wrong + check(p, "bool name given another bool", yes, satellite.bool.false)
+        yes = satellite.bool.true
+        wrong = wrong + check(p, "bool .string", yes.string, "true")
+        wrong = wrong + check(p, "bool .to_string of false", no.to_string, "false")
+        wrong = wrong + check(p, "bool .string of a comparison", (3 > 2).string, "true")
+        wrong = wrong + check(p, "bool joins text with one space", "x" + no, "x false")
+        wrong = wrong + check(p, "bool items in a list", {yes, no}, {satellite.bool.true, satellite.bool.false})
+        wrong = wrong + check(p, "bool list .contains", {no, yes}.contains(satellite.bool.true), satellite.bool.true)
+        wrong = wrong + check(p, "bool list .join", {yes, no}.join(","), "true,false")
+        satellite.container.map answers = {satellite.bool.true: "so", satellite.bool.false: "not so"}
+        wrong = wrong + check(p, "bool as a map key", answers[2 > 3], "not so")
+
+        // a whole number's text: .string .to_string .str, .binary .bin, .hex, .reverse() .add
+        satellite.variable.number n = 87
+        satellite.variable.number below = -87
+        wrong = wrong + check(p, "convert number .string", n.string, "87")
+        wrong = wrong + check(p, "convert number .to_string", n.to_string, "87")
+        wrong = wrong + check(p, "convert number .str joins as text", n.str + "x", "87x")
+        wrong = wrong + check(p, "convert number .string of a negative", below.string, "-87")
+        wrong = wrong + check(p, "convert number .binary", n.binary, "1010111")
+        wrong = wrong + check(p, "convert number .bin", (12).bin, "1100")
+        wrong = wrong + check(p, "convert number .hex", n.hex, "57")
+        wrong = wrong + check(p, "convert number .reverse() turns the digits round", n.reverse(), 78)
+        wrong = wrong + check(p, "convert number .reverse() keeps the sign", below.reverse(), -78)
+        wrong = wrong + check(p, "convert number .add(x) is +", n.add(13), 100)
+        satellite.variable.number huge = 2 ^ 70
+        wrong = wrong + check(p, "convert a big number to text", huge.string, "1180591620717411303424")
+        wrong = wrong + check(p, "convert a big number to text and back", huge.string.number, huge)
+
+        // float, binary, hex, percentage, fraction as text and as numbers
+        satellite.variable.float price = 12.50
+        satellite.variable.float whole = 12.0
+        wrong = wrong + check(p, "convert float .string drops the trailing zero", price.string, "12.5")
+        wrong = wrong + check(p, "convert float .number of a whole float", whole.number + 1, 13)
+        satellite.variable.binary flags = b0010
+        wrong = wrong + check(p, "convert binary .string keeps the b and the width", flags.string, "b0010")
+        wrong = wrong + check(p, "convert binary .number", flags.number, 2)
+        wrong = wrong + check(p, "convert binary .to_number", flags.to_number, 2)
+        wrong = wrong + check(p, "convert binary .as_number", flags.as_number, 2)
+        wrong = wrong + check(p, "convert binary .bin is the digits without the b", flags.bin, "0010")
+        wrong = wrong + check(p, "convert binary .hex", b10101010.hex, "AA")
+        satellite.variable.hex mask = x00ff
+        wrong = wrong + check(p, "convert hex .string in capitals with its width", mask.string, "x00FF")
+        wrong = wrong + check(p, "convert hex .number", mask.number, 255)
+        wrong = wrong + check(p, "convert hex .hex is its digits", mask.hex, "00FF")
+        wrong = wrong + check(p, "convert hex .binary is four bits a digit", mask.binary, "0000000011111111")
+        satellite.variable.percent part = 12.5%
+        wrong = wrong + check(p, "convert percentage .string", part.string, "12.5%")
+        satellite.variable.fraction half = 2/4
+        wrong = wrong + check(p, "convert fraction .string as written", half.string, "2/4")
+        wrong = wrong + check(p, "convert fraction .numerator", half.numerator, 2)
+        wrong = wrong + check(p, "convert fraction .denominator", half.denominator, 4)
+
+        // + between text and a number, either way round
+        wrong = wrong + check(p, "convert empty text + number", "" + 5, "5")
+        wrong = wrong + check(p, "convert empty text + negative number", "" + -7, "-7")
+        wrong = wrong + check(p, "convert text + number + number joins left to right", "n" + 5 + 5, "n55")
+        wrong = wrong + check(p, "convert number + number + text adds first", 5 + 5 + "n", "10n")
+        wrong = wrong + check(p, "convert text + a bracketed sum", "v" + (2 + 3), "v5")
+        wrong = wrong + check(p, "convert number + text that spells a negative number", 5 + "-2", 3)
+        wrong = wrong + check(p, "convert number + text with a space joins", 5 + " 2", "5 2")
+        wrong = wrong + check(p, "convert text + fraction joins its text", "q " + 2/4, "q 2/4")
+        wrong = wrong + check(p, "convert list .join joins every item's text", {1, "a", 2.5, b11, x1F, 50%}.join("|"), "1|a|2.5|b11|x1F|50%")
+
+        // a value given to a name of another type
+        satellite.variable.number from_bits = b0011
+        satellite.variable.number from_hex = x1F
+        satellite.variable.float from_whole = 3
+        satellite.variable.fraction over_one = 3
+        wrong = wrong + check(p, "convert binary given to a number name holds its worth", from_bits, 3)
+        wrong = wrong + check(p, "convert hex given to a number name keeps its worth", from_hex, 31)
+        wrong = wrong + check(p, "convert whole number given to a float name", from_whole.string, "3.0")
+        wrong = wrong + check(p, "convert whole number given to a fraction name", over_one.string, "3/1")
+        satellite.statement.if (p == 1)
+        {
+            first_wrong = wrong
+        }
+        satellite.statement.if (wrong != first_wrong)
+        {
+            unlike_the_first = unlike_the_first + 1
+        }
+    }
+    check(1, "bool and conversions answer alike on every pass", unlike_the_first, 0)
+    satellite.return(satellite)
+}

@@ -1,0 +1,471 @@
+// object_loss.satl -- A DATA-LOSS TEST FOR AN OBJECT OF A satellite.spacesuit, written 2026-10-06.
+//
+// THE AUTHOR'S STANDARD (2026-10-06): "for the loss testing, we will use the number 547311173 so we
+// have to start with that number, and end at that number, after say, 1,000,000 million operations...
+// That will be the loss test" -- "it's 'satellite' spelled as numbers, 5 looks like S, 4 looks like A,
+// 7 looks like T" -- "so we will use the number satellite, and the numbers 1 trillion and 1 million
+// for testing".
+//
+// The object is a big_vault, a spacesuit that extends vault. Its fields start at 547311173: the
+// number 547311173, the text "547311173", the list of its digits {5, 4, 7, 3, 1, 1, 1, 7, 3}, an
+// object of its own (a pocket, holding 0), and big_vault's own field, extra, at 0. Each pass makes
+// 100 DIFFERENT calls of its public capsules -- 50 forward, then the same 50 undone, last first --
+// through FOUR names for the one object: v; same, a second name for it; as_vault, a vault name
+// holding it, so its calls run big_vault's capsules where big_vault replaces vault's (bump() is +2,
+// not +1); and p, its .pointer(). The capsules change every field and change it back: + - * / on
+// the number (up to 59 digits) and its digits turned round, the number and the text
+// swapped, the text marked, shouted, turned round and wrapped, the digits pushed, rotated and
+// lifted, a part of the number put in the pocket and taken back, and part of it lent to extra and
+// repaid -- through a protected capsule, vault's capsules and big_vault's own.
+// 10000 passes x 100 calls = 1,000,000 operations.
+//
+// EVERY PASS IS CHECKED: it ends by comparing the whole object, every field, with where it began,
+// and the run stops at the first pass that did not come back. A division counts a remainder it
+// would drop, and a pop counts a digit that is not the one pushed, so a loss cannot be divided or
+// popped away. At the start a .reference() of the object is taken -- an exact copy of its own --
+// and at the end the copy must still be the start, and the object must equal it field for field.
+//
+// THE ANSWER IS ALWAYS 547311173 -- the object's own number, read back with get(). Anything else
+// printed is the first pass that went wrong, and every field at its end: pass 0: <number> <text>
+// <digits> <pocket> <wrong> <extra>.
+//
+// FIXED 2026-10-06, after a fresh reviewer proved a loss this test could not see: negate() is
+// undone by negate(), so a negate() that did nothing did nothing both ways, and the pass still came
+// back (value = value in negate() answered 547311173). turn(), swap() and turn_digits() are their
+// own undo the same way, add_twice() is undone by add_twice(), and unmark, unwrap, whisper and
+// unstash take away or put back nothing when mark, wrap, shout or stash did nothing: made to do
+// nothing, each of those nine capsules answered 547311173 too, and so did 7 of the 100 calls (the
+// four marks, shout, stash and wrap). So the middle is checked: after the 50 calls out, every field
+// of the object must be its known middle -- worked out by hand from the start, not read back from
+// satl -- or the run stops there and says so: pass 0, the middle: <every field>. The 100 calls are
+// unchanged, and each, made to do nothing, now answers wrong.
+
+satellite.include(satellite)
+
+// AN OBJECT INSIDE THE OBJECT
+satellite.spacesuit pocket()
+{
+    satellite.protected
+    {
+        satellite.variable.number held = 0
+    }
+
+    satellite.public
+    {
+        satellite.capsule put(satellite.variable.number n)
+        {
+            held = held + n
+        }
+
+        satellite.capsule take()
+        {
+            satellite.return(held)
+        }
+    }
+}
+
+satellite.spacesuit vault()
+{
+    satellite.protected
+    {
+        satellite.variable.number value = 547311173
+        satellite.variable.string text = "547311173"
+        satellite.container.list<satellite.variable.number> digits = {5, 4, 7, 3, 1, 1, 1, 7, 3}
+        satellite.variable.number wrong = 0
+        pocket inner
+
+        // protected: only the spacesuit's own capsules may call it
+        satellite.capsule grow(satellite.variable.number n)
+        {
+            value = value + n
+        }
+    }
+
+    satellite.constructor()
+    {
+        pocket made
+        inner = made
+    }
+
+    satellite.public
+    {
+        // THE NUMBER
+        satellite.capsule add(satellite.variable.number n)
+        {
+            value = value + n
+        }
+
+        satellite.capsule subtract(satellite.variable.number n)
+        {
+            value = value - n
+        }
+
+        satellite.capsule times(satellite.variable.number n)
+        {
+            value = value * n
+        }
+
+        // a whole-number division drops its remainder, so a remainder here is counted, never lost
+        satellite.capsule divide(satellite.variable.number n)
+        {
+            satellite.statement.if (value % n != 0)
+            {
+                wrong = wrong + 1
+            }
+            value = value / n
+        }
+
+        satellite.capsule negate()
+        {
+            value = -value
+        }
+
+        // the digits of the number turned round, its sign kept
+        satellite.capsule turn()
+        {
+            value = value.reverse()
+        }
+
+        satellite.capsule add_twice(satellite.variable.number n)
+        {
+            grow(n)
+            grow(n)
+        }
+
+        // big_vault replaces this one
+        satellite.capsule bump()
+        {
+            grow(1)
+        }
+
+        // the last part of the number, into the pocket
+        satellite.capsule stash(satellite.variable.number k)
+        {
+            inner.put(value % k)
+            value = value - value % k
+        }
+
+        // and back out of it
+        satellite.capsule unstash()
+        {
+            value = value + inner.take()
+            inner.put(0 - inner.take())
+        }
+
+        // the number into the text, and the text into the number
+        satellite.capsule swap()
+        {
+            satellite.variable.number was = value
+            value = text.number
+            text = was.string
+        }
+
+        // THE TEXT
+        satellite.capsule mark(satellite.variable.string s)
+        {
+            text = text + s
+        }
+
+        satellite.capsule unmark(satellite.variable.string s)
+        {
+            text = text - s
+        }
+
+        satellite.capsule shout()
+        {
+            text = text.upper()
+        }
+
+        satellite.capsule whisper()
+        {
+            text = text.lower()
+        }
+
+        satellite.capsule flip()
+        {
+            text = text.reverse()
+        }
+
+        // the same turn, one character at a time
+        satellite.capsule flip_by_hand()
+        {
+            satellite.variable.string turned = ""
+            satellite.statement.for(satellite.variable.number i = text.size; i > 0; i - 1)
+            {
+                turned = turned + text[i]
+            }
+            text = turned
+        }
+
+        satellite.capsule wrap()
+        {
+            text = "<" + text + ">"
+        }
+
+        satellite.capsule unwrap()
+        {
+            text = text - "<" - ">"
+        }
+
+        // THE DIGITS
+        satellite.capsule push(satellite.variable.number d)
+        {
+            digits.append(d)
+        }
+
+        // the last digit must be the one pushed, or it is counted
+        satellite.capsule pop(satellite.variable.number d)
+        {
+            satellite.statement.if (digits.last != d)
+            {
+                wrong = wrong + 1
+            }
+            digits.remove_last()
+        }
+
+        satellite.capsule rotate()
+        {
+            digits.append(digits.first)
+            digits.remove_first()
+        }
+
+        satellite.capsule unrotate()
+        {
+            digits.insert(1, digits.last)
+            digits.remove_last()
+        }
+
+        satellite.capsule lift(satellite.variable.number i, satellite.variable.number k)
+        {
+            digits[i] = digits[i] + k
+        }
+
+        satellite.capsule lower(satellite.variable.number i, satellite.variable.number k)
+        {
+            digits[i] = digits[i] - k
+        }
+
+        satellite.capsule turn_digits()
+        {
+            digits = digits.reverse()
+        }
+
+        // READING
+        satellite.capsule get()
+        {
+            satellite.return(value)
+        }
+
+        satellite.capsule state()
+        {
+            satellite.return(value.string + " " + text + " " + digits.join(",") + " " + inner.take().string + " " + wrong.string)
+        }
+    }
+}
+
+// A SPACESUIT THAT EXTENDS ANOTHER: vault's fields and capsules, and its own
+satellite.spacesuit big_vault(vault)
+{
+    satellite.protected
+    {
+        satellite.variable.number extra = 0
+    }
+
+    satellite.public
+    {
+        // replaces vault's bump: 2, not 1
+        satellite.capsule bump()
+        {
+            grow(2)
+        }
+
+        satellite.capsule borrow(satellite.variable.number n)
+        {
+            extra = extra + n
+            value = value - n
+        }
+
+        satellite.capsule repay(satellite.variable.number n)
+        {
+            extra = extra - n
+            value = value + n
+        }
+
+        // replaces vault's state: every field, extra too
+        satellite.capsule state()
+        {
+            satellite.return(value.string + " " + text + " " + digits.join(",") + " " + inner.take().string + " " + wrong.string + " " + extra.string)
+        }
+    }
+}
+
+satellite.capsule satellite.main()
+{
+    big_vault v
+    big_vault same = v
+    vault as_vault = v
+    big_vault p = v.pointer()
+    big_vault saved = v.reference()
+    satellite.variable.string begun = v.state()
+    satellite.variable.string seen = ""
+    // every field after the 50 calls out, worked out by hand from the start: <number> <text> <digits> <pocket>
+    // <wrong> <extra>
+    satellite.variable.string middle = "36991911570512661555315172378124885324921471146303151731099 <TAS0228711383> is satellite!? 3,7,1,1,1001,13,7,4,5,105,0,15,-1,547311173 -789 0 100000000000000000000000000000000000000000123456784"
+
+    satellite.statement.for(satellite.variable.number pass = 0; pass < 10000; pass + 1)
+    {
+        // FORWARD: 50 calls
+        v.add(1)
+        same.times(7)
+        as_vault.bump()
+        v.swap()
+        p.negate()
+        v.mark("sat")
+        same.shout()
+        v.push(8)
+        as_vault.rotate()
+        p.lift(3, 10)
+        v.times(10 ^ 20)
+        same.borrow(123456789)
+        v.stash(1000)
+        as_vault.flip()
+        p.wrap()
+        v.turn_digits()
+        same.add_twice(-50)
+        v.subtract(10 ^ 30)
+        as_vault.add(2 ^ 64)
+        p.times(-3)
+        v.push(9)
+        same.lift(1, 100)
+        v.mark(" is satellite")
+        as_vault.times(3 ^ 40)
+        p.subtract(-77)
+        v.borrow(-5)
+        same.turn()
+        v.rotate()
+        as_vault.negate()
+        p.add(547311173)
+        v.lift(10, -4)
+        same.times(1000003)
+        v.mark("!")
+        as_vault.push(0)
+        p.add_twice(12345)
+        v.subtract(2 ^ 90)
+        same.rotate()
+        v.times(6)
+        as_vault.lift(5, 1000)
+        p.borrow(10 ^ 50)
+        v.add(-999)
+        same.push(-1)
+        v.times(11)
+        as_vault.subtract(13)
+        p.lift(12, 7)
+        v.add(3)
+        same.mark("?")
+        v.times(-13)
+        as_vault.push(547311173)
+        p.add(10 ^ 40)
+
+        // THE MIDDLE, CHECKED: a call lost the same way going out and coming back -- negate() undone by negate(),
+        // turn() by turn(), a mark by an unmark that finds nothing -- would cancel itself, so every field must
+        // already be what the 50 calls out make it
+        satellite.statement.if (v.state() != middle)
+        {
+            seen = "pass " + pass.string + ", the middle: " + v.state()
+            satellite.statement.break
+        }
+
+        // BACK: the same 50 undone, last first
+        p.subtract(10 ^ 40)
+        as_vault.pop(547311173)
+        v.divide(-13)
+        same.unmark("?")
+        v.subtract(3)
+        p.lower(12, 7)
+        as_vault.add(13)
+        v.divide(11)
+        same.pop(-1)
+        v.subtract(-999)
+        p.repay(10 ^ 50)
+        as_vault.lower(5, 1000)
+        v.divide(6)
+        same.unrotate()
+        v.add(2 ^ 90)
+        p.add_twice(-12345)
+        as_vault.pop(0)
+        v.unmark("!")
+        same.divide(1000003)
+        v.lower(10, -4)
+        p.subtract(547311173)
+        v.negate()
+        v.unrotate()
+        v.turn()
+        v.repay(-5)
+        p.add(-77)
+        as_vault.divide(3 ^ 40)
+        v.unmark(" is satellite")
+        same.lower(1, 100)
+        v.pop(9)
+        p.divide(-3)
+        as_vault.subtract(2 ^ 64)
+        v.add(10 ^ 30)
+        same.add_twice(50)
+        as_vault.turn_digits()
+        p.unwrap()
+        as_vault.flip_by_hand()
+        v.unstash()
+        same.repay(123456789)
+        v.divide(10 ^ 20)
+        p.lower(3, 10)
+        as_vault.unrotate()
+        v.pop(8)
+        same.whisper()
+        v.unmark("sat")
+        same.negate()
+        as_vault.swap()
+        as_vault.subtract(2)
+        same.divide(7)
+        v.subtract(1)
+
+        // THE PASS ENDS WHERE IT BEGAN -- or the run stops at the first pass that does not, and says so
+        satellite.statement.if (v.state() != begun)
+        {
+            satellite.statement.if (seen == "")
+            {
+                seen = "pass " + pass.string + ": " + v.state()
+            }
+            satellite.statement.break
+        }
+    }
+
+    // THE COPY TAKEN AT THE START IS STILL THE START, AND THE OBJECT IS THE SAME AS IT, FIELD FOR FIELD
+    satellite.statement.if (seen == "")
+    {
+        satellite.statement.if (saved.state() != begun)
+        {
+            seen = "the copy: " + saved.state()
+        }
+    }
+    satellite.statement.if (seen == "")
+    {
+        satellite.statement.if (v.state() != saved.state())
+        {
+            seen = "the object: " + v.state()
+        }
+    }
+    satellite.statement.if (seen == "")
+    {
+        satellite.statement.if (p.ok() == satellite.bool.false)
+        {
+            seen = "the pointer is empty"
+        }
+    }
+
+    // 547311173, the object's own number -- or what went wrong
+    satellite.statement.if (seen == "")
+    {
+        seen = v.get().string
+    }
+    satellite.console.display(seen)
+    satellite.return(satellite)
+}

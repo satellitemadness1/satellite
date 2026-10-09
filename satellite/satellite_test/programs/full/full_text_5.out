@@ -1,0 +1,51 @@
+ok map declared with <> starts empty
+ok map satellite.container.map() is empty
+ok map [k] = v and [k] read
+ok map keys come back in the order they went in
+ok map a changed value keeps its place
+ok map written whole is the same map
+ok map .contains
+ok map .has is .contains
+ok map .has of a key not there
+ok map .get(k) is [k]
+ok map .set(k, v) puts a new key last
+ok map .first is the first key
+ok map .last is the last key
+ok map .size
+ok map .empty of a map with keys
+ok map .remove(k)
+ok map .remove_first() takes out the oldest entry
+ok map .remove_last() takes out the newest entry
+ok map .clear empties it
+ok map a key written twice keeps its first place
+ok map a key written twice keeps its last value
+ok map a binary key
+ok map a percentage key
+ok map a negative number key
+ok map a bool key
+ok map 1 and text 1 are two keys
+ok map the number key 1
+ok map the text key 1
+ok map a list as a value
+ok map a map as a value
+ok map == whatever the order
+ok map != of a different value
+ok map == of a map with more entries
+ok map .sort() orders the keys by width first
+ok map .sort(key) is .sort()
+ok map .sort(value) orders by the values
+ok map .sort(value).last
+ok map .sort() leaves the name as it was
+ok map name = name.sort(value) keeps the order
+ok map .sort() of number keys, a negative before 0
+ok map .sort() of text keys, width first
+ok map .sort() of one width follows the character table
+ok map .sort(value) keeps ties in the order they went in
+ok map .sort(value) of text values, width first
+ok map .sort(value) of floats by what each is worth
+ok map .keys.sort().by_name() orders the keys alone
+ok map index is the same container
+ok map .values.sum
+ok map .keys.join
+ok map .values.max
+ok map answers alike on every pass

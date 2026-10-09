@@ -1,0 +1,11 @@
+satellite.include(satellite)
+
+// full_text_23 -- REFUSED: container satellite.container on its own is not a type (S110).
+// satellite.help(satellite.container). Nothing reaches stdout; satl exits with the refusal's code.
+
+satellite.capsule satellite.main()
+{
+    satellite.variable.number passes = 1
+    satellite.container c = {1}
+    satellite.return(satellite)
+}

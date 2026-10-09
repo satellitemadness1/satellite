@@ -1,0 +1,945 @@
+diff --git a/check.sh b/check.sh
+index 031790e..098c755 100755
+--- a/check.sh
++++ b/check.sh
+@@ -6491,5 +6491,42 @@ import os; print(len(pairs) or os.cpu_count())")
+ expect "arguments.cores and arguments.machine.cores both answer the physical cores" "$physical|$physical" \
+        "$("$interpreter" "$sweep/cores.satl" 2>/dev/null | tr '\n' '|' | sed 's/|$//')"
+ 
++# THE DISPLAY BUFFER (satellite/display/display_buffer.hpp, 2026-09-26): the author's three threads,
++# his 512 MB std::vector<satellite_string> cut into 4 MB pieces, the converter and the display.
++display_room=build/display_buffer
++rm -rf -- "$display_room" && mkdir -p -- "$display_room"
++# BYTE FOR BYTE: 200 strings of 1 MiB characters, each moved in whole and cut into pieces.
++printf 'satellite.include(satellite)\n\nsatellite.capsule satellite.main()\n{\n    satellite.variable.string s = "0123456789abcdef"\n    satellite.statement.for(satellite.variable.number i = 0; i < 16; i++)\n    {\n        s = s + s\n    }\n    satellite.statement.for(satellite.variable.number j = 0; j < 200; j++)\n    {\n        satellite.console.display(s)\n    }\n    satellite.return(satellite)\n}\n' > "$display_room/big.satl"
++"$interpreter" "$display_room/big.satl" > "$display_room/big.out" 2> "$display_room/big.err"; code=$?
++expect "display buffer: 200 lines of 1 MiB come out byte for byte" \
++       "0|$(python3 -c "import hashlib; print(hashlib.sha256((('0123456789abcdef' * 65536) + chr(10)).encode() * 200).hexdigest())")" \
++       "$code|$(sha256sum < "$display_room/big.out" | cut -d' ' -f1)"
++# A WIDE CHARACTER ON A PIECE'S EDGE: a piece is 2,097,152 units, and the emoji is three. With
++# 2,097,151 characters before it, it does not fit and starts the next piece; with 2,097,152 it
++# starts the next piece exactly. Either way it is never cut in half.
++printf 'satellite.include(satellite)\n\nsatellite.capsule satellite.main()\n{\n    satellite.variable.string p = "a"\n    satellite.variable.string x = ""\n    satellite.statement.for(satellite.variable.number i = 0; i < 21; i++)\n    {\n        x = x + p\n        p = p + p\n    }\n    satellite.console.display(x + "😀" + "b")\n    satellite.console.display(x + "a" + "😀")\n    satellite.console.display(x + "中文")\n    satellite.return(satellite)\n}\n' > "$display_room/edge.satl"
++"$interpreter" "$display_room/edge.satl" > "$display_room/edge.out" 2> "$display_room/edge.err"; code=$?
++expect "display buffer: an emoji and two CJK characters at a 4 MiB piece's edge come out whole" \
++       "0|$(python3 -c "import hashlib; a = 'a' * (2 ** 21 - 1); print(hashlib.sha256((a + '😀b' + chr(10) + a + 'a😀' + chr(10) + a + '中文' + chr(10)).encode()).hexdigest())")" \
++       "$code|$(sha256sum < "$display_room/edge.out" | cut -d' ' -f1)"
++# A REPORT COMES AFTER THE LINES BEFORE IT: stderr is tied to std::cout, and a flush waits for
++# the display thread. 100,000 lines, then a division by zero, into one file.
++printf 'satellite.include(satellite)\n\nsatellite.capsule satellite.main()\n{\n    satellite.statement.for(satellite.variable.number i = 1; i < 100001; i++)\n    {\n        satellite.console.display(i)\n    }\n    satellite.variable.number z = 0\n    satellite.variable.number q = 1 / z\n    satellite.return(satellite)\n}\n' > "$display_room/report_after.satl"
++"$interpreter" "$display_room/report_after.satl" > "$display_room/report_after.out" 2>&1; code=$?
++expect "display buffer: the division-by-zero report comes after all 100,000 lines before it" "22|100000|yes" \
++       "$code|$(grep -cx '[0-9][0-9]*' "$display_room/report_after.out")|$([ "$(grep -n 'S401' "$display_room/report_after.out" | head -1 | cut -d: -f1)" -gt 100000 ] && echo yes)"
++# THE OVERRUN: a fifo nobody reads holds 64 KiB, the display thread waits on it, and the buffer
++# fills. 1,000 strings of 1 MiB characters is 2 GB; at 512 MiB the program is stopped with S840,
++# exit 65, and satl leaves at once with no more than the buffer's memory.
++printf 'satellite.include(satellite)\n\nsatellite.capsule satellite.main()\n{\n    satellite.variable.string s = "0123456789abcdef"\n    satellite.statement.for(satellite.variable.number i = 0; i < 16; i++)\n    {\n        s = s + s\n    }\n    satellite.statement.for(satellite.variable.number j = 0; j < 1000; j++)\n    {\n        satellite.console.display(s)\n    }\n    satellite.return(satellite)\n}\n' > "$display_room/overrun.satl"
++mkfifo "$display_room/nobody_reads"
++/usr/bin/time -o "$display_room/overrun.time" -f '%M' timeout 60 "$interpreter" "$display_room/overrun.satl" \
++    1<> "$display_room/nobody_reads" 2> "$display_room/overrun.err"; code=$?
++overrun_peak=$(tail -1 "$display_room/overrun.time")
++expect "display buffer: past 512 MB waiting, the program stops with S840 DISPLAY_STRING_BUFFER_OVERRUN, exit 65" "65|1|1" \
++       "$code|$(grep -c 'S840: DISPLAY_STRING_BUFFER_OVERRUN' "$display_room/overrun.err")|$(grep -c 'the display string buffer overran' "$display_room/overrun.err")"
++expect "display buffer: ... holding no more than the buffer: under 1 GiB at its peak (${overrun_peak} KiB)" "yes" \
++       "$([ "${overrun_peak:-999999999}" -lt 1048576 ] && echo yes)"
++
+ echo "$passed passed, $failed failed"
+ [ "$failed" = 0 ]
+diff --git a/make_support/040-sources.mk b/make_support/040-sources.mk
+index ab31a05..d3759d9 100644
+--- a/make_support/040-sources.mk
++++ b/make_support/040-sources.mk
+@@ -28,6 +28,7 @@ INTERPRETER_SOURCES = $(SATELLITE)/structured-library.cpp \
+                       $(MACHINE)/machine_state.cpp $(MACHINE)/stack_share.cpp $(SATELLITE)/satl/satl_file.cpp \
+                       $(SATELLITE)/satl/session.cpp $(SATELLITE)/satl/listing.cpp $(SATELLITE)/satl/listing_counts.cpp \
+                       $(SATELLITE)/satl/listing_progress.cpp $(SATELLITE)/satl/drives.cpp \
++                      $(SATELLITE)/display/display_buffer.cpp $(SATELLITE)/display/display_stream.cpp \
+                       $(SATELLITE)/satl/prompt_run.cpp $(SATELLITE)/satl/prompt_help.cpp \
+                       $(BYTECODE)/main_arguments.cpp \
+                       $(PROMPT)/raw_mode.cpp $(PROMPT)/keys.cpp $(PROMPT)/editor.cpp \
+@@ -68,6 +69,7 @@ HEADERS = $(ARGUMENTS)/arguments.hpp $(ARGUMENTS)/command_line.hpp $(ARGUMENTS)/
+           $(MACHINE)/machine_codes.hpp $(MACHINE)/machine_state.hpp $(MACHINE)/exit_status.hpp $(MACHINE)/shown.hpp \
+           $(MACHINE)/stop_flag.hpp $(MACHINE)/input_source.hpp $(MACHINE)/stack_share.hpp $(MACHINE)/stack_segments.hpp $(MACHINE)/run_state.hpp $(SATELLITE)/satl/session.hpp $(SATELLITE)/satl/listing.hpp $(SATELLITE)/satl/listing_counts.hpp \
+           $(SATELLITE)/satl/listing_progress.hpp $(SATELLITE)/satl/drives.hpp $(MACHINE)/filesystems.hpp \
++          $(SATELLITE)/display/display_buffer.hpp \
+           $(SATELLITE)/satl/prompt_run.hpp $(SATELLITE)/satl/prompt_help.hpp \
+           $(BYTECODE)/main_arguments.hpp \
+           $(PROMPT)/raw_mode.hpp $(PROMPT)/keys.hpp $(PROMPT)/editor.hpp $(PROMPT)/history.hpp \
+diff --git a/satellite/bytecode/expression.cpp b/satellite/bytecode/expression.cpp
+index 0dad4e1..445bf7f 100644
+--- a/satellite/bytecode/expression.cpp
++++ b/satellite/bytecode/expression.cpp
+@@ -33,6 +33,7 @@
+ #include "library_values.hpp"
+ #include "window_calls.hpp"
+ #include "../machine/stop_flag.hpp"
++#include "../display/display_buffer.hpp"
+ 
+ #include "word_codes.hpp"
+ #include "word_counts.hpp"
+@@ -41,6 +42,7 @@
+ #include "../satellite_object/satellite_list.hpp"
+ #include "../satellite_object/satellite_index.hpp"
+ 
++#include <charconv>
+ #include <optional>
+ #include <limits>
+ #include <utility>
+@@ -1622,6 +1624,40 @@ Value evaluate_at(const std::vector<std::bitset<16>> &row, std::size_t &at, int
+     return left;
+ }
+ 
++// WHETHER screen_text() WOULD HAVE ANYTHING TO LEAVE OUT of this string: an escape, which only a
++// coloured string holds. The units are searched straight through, and a wide character's half can
++// match -- which sends the string the slower way, where the answer is still right.
++bool holds_an_escape(const satellite_string &text)
++{
++    static const char16_t escape = static_cast<char16_t>(satellite_string::code_of(U'\x1b'));
++    return std::char_traits<char16_t>::find(text.unit_data(), text.units(), escape) != nullptr;
++}
++
++// A NUMBER DISPLAYED, AS ITS DIGITS IN A satellite_string -- the same text display's library
++// writes (a count's decimal digits, anything else satellite_number's own to_text), made here so
++// it goes into the display buffer as one string instead of as std::cout's digits and then its
++// newline, two trips. Up to seven digits fit in the string itself, with nothing allocated.
++satellite_string digits_of(const satellite_number &value)
++{
++    satellite_string digits;
++    if (fast::fits_a_count(value)) {
++        char text[24];
++        const std::to_chars_result made = std::to_chars(text, text + sizeof text, fast::as_count(value));
++        for (const char *at = text; at < made.ptr; ++at)
++            digits.append_code(satellite_string::code_of(static_cast<unsigned char>(*at)));
++        return digits;
++    }
++    std::size_t bad = 0;
++    satellite_string::from_utf8(value.to_text(), digits, bad);
++    return digits;
++}
++
++std::string overran_text(Code code)
++{
++    return std::string(word::spelling_of(code)) +
++           " -- more than 512 MB of text was waiting for the screen: the display string buffer overran";
++}
++
+ } // namespace
+ 
+ signed long long int display_a_number(const Scenarios &scenarios, const satellite_number &value)
+@@ -1812,17 +1848,25 @@ Value call_word(const std::vector<std::bitset<16>> &row, std::size_t &at, Expres
+                                                      std::to_string(arguments.size()));
+         return Value();
+     }
+-    const Value argument = arguments.empty() ? Value() : arguments.front();
++    // MOVED, NOT COPIED: `arguments` is this call's own, and a string displayed below is moved
++    // on again into the display buffer (display/display_buffer.hpp).
++    Value argument = arguments.empty() ? Value() : std::move(arguments.front());
+ 
+     signed long long int answer = success;
+     if (scenarios == nullptr) {
+         context.refuse(not_built_yet, std::string(word::spelling_of(code)) + " has no library built yet");
+         return Value();
+     }
++    const bool to_the_screen = is_display_word(code);
++    // AFTER AN OVERRUN EVERY display IS REFUSED, on every thread and whatever it was given: the
++    // buffer has let go of what it held, and the program is being stopped.
++    if (to_the_screen && display_overran()) {
++        context.refuse(display_string_buffer_overrun, overran_text(code));
++        return Value();
++    }
+     // display WITH OPTIONS, OR WITH THE CONSOLE'S COLOURS SET, is one styled line
+     // (console_calls.hpp). Without either it takes the path below untouched, so a
+     // plain display pays one test and nothing else.
+-    const bool to_the_screen = is_display_word(code);
+     if (to_the_screen && (centred || !options.empty() || (console_colours_ever_set() && console_colours().any())))
+         return display_with_options(code, *scenarios, argument, options, context, centred);
+     if (scenarios->directory != nullptr)
+@@ -1868,7 +1912,16 @@ Value call_word(const std::vector<std::bitset<16>> &row, std::size_t &at, Expres
+     // `satellite.feedback({"a","b"})` is two messages, while
+     // `satellite.console.display({1, 2})` prints {1, 2} without every library
+     // having to grow a list scenario it does not want.
+-    if (argument.is_list() && scenarios->list != nullptr) {
++    //
++    // EXCEPT A STRING DISPLAYED, which leaves as the satellite_string it is -- the author,
++    // 2026-09-26: "we need to relieve the interpreter of that conversion!" It is moved into the
++    // display buffer, and to_utf8 runs on the converter's thread (display/display_buffer.hpp).
++    // A string holding an escape goes the way below when colours do not reach a terminal,
++    // because screen_text() has codes in it to leave out.
++    if (to_the_screen && argument.is_string() &&
++        (colours_reach_a_terminal() || !holds_an_escape(*argument.as_string())))
++        answer = display_string(std::move(*argument.as_string()), true);
++    else if (argument.is_list() && scenarios->list != nullptr) {
+         std::vector<std::string> items;
+         const satelliteList *held = argument.as_list()->get();
+         if (held != nullptr) {
+@@ -1895,6 +1948,8 @@ Value call_word(const std::vector<std::bitset<16>> &row, std::size_t &at, Expres
+     // for_the_screen) -- by display only; any other word is handed the string whole.
+     else if (argument.is_string() && scenarios->text != nullptr)
+         answer = scenarios->text(to_the_screen ? screen_text(argument.text_utf8()) : argument.text_utf8(), true);
++    else if (to_the_screen && argument.is_number())
++        answer = display_string(digits_of(*argument.as_number()), true);
+     else if (argument.is_number())
+         answer = display_a_number(*scenarios, *argument.as_number());
+     // A binary leaves as the text it was written as, b and leading zeros and all.
+@@ -1963,7 +2018,12 @@ Value call_word(const std::vector<std::bitset<16>> &row, std::size_t &at, Expres
+         return Value();
+     }
+ 
+-    if (stops_the_program(answer))
++    // A LIBRARY'S LINE REFUSED BECAUSE THE BUFFER OVERRAN AS IT WROTE is the overrun, not S820.
++    if (to_the_screen && answer == display_error && display_overran())
++        answer = display_string_buffer_overrun;
++    if (answer == display_string_buffer_overrun)
++        context.refuse(answer, overran_text(code));
++    else if (stops_the_program(answer))
+         context.refuse(answer, std::string(word::spelling_of(code)) + " refused");
+     return Value::of_code(answer);
+ }
+diff --git a/satellite/machine/machine_codes.hpp b/satellite/machine/machine_codes.hpp
+index aad1876..2fe07ac 100644
+--- a/satellite/machine/machine_codes.hpp
++++ b/satellite/machine/machine_codes.hpp
+@@ -137,6 +137,10 @@ enum MachineCode : signed long long int {
+     // interpreter from anywhere". Not a failure: it unwinds every frame as a refusal would,
+     // closing each one's files, and run_main turns it into success -- satl exits 0.
+     program_returned = 64,              // satellite.return(satellite) was reached: the whole program ends here
++    // 65 WAS ADDED 2026-09-26 with the display buffer (display/display_buffer.hpp). The author:
++    // "crash the interpreter if it is overran, because if 512mb is overrun, that is a real
++    // problem because a 512mb buffer should never get overrun just printing information".
++    display_string_buffer_overrun = 65, // more than 512 MiB of text was waiting to be displayed
+ 
+     // 130 AND NOT 32, ON PURPOSE (PLAN M0.6): 128 + SIGINT is what a shell and 003
+     // both answer for Ctrl-C, and exit_status_of passes a code under 255 through as
+@@ -201,6 +205,7 @@ inline const char *machine_code_name(signed long long int code)
+     case thread_cannot_share_yet: return "thread_cannot_share_yet";
+     case wait_never_ends: return "wait_never_ends";
+     case program_returned: return "program_returned";
++    case display_string_buffer_overrun: return "display_string_buffer_overrun";
+     case out_of_memory: return "out_of_memory";
+     case libraries_not_understood: return "libraries_not_understood";
+     case file_not_found: return "file_not_found";
+diff --git a/satellite/machine/s_codes.hpp b/satellite/machine/s_codes.hpp
+index b3394af..71fe304 100644
+--- a/satellite/machine/s_codes.hpp
++++ b/satellite/machine/s_codes.hpp
+@@ -250,6 +250,12 @@ inline SCode s_code_for(signed long long int machine_code)
+         return {"S810", "INTERRUPTED",
+                 "Ctrl-C stopped this between statements. satl exits 130, which is 128 + SIGINT -- "
+                 "what a shell and 003 both answer."};
++    // The author's name for it, 2026-09-26: "report display string buffer overrun".
++    case display_string_buffer_overrun:
++        return {"S840", "DISPLAY_STRING_BUFFER_OVERRUN",
++                "more than 512 MB of text was waiting to be displayed, faster than the screen could "
++                "take it. Printing information never needs that much waiting at once, so the program "
++                "is stopped here and the waiting text is let go."};
+ 
+     // S13xx -- THE WINDOW (SATELLITE_WINDOW.md WIN-3, 2026-09-20).
+     case no_display:
+diff --git a/satellite/satl/listing_progress.cpp b/satellite/satl/listing_progress.cpp
+index da4b89d..dd26b95 100644
+--- a/satellite/satl/listing_progress.cpp
++++ b/satellite/satl/listing_progress.cpp
+@@ -3,6 +3,7 @@
+ #include "listing_progress.hpp"
+ 
+ #include "listing.hpp"
++#include "../display/display_buffer.hpp"
+ 
+ #include <chrono>
+ #include <csignal>
+@@ -25,15 +26,11 @@ std::string how_long(double seconds)
+     return std::to_string(whole / 3600) + " h " + std::to_string(whole % 3600 / 60) + " min";
+ }
+ 
++// THROUGH THE DISPLAY BUFFER (display/display_buffer.hpp), like every other line on the screen:
++// written straight to the descriptor, the line could land before program lines still waiting there.
+ void write_all(const std::string &text)
+ {
+-    std::size_t at = 0;
+-    while (at < text.size()) {
+-        const ssize_t wrote = ::write(STDOUT_FILENO, text.data() + at, text.size() - at);
+-        if (wrote <= 0)
+-            return;
+-        at += static_cast<std::size_t>(wrote);
+-    }
++    display_bytes(text.data(), text.size());
+ }
+ 
+ } // namespace
+diff --git a/satellite/structured-library.cpp b/satellite/structured-library.cpp
+index 3da63be..4061128 100644
+--- a/satellite/structured-library.cpp
++++ b/satellite/structured-library.cpp
+@@ -55,6 +55,7 @@
+ #include "../satellite-numbers/call_number.hpp"
+ #include "satl/satl_file.hpp"
+ #include "satl/session.hpp"
++#include "display/display_buffer.hpp"
+ #include "threads/startup_threads.hpp"
+ #include "version/version.hpp"
+ 
+@@ -691,6 +692,9 @@ void out_of_memory_handler()
+ int main(int argc, char **argv)
+ {
+     std::ios::sync_with_stdio(false);
++    // EVERYTHING std::cout IS GIVEN GOES THROUGH THE DISPLAY BUFFER'S THREE THREADS
++    // (display/display_buffer.hpp), before anything is printed.
++    satellite004::display_takes_std_cout();
+ 
+     // 32 KiB OF STACK FOR EVERY MiB OF MEMORY, before anything runs (the author,
+     // 2026-09-22; machine/stack_share.hpp): a capsule calling itself died at
+diff --git a/satellite/display/display_buffer.hpp b/satellite/display/display_buffer.hpp
+new file mode 100644
+index 0000000..bf2dc97
+--- /dev/null
++++ b/satellite/display/display_buffer.hpp
+@@ -0,0 +1,86 @@
++#pragma once
++// satellite/display/display_buffer.hpp -- WHAT satl PRINTS, AND THE THREE THREADS THAT PRINT IT.
++//
++// The author, 2026-09-26: "we need to create a thread off of the satl process, and then have
++// that thread create 2 more threads, for a total of 3 threads... one will print as fast as it
++// can, one will keep a 256mb buffer, and one will hand pieces of the buffer (4mb at a time) to
++// the display thread", "the one that is handing the pieces to the display thread has to do the
++// converting too", "use std::vector<std::string> for this, and std::vector<satellite_string>
++// as the 256mb buffer, and actually make it a 512mb buffer", "crash the interpreter if it is
++// overran, because if 512mb is overrun, that is a real problem because a 512mb buffer should
++// never get overrun just printing information", and "we need to relieve the interpreter of that
++// conversion!"
++//
++//     the interpreter --satellite_string, MOVED--> 1  THE BUFFER     std::vector<satellite_string>
++//                                                    |  pieces of at most 4 MiB, still satellite_strings
++//                                                    v
++//                                                 2  THE CONVERTER  to_utf8(), one piece at a time
++//                                                    |  std::vector<std::string>
++//                                                    v
++//                                                 3  THE DISPLAY    write(1), as fast as it is taken
++//
++// THE INTERPRETER CONVERTS NOTHING. A string to display goes into the buffer as the
++// satellite_string it already is -- 16-bit codes in the author's order -- and to_utf8() runs on
++// the converter's thread. A long one is MOVED in, which costs the same ~15 ns at any size, where
++// converting a 1 MB string cost the interpreter about half a millisecond. A short one (under 1,024
++// characters) is copied onto the end of a gathering string instead, because a small string made
++// on one thread and freed on another costs more in glibc's allocator than the copy does
++// (display_buffer.cpp has the numbers).
++//
++// THE BUFFER THREAD IS STARTED OFF satl, AND IT STARTS THE OTHER TWO, the first time anything is
++// given to it -- so a run that prints nothing makes no threads. Each of the three blocks every
++// signal, so Ctrl-C still lands on the thread the program runs on.
++//
++// THE CHECK FOR AN OVERRUN IS ONE COMPARISON, and that is how it stays lazy. The buffer keeps a
++// running count of what it holds -- added when a string arrives, taken off when a piece leaves
++// for the converter -- so nothing ever walks the vector to size it. A caller adding a string
++// already holds the buffer's lock to push it; comparing the count against 512 MiB there costs one
++// add and one compare, and catches the overrun on the very string that makes it.
++//
++// WHAT IS COUNTED IS MEMORY: each string's characters at two bytes a unit, and the 48-byte object
++// holding them. A loop displaying one character at a time would otherwise fill gigabytes of
++// vector while the count said a few hundred megabytes. What has left for the converter is not
++// counted -- at most one piece waiting there and two converted ones waiting for the display.
++//
++// AN OVERRUN CRASHES THE PROGRAM, THROUGH THE ORDINARY WAY A PROGRAM STOPS. Everything the buffer
++// holds is let go, the display word that overran it is refused with
++// display_string_buffer_overrun (65), S840, and so is every display after it on any thread. It is
++// not a bare _exit: satl's own console is a window IN THIS PROCESS, and an _exit would close it
++// before anybody read why -- the refusal keeps it up on "stopped on machine code 65".
++//
++// std::cout WRITES INTO THE SAME BUFFER (display_stream.cpp), so satl's own lines -- the prompt,
++// a listing, a styled display -- land between the program's lines in the order they were written.
++// std::cerr is tied to std::cout, so a report flushes it first: a flush WAITS until the display
++// thread has written everything before it, and every report comes after the lines it explains.
++
++#include "../satellite_variable_string/satellite_string.hpp"
++
++#include <cstddef>
++
++namespace satellite004 {
++
++// "actually make it a 512mb buffer" -- and "(4mb at a time)".
++constexpr std::size_t kDisplayBufferBytes = 512ull * 1024 * 1024;
++constexpr std::size_t kDisplayPieceBytes = 4ull * 1024 * 1024;
++
++// THE INTERPRETER'S DOOR. The string is moved in, and `newline` puts one after it. Answers
++// success, display_error when the output has refused an earlier piece (S820, as before), or
++// display_string_buffer_overrun.
++signed long long int display_string(satellite_string &&text, bool newline);
++
++// satl's OWN BYTES -- std::cout's, the listing's progress line. They are made a satellite_string
++// on the way in, so the buffer holds one kind of thing. Bytes that are not UTF-8 are written as
++// they are, after everything given before them.
++signed long long int display_bytes(const char *bytes, std::size_t size);
++
++// Returns once everything given before the call has been written. Answers success, or
++// display_error when the output refused some of it. Never waits after an overrun.
++signed long long int display_drain();
++
++// Whether the buffer has overrun: from then on every display is refused.
++bool display_overran();
++
++// std::cout writes into the buffer from here on. main() calls it before anything prints.
++void display_takes_std_cout();
++
++} // namespace satellite004
+diff --git a/satellite/display/display_buffer.cpp b/satellite/display/display_buffer.cpp
+new file mode 100644
+index 0000000..9a10750
+--- /dev/null
++++ b/satellite/display/display_buffer.cpp
+@@ -0,0 +1,501 @@
++// satellite/display/display_buffer.cpp -- the buffer, the converter and the display thread.
++// display_buffer.hpp is the design and the author's words; this is the machinery.
++
++#include "display_buffer.hpp"
++
++#include "../machine/machine_codes.hpp"
++
++#include <algorithm>
++#include <chrono>
++#include <atomic>
++#include <cerrno>
++#include <condition_variable>
++#include <csignal>
++#include <cstdint>
++#include <cstdlib>
++#include <mutex>
++#include <poll.h>
++#include <pthread.h>
++#include <string>
++#include <unistd.h>
++#include <utility>
++#include <vector>
++
++namespace satellite004 {
++namespace {
++
++constexpr std::size_t kPieceUnits = kDisplayPieceBytes / sizeof(char16_t);
++// HOW MANY CONVERTED PIECES MAY WAIT FOR THE DISPLAY THREAD -- my number, not the author's.
++// Without one, a display that fell behind would let the converter turn the whole buffer into
++// std::strings where the overrun count cannot see them. Two keeps the display thread fed.
++constexpr std::size_t kConvertedWaiting = 2;
++// A SHORT STRING IS GATHERED, NOT MOVED IN: copied onto the end of one gathering string, and let
++// go on the caller's own thread. Measured 2026-09-26, 1,000,000 lines of 37 characters: moved in
++// one by one, each cost the interpreter 230 ns, because every string was made on its thread and
++// freed on the buffer's, and glibc's allocator pays for that at both ends. Gathered, 130 ns -- the
++// copy is 74 bytes. A string past kGatherSmall is still moved in whole and never copied.
++constexpr std::size_t kGatherSmall = 1024;         // units
++constexpr std::size_t kGatherUnits = 16 * 1024;    // how long one gathering string grows
++constexpr std::chrono::microseconds kNap{1000};
++constexpr int kNaps = 10;                         // 10 ms of naps, then a sleep somebody must wake
++// THE THREE STACKS. They recurse nowhere, and satl widens its stack limit to gigabytes for the
++// program's own capsules (machine/stack_share.hpp), which a thread would otherwise inherit.
++constexpr std::size_t kThreadStack = 1024 * 1024;
++
++// A newline's code (satellite_string.hpp's table), asked for once and not at start-up.
++char32_t newline_code()
++{
++    static const char32_t code = satellite_string::code_of(U'\n');
++    return code;
++}
++
++std::size_t weight_of(const satellite_string &text)
++{
++    return sizeof(satellite_string) + text.units() * sizeof(char16_t);
++}
++
++struct DisplayBuffer {
++    // 1 THE BUFFER -- the one lock a caller ever takes.
++    std::mutex buffer_lock;
++    std::condition_variable buffer_has_work;
++    std::vector<satellite_string> arriving;
++    std::size_t held_bytes = 0;          // arriving, plus what the buffer thread is cutting
++    std::uint64_t given_units = 0;       // every unit ever given: what display_drain() waits for
++    bool buffer_thread_sleeps = false;   // a caller wakes it only then
++    bool last_gathers = false;           // arriving.back() is a gathering string, still growing
++
++    // 1 -> 2, ONE PIECE AT A TIME.
++    std::mutex piece_lock;
++    std::condition_variable piece_given, piece_taken;
++    satellite_string piece;
++    std::uint64_t piece_units = 0;
++    bool piece_waiting = false;
++
++    // 2 -> 3, the author's std::vector<std::string>.
++    std::mutex converted_lock;
++    std::condition_variable converted_given, converted_taken;
++    std::vector<std::string> converted;
++    std::uint64_t converted_units = 0;   // every unit converted, the waiting pieces included
++
++    // 3 -> display_drain()
++    std::mutex written_lock;
++    std::condition_variable written_changed;
++    std::uint64_t written_units = 0;
++
++    // HELD WHILE BYTES GO OUT, by the display thread and by a direct write, so neither lands
++    // inside the other.
++    std::mutex write_lock;
++
++    // Which of the other two the buffer thread could start. One that could not be made has its
++    // work done by the thread before it: slower, and nothing is lost.
++    bool converter_runs = false;
++    bool display_runs = false;
++};
++
++// NEVER DESTROYED. std::cout is flushed after main() returns, and that flush waits on these
++// threads -- a buffer destroyed first would be waited on after it had gone.
++DisplayBuffer &the_buffer()
++{
++    static DisplayBuffer *const one = new DisplayBuffer;
++    return *one;
++}
++
++std::atomic<bool> started{false};
++std::once_flag start_once;
++std::atomic<bool> direct_only{false};       // no buffer thread could be made
++std::atomic<bool> in_a_forked_child{false}; // the child of a fork has none of the three
++std::atomic<bool> failed{false};            // the output refused a write
++std::atomic<bool> overran{false};
++
++// write(1) until it is all out. EAGAIN -- an output somebody made non-blocking -- waits for room.
++bool write_all(const char *bytes, std::size_t size)
++{
++    while (size > 0) {
++        const ssize_t wrote = ::write(STDOUT_FILENO, bytes, size);
++        if (wrote > 0) {
++            bytes += wrote;
++            size -= static_cast<std::size_t>(wrote);
++        } else if (wrote < 0 && errno == EINTR) {
++            continue;
++        } else if (wrote < 0 && (errno == EAGAIN || errno == EWOULDBLOCK)) {
++            pollfd one{STDOUT_FILENO, POLLOUT, 0};
++            ::poll(&one, 1, -1);
++        } else {
++            return false;
++        }
++    }
++    return true;
++}
++
++bool write_directly(const char *bytes, std::size_t size)
++{
++    if (in_a_forked_child.load(std::memory_order_relaxed))
++        return write_all(bytes, size);   // one thread here, and the lock may be a dead thread's
++    const std::lock_guard<std::mutex> hold(the_buffer().write_lock);
++    return write_all(bytes, size);
++}
++
++void written_through(std::uint64_t units)
++{
++    DisplayBuffer &b = the_buffer();
++    {
++        const std::lock_guard<std::mutex> hold(b.written_lock);
++        b.written_units = units;
++    }
++    b.written_changed.notify_all();
++}
++
++// 3's WORK: the bytes out, and a failure remembered. After a failure the bytes are let go --
++// the count still moves, so nobody waits on a write that will never be made.
++void write_out(const std::string &bytes)
++{
++    if (!failed.load(std::memory_order_relaxed) && !write_all(bytes.data(), bytes.size()))
++        failed.store(true, std::memory_order_release);
++}
++
++// 2's WORK, handed to 3 -- or written here, when there is no display thread.
++void pass_on(std::string bytes, std::uint64_t units)
++{
++    DisplayBuffer &b = the_buffer();
++    if (!b.display_runs) {
++        std::uint64_t through = 0;
++        {
++            const std::lock_guard<std::mutex> hold(b.write_lock);
++            write_out(bytes);
++            through = b.converted_units += units;   // only this thread moves it now
++        }
++        written_through(through);
++        return;
++    }
++    {
++        std::unique_lock<std::mutex> hold(b.converted_lock);
++        b.converted_taken.wait(hold, [&b] { return b.converted.size() < kConvertedWaiting; });
++        b.converted.push_back(std::move(bytes));
++        b.converted_units += units;
++    }
++    b.converted_given.notify_one();
++}
++
++// 1's PIECE, handed to 2 -- or converted here, when there is no converter.
++void hand_on(satellite_string &&piece, std::uint64_t units)
++{
++    DisplayBuffer &b = the_buffer();
++    if (!b.converter_runs) {
++        pass_on(piece.to_utf8(), units);
++        return;
++    }
++    {
++        std::unique_lock<std::mutex> hold(b.piece_lock);
++        b.piece_taken.wait(hold, [&b] { return !b.piece_waiting; });
++        b.piece = std::move(piece);
++        b.piece_units = units;
++        b.piece_waiting = true;
++    }
++    b.piece_given.notify_one();
++}
++
++// 3, THE DISPLAY: "print as fast as it can". It takes every converted piece waiting at once.
++void *display_thread(void *)
++{
++    DisplayBuffer &b = the_buffer();
++    std::vector<std::string> writing;
++    for (;;) {
++        std::uint64_t through = 0;
++        {
++            std::unique_lock<std::mutex> hold(b.converted_lock);
++            b.converted_given.wait(hold, [&b] { return !b.converted.empty(); });
++            writing.swap(b.converted);
++            through = b.converted_units;
++        }
++        b.converted_taken.notify_one();
++        {
++            const std::lock_guard<std::mutex> hold(b.write_lock);
++            for (const std::string &bytes : writing)
++                write_out(bytes);
++        }
++        writing.clear();
++        written_through(through);
++    }
++    return nullptr;
++}
++
++// 2, THE CONVERTER: a 4 MiB satellite_string in, its UTF-8 out.
++void *converter_thread(void *)
++{
++    DisplayBuffer &b = the_buffer();
++    for (;;) {
++        satellite_string piece;
++        std::uint64_t units = 0;
++        {
++            std::unique_lock<std::mutex> hold(b.piece_lock);
++            b.piece_given.wait(hold, [&b] { return b.piece_waiting; });
++            piece = std::move(b.piece);
++            units = b.piece_units;
++            b.piece_waiting = false;
++        }
++        b.piece_taken.notify_one();
++        pass_on(piece.to_utf8(), units);
++    }
++    return nullptr;
++}
++
++bool start_thread(void *(*body)(void *), const char *name)
++{
++    pthread_attr_t shape;
++    if (pthread_attr_init(&shape) != 0)
++        return false;
++    pthread_attr_setstacksize(&shape, kThreadStack);
++    pthread_attr_setdetachstate(&shape, PTHREAD_CREATE_DETACHED);
++    // EVERY SIGNAL BLOCKED, and the new thread takes the mask: Ctrl-C and a closed terminal
++    // belong to the thread the program runs on, whose waits they are meant to break.
++    sigset_t all, before;
++    sigfillset(&all);
++    pthread_sigmask(SIG_BLOCK, &all, &before);
++    pthread_t id;
++    const bool made = pthread_create(&id, &shape, body, nullptr) == 0;
++    pthread_sigmask(SIG_SETMASK, &before, nullptr);
++    pthread_attr_destroy(&shape);
++    if (made)
++        pthread_setname_np(id, name);
++    return made;
++}
++
++// As many whole characters of `text`, from `unit`, as `room` units hold.
++std::size_t characters_that_fit(const satellite_string &text, std::size_t unit, std::size_t room,
++                                std::size_t &units)
++{
++    if (text.fast()) {
++        units = std::min(room, text.units() - unit);
++        return units;
++    }
++    std::size_t characters = 0, width = 0;
++    units = 0;
++    while (unit + units < text.units()) {
++        text.code_at_unit(unit + units, width);
++        if (units + width > room)
++            break;
++        units += width;
++        ++characters;
++    }
++    return characters;
++}
++
++// 1, THE BUFFER THREAD -- the one started off satl, which starts the other two -- and it cuts
++// what arrives into pieces of at most 4 MiB. A string that fits is MOVED into a piece whole; one
++// longer than a piece is cut between characters, never inside a wide one.
++void *buffer_thread(void *)
++{
++    DisplayBuffer &b = the_buffer();
++    b.display_runs = start_thread(display_thread, "satl-display");
++    b.converter_runs = start_thread(converter_thread, "satl-convert");
++
++    std::vector<satellite_string> cutting;
++    std::size_t next = 0, from_character = 0, from_unit = 0;
++    for (;;) {
++        if (next == cutting.size()) {
++            cutting.clear();
++            std::unique_lock<std::mutex> hold(b.buffer_lock);
++            // A SHORT NAP BEFORE A LONG SLEEP. A thread asleep has to be woken, and waking it is a
++            // system call on the interpreter's thread: a program displaying a line every couple
++            // of microseconds let this thread catch up and sleep between every two, and paid the
++            // wake on every display -- 420 ns a line against 155 napping (2026-09-26). So it naps
++            // 1 ms at a time, which nobody has to wake it from, and sleeps for real only after
++            // 10 ms with nothing. 1 ms and not 100 us, because fewer, bigger batches keep the
++            // three threads off the other cores, and a busy core slows the interpreter's own on
++            // this Xeon (7% with three busy, measured with the satl before this was built): 115 ns
++            // a line against 155. A line can wait up to 1 ms longer to appear; a screen shows a
++            // frame every 16.
++            for (int naps = 0; b.arriving.empty() && naps < kNaps; ++naps)
++                b.buffer_has_work.wait_for(hold, kNap);
++            if (b.arriving.empty()) {
++                b.buffer_thread_sleeps = true;
++                b.buffer_has_work.wait(hold, [&b] { return !b.arriving.empty(); });
++                b.buffer_thread_sleeps = false;
++            }
++            cutting.swap(b.arriving);
++            b.last_gathers = false;     // what it gathered is the buffer thread's now
++            next = from_character = from_unit = 0;
++        }
++        if (overran.load(std::memory_order_acquire)) {
++            cutting.clear();            // let it go: the program is being stopped
++            next = 0;
++            continue;
++        }
++        satellite_string piece;
++        std::size_t released = 0;
++        while (next < cutting.size() && piece.units() < kPieceUnits) {
++            satellite_string &text = cutting[next];
++            const std::size_t room = kPieceUnits - piece.units();
++            if (from_unit == 0 && text.units() <= room) {
++                released += weight_of(text);
++                if (piece.empty())
++                    piece = std::move(text);
++                else
++                    piece.append(text);
++                ++next;
++                continue;
++            }
++            std::size_t units = 0;
++            const std::size_t characters = characters_that_fit(text, from_unit, room, units);
++            if (characters == 0)
++                break;                  // a wide character with no room: the next piece takes it
++            satellite_string part;
++            text.substring(from_character, from_character + characters, part);
++            if (piece.empty())
++                piece = std::move(part);
++            else
++                piece.append(part);
++            from_character += characters;
++            from_unit += units;
++            if (from_unit == text.units()) {
++                released += weight_of(text);
++                ++next;
++                from_character = from_unit = 0;
++            }
++        }
++        const std::uint64_t units = piece.units();
++        if (units > 0)
++            hand_on(std::move(piece), units);
++        if (released > 0) {
++            const std::lock_guard<std::mutex> hold(b.buffer_lock);
++            b.held_bytes = b.held_bytes > released ? b.held_bytes - released : 0;
++        }
++    }
++    return nullptr;
++}
++
++void after_a_fork_in_the_child() { in_a_forked_child.store(true, std::memory_order_relaxed); }
++
++void drain_at_exit() { display_drain(); }
++
++void start()
++{
++    pthread_atfork(nullptr, nullptr, after_a_fork_in_the_child);
++    the_buffer();
++    if (!start_thread(buffer_thread, "satl-buffer"))
++        direct_only.store(true, std::memory_order_release);
++    else
++        std::atexit(drain_at_exit);   // every way out waits for what was given
++    started.store(true, std::memory_order_release);
++}
++
++bool goes_directly()
++{
++    if (!started.load(std::memory_order_acquire))
++        std::call_once(start_once, start);
++    return direct_only.load(std::memory_order_relaxed) || in_a_forked_child.load(std::memory_order_relaxed);
++}
++
++// INTO THE BUFFER, with the overrun check: one add and one compare, under the lock the push
++// already holds.
++signed long long int give(satellite_string &&text, bool newline)
++{
++    DisplayBuffer &b = the_buffer();
++    const std::size_t weight = weight_of(text) + (newline ? sizeof(satellite_string) + sizeof(char16_t) : 0);
++    const std::uint64_t units = text.units() + (newline ? 1 : 0);
++    std::vector<satellite_string> dropped;
++    bool wake = false;
++    {
++        const std::lock_guard<std::mutex> hold(b.buffer_lock);
++        if (overran.load(std::memory_order_relaxed))
++            return display_string_buffer_overrun;
++        if (b.held_bytes + weight > kDisplayBufferBytes) {
++            overran.store(true, std::memory_order_release);
++            dropped.swap(b.arriving);   // freed below, outside the lock
++            b.held_bytes = 0;
++            b.last_gathers = false;
++        } else if (units <= kGatherSmall) {
++            if (!b.last_gathers || b.arriving.back().units() + units > kGatherUnits) {
++                b.arriving.emplace_back();
++                b.last_gathers = true;
++                b.held_bytes += sizeof(satellite_string);
++            }
++            b.arriving.back().append(text);
++            if (newline)
++                b.arriving.back().append_code(newline_code());
++            b.held_bytes += units * sizeof(char16_t);
++            b.given_units += units;
++            wake = b.buffer_thread_sleeps;
++        } else {
++            b.arriving.push_back(std::move(text));
++            if (newline) {
++                b.arriving.emplace_back();
++                b.arriving.back().append_code(newline_code());
++            }
++            b.last_gathers = false;
++            b.held_bytes += weight;
++            b.given_units += units;
++            wake = b.buffer_thread_sleeps;
++        }
++    }
++    if (overran.load(std::memory_order_relaxed)) {
++        { const std::lock_guard<std::mutex> hold(b.written_lock); }
++        b.written_changed.notify_all();   // nobody waits on what was let go
++        return display_string_buffer_overrun;
++    }
++    if (wake)
++        b.buffer_has_work.notify_one();
++    return failed.load(std::memory_order_acquire) ? display_error : success;
++}
++
++} // namespace
++
++signed long long int display_string(satellite_string &&text, bool newline)
++{
++    if (failed.load(std::memory_order_acquire))
++        return display_error;
++    if (goes_directly()) {
++        std::string bytes = text.to_utf8();
++        if (newline)
++            bytes += '\n';
++        return write_directly(bytes.data(), bytes.size()) ? success : display_error;
++    }
++    if (!newline && text.empty())
++        return success;
++    return give(std::move(text), newline);
++}
++
++signed long long int display_bytes(const char *bytes, std::size_t size)
++{
++    if (size == 0)
++        return success;
++    if (failed.load(std::memory_order_acquire))
++        return display_error;
++    // AFTER AN OVERRUN satl's own words still reach the screen, written as they come: the
++    // buffer is gone, and what is left to say is why the program stopped.
++    if (goes_directly() || overran.load(std::memory_order_acquire))
++        return write_directly(bytes, size) ? success : display_error;
++    satellite_string text;
++    std::size_t bad = 0;
++    if (satellite_string::from_utf8(std::string(bytes, size), text, bad) != success) {
++        // NOT UTF-8 -- a file name no encoding made, say. It goes out as the bytes it is, after
++        // everything given before it.
++        display_drain();
++        return write_directly(bytes, size) ? success : display_error;
++    }
++    return give(std::move(text), false);
++}
++
++signed long long int display_drain()
++{
++    if (!started.load(std::memory_order_acquire) || direct_only.load(std::memory_order_relaxed) ||
++        in_a_forked_child.load(std::memory_order_relaxed))
++        return failed.load(std::memory_order_acquire) ? display_error : success;
++    DisplayBuffer &b = the_buffer();
++    std::uint64_t target = 0;
++    {
++        const std::lock_guard<std::mutex> hold(b.buffer_lock);
++        target = b.given_units;
++    }
++    {
++        std::unique_lock<std::mutex> hold(b.written_lock);
++        b.written_changed.wait(hold, [&b, target] {
++            return b.written_units >= target || overran.load(std::memory_order_acquire);
++        });
++    }
++    return failed.load(std::memory_order_acquire) ? display_error : success;
++}
++
++bool display_overran() { return overran.load(std::memory_order_relaxed); }
++
++} // namespace satellite004
+diff --git a/satellite/display/display_stream.cpp b/satellite/display/display_stream.cpp
+new file mode 100644
+index 0000000..b3adf90
+--- /dev/null
++++ b/satellite/display/display_stream.cpp
+@@ -0,0 +1,50 @@
++// satellite/display/display_stream.cpp -- std::cout, written into the display buffer.
++//
++// EVERYTHING satl ITSELF WRITES WITH std::cout -- a styled display, a number's digits from its
++// library, the prompt, a listing -- goes into the same buffer as the program's strings, so it lands
++// between them in the order it was written. display_buffer.hpp says why a flush is a wait.
++
++#include "display_buffer.hpp"
++
++#include "../machine/machine_codes.hpp"
++
++#include <iostream>
++#include <streambuf>
++
++namespace satellite004 {
++namespace {
++
++// NO BUFFER OF ITS OWN: every write goes into the display buffer at once. A byte held here would
++// be overtaken by the next string the interpreter moves in, and the lines would change order.
++class DisplayStream : public std::streambuf {
++protected:
++    std::streamsize xsputn(const char *bytes, std::streamsize size) override
++    {
++        if (size <= 0)
++            return 0;
++        return display_bytes(bytes, static_cast<std::size_t>(size)) == success ? size : 0;
++    }
++
++    int_type overflow(int_type c) override
++    {
++        if (traits_type::eq_int_type(c, traits_type::eof()))
++            return traits_type::not_eof(c);
++        const char one = traits_type::to_char_type(c);
++        return display_bytes(&one, 1) == success ? c : traits_type::eof();
++    }
++
++    // A FLUSH WAITS until the display thread has written everything before it, which is what
++    // every std::cout.flush() in satl already meant: said, before anything waits.
++    int sync() override { return display_drain() == success ? 0 : -1; }
++};
++
++} // namespace
++
++void display_takes_std_cout()
++{
++    // NEVER DESTROYED: std::cout is flushed after main() returns, through this.
++    static DisplayStream *const stream = new DisplayStream;
++    std::cout.rdbuf(stream);
++}
++
++} // namespace satellite004

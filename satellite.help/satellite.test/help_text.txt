@@ -1,0 +1,52 @@
+--------------------------------------------------------------------------------
+SATELLITE 004: satellite.test
+--------------------------------------------------------------------------------
+
+satellite.test runs satl's own tests -- they are built into satl -- and prints
+what they found. Each one lasts about a minute on the author's machine, and
+says in seconds how long it took on yours.
+
+    satellite.test.full()     every capability of satl, each answer checked
+    satellite.test.speed()    the speed of everything: the same work in satl
+                              and in C++ built into satl, both timed, and how
+                              fast satl is beside C++
+    satellite.test.loss()     547311173 -- "satellite" spelled in numbers --
+                              through every type's loss test, each handing its
+                              number to the next, 1,000,000 operations a type;
+                              the two numbers it prints at the end should match
+    satellite.test.all()      all three, one after another
+
+The author: "Make every test last for... as close as you can get to 60 seconds
+on this machine, and we'll tell the user that it should say ~60s and we'll give
+them the seconds in a float".
+
+Every test but all() ends with the line "it is recommended that you run
+satellite.test.all() to run every test". Each answers true when everything it
+checked was right, so a program can ask: satellite.statement.if
+(satellite.test.loss()) { ... }.
+
+A test runs its programs one at a time, each as a satl of its own in a folder
+of its own that is gone when the test ends, on satl's built-in settings -- so
+yours cannot change an answer. Nothing on the disk is changed, and the
+refusals full() checks for never reach your satellite.log. A program that hangs
+is stopped and named. None of the four takes anything, and satellite.test on
+its own is not a call. Ctrl-C stops a test at once; in a program run from a
+file it then ends the program, as Ctrl-C always does.
+
+example:
+
+satellite.include(satellite)
+
+satellite.capsule satellite.main()
+{
+    satellite.test.loss()
+    satellite.return(satellite)
+}
+
+prints:
+
+these two numbers should match:
+547311173
+547311173
+61.42 seconds -- about 60 on the author's machine
+it is recommended that you run satellite.test.all() to run every test

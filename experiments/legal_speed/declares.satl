@@ -1,0 +1,13 @@
+satellite.include(satellite)
+
+satellite.capsule satellite.main()
+{
+    satellite.variable.number total = 0
+    satellite.statement.for(satellite.variable.number i = 0; i < 300000; i + 1)
+    {
+        satellite.variable.number t = i * 2
+        total = total + t
+    }
+    satellite.console.display(total)
+    satellite.return(satellite)
+}
