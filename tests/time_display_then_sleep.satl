@@ -1,0 +1,11 @@
+// A line displayed before a sleep reaches the screen DURING the sleep, not after it: the printing
+// satellite is its own thread (display/printing_satellite.hpp), and check.sh times the two lines.
+satellite.include(satellite)
+
+satellite.capsule satellite.main(satellite.container.list<satellite.variable.string> arguments)
+{
+    satellite.console.display("before")
+    satellite.time.sleep(400ms)
+    satellite.console.display("after")
+    satellite.return(satellite)
+}

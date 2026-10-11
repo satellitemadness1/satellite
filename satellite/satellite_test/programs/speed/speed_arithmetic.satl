@@ -1,0 +1,26 @@
+satellite.include(satellite)
+
+// speed_arithmetic.satl -- satellite.test.speed(): + - * / % AND ^ ON SMALL WHOLE NUMBERS.
+// x walks the Park-Miller sequence (* and %); each pass splits it with / and %, squares a digit with ^,
+// and folds all of it into two running totals with + and -, so both totals depend on every pass.
+// Every value stays inside 64 bits.  Prints: x, then the two totals.  C++ twin: speed_arithmetic().
+
+satellite.capsule satellite.main()
+{
+    satellite.variable.number passes = 410000
+    satellite.variable.number x = 547311173
+    satellite.variable.number q = 0
+    satellite.variable.number r = 0
+    satellite.variable.number s = 0
+    satellite.variable.number t = 0
+    satellite.statement.for(satellite.variable.number i = 0; i < passes; i + 1)
+    {
+        x = x * 48271 % 2147483647
+        q = x / 1000
+        r = x % 1000
+        s = s + q - r * 3 + (r % 10) ^ 2
+        t = (t * 31 + q / 7 - r) % 1000000007
+    }
+    satellite.console.display(x.string + " " + s.string + " " + t.string)
+    satellite.return(satellite)
+}

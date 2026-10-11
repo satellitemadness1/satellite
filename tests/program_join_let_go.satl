@@ -1,0 +1,23 @@
+satellite.include(satellite)
+
+// A JOIN LOOKS UP WHILE IT WAITS: satellite.return(satellite) on another thread ends the run now,
+// not when sleep 6.17 ends -- and the program is stopped quietly, its join having been reached
+// (the review, 2026-10-01).
+satellite.capsule quit_soon()
+{
+    satellite.variable.program nap = {"sleep", "0.3"}
+    nap.start()
+    nap.join()
+    satellite.return(satellite)
+}
+
+satellite.capsule satellite.main(satellite.variable.arguments args)
+{
+    satellite.variable.program long_wait = {"sleep", "6.17"}
+    long_wait.start()
+    satellite.variable.thread quitter = satellite.thread.new(quit_soon())
+    quitter.start()
+    satellite.console.display(long_wait.join())
+    satellite.console.display("never shown")
+    satellite.return(satellite)
+}

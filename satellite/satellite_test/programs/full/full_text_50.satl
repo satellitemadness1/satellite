@@ -1,0 +1,16 @@
+satellite.include(satellite)
+
+// full_text_50 -- REFUSED: multiple as a parameter refuses a type not on its list (machine code 27).
+// satellite.help(satellite.container.multiple). Nothing reaches stdout; satl exits with the refusal's code.
+
+satellite.capsule satellite.main()
+{
+    satellite.variable.number passes = 1
+    show(2.5)
+    satellite.return(satellite)
+}
+
+satellite.capsule show(satellite.container.multiple<satellite.variable.string, satellite.container.list> what)
+{
+    satellite.console.display(what)
+}

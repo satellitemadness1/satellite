@@ -1,0 +1,13 @@
+satellite.include(satellite)
+
+// full_numbers_18 -- satellite.test.full(), a program satl must REFUSE.
+// infinity: + is not built yet (INF-3).
+// It exits 14, and its report on stderr holds: built yet (SATELLITE_INFINITY.md, INF-3)
+// Nothing is printed on stdout.
+
+satellite.capsule satellite.main()
+{
+    satellite.variable.number passes = 1
+    satellite.console.display(satellite.infinity() + 1)
+    satellite.return(satellite)
+}

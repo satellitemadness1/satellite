@@ -1,0 +1,11 @@
+satellite.include(satellite)
+// full_structure_9 -- REFUSED by satellite.test.full(): satellite.main: no globals -- a line outside every capsule.
+// The rule: satellite.main: a line written outside every capsule ... satl refuses one before anything runs (S110).
+// satl refuses it: exit 13, and its report on stderr says "this line is outside every capsule". It prints nothing.
+satellite.variable.number total = 0
+
+satellite.capsule satellite.main()
+{
+    satellite.variable.number passes = 1
+    satellite.return(satellite)
+}

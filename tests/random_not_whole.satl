@@ -1,0 +1,9 @@
+// A string where a whole number goes: S431, naming the kind.
+satellite.include(satellite)
+
+satellite.capsule satellite.main()
+{
+    satellite.console.display("before")
+    satellite.console.display(satellite.random.fast("ten"))
+    satellite.return(satellite)
+}

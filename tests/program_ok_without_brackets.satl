@@ -1,0 +1,11 @@
+satellite.include(satellite)
+
+// Every method of a program has its brackets, as a thread's do: p.ok is refused, p.ok() is right.
+satellite.capsule satellite.main(satellite.variable.arguments args)
+{
+    satellite.variable.program p = "true"
+    p.start()
+    satellite.console.display(p.ok)
+    p.join()
+    satellite.return(satellite)
+}

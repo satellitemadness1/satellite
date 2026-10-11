@@ -1,0 +1,79 @@
+--------------------------------------------------------------------------------
+SATELLITE 004: satellite.library
+--------------------------------------------------------------------------------
+
+satellite.library holds values written at the top of a file, outside every
+capsule -- one name and one value a line:
+
+satellite.library.span = 25
+satellite.library.checkpoint_path = "progress.txt"
+
+Every capsule in the file reads one as satellite.library.span, anywhere a value
+goes: in a line, a condition, a loop, a spacesuit's field, a
+satellite.namespace. A file that includes this one reads it through the file's
+name -- a program with satellite.include("launch/settings") at its top reads
+satellite.library.settings.span. A file reaches the values of the files it
+includes itself, and no others, the same way it reaches their capsules.
+
+A value is written down, never worked out: a number, a float, text, a binary, a
+hex, a percentage, a fraction, or satellite.bool.true or .false, with a minus
+sign in front if it has one. Nothing runs outside a capsule, so = 1 + 2 or
+= helper() at the top of a file is refused before anything runs (S250). A
+colour is written as the hex it holds, x1E2A3A.
+
+Nothing changes a value. satellite.library.span = 30 inside a capsule is
+refused before anything runs (S250) -- a value every capsule could change would
+be a global, and satellite has none. Copy it into a variable to work with it:
+
+satellite.variable.number n = satellite.library.span
+
+A value is written once in its file (S202), and its name may not be the name of
+a file the file includes. At the satl prompt there is no file, so there are no
+values to read.
+
+example:
+
+satellite.include(satellite)
+
+satellite.library.rounds = 4
+satellite.library.label = "rounds counted"
+
+satellite.capsule satellite.main()
+{
+    satellite.variable.number count = 0
+    satellite.statement.while (count < satellite.library.rounds)
+    {
+        count = count + 1
+    }
+    satellite.console.display(satellite.library.label)
+    satellite.console.display(count)
+    satellite.return(satellite)
+}
+
+prints:
+
+rounds counted
+4
+
+another file's values, through its name:
+
+settings.satl:
+
+satellite.include(satellite)
+
+satellite.library.majors = 50
+
+main.satl:
+
+satellite.include(satellite)
+satellite.include("settings")
+
+satellite.capsule satellite.main()
+{
+    satellite.console.display(satellite.library.settings.majors)
+    satellite.return(satellite)
+}
+
+prints:
+
+50

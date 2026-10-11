@@ -1,0 +1,13 @@
+satellite.include(satellite)
+
+// full_text_25 -- REFUSED: container < between two containers is refused: there is no order between them.
+// satellite.help(satellite.container). Nothing reaches stdout; satl exits with the refusal's code.
+
+satellite.capsule satellite.main()
+{
+    satellite.variable.number passes = 1
+    satellite.container.list a = {1}
+    satellite.container.list b = {2}
+    satellite.console.display(a < b)
+    satellite.return(satellite)
+}

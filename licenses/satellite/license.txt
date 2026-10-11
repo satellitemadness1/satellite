@@ -1,0 +1,56 @@
+MIT License (Expat)
+
+Copyright (c) 2026 Terran Satellite <terransatellite@gmail.com>
+
+Permission is hereby granted, free of charge, to any person obtaining a copy
+of this software and associated documentation files (the "Software"), to deal
+in the Software without restriction, including without limitation the rights
+to use, copy, modify, merge, publish, distribute, sublicense, and/or sell
+copies of the Software, and to permit persons to whom the Software is
+furnished to do so, subject to the following conditions:
+
+The above copyright notice and this permission notice shall be included in all
+copies or substantial portions of the Software.
+
+THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
+IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
+FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
+AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
+LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
+OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
+SOFTWARE.
+
+===============================================================================
+THIRD-PARTY COMPONENTS
+===============================================================================
+
+The MIT licence above covers satellite's own source. One component compiled
+into satl is not satellite's, and is under different terms.
+
+  vendor/pcg-cpp/pcg-cpp-0.98/include/pcg_random.hpp
+  vendor/pcg-cpp/pcg-cpp-0.98/include/pcg_extras.hpp
+  vendor/pcg-cpp/pcg-cpp-0.98/include/pcg_uint128.hpp
+
+      pcg-cpp, version 0.98
+      Copyright 2014 Melissa O'Neill <oneill@pcg-random.org>
+      Upstream: https://github.com/imneme/pcg-cpp
+
+      Licensed under the Apache License, Version 2.0. The full text is in
+      licenses/pcg-cpp/license.txt, in THIRD-PARTY-NOTICES.txt, inside every
+      satl as `satl --license pcg-cpp`, and at
+      http://www.apache.org/licenses/LICENSE-2.0
+
+      The upstream distribution is UNMODIFIED and complete under vendor/
+      (vendor/edit_journal/pcg-cpp/EDITS.md is the record: no edits), and each
+      header keeps the copyright and licence notice it shipped with.
+
+      Version 0.98 is Apache-2.0 only. Later pcg-cpp releases offer a choice
+      of Apache-2.0 or MIT; this one does not, which is why this section
+      exists rather than the whole tree being MIT.
+
+WHAT THE BUILT BINARY CONTAINS. Since 2026-10-02 satl contains pcg-cpp code:
+satellite.random's generator is pcg-cpp's templates instantiated at 512 bits
+(satellite/satellite_random/pcg_512.hpp and random_source.cpp, which are
+satellite's own files under the MIT licence above). The instantiated template
+code is in every satl, window or none, and that is why pcg-cpp's licence is
+carried inside the binary and not beside it.

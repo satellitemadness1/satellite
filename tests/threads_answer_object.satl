@@ -1,0 +1,34 @@
+// A thread's answer that is an object is the SAME object to every join (THREADS.md T2: shared).
+satellite.include(satellite)
+
+satellite.spacesuit box()
+{
+    satellite.protected
+    {
+        satellite.variable.number held = 7
+    }
+    satellite.public
+    {
+        satellite.capsule call_held()
+        {
+            satellite.return(held)
+        }
+    }
+}
+
+satellite.capsule make()
+{
+    box made()
+    satellite.return(made)
+}
+
+satellite.capsule satellite.main()
+{
+    satellite.variable.thread m = satellite.thread.new(make())
+    m.start()
+    box first = m.join()
+    satellite.console.display(first.call_held())
+    box second = m.join()
+    satellite.console.display(second.call_held())
+    satellite.return(satellite)
+}

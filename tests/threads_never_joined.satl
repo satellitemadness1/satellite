@@ -1,0 +1,19 @@
+// "close everything" at satellite.return(satellite): a thread that would never end is stopped, and the run exits 0.
+satellite.include(satellite)
+
+satellite.capsule forever()
+{
+    satellite.variable.number spins = 0
+    satellite.statement.while(spins >= 0)
+    {
+        spins = spins + 1
+    }
+}
+
+satellite.capsule satellite.main()
+{
+    satellite.variable.thread t = satellite.thread.new(forever())
+    t.start()
+    satellite.console.display("main ends, and the thread is stopped for it")
+    satellite.return(satellite)
+}

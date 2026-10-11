@@ -1,0 +1,13 @@
+satellite.include(satellite)
+
+// full_objects_12 -- REFUSED when its line runs: a question about the lines of a file that did not open
+// (SATELLITE_FILE_OPERATIONS 3.1: "So does any question about the lines of a file that is not open").
+// open() never makes a file, so nothing is left beside the program.
+
+satellite.capsule satellite.main()
+{
+    satellite.variable.number passes = 1
+    satellite.variable.file f = satellite.file.open("full_objects_12_never_made.se")
+    satellite.console.display(f.size)
+    satellite.return(satellite)
+}

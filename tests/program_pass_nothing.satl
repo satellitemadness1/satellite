@@ -1,0 +1,11 @@
+satellite.include(satellite)
+
+// pass() takes one thing to type in: with nothing in it, it is refused before anything runs.
+satellite.capsule satellite.main(satellite.variable.arguments args)
+{
+    satellite.variable.program p = "cat"
+    p.start()
+    p.pass()
+    p.join()
+    satellite.return(satellite)
+}

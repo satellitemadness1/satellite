@@ -1,0 +1,18 @@
+satellite.include(satellite)
+
+// A FILE ONLY A BLOCK'S NAME HELD IS SAVED AND CLOSED AT THAT BLOCK'S } (satellite_legal.hpp), as a capsule's
+// end saves and closes one -- so opened again after the block, it already holds the line. check.sh runs this
+// in a scratch folder, so block_notes.se is made there and nowhere else.
+satellite.capsule satellite.main()
+{
+    satellite.variable.number n = 1
+    satellite.statement.if (n == 1)
+    {
+        satellite.variable.file notes = satellite.file.new("block_notes.se", "text")
+        notes.append("written inside the block")
+    }
+    satellite.variable.file again = satellite.file.open("block_notes.se")
+    satellite.console.display(again.size)
+    satellite.console.display(again[1])
+    satellite.return(satellite)
+}

@@ -1,0 +1,37 @@
+satellite.include(satellite)
+
+// full_objects_9 -- REFUSED when its line runs: a capsule called through a pointer whose object is gone.
+// satellite.help(satellite.spacesuit): "A capsule called through a pointer whose object is gone stops
+// with S260."
+
+satellite.spacesuit box()
+{
+    satellite.protected
+    {
+        satellite.variable.number value = 0
+
+        satellite.capsule secret()
+        {
+            satellite.return(value)
+        }
+    }
+
+    satellite.public
+    {
+        satellite.capsule call_take()
+        {
+            satellite.return(value)
+        }
+    }
+}
+
+satellite.capsule satellite.main()
+{
+    satellite.variable.number passes = 1
+    box a
+    box p = a.pointer()
+    box other
+    a = other
+    satellite.console.display(p.call_take())
+    satellite.return(satellite)
+}

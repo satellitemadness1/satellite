@@ -1,0 +1,9 @@
+// satellite.thread.new is given a number, not a call to a capsule: S721 before anything runs.
+satellite.include(satellite)
+
+satellite.capsule satellite.main()
+{
+    satellite.console.display("never printed: the check refuses the program first")
+    satellite.variable.thread t = satellite.thread.new(5)
+    satellite.return(satellite)
+}

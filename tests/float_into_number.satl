@@ -1,0 +1,9 @@
+satellite.include(satellite)
+
+// A float given to a number name is refused: turning 2.5 into 2 or 3 would be a
+// guess.
+satellite.capsule satellite.main()
+{
+    satellite.variable.number n = 2.5
+    satellite.return(satellite)
+}

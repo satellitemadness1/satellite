@@ -1,0 +1,11 @@
+satellite.include(satellite)
+// full_structure_19 -- REFUSED by satellite.test.full(): satellite.legal: nothing else may be named satellite.
+// The rule: satellite.legal: satellite is legal in every place, and immutable: nothing else may be named satellite.
+// satl refuses it: exit 26, and its report on stderr says "satellite is the first legal object of every". It prints nothing.
+
+satellite.capsule satellite.main()
+{
+    satellite.variable.number passes = 1
+    satellite.variable.number satellite = 5
+    satellite.return(satellite)
+}

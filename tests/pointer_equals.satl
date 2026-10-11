@@ -1,0 +1,45 @@
+satellite.include(satellite)
+
+// == AND != ON OBJECTS AND POINTERS ASK "THE SAME OBJECT?" -- the author, 2026-10-02: "a pointer knows
+// that it's a pointer, and it knows what object it is pointing at ... it's pointing at a, and it knows
+// it's a pointer ... we can do a == p and it's true". Two objects with the same fields are still two
+// objects. check.sh compares every line.
+
+satellite.spacesuit box()
+{
+    satellite.protected
+    {
+        satellite.variable.number value = 0
+    }
+    satellite.public
+    {
+        satellite.capsule call_put(satellite.variable.number n)
+        {
+            value = n
+        }
+    }
+}
+
+satellite.capsule satellite.main()
+{
+    box a
+    box b
+    box p = a.pointer()
+    box q = a.pointer()
+    satellite.console.display(a == p)
+    satellite.console.display(p == a)
+    satellite.console.display(p == q)
+    satellite.console.display(a == a)
+    satellite.console.display(a == b)
+    a.call_put(1)
+    b.call_put(1)
+    satellite.console.display(a == b)
+    satellite.console.display(a != b)
+    box c = a
+    satellite.console.display(c == a)
+    box other
+    a = other
+    satellite.console.display(a == p)
+    satellite.console.display(c == p)
+    satellite.return(satellite)
+}

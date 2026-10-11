@@ -1,0 +1,25 @@
+// A NEGATIVE BINARY, EVERYWHERE THE SIGN GOES (the author, 2026-09-22: "I don't
+// know if this sign thing will even work with binary numbers, we'll have to test
+// it"). check.sh asserts every line this prints, in order.
+
+satellite.include(satellite)
+
+satellite.capsule satellite.main()
+{
+    satellite.variable.binary n = -b0101
+    satellite.variable.binary p = b0101
+    satellite.console.display(n)
+    satellite.console.display(n.number())
+    satellite.console.display(n.string())
+    satellite.console.display(n.hex())
+    satellite.console.display(n.binary())
+    satellite.console.display(n == p)
+    satellite.console.display(n < p)
+    satellite.console.display(n < 0)
+    satellite.console.display(-p)
+    satellite.console.display(n.reverse())
+    satellite.console.display(-b0000)
+    satellite.console.display(n + 5)
+    satellite.console.display(p - b1010)
+    satellite.return(satellite)
+}

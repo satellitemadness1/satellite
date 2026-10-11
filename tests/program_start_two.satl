@@ -1,0 +1,10 @@
+satellite.include(satellite)
+
+// start() takes nothing, or "hide": two words are refused before anything runs.
+satellite.capsule satellite.main(satellite.variable.arguments args)
+{
+    satellite.variable.program p = "true"
+    p.start("hide", "loud")
+    p.join()
+    satellite.return(satellite)
+}

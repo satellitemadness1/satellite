@@ -1,0 +1,61 @@
+
+--------------------------------------------------------------------------------
+SATELLITE 004: satellite.time
+--------------------------------------------------------------------------------
+
+Lengths of time, and the wait. A time is written with its unit touching the
+number -- s for seconds, ms for milliseconds, ns for nanoseconds -- or made by
+a word, and every way makes the same satellite.variable.time:
+
+    1s          250ms          30ns          1.5s
+    satellite.time.second(1)            satellite.time.s(1)
+    satellite.time.millisecond(250)     satellite.time.ms(250)
+    satellite.time.nanosecond(30)       satellite.time.ns(30)
+
+s, ms and ns are the second spellings of second, millisecond and nanosecond.
+Each word takes a whole number or a float: satellite.time.second(1.5) is 1.5s.
+
+satellite.time.sleep(t) waits on the thread that calls it for at least t, and
+then goes on: satellite.time.sleep(1s), satellite.time.sleep(250ms), or a
+time's name. The nanosecond is the smallest unit, and how much longer than
+asked a sleep takes is the machine's to say -- a 1ns sleep takes as long as
+asking the clock does. 0s returns at once. A line displayed before a sleep is
+on the screen during it, and other threads go on running and displaying while
+one sleeps.
+
+example:
+
+    satellite.include(satellite)
+
+    satellite.capsule satellite.main()
+    {
+        satellite.console.display("waiting a quarter of a second")
+        satellite.time.sleep(250ms)
+        satellite.variable.time pause = satellite.time.millisecond(100)
+        satellite.time.sleep(pause)
+        satellite.console.display("done")
+        satellite.return(satellite)
+    }
+
+A sleep can always be stopped: a thread asked to stop with .stop(), and
+satellite.return(satellite) reached on any thread, end it within a tenth of a
+second, and so does Ctrl-C at the prompt. Ctrl-C while a file runs ends satl
+itself, as it always does. A sleep in a capsule of a .lock()ed object lets go
+of the lock while it waits, as join() does, and takes it back after.
+
+A bare number names no unit -- 5 seconds and 5 nanoseconds are a billion times
+apart -- so the unit is always written: 5s, 5ms or 5ns. Before anything runs,
+this is refused:
+
+    satellite.include(satellite)
+
+    satellite.capsule satellite.main()
+    {
+        satellite.time.sleep(5)
+        satellite.return(satellite)
+    }
+
+A time below zero is a time (-1s), and a sleep refuses it: S440 TIME_BELOW_ZERO.
+003's satellite.time.sleep(90, "ms") is refused before anything runs, and told
+to write 90ms. satellite.time.now and satellite.time.new are not built yet.
+See satellite.help(satellite.variable.time) for the time itself.

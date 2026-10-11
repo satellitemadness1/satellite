@@ -1,0 +1,39 @@
+
+satellite.include(satellite)
+
+satellite.spacesuit data_id_set()
+{
+    satellite.protected
+    {
+        satellite.variable.number current_id = 0
+        satellite.variable.number last_id = 0
+        satellite.variable.number worker_id = 0
+        satellite.variable.number assigned_to_id = 0
+
+        satellite.capsule set_current_id(satellite.variable.number current_id_input)
+        {
+            satellite.console.display(")
+            current_id = current_id_input
+        }
+    }
+}
+
+satellite.spacesuit infinity_data()
+{
+    satellite.protected
+    {
+        satellite.variable.number data_id = 0
+        satellite.variable.number ids_on_set = 0
+    }
+}
+
+satellite.capsule data_creator_worker(satellite.variable.number data_id_set)
+
+satellite.capsule satellite.main()
+{
+    satellite.console.display("INFINITY DATA CREATOR\n\n")
+
+    satellite.variable.number current_id = 0
+
+    satellite.variable.thread local_data_forge = satellite.thread.new(data_creator_worker(current_id))
+}

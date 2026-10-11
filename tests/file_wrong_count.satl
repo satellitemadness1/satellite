@@ -1,0 +1,10 @@
+satellite.include(satellite)
+
+// A wrong argument count is refused by the CHECK, before the line above it prints.
+satellite.capsule satellite.main(satellite.container.list<satellite.variable.string> arguments)
+{
+    satellite.variable.file f = satellite.file.new("count.se")
+    satellite.console.display("before")
+    f.replace(1)
+    satellite.return(satellite)
+}

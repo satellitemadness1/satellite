@@ -1,0 +1,14 @@
+satellite.include(satellite)
+
+// full_numbers_12 -- satellite.test.full(), a program satl must REFUSE.
+// number: n += 1 is not built yet (S210).
+// It exits 14, and its report on stderr holds: n += ... is not built yet -- write n = n + ...
+// Nothing is printed on stdout.
+
+satellite.capsule satellite.main()
+{
+    satellite.variable.number passes = 1
+    satellite.variable.number n = 1
+    n += 1
+    satellite.return(satellite)
+}

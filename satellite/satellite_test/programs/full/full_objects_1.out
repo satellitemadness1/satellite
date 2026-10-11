@@ -1,0 +1,30 @@
+ok spacesuit constructor sets a field
+ok spacesuit public capsule calls a protected capsule by its bare name
+ok spacesuit with no constructor keeps its written field values
+ok spacesuit object handed to a capsule is the caller's object
+ok spacesuit = names the same object
+ok spacesuit object handed back by a capsule
+ok spacesuit old object lives on in the list that holds it
+ok spacesuit list index_of() finds an object
+ok spacesuit list item is the object itself, not a copy
+ok spacesuit map value is the object itself, not a copy
+ok spacesuit field of a suit's type given an object by a capsule
+ok spacesuit public inner suit made from outside as outer.inner
+ok spacesuit protected inner suit made by the outer suit's capsule
+ok spacesuit extended: every constructor runs, the supertype's first
+ok spacesuit extended: supertype's capsules and fields reached by bare name
+ok spacesuit extended: a capsule declared again replaces the supertype's
+ok spacesuit extended: the supertype's own capsule calls the replacement
+ok spacesuit declared with satellite.class keeps its own capsule
+ok spacesuit ok() is true of an object, and of a pointer while its object lives
+ok spacesuit pointer reaches its object, and a change through it changes the object
+ok spacesuit object == a pointer at it
+ok spacesuit reference() is a copy of the fields
+ok spacesuit != between an object and its copy
+ok spacesuit change to the original does not reach the reference
+ok spacesuit two objects with equal fields are not ==
+ok spacesuit pointer empties when nothing else holds its object
+ok spacesuit reference stays after the original is emptied
+ok spacesuit pointer at a capsule's own object is empty after it ends
+ok spacesuit reference() copies the objects it holds all the way down
+ok spacesuit pointer inside a reference points at the copy

@@ -1,0 +1,12 @@
+satellite.include(satellite)
+
+// full_text_42 -- REFUSED: map .sort("value") of two list values is refused: two lists have no order between them.
+// satellite.help(satellite.container.map). Nothing reaches stdout; satl exits with the refusal's code.
+
+satellite.capsule satellite.main()
+{
+    satellite.variable.number passes = 1
+    satellite.container.map m = {"a": {2}, "b": {1}}
+    satellite.console.display(m.sort("value"))
+    satellite.return(satellite)
+}

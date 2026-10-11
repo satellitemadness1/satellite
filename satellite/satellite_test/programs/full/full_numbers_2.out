@@ -1,0 +1,16 @@
+ok float a literal shows as written, less a zero at its end, and always keeps one place
+ok float double is its second spelling
+ok float + - * between floats, and with a whole number either way round
+ok float / with a float on either side
+ok float % takes the sign of the number divided
+ok float ^ takes a whole-number power, below zero too
+ok float 0.1 + 0.2 == 0.3 is true, decimal all the way down
+ok float == != < > <= >= with floats and whole numbers
+ok float shows 32 places, the last rounded half away from zero
+ok float 2.0 / 3 holds 128 places, the last rounded up to 7
+ok float 1.0 / 3 * 3 shows 1.0 but holds 128 nines, so it is not 1
+ok float 0.5 ^ 400 shows 0.0 but is not 0 at 128 places
+ok float has no limit on its size, and multiplies every digit
+ok float a whole number given to a float name becomes a float, and the name keeps a product
+ok float .number is the whole number when nothing is after the point
+ok float arguments.float.decimal is the places held

@@ -1,0 +1,11 @@
+satellite.include(satellite)
+
+// "satellite stopped it" means the program AND what it started: sh's own sleep does not outlive
+// the run (the review, 2026-10-01).
+satellite.capsule satellite.main(satellite.variable.arguments args)
+{
+    satellite.variable.program tree = {"sh", "-c", "sleep 7.31; echo never"}
+    tree.start()
+    satellite.console.display("main ends")
+    satellite.return(satellite)
+}

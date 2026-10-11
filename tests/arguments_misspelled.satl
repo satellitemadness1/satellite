@@ -1,0 +1,10 @@
+// A row that is not one of the arguments is refused by name, at the line that reads it.
+
+satellite.include(satellite)
+
+satellite.capsule satellite.main(satellite.variable.arguments args)
+{
+    satellite.console.display("before")
+    satellite.console.display(args.usernme)
+    satellite.return(satellite)
+}

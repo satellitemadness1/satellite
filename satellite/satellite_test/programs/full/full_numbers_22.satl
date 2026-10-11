@@ -1,0 +1,13 @@
+satellite.include(satellite)
+
+// full_numbers_22 -- satellite.test.full(), a program satl must REFUSE.
+// binary: the b is mandatory, a binary name given 1010.
+// It exits 27, and its report on stderr holds: ERROR: expected b1010
+// Nothing is printed on stdout.
+
+satellite.capsule satellite.main()
+{
+    satellite.variable.number passes = 1
+    satellite.variable.binary flags = 1010
+    satellite.return(satellite)
+}

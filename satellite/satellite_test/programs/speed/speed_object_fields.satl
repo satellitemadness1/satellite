@@ -1,0 +1,65 @@
+// speed_object_fields.satl -- satellite.test.speed(): objects -- fields read and written, through methods.
+// Two objects of one spacesuit, and a second name for the first (an object is a reference). Each pass
+// calls four public capsules: add (writes two fields, one of them through a protected capsule) three
+// times, and total_now (reads a field) once. label() reads every field back for the checksum line; its
+// C++ twin is speed_object_fields() in speed_objects_twins.cpp, which prints the same line.
+
+satellite.include(satellite)
+
+satellite.spacesuit tally()
+{
+    satellite.protected
+    {
+        satellite.variable.string name = ""
+        satellite.variable.number count = 0
+        satellite.variable.number total = 0
+
+        // only tally's own capsules may call this one
+        satellite.capsule grow(satellite.variable.number n)
+        {
+            total = total + n
+        }
+    }
+
+    satellite.constructor(satellite.variable.string given)
+    {
+        name = given
+    }
+
+    satellite.public
+    {
+        satellite.capsule add(satellite.variable.number n)
+        {
+            count = count + 1
+            grow(n)
+        }
+
+        satellite.capsule total_now()
+        {
+            satellite.return(total)
+        }
+
+        satellite.capsule label()
+        {
+            satellite.return(name + " " + count + " " + total)
+        }
+    }
+}
+
+satellite.capsule satellite.main()
+{
+    satellite.variable.number passes = 205000
+    tally red("red")
+    tally blue("blue")
+    tally same = red
+
+    satellite.statement.for(satellite.variable.number i = 0; i < passes; i + 1)
+    {
+        red.add(i % 10)
+        blue.add(red.total_now() % 7)
+        same.add(1)
+    }
+
+    satellite.console.display("object_fields: passes " + passes + ", " + red.label() + ", " + blue.label())
+    satellite.return(satellite)
+}

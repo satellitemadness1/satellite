@@ -1,0 +1,12 @@
+satellite.include(satellite)
+
+// TWO COLOURS HAVE NO ORDER -- is red before blue? -- so < is refused by name, where
+// == and != answer.
+satellite.capsule satellite.main()
+{
+    satellite.console.display("before")
+    satellite.variable.color red = xFF0000
+    satellite.variable.color blue = x0000FF
+    satellite.console.display(red < blue)
+    satellite.return(satellite)
+}

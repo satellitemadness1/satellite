@@ -1,0 +1,43 @@
+
+--------------------------------------------------------------------------------
+SATELLITE 004: satellite.variable.time
+--------------------------------------------------------------------------------
+
+satellite.variable.time holds a length of time, written with its unit touching
+the number: 1s, 250ms, 30ns, 1.5s, -1s -- s for seconds, ms for milliseconds,
+ns for nanoseconds. satellite.time.second(n), .millisecond(n) and
+.nanosecond(n) make one too, and so do .s(n), .ms(n) and .ns(n), their second
+spellings.
+
+The unit is required. A time name given 5 is refused before anything runs,
+with "ERROR: expected 5s, 5ms or 5ns".
+
+It is exact: a time is held as a whole number of nanoseconds, so 1.5s is
+1500000000 of them and nothing is rounded on the way in, and there is no
+ceiling -- satellite.time.second(10 ^ 30) is a time. A digit finer than a
+nanosecond is let go: 0.5ns is 0ns. A time shows in the unit it was written
+in, so 250ms displays 250ms and satellite.time.second(1.5) displays 1.5s.
+
+Two times are the same time when they are the same length, so 1s == 1000ms is
+true, and < > <= >= order times by their lengths. .string is its text. A time
+keeps its sign: -1s is a time, and satellite.time.sleep refuses to wait one.
++ - * / on times are not built yet, and a time does not meet a number.
+
+example:
+
+    satellite.include(satellite)
+
+    satellite.capsule satellite.main()
+    {
+        satellite.variable.time short_wait = 250ms
+        satellite.variable.time long_wait = satellite.time.second(1.5)
+        satellite.console.display(short_wait)                 // 250ms
+        satellite.console.display(long_wait)                  // 1.5s
+        satellite.console.display(short_wait < long_wait)     // true
+        satellite.console.display(1s == 1000ms)               // true
+        satellite.console.display(satellite.time.ns(30))      // 30ns
+        satellite.time.sleep(short_wait)
+        satellite.return(satellite)
+    }
+
+See satellite.help(satellite.time) for the words and the wait.

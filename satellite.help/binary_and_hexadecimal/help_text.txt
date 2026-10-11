@@ -1,0 +1,65 @@
+
+--------------------------------------------------------------------------------
+SATELLITE 004: using binary and hexadecimal numbers together
+--------------------------------------------------------------------------------
+
+Using a binary and a hexadecimal number together, as bits, is NOT BUILT YET in
+satellite 004. The author, 2026-09-22: "most of them are how you add a binary
+and a hexadecimal number together, which we are not doing on this run". This
+page says what works today and what is coming.
+
+What works today: arithmetic reads a binary, and a hex, by what it is worth,
+and answers a plain number. b1100 + xFF is 267, and b1000 + b0101 is 13, not
+b1101. To see one radix as the other, ask for its text: b1100.hex is C, and
+(12).binary is 1100.
+
+DECIDED IN 003 AND OWED HERE (old_versions/second_satellite/DESIGN.md section
+8.5, "decided and unbuilt"; MILESTONES.md M20 lists them as owed, and when
+they are built is the author's to schedule):
+
+- + adds, and on two bit runs it answers a bit run: b1000 + b0101 is b1101.
+- The answer's width grows to fit and never wraps: xFF + x01 is x100.
+- Mixed radices are allowed and the left operand's type wins: b1100 + xFF is
+  the binary b100001011, and xFF + b1010 is a hex. + reads left to right, so
+  the leftmost operand's type wins the whole chain.
+- !! joins two bit runs end to end, and binds looser than +.
+- Indexing counts from the right, as hardware counts bits: b0001[0] is b1.
+
+COMING, ruled by the author on 2026-09-22 ("let's use c symbols as much as we
+can for this then, and also allow .and() .or() like we allow .power()"):
+
+- conditions: && || !
+- bits: & | ~ << >>
+- methods beside them, as .power() is beside ^: .and() .or(), and with them
+  .not() .shift_left(n) .shift_right(n)
+- exclusive or gets no symbol, because ^ is power (ruled 2026-09-16), so it
+  is the method .xor()
+
+Still to be decided when they are built: what a bit operator does with a
+binary's sign (-b0101), since a binary keeps one. None of this reads today:
+satellite.variable.binary mask = b1100 & b1010 is refused at run time, as
+"something with no meaning there yet (& | << >> !! are undecided)", and the
+methods are refused before anything runs.
+
+example, of what runs today:
+
+satellite.include(satellite)
+
+satellite.capsule satellite.main(satellite.container.list<satellite.variable.string> arguments)
+{
+    satellite.variable.binary low = b1100
+    satellite.console.display(low + xFF)        // 267
+    satellite.console.display(low + b0101)      // 17
+    satellite.console.display(low.hex)          // C
+    satellite.console.display((12).binary)      // 1100
+    satellite.return(satellite)
+}
+
+refused today:
+
+satellite.console.display(b1100.and(b1010))
+
+prints:
+
+S110: LINE_NOT_UNDERSTOOD
+satl(check): in satellite.main, no capsule named and

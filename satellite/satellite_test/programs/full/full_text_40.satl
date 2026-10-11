@@ -1,0 +1,12 @@
+satellite.include(satellite)
+
+// full_text_40 -- REFUSED: map .index_of is refused: a map has keys and not positions.
+// satellite.help(satellite.container.map). Nothing reaches stdout; satl exits with the refusal's code.
+
+satellite.capsule satellite.main()
+{
+    satellite.variable.number passes = 1
+    satellite.container.map m = {"a": 1}
+    satellite.console.display(m.index_of(1))
+    satellite.return(satellite)
+}

@@ -1,0 +1,13 @@
+satellite.include(satellite)
+
+// full_numbers_27 -- satellite.test.full(), a program satl must REFUSE.
+// hex: the x is required, a hex name given 1F.
+// It exits 27, and its report on stderr holds: ERROR: expected x1F
+// Nothing is printed on stdout.
+
+satellite.capsule satellite.main()
+{
+    satellite.variable.number passes = 1
+    satellite.variable.hex h = 1F
+    satellite.return(satellite)
+}

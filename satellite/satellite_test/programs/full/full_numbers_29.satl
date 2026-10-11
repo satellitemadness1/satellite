@@ -1,0 +1,14 @@
+satellite.include(satellite)
+
+// full_numbers_29 -- satellite.test.full(), a program satl must REFUSE.
+// hex: a hex name holds only a hex, h = h + x01.
+// It exits 27, and its report on stderr holds: a hex name holds only a hex
+// Nothing is printed on stdout.
+
+satellite.capsule satellite.main()
+{
+    satellite.variable.number passes = 1
+    satellite.variable.hex h = x1F
+    h = h + x01
+    satellite.return(satellite)
+}

@@ -1,0 +1,13 @@
+// `n += 1` used to be skipped without a word: n kept 1 and the program exited 0.
+// It is refused by name before anything runs, until += is built.
+
+satellite.include(satellite)
+
+satellite.capsule satellite.main()
+{
+    satellite.console.display("before")
+    satellite.variable.number n = 1
+    n += 1
+    satellite.console.display(n)
+    satellite.return(satellite)
+}

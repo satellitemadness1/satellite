@@ -1,0 +1,9 @@
+// min above max is a range with nothing in it: S432, when the line runs -- the line before it ran.
+satellite.include(satellite)
+
+satellite.capsule satellite.main()
+{
+    satellite.console.display("before")
+    satellite.console.display(satellite.random.fast(6, 1))
+    satellite.return(satellite)
+}

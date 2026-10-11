@@ -1,0 +1,10 @@
+ok color six digits without the x show in upper case with the x, and .string is that
+ok color the x is optional on the line that declares it
+ok color colour is its second spelling, a comma gives a transparency, and .transparency reads it back
+ok color .transparency(n) sets it, and it shows after a comma
+ok color .number is what the six digits are worth, .hex the digits, .binary its 24 bits
+ok color == and != compare the digits and the transparency
+ok color a transparency of 0 is solid, shown without it
+ok color a later line takes six digits, all numbers, all letters, or with the x
+ok color a later line takes a transparency after a comma, 99 the most see-through
+ok color a string joins a color by its .string

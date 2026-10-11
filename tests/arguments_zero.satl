@@ -1,0 +1,11 @@
+// arg0 -- THE ARGUMENTS COUNT FROM 1, as satellite does (MS-1): argument1 is satl itself.
+// Refused with S413, the code a position of 0 already gets.
+
+satellite.include(satellite)
+
+satellite.capsule satellite.main(satellite.variable.arguments args)
+{
+    satellite.console.display("before")
+    satellite.console.display(args.arg0)
+    satellite.return(satellite)
+}

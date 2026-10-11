@@ -1,0 +1,8 @@
+// A bare number names no unit, so satellite.time.sleep(5) is refused with the three ways to say it.
+satellite.include(satellite)
+
+satellite.capsule satellite.main(satellite.container.list<satellite.variable.string> arguments)
+{
+    satellite.time.sleep(5)
+    satellite.return(satellite)
+}

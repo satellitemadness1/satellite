@@ -1,0 +1,38 @@
+satellite.include(satellite)
+
+// satellite.variable.file, the author's example (SATELLITE_FILE_OPERATIONS Part 3):
+// a text file is a list of lines, and lines count from 1. check.sh runs this in a
+// scratch folder, so demo.se is made there and nowhere else.
+satellite.capsule satellite.main(satellite.container.list<satellite.variable.string> arguments)
+{
+    satellite.variable.file my_file = satellite.file.new("demo.se", "text")
+    my_file.append("line_1")
+    my_file.append("line_2")
+    my_file.insert(2, "line_2")
+    my_file.replace(2, "line_3")
+    my_file.replace("line_2", "line_4")
+    satellite.statement.for(satellite.variable.number i = 1; i < my_file.size + 1; i + 1)
+    {
+        satellite.console.display(my_file[i])
+    }
+    satellite.console.display(my_file.size)
+    satellite.console.display(my_file.index_of("line_3"))
+    satellite.console.display(my_file.search("4"))
+    satellite.console.display(my_file.index_of("nowhere"))
+    satellite.console.display(my_file.contains("line_1"))
+    satellite.variable.bool closed = my_file.close()
+    satellite.console.display(closed)
+    satellite.variable.file again = satellite.file.open("demo.se")
+    satellite.console.display(again.first)
+    satellite.console.display(again.last)
+    again.remove_at(1)
+    satellite.console.display(again[1])
+    satellite.console.display(again.size)
+    satellite.variable.file twice = satellite.file.new("demo.se")
+    satellite.console.display(twice.ok)
+    satellite.variable.file missing = satellite.file.open("no_such_file.se")
+    satellite.console.display(missing.ok)
+    satellite.console.display(satellite.file.exists("no_such_file.se"))
+    satellite.console.display(satellite.file.exists("demo.se"))
+    satellite.return(satellite)
+}

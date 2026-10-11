@@ -1,0 +1,19 @@
+satellite.include(satellite)
+
+// TRANSPARENCY, THE AUTHOR'S TWO WAYS (2026-09-22): "my_color.transparency(0 - 99) and
+// my_color = x000000, 0-99 for transparency". 0 is solid and 99 almost clear, and a
+// colour displays in his own spelling -- `x000000, 50` -- with the ", 0" left off.
+satellite.capsule satellite.main()
+{
+    satellite.variable.color my_color = x000000, 50
+    satellite.console.display(my_color)
+    my_color.transparency(20)
+    satellite.console.display(my_color)
+    satellite.console.display(my_color.transparency)
+    satellite.console.display(my_color.transparency())
+    my_color = x00ff00, 99
+    satellite.console.display(my_color)
+    my_color.transparency(0)
+    satellite.console.display(my_color)
+    satellite.return(satellite)
+}

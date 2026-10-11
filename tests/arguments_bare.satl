@@ -1,0 +1,34 @@
+// A BARE true OR false, WRITTEN TO THE ARGUMENTS (MS-2's D22, the author 2026-10-03: "let's allow
+// bare false/true on the special arguments variable as it breaks all of the rules, and also allow
+// it to take satellite.bool.true, or satellite.bool.false"): a row of the program's own, the same
+// by its key in brackets, the access setting by the variable and by its word -- and there the bare
+// word is the value even where the program declared a variable named false, which is read as
+// (false), in brackets. check.sh runs it in a home of its own -- access was written to config.ini until
+// 2026-10-06, and a line in a file now changes it for that run alone, which check.sh asserts too --
+// and asserts every line in order.
+
+satellite.include(satellite)
+
+satellite.capsule satellite.main(satellite.variable.arguments args)
+{
+    args.mine = false
+    satellite.console.display(args.mine)
+    args.mine = true
+    satellite.console.display(args.mine)
+    args["theirs"] = false
+    satellite.console.display(args.theirs)
+    args.access = false
+    satellite.console.display(args.access)
+    satellite.library.arguments.access = true
+    satellite.console.display(satellite.library.arguments.access)
+    args.access = satellite.bool.false
+    satellite.console.display(args.access)
+    satellite.library.arguments.access = satellite.bool.true
+    satellite.console.display(satellite.library.arguments.access)
+    satellite.variable.bool false = satellite.bool.true
+    args.declared = false
+    satellite.console.display(args.declared)
+    args.declared = (false)
+    satellite.console.display(args.declared)
+    satellite.return(satellite)
+}

@@ -1,0 +1,28 @@
+satellite.include(satellite)
+
+// satellite.thread.new RUNS A CAPSULE OF YOUR OWN, and x.pointer() is every object's own word -- so it
+// is refused before anything runs, though this spacesuit has a capsule of its own called pointer (the
+// review of 2026-10-02: the thread ran that capsule, where every other line meant the language's).
+
+satellite.spacesuit store()
+{
+    satellite.protected
+    {
+        satellite.variable.number total = 1
+    }
+    satellite.public
+    {
+        satellite.capsule pointer()
+        {
+            satellite.return(total)
+        }
+    }
+}
+
+satellite.capsule satellite.main()
+{
+    satellite.console.display("THIS LINE MUST NOT RUN")
+    store data
+    satellite.variable.thread worker = satellite.thread.new(data.pointer())
+    satellite.return(satellite)
+}

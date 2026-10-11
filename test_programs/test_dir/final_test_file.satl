@@ -1,0 +1,5 @@
+
+satellite.capsule final_test_capsule()
+{
+    satellite.console.display("final test completed!")
+}

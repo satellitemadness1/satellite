@@ -1,0 +1,13 @@
+satellite.include(satellite)
+// full_structure_20 -- REFUSED by satellite.test.full(): satellite.delete: a name used after its delete.
+// The rule: satellite.delete: a line after it that names it is refused before anything runs (S201).
+// satl refuses it: exit 25, and its report on stderr says "big was deleted by satellite.delete(big) on line". It prints nothing.
+
+satellite.capsule satellite.main()
+{
+    satellite.variable.number passes = 1
+    satellite.variable.string big = "a long text"
+    satellite.delete(big)
+    satellite.variable.string copy = big
+    satellite.return(satellite)
+}

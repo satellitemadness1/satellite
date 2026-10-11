@@ -1,0 +1,56 @@
+satellite.include(satellite)
+
+// A SPACESUIT WITH ITS OWN CAPSULE NAMED pointer -- the shape of four of the author's programs
+// (the_death_korps, terran, force_energy, infinity_data), written before the language had the
+// word: it answers a field that holds the object itself. From outside, x.pointer() is the
+// language's, as x.lock() is (bytecode/pointer_calls.hpp); inside, the bare name still calls the
+// spacesuit's own. And a pointer handed to a thread reaches its object there. check.sh compares
+// every line.
+
+satellite.spacesuit store()
+{
+    satellite.protected
+    {
+        satellite.variable.number total = 41
+        store local_this
+    }
+    satellite.public
+    {
+        satellite.capsule set_this(store given)
+        {
+            local_this = given
+        }
+        satellite.capsule pointer()
+        {
+            satellite.console.display("the spacesuit's own pointer() ran")
+            satellite.return(local_this)
+        }
+        satellite.capsule call_own_pointer()
+        {
+            store mine = pointer()
+            satellite.return(mine.call_total())
+        }
+        satellite.capsule call_total()
+        {
+            satellite.return(total)
+        }
+    }
+}
+
+satellite.capsule shard(store given)
+{
+    satellite.return(given.call_total() + 1)
+}
+
+satellite.capsule satellite.main()
+{
+    store data
+    data.set_this(data)
+    store data_pointer = data.pointer()
+    satellite.console.display(data_pointer.ok())
+    satellite.console.display(data.call_own_pointer())
+    satellite.variable.thread worker = satellite.thread.new(shard(data_pointer))
+    worker.start()
+    satellite.console.display(worker.join())
+    satellite.return(satellite)
+}

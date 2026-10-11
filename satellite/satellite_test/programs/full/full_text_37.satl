@@ -1,0 +1,12 @@
+satellite.include(satellite)
+
+// full_text_37 -- REFUSED: map a key that is not there is refused (S501), not answered with nothing.
+// satellite.help(satellite.container.map). Nothing reaches stdout; satl exits with the refusal's code.
+
+satellite.capsule satellite.main()
+{
+    satellite.variable.number passes = 1
+    satellite.container.map m = {"a": 1}
+    satellite.console.display(m["b"])
+    satellite.return(satellite)
+}

@@ -1,0 +1,11 @@
+satellite.include(satellite)
+// full_structure_25 -- REFUSED by satellite.test.full(): arguments: a name that is not a row is refused where it is read.
+// The rule: arguments: a name that is not a row is refused where it is read: "args.usernme is not one of the arguments".
+// satl refuses it: exit 25, and its report on stderr says "args.usernme is not one of the arguments". It prints nothing.
+
+satellite.capsule satellite.main(satellite.variable.arguments args)
+{
+    satellite.variable.number passes = 1
+    satellite.variable.string who = args.usernme
+    satellite.return(satellite)
+}

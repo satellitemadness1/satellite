@@ -1,0 +1,26 @@
+// THE COMMAND LINE IN THE ORDER IT WAS TYPED (MS-1, the author 2026-10-03: "Let's just put
+// argv as argument1, then argument2 will be filename.satl, then argument3 will be --help, so
+// it's kept in order"): argument1 is satl itself, argument2 this file, argument3 the first
+// word after it -- and arg3, args3 and arguments3 are the same row, argument3, read with a dot
+// or in brackets, and asked by .contains (a fresh reader, 2026-10-03). check.sh runs
+// this as `satl tests/arguments_typed.satl one` and asserts every line, in order; the last is
+// the whole variable, which begins with what was typed.
+
+satellite.include(satellite)
+
+satellite.capsule satellite.main(satellite.variable.arguments args)
+{
+    satellite.console.display(args.argument1)
+    satellite.console.display(args.argument2)
+    satellite.console.display(args.argument3)
+    satellite.console.display(args.arg3)
+    satellite.console.display(args.args3)
+    satellite.console.display(args.arguments3)
+    satellite.console.display(args.argument03)
+    satellite.console.display(args.length)
+    satellite.console.display(args["arg3"])
+    satellite.console.display(args.contains("arguments3"))
+    satellite.console.display(args.contains("argument9"))
+    satellite.console.display(args)
+    satellite.return(satellite)
+}

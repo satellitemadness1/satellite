@@ -1,0 +1,12 @@
+satellite.include(satellite)
+
+// A COLOUR IS SIX DIGITS, the author's "mandatory width, 6 digits" -- five is refused
+// rather than widened (003's rule for a colour too), before anything runs, so
+// "before" is never shown.
+satellite.capsule satellite.main()
+{
+    satellite.console.display("before")
+    satellite.variable.color my_color = 00ff0
+    satellite.console.display(my_color)
+    satellite.return(satellite)
+}

@@ -1,0 +1,97 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!--
+  The shared-mime-info packet for .satl source.
+
+  Note on style: the rest of this tree writes an em dash as a double hyphen.
+  This file cannot. XML forbids "- -" (closed up) anywhere inside a comment,
+  and the failure is quiet in the worst way: update-mime-database prints a
+  parse error, skips the packet, and still exits 0, so an install that ran
+  without any visible failure leaves .satl files completely unregistered.
+  Single hyphens throughout, deliberately.
+
+  The file name is the mime type with '/' replaced by '-', which is not a
+  convention this file is free to break: update-mime-database indexes the
+  packet under whatever name it is installed as, and the icon lookup below
+  derives from the type by the same substitution. Naming the packet
+  satellite.xml would still work, but then three strings that must agree
+  (packet, type, icon) would agree by accident rather than by construction.
+
+  application/x-satellite, not text/x-satellite, for the reason the spec gives:
+  the x- prefix marks a type not registered with IANA, and application/ is the
+  correct top level for a file that is executed rather than read. A subclass of
+  text/plain is declared anyway, so that an editor advertising support for
+  text/plain still offers to open a .satl file, and so that a text editor is
+  among the applications a file manager suggests. It buys compatibility, not an
+  icon: see the note on generic-icon below for why this type deliberately has
+  no icon fallback at all.
+-->
+<mime-info xmlns="http://www.freedesktop.org/standards/shared-mime-info">
+  <mime-type type="application/x-satellite">
+    <comment>Satellite source code</comment>
+    <sub-class-of type="text/plain"/>
+
+    <!--
+      The icon is named after the type, because that is the name a file manager
+      constructs on its own: it replaces '/' with '-' and searches the theme
+      for it. Stating it explicitly costs nothing and makes the dependency on
+      hicolor/*/mimetypes/application-x-satellite.png visible in this file
+      rather than only in the Makefile that installs it.
+
+      generic-icon names our OWN icon, which looks redundant and is the whole
+      point. It is a fallback that deliberately refuses to fall back.
+
+      GIO builds a GThemedIcon whose name list is [icon, generic, and the
+      -symbolic form of each], and where generic-icon is absent it synthesises
+      one from the media type: application/ yields application-x-generic. GTK
+      then resolves that list with THEMES as the outer loop and names as the
+      inner one, asking the active theme for every name before moving to the
+      next theme. Adwaita defines no application-x-satellite, but it ships both
+      text-x-script and application-x-generic, so whichever of those lands in
+      the list answers first and hicolor, where our icon actually lives, is
+      never reached.
+
+      That is a lookup this file cannot win by choosing a BETTER fallback,
+      because every plausible fallback is a name Adwaita already has. It can
+      only win by naming no such icon at all. Pointing generic-icon back at
+      application-x-satellite leaves a list of two names and their symbolic
+      forms, none of which any stock theme defines, so the search falls through
+      to hicolor and finds ours.
+
+      Measured, not reasoned: with text-x-script here the lookup returned
+      Adwaita/scalable/mimetypes/text-x-script.svg; with the element removed
+      entirely it returned Adwaita's application-x-generic.svg, because the
+      synthesised name is no better than the declared one.
+
+      The cost is that a system without our artwork gets no icon rather than a
+      generic page. That is the correct trade: a fallback is not worth having
+      if it wins when the real icon is present.
+    -->
+    <icon name="application-x-satellite"/>
+    <generic-icon name="application-x-satellite"/>
+
+    <glob pattern="*.satl"/>
+
+    <!--
+      Content sniffing, so that a .satl file renamed or served without its
+      extension is still recognised. weight is below the glob's default 50:
+      the extension is the stronger signal, and this only has to win against
+      text/plain, which registers no magic at all.
+
+      The string is the include line every program begins with (see the loader
+      in DESIGN 16). offset is a range rather than 0 because a file may open
+      with comments or blank lines.
+
+      The range is 4096 and not the 256 that looks sufficient. Measured against
+      the seven programs in example/, the include line sits at byte 0, 0, 1, 1,
+      394, 634 and 741: a licence or explanatory header pushes it a long way
+      in, and bootstrap/lexer.satl alone rules out every bound below 741. 4096
+      is chosen for headroom over that worst case rather than to fit it
+      exactly, since the cost of a wider window is a slightly longer sniff of
+      files that are not ours, and the cost of a narrow one is our own examples
+      showing up as plain text.
+    -->
+    <magic priority="40">
+      <match type="string" value="satellite.include(satellite)" offset="0:4096"/>
+    </magic>
+  </mime-type>
+</mime-info>

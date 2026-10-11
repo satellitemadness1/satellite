@@ -1,0 +1,5 @@
+ok random seed(n) answers the seed back, any whole number, past one limb and below zero
+ok random fast(1, 6) draws a die, both ends included
+ok random fast(0, 100, 5) lands on min, min + step and so on up to max
+ok random normal(10 ^ 40, 10 ^ 40) is exact at any size
+ok random ultra(2) is a count of digits, 0 up to 99

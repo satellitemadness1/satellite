@@ -1,0 +1,14 @@
+satellite.include(satellite)
+
+// HEX DIGITS THAT ARE ALSO A VARIABLE'S NAME, on the line that declares a colour: the
+// lexer reads `facade` there as the digits FACADE, and giving d xFACADE when the
+// program meant the variable would be a wrong answer without a word. Refused before
+// anything runs, with a way out for either meaning.
+satellite.capsule satellite.main()
+{
+    satellite.console.display("before")
+    satellite.variable.color facade = x0000FF
+    satellite.variable.color d = facade
+    satellite.console.display(d)
+    satellite.return(satellite)
+}

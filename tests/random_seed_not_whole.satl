@@ -1,0 +1,9 @@
+// A seed is a whole number: a string is S431 when the line runs.
+satellite.include(satellite)
+
+satellite.capsule satellite.main()
+{
+    satellite.console.display("before")
+    satellite.random.seed("x")
+    satellite.return(satellite)
+}

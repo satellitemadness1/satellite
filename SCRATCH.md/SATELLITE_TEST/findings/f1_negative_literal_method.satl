@@ -1,0 +1,10 @@
+satellite.include(satellite)
+
+satellite.capsule satellite.main()
+{
+    satellite.variable.number n = -5
+    satellite.console.display(n.add(3))
+    satellite.console.display(-5.add(3))
+    satellite.console.display(-7.string)
+    satellite.return(satellite)
+}

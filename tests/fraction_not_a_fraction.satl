@@ -1,0 +1,12 @@
+satellite.include(satellite)
+
+// A TOUCHING SLASH THAT IS STILL NOT A FRACTION: after a name that ends in a
+// digit, the lexer makes the fraction's slash, and a fraction of a name is the
+// author's later step. It is refused in the fraction's own words.
+satellite.capsule satellite.main()
+{
+    satellite.variable.number n1 = 4
+    satellite.console.display("before")
+    satellite.console.display(n1/2)
+    satellite.return(satellite)
+}

@@ -1,0 +1,12 @@
+satellite.include(satellite)
+
+// full_text_41 -- REFUSED: map .sort() of a number key beside a string key is refused rather than guessed.
+// satellite.help(satellite.container.map). Nothing reaches stdout; satl exits with the refusal's code.
+
+satellite.capsule satellite.main()
+{
+    satellite.variable.number passes = 1
+    satellite.container.map m = {1: "a", "b": 2}
+    satellite.console.display(m.sort())
+    satellite.return(satellite)
+}

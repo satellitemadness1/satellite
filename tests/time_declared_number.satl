@@ -1,0 +1,9 @@
+// A time name given a bare number is refused before anything runs: the unit is part of a time.
+satellite.include(satellite)
+
+satellite.capsule satellite.main(satellite.container.list<satellite.variable.string> arguments)
+{
+    satellite.console.display("before")
+    satellite.variable.time t = 5
+    satellite.return(satellite)
+}

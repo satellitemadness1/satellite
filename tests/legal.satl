@@ -1,0 +1,23 @@
+satellite.include(satellite)
+
+// satellite.legal (NEW_MILESTONES.md NM-2a): a name declared inside a block is legal to that block's } -- so
+// an if and its else may each declare x, and so may a line after them -- and satellite.access(x) says where
+// x is legal. check.sh reads every line.
+satellite.capsule satellite.main()
+{
+    satellite.variable.number n = 1
+    satellite.statement.if (n == 1)
+    {
+        satellite.variable.string x = "in the if"
+        satellite.console.display(x)
+    }
+    satellite.statement.else
+    {
+        satellite.variable.string x = "in the else"
+        satellite.console.display(x)
+    }
+    satellite.variable.number x = 5
+    satellite.console.display(x)
+    satellite.access(x)
+    satellite.return(satellite)
+}

@@ -1,0 +1,22 @@
+satellite.include(satellite)
+
+// TEN WINDOWS, ONE AT A TIME: each is made, asked whether it is open, closed, and shown closed
+// before the next one is made. windows_10.py is tkinter's same ten, printing the same lines.
+//
+// satellite.window.new does not wait for the window to be DRAWN -- it returns once the compositor
+// has been asked -- so closing it on the next line takes it down before its first frame: measured
+// with WAYLAND_DEBUG=1, none of these ten is ever drawn. window_and_extras' ten are, because each
+// stays open while its object's other capsules run.
+//
+// 800, 600 and not 800x600: x600 reads as a hex number, so 800x600 is two numbers side by side.
+satellite.capsule satellite.main()
+{
+    satellite.statement.for(satellite.variable.number i = 1; i <= 10; i++)
+    {
+        satellite.variable.window my_window = satellite.window.new("window " + i, 800, 600)
+        satellite.console.display(my_window.ok)                 // true
+        my_window.close()
+        satellite.console.display(my_window)                    // (closed window "window 1")
+    }
+    satellite.return(satellite)
+}

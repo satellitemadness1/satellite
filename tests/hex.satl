@@ -1,0 +1,18 @@
+satellite.include(satellite)
+
+// satellite.variable.hex (the author, 2026-09-22): "similar thing for hex, which has
+// an x in front of it, with hex numbers only for it 0 - 9 A - F". Written with its
+// x and shown the same way, as wide as it was written; lower case digits read, and
+// show upper case (003 DESIGN 8.5: case is not part of the value).
+satellite.capsule satellite.main()
+{
+    satellite.variable.hex my_number = x1F
+    satellite.console.display(my_number)
+    satellite.variable.hex wide = x00FF
+    satellite.console.display(wide)
+    satellite.variable.hex lower = xff
+    satellite.console.display(lower)
+    satellite.variable.hex below = -x1F
+    satellite.console.display(below)
+    satellite.return(satellite)
+}

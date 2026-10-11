@@ -1,0 +1,8 @@
+satellite.include(satellite)
+
+// A program is a string or a list of strings: a number is refused before anything runs.
+satellite.capsule satellite.main(satellite.variable.arguments args)
+{
+    satellite.variable.program counted = 5
+    satellite.return(satellite)
+}

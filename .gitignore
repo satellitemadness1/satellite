@@ -1,0 +1,170 @@
+# satellite 004 -- build output and scratch. Nothing here is source.
+/build/
+__pycache__/
+# The number the last build used, per checkout (build_number.py), and its lock.
+/.satellite_build
+/.satellite_build.lock
+# The one machine that counts builds has this file; a clone never does (build_number.py).
+/.satellite_counts_builds
+*.o
+*.so
+
+# The author's timing test builds beside its source.
+/polymorph/test
+/polymorph/out.txt
+
+# old_versions/second_satellite/ keeps its own .gitignore for 003's build output.
+
+# THE FIRST SATELLITE IS TRACKED FROM 2026-09-26 (the author: "first satellite is
+# the only record of the first satellite"). It was kept out as "a whole tree with its
+# own history elsewhere, 85 MB", and that did not hold, as it had not for the
+# prototype below: it has no .git, archive/001-llvm is a different tree (2 of its
+# 100 names match), and none of the author's GitHub repositories holds it.
+#
+# ONLY ITS SOURCE IS TRACKED. Its own .gitignore (old_versions/first_satellite/
+# .gitignore) takes its binaries, as it did when it was a repository: 129 files,
+# 54 MB, of the 84. What that also leaves out has a copy in the tree -- all 92
+# files of enterprise_download/ do, checked by sha256 -- except satellite-icon.xcf,
+# which was added with -f past that file's *.xcf rule: it is byte for byte the one
+# satellite_enterprise/icon_artwork/ already tracks, so git stores it once and it
+# costs nothing.
+# Three test binaries its .gitignore never listed:
+/old_versions/first_satellite/satellite_system/tests/console_input_test/console_input_test
+/old_versions/first_satellite/satellite_system/tests/orbit_test/orbit_test
+/old_versions/first_satellite/satellite_system/tests/search_test/search_test
+
+# A satl built for one CPU level to race another (haswell_test/). 57 MB each,
+# unstripped, and unable to run without the ignored .so words beside it.
+/haswell_test/*/satl
+
+# THE PROTOTYPE IS TRACKED FROM 2026-09-16 (the author: "we can add prototype to
+# the git now, i've added a readme file with it that explains what prototype is").
+# It was excluded on the same "its own history elsewhere" grounds as
+# first_satellite, and that reason did not hold: there is no .git inside it and no
+# copy anywhere on disk, so it was in NO version control at all -- 307 files that
+# one rm would have ended. Its __readme__ is the thing to read first, and it is an
+# instruction, not a description: DO NOT PULL CODE FROM IT.
+#
+# ONLY ITS SOURCE IS TRACKED. 15.22 MB of the 17 MB was build output; *.o above
+# takes the object files, and these take the eight test executables, which have no
+# extension and would otherwise slip through. What is left is 0.70 MB of .cpp,
+# .hpp and Makefiles.
+/old_versions/prototype/*/test_lexer
+/old_versions/prototype/*/test_parser
+/old_versions/prototype/*/test_error_reporter
+/old_versions/prototype/*/test_resolver
+/old_versions/prototype/*/test_m[0-9]
+/old_versions/prototype/*/test_m[0-9][0-9]
+
+# The 16-bit bytecode that satl used to save beside a program (arguments.sate,
+# gone since 2026-10-03). Never a source; kept here so old ones stay out of git.
+*.sate
+
+# vendor/ -- other people's source: every library that links into satl, frozen at one
+# version. THE UNPACKED SOURCE IS IN GIT AND THE TARBALLS ARE NOT, since 2026-10-10. The
+# author: "it needs to backup the entire satellite source code, and the backup needs to work
+# if a machine runs plain "make" on it, no zipped vendor stuff" -- and his yes to the unpacked
+# source going into git with the tarballs left out. That reverses his rule of 2026-09-20
+# ("we need no dependencies, if you need something, include a copy of it so it exists inside
+# of this project folder"), which this file had kept as the tarballs in git and the trees out:
+# the copy is still inside the project folder, as plain files now.
+#
+# Each vendor/<project>/<project>-<version>/ is its tarball unpacked, with the patches in
+# vendor/edit_journal/<project>/ already applied -- checked 2026-10-10, file by file against
+# all 29 tarballs: nothing else in them but the five build leftovers below. vendor/new/ keeps
+# SHA256SUMS, the record of where each tarball came from; the tarballs themselves stay on
+# the machine that has them. vendor/build_stack.py builds from the trees, and unpacks a
+# tarball only for a tree that is missing. AN EDIT TO VENDORED SOURCE is now in git like any
+# other edit -- and still gets its journal entry and patch (vendor/README_FIRST.md), so the
+# change stays readable apart from upstream's code.
+/vendor/*/*.tar.*
+/vendor/*/*.zip
+/vendor/*/*.sha256sum
+/vendor/gtk-old/gtk-*/
+/vendor/gtk-old/.mesonvenv/
+/vendor/gtk-old/build-*/
+
+# UPSTREAM'S OWN .gitignore FILES sit inside the trees, and git obeys them -- so on 2026-10-10
+# every file the tarballs hold was added BY NAME, `git add -f` (a tracked file stays tracked,
+# whatever an ignore rule says): 43 files they hid, among them glib's subprojects/gvdb, which
+# glib's build needs (without it meson fetched gvdb from the network, and build_stack.py stops
+# there), GTK's .wrap files and two of cairo's Makefiles.
+#
+# EXCEPT VTE's three bundled copies: its tarball ships fmt, simdutf and fast_float as subprojects,
+# each a git checkout with its own .git, which git would store as a broken "embedded repository".
+# VTE never builds them -- --wrap-mode=nofallback refuses them, and each library is built from
+# its own source in vendor/<project>/ (vendor/build_stack_recipes.py, VTE's step) -- so they stay out.
+/vendor/vte/vte-0.84.1/subprojects/fast_float/
+/vendor/vte/vte-0.84.1/subprojects/fmt/
+/vendor/vte/vte-0.84.1/subprojects/simdutf/
+
+# What the 2026-09-20 stack build left inside five of the trees: written by a build, in no
+# tarball. A build may write them again; they never go in.
+/vendor/freetype/freetype-2.14.3/config.mk
+/vendor/freetype/freetype-2.14.3/objs/ftmodule.h
+/vendor/glib/glib-2.90.0/subprojects/.wraplock
+/vendor/libffi/libffi-3.8.0/Makefile
+/vendor/libffi/libffi-3.8.0/makefile.sed~
+
+# vendor/stage/ -- the shared install prefix every project is built into. Build output.
+/vendor/stage/
+
+# What vendor/build_stack.py makes. The two .py files beside them ARE in git -- they are
+# the recipe, the same rule as everywhere else in this folder -- and everything below is
+# regenerated from them by one command:
+#   build/            one meson/autotools/cmake build directory per project, plus the
+#                     generated native.ini that blocks meson's CMake fall-through
+#   build-cc/         the two-line -w compiler wrapper, written from --clang
+#   build-tools-path/ one symlink, python3 -> /usr/bin/python3, so a generator that
+#                     hardcodes `python3` does not run under this machine's alpha PyPy
+#   build_logs/       one log per project; the record of a run, not of the tree
+/vendor/build/
+/vendor/build-cc/
+/vendor/build-tools-path/
+/vendor/build_logs/
+
+# vendor/fonts/ -- IBM Plex Mono: all fourteen faces and OFL.txt ARE in git, since 2026-10-10.
+# With the zip out of git ("no zipped vendor stuff", the author), the faces are the copy, and
+# make_window_data.py embeds every face it finds -- so a fresh clone builds the binary this
+# checkout builds. (Until then only Regular was tracked, and build_stack.py unpacked the other
+# thirteen from vendor/new/IBM_Plex_Mono.zip on the machine that had it.)
+
+# The same bytes as vendor/new/IBM_Plex_Mono.zip, kept at the top of the tree; nothing reads it,
+# and IBM_Plex_Mono/ beside it holds the fourteen faces unzipped. No zipped vendor stuff.
+/IBM_Plex_Mono.zip
+
+# vendor/gtk build outputs: the experiment binaries (85 MB each, unstripped) and the
+# meson install prefix. Both are made by the scripts beside them.
+/vendor/gtk-old/hello/hello-static
+# vendor/hello-vte: the proof that the static VTE works (2026-09-22). The program,
+# its script and its README are in git; what a run leaves beside them is not.
+/vendor/hello-vte/*
+!/vendor/hello-vte/hello-vte.c
+!/vendor/hello-vte/build-and-run.sh
+!/vendor/hello-vte/README.md
+/vendor/gtk-old/hello/hello-dynamic
+/vendor/gtk-old/stage-static/
+
+
+# time_test/ -- the author compiles each test himself; what he builds and what a race
+# writes are not source.
+/time_test/satellite.library/race
+/time_test/satellite.library/out/
+/time_test/locks/locks
+/time_test/threads/threads
+
+# Agent tooling: .claude/worktrees/ holds full checkouts of this repository (2.5 GB,
+# build output included). Never source.
+/.claude/
+
+# Experiment binaries -- built from the .cpp/.satl beside them. experiments/window_test/satl
+# is a 61 MB copy of build/satl; gtkcar/satl and satl-link are links into build/, which
+# would dangle in any clone.
+/experiments/window_test/satl
+/experiments/window_test/nascar
+/gtkcar/gtkcar
+/gtkcar/satl
+/gtkcar/satl-link
+
+# Empty scratch output left at the top of the tree.
+/r_*.txt

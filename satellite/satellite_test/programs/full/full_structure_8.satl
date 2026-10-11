@@ -1,0 +1,10 @@
+satellite.include(satellite)
+// full_structure_8 -- REFUSED by satellite.test.full(): satellite.main: main written without satellite.capsule in front of it.
+// The rule: satellite.main: leave off satellite.capsule and satl says so before anything runs (S150).
+// satl refuses it: exit 11, and its report on stderr says "satellite.main is a capsule, so it is declared like one". It prints nothing.
+
+satellite.main()
+{
+    satellite.variable.number passes = 1
+    satellite.return(satellite)
+}

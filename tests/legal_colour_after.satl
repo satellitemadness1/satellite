@@ -1,0 +1,20 @@
+satellite.include(satellite)
+
+// A NAME WHOSE BLOCK HAS ENDED IS NO NAME, to the walker as to the checker: after the if, facade is the colour
+// literal FACADE, not the ended variable's 112233 (the fresh reader, 2026-10-06). Prints xFACADE twice.
+
+satellite.capsule satellite.main()
+{
+    satellite.variable.color c = 000000
+    satellite.variable.number n = 1
+    satellite.statement.if (n == 1)
+    {
+        satellite.variable.color facade = 112233
+    }
+    c = facade
+    satellite.console.display(c)
+    satellite.variable.color d = 000000
+    d = facade
+    satellite.console.display(d)
+    satellite.return(satellite)
+}

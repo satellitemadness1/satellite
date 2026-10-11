@@ -1,0 +1,11 @@
+// A time can be a satellite.library value, written down at the top of its file (the review, 2026-10-10).
+satellite.include(satellite)
+
+satellite.library.pause = 250ms
+
+satellite.capsule satellite.main()
+{
+    satellite.time.sleep(satellite.library.pause)
+    satellite.console.display(satellite.library.pause)
+    satellite.return(satellite)
+}

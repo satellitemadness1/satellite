@@ -1,0 +1,13 @@
+satellite.include(satellite)
+
+// full_numbers_10 -- satellite.test.full(), a program satl must REFUSE.
+// number: 1 / 0 is refused (S401).
+// It exits 22, and its report on stderr holds: the / of 1 and 0 is a division by zero
+// Nothing is printed on stdout.
+
+satellite.capsule satellite.main()
+{
+    satellite.variable.number passes = 1
+    satellite.console.display(1 / 0)
+    satellite.return(satellite)
+}

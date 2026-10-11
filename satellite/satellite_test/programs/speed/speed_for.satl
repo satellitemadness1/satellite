@@ -1,0 +1,23 @@
+satellite.include(satellite)
+
+// speed_for.satl -- satellite.test.speed(): THE FOR LOOP, a counter loop inside a counter loop.
+// The outer for counts passes with i + 1, the inner one counts 10 with j++, and each inner turn takes
+// one step of h = (h * 7 + i + j) % 1000003, so h depends on every turn of both loops.
+// Prints: the count of inner turns, then h.  C++ twin: speed_for().
+
+satellite.capsule satellite.main()
+{
+    satellite.variable.number passes = 150000
+    satellite.variable.number turns = 0
+    satellite.variable.number h = 0
+    satellite.statement.for(satellite.variable.number i = 0; i < passes; i + 1)
+    {
+        satellite.statement.for(satellite.variable.number j = 0; j < 10; j++)
+        {
+            h = (h * 7 + i + j) % 1000003
+        }
+        turns = turns + 10
+    }
+    satellite.console.display(turns.string + " " + h.string)
+    satellite.return(satellite)
+}

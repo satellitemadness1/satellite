@@ -1,0 +1,11 @@
+satellite.include(satellite)
+// full_structure_26 -- REFUSED by satellite.test.full(): arguments: a fact satl holds is read and never written.
+// The rule: arguments: a fact satl holds ... is read and never written, and a line writing one is refused before the program runs.
+// satl refuses it: exit 35, and its report on stderr says "args.memory.total is a row satl holds". It prints nothing.
+
+satellite.capsule satellite.main(satellite.variable.arguments args)
+{
+    satellite.variable.number passes = 1
+    args.memory.total = 5
+    satellite.return(satellite)
+}

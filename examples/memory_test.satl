@@ -1,0 +1,24 @@
+
+satellite.include(satellite)
+
+satellite.capsule satellite.main()
+{
+    satellite.variable.string mem_var = "void"
+    satellite.variable.string add_var = " void"
+
+    satellite.variable.number counter = 0
+    satellite.variable.bool true_var = satellite.bool.true
+    
+    satellite.statement.while(true_var)
+    {
+        mem_var = mem_var + add_var
+
+        mem_var = add_var
+
+        counter = counter + 1
+
+        satellite.console.display("ADDS = " + counter)
+    }
+
+    satellite.return(satellite)
+}

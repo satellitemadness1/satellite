@@ -1,0 +1,12 @@
+satellite.include(satellite)
+
+// A LIST GIVEN TO A BASH NAME IS REFUSED, not guessed at: lines of a script, or a line and the $1, $2
+// bash hands it, are both possible meanings -- the author's to choose (STEP 5).
+satellite.capsule satellite.main(satellite.variable.arguments args)
+{
+    satellite.console.display("before")
+    satellite.variable.bash listed = {"echo", "hello"}
+    listed.start()
+    listed.join()
+    satellite.return(satellite)
+}

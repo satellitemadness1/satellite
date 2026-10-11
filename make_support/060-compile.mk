@@ -1,0 +1,92 @@
+# satellite 004 -- how a .cpp becomes a .o.
+#
+# ONE OBJECT A SOURCE, under build/objects/ at the source's own path, so a change
+# recompiles the files it touches and not all thirty (the old Makefile compiled
+# every source in one command, every time), and nothing is written beside a
+# source. -MMD -MP has the compiler write each object's real header dependencies
+# into a .d beside it; -MP gives every header a rule of its own, so deleting a
+# header is not "no rule to make" on the next build.
+DEPENDENCY_FLAGS = -MMD -MP
+
+# BEFORE THE RULES, because make expands a prerequisite list as it reads it.
+# make recompiles when a PREREQUISITE changes, and CXXFLAGS is not one: without
+# this, `make OPT=-O3` over a -O2 tree recompiles nothing and links a mixed binary.
+COMPILE_STAMP = $(BUILD)/.compile-flags
+$(COMPILE_STAMP): FORCE
+	@mkdir -p $(BUILD)
+	@printf '%s' '$(CXX) [$(CXX_VERSION)] $(CXXFLAGS) $(OPTIMISE_FLAGS) $(OS_DEFINE) $(WINDOW_DEFINE)' | cmp -s - $@ || \
+	    printf '%s' '$(CXX) [$(CXX_VERSION)] $(CXXFLAGS) $(OPTIMISE_FLAGS) $(OS_DEFINE) $(WINDOW_DEFINE)' > $@
+
+# ORDER-ONLY ON THE BUILD STAMP: every object waits until build_number.py has
+# decided this build's number and written it into satellite_config.hpp, so none is
+# compiled from the row it is about to replace.
+$(OBJECTS)/%.o: %.cpp $(COMPILE_STAMP) $(PGO_PROFILE) | $(BUILD_STAMP)
+	@mkdir -p $(dir $@)
+	$(CXX) $(CXXFLAGS) $(OPTIMISE_FLAGS) $(OS_DEFINE) $(WINDOW_DEFINE) $(DEPENDENCY_FLAGS) -c $< -o $@
+
+# THE GENERATOR'S FOLDER SEES THE VENDORED PCG HEADERS, and nothing else does (030's
+# PCG_INCLUDE): -isystem, so pcg-cpp's 2014 code is read as a system header -- its one
+# -Wunused-but-set-parameter would otherwise be a warning in every build -- and so -MMD
+# leaves it out of the .d files, as it leaves out every system header; 040-sources.mk names
+# the three headers as build inputs, AND they are prerequisites here, so a new pcg-cpp
+# release recompiles this folder as well as raising the build number (the review of
+# 0b6fe8f: without them it raised the number and linked the old objects). The same
+# more-specific stem as the window rule below, so this one wins for that folder.
+$(OBJECTS)/$(RANDOM_DIR)/%.o: $(RANDOM_DIR)/%.cpp $(PCG_HEADERS) $(COMPILE_STAMP) $(PGO_PROFILE) | $(BUILD_STAMP)
+	@mkdir -p $(dir $@)
+	$(CXX) $(CXXFLAGS) $(OPTIMISE_FLAGS) $(OS_DEFINE) $(WINDOW_DEFINE) -isystem $(PCG_INCLUDE) $(DEPENDENCY_FLAGS) -c $< -o $@
+
+# THE INTERPRETER'S OWN WINDOW OBJECTS, which need GTK's include paths and not
+# VTE's -- a longer stem than the plain rule above, so this one wins for them.
+# They have their own stamp so that gtk4 appearing or vanishing recompiles the
+# window and not all of satl.
+# AND VTE'S, SINCE THE CONSOLE (GTK-17): GTK_CFLAGS carries VTE's include path
+# when the stage has it, and CONSOLE_DEFINE says whether it does -- both in the
+# stamp, so VTE appearing or vanishing recompiles the window folder and nothing
+# else.
+GTK_COMPILE_STAMP = $(BUILD)/.compile-flags-gtk
+$(GTK_COMPILE_STAMP): FORCE
+	@mkdir -p $(BUILD)
+	@printf '%s' '$(CXX) [$(CXX_VERSION)] $(CXXFLAGS) $(OPTIMISE_FLAGS) $(OS_DEFINE) $(GTK_CFLAGS) $(CONSOLE_DEFINE)' | cmp -s - $@ || \
+	    printf '%s' '$(CXX) [$(CXX_VERSION)] $(CXXFLAGS) $(OPTIMISE_FLAGS) $(OS_DEFINE) $(GTK_CFLAGS) $(CONSOLE_DEFINE)' > $@
+
+$(OBJECTS)/$(SATELLITE)/satellite_variable_window/%.o: $(SATELLITE)/satellite_variable_window/%.cpp \
+                                                       $(GTK_COMPILE_STAMP) $(PGO_PROFILE) | $(BUILD_STAMP)
+	@mkdir -p $(dir $@)
+	$(CXX) $(CXXFLAGS) $(OPTIMISE_FLAGS) $(OS_DEFINE) $(GTK_CFLAGS) $(CONSOLE_DEFINE) $(DEPENDENCY_FLAGS) -c $< -o $@
+
+# THE CARRIED DATA. glib-compile-resources writes the .c; this compiles it. It is
+# C and not C++, and it is generated, so -Wall -Wextra would report other
+# people's style -- the warnings that matter about it are in the script.
+$(WINDOW_DATA_SOURCE): $(WINDOW_DATA_INPUTS)
+	@mkdir -p $(dir $@)
+	@SATL_GTK_BUILD=$(if $(filter vendor,$(GTK)),$(GTK_BUILD)) SATL_GENERATED_OUT=$(dir $@) \
+	 python3 $(SATELLITE)/satellite_variable_window/make_window_data.py
+
+# THE LICENCES. Regenerated whenever a licences/ file changes, so a licence added
+# to the folder is in the next binary without anybody remembering to say so.
+$(LICENCE_DATA_SOURCE): $(LICENCE_DATA_INPUTS)
+	@mkdir -p $(dir $@)
+	@python3 $(SATELLITE)/licenses/make_license_data.py $@
+
+# -w, like the window data: it is 284 KB of other people's licence text in raw
+# string literals, and -Wall -Wextra has nothing useful to say about it.
+$(LICENCE_DATA_OBJECT): $(LICENCE_DATA_SOURCE) | $(BUILD_STAMP)
+	@mkdir -p $(dir $@)
+	$(CXX) $(CXXFLAGS) -w $(DEPENDENCY_FLAGS) -c $< -o $@
+
+$(WINDOW_DATA_OBJECT): $(WINDOW_DATA_SOURCE) $(GTK_COMPILE_STAMP) | $(BUILD_STAMP)
+	@mkdir -p $(dir $@)
+	$(CC) -std=c11 $(OPT) -w $(GTK_CFLAGS) -c $< -o $@
+
+# THE OBJECTS THAT READ THE ROWS depend on the build stamp as a real prerequisite,
+# and the .d files are not enough for them. make remembers a file's time from the
+# first moment it looked, and it may look at satellite_config.hpp before
+# build_number.py rewrites it -- so a new build number would be compiled into
+# nothing. The stamp is a target with a recipe, which make looks at again after
+# the recipe runs. 050-build.mk checks every link against the row, so a file that
+# reads the rows and is missing here fails the build rather than lying.
+ROW_READERS = $(OBJECTS)/$(ARGUMENTS)/arguments.o $(OBJECTS)/$(SATELLITE)/structured-library.o
+$(ROW_READERS): $(BUILD_STAMP)
+
+-include $(INTERPRETER_OBJECTS:.o=.d) $(GTK_OBJECTS:.o=.d)

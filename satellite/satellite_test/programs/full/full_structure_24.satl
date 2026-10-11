@@ -1,0 +1,12 @@
+satellite.include(satellite)
+// full_structure_24 -- REFUSED by satellite.test.full(): satellite.library: a value is never changed in a capsule.
+// The rule: satellite.library: satellite.library.span = 30 inside a capsule is refused before anything runs (S250).
+// satl refuses it: exit 54, and its report on stderr says "S250: LIBRARY_VALUE_IS_FIXED". It prints nothing.
+satellite.library.span = 25
+
+satellite.capsule satellite.main()
+{
+    satellite.variable.number passes = 1
+    satellite.library.span = 30
+    satellite.return(satellite)
+}

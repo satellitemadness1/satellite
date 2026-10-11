@@ -1,0 +1,11 @@
+satellite.include(satellite)
+
+// Past arguments.float.whole significant digits the low digits round to zeros,
+// and the value keeps its size. Run with float.whole = 3 in config.ini.
+satellite.capsule satellite.main()
+{
+    satellite.console.display(123456.7)
+    satellite.console.display(123500.0 + 0)
+    satellite.console.display(0.12345678901234)
+    satellite.return(satellite)
+}

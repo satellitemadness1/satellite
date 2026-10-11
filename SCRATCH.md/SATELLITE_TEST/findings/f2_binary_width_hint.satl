@@ -1,0 +1,9 @@
+satellite.include(satellite)
+
+satellite.capsule satellite.main()
+{
+    satellite.console.display(x00FF.width)
+    satellite.variable.binary flags = b0010
+    satellite.console.display(flags.width)
+    satellite.return(satellite)
+}

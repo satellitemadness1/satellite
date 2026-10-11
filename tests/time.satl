@@ -1,0 +1,32 @@
+// satellite.variable.time and satellite.time's words (the author, 2026-10-10): a time is written
+// with its unit touching the number -- 1s, 250ms, 30ns -- or made by satellite.time.second(n),
+// .millisecond(n) and .nanosecond(n), whose second spellings are .s(n), .ms(n) and .ns(n).
+satellite.include(satellite)
+
+satellite.capsule satellite.main(satellite.container.list<satellite.variable.string> arguments)
+{
+    satellite.variable.time my_time = satellite.time.second(1)
+    satellite.console.display(my_time)
+    satellite.console.display(satellite.time.millisecond(250))
+    satellite.console.display(satellite.time.nanosecond(30))
+    satellite.console.display(satellite.time.s(2))
+    satellite.console.display(satellite.time.ms(5))
+    satellite.console.display(satellite.time.ns(7))
+    satellite.console.display(1.5s)
+    satellite.console.display(satellite.time.second(1.25))
+    satellite.console.display(0.0000000001s)
+    satellite.console.display(-1s)
+    satellite.console.display(1s == 1000ms)
+    satellite.console.display(1s > 999ms)
+    satellite.console.display(1ns < 1ms)
+    satellite.console.display(2s != 2s)
+    my_time = 5ms
+    satellite.console.display(my_time)
+    satellite.time.sleep(1ns)
+    satellite.time.sleep(1ms)
+    satellite.time.sleep(my_time)
+    satellite.time.sleep(satellite.time.millisecond(2))
+    satellite.time.sleep(0s)
+    satellite.console.display("slept")
+    satellite.return(satellite)
+}

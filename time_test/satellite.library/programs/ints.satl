@@ -1,0 +1,14 @@
+satellite.include(satellite)
+
+satellite.capsule satellite.main()
+{
+    satellite.variable.number n = 0
+    satellite.variable.number counter = 0
+    satellite.statement.while(counter < 200000)
+    {
+        n = n + 1
+        counter = counter + 1
+    }
+    satellite.console.display(n)
+    satellite.return(satellite)
+}

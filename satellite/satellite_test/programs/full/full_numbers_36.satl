@@ -1,0 +1,13 @@
+satellite.include(satellite)
+
+// full_numbers_36 -- satellite.test.full(), a program satl must REFUSE.
+// percentage: 50% + 5 is refused, the number goes first.
+// It exits 27, and its report on stderr holds: number goes first -- 5 + 50%
+// Nothing is printed on stdout.
+
+satellite.capsule satellite.main()
+{
+    satellite.variable.number passes = 1
+    satellite.console.display(50% + 5)
+    satellite.return(satellite)
+}

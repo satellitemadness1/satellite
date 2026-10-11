@@ -1,0 +1,13 @@
+satellite.include(satellite)
+
+// full_numbers_48 -- satellite.test.full(), a program satl must REFUSE.
+// random: a step that misses max is refused, naming the last value it reaches (S434).
+// It exits 75, and its report on stderr holds: reaches 98 and then passes 100
+// Nothing is printed on stdout.
+
+satellite.capsule satellite.main()
+{
+    satellite.variable.number passes = 1
+    satellite.console.display(satellite.random.normal(0, 100, 7))
+    satellite.return(satellite)
+}

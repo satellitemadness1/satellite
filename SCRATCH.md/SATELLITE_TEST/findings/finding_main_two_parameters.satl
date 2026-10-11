@@ -1,0 +1,8 @@
+satellite.include(satellite)
+
+satellite.capsule satellite.main(satellite.variable.arguments a, satellite.variable.number n)
+{
+    satellite.console.display("main began")
+    satellite.console.display(n)
+    satellite.return(satellite)
+}

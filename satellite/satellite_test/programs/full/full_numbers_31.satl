@@ -1,0 +1,13 @@
+satellite.include(satellite)
+
+// full_numbers_31 -- satellite.test.full(), a program satl must REFUSE.
+// fraction: a bottom number of 0 is refused.
+// It exits 22, and its report on stderr holds: 1/0: a fraction's bottom number cannot be 0
+// Nothing is printed on stdout.
+
+satellite.capsule satellite.main()
+{
+    satellite.variable.number passes = 1
+    satellite.console.display(1/0)
+    satellite.return(satellite)
+}

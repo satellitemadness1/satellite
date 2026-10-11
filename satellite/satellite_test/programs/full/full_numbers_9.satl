@@ -1,0 +1,87 @@
+satellite.include(satellite)
+
+// full_numbers_9 -- satellite.test.full(): satellite.random, seeded. Its help page says the seed
+// decides the stream and not the answer (how many draws a spin throws away follows the clock), so
+// no draw here is checked for one exact value it could miss: each check is a rule every draw must
+// keep -- inside its bounds, on its step, as many digits as asked, a range of one value -- and the
+// seed answering itself back. Each pass seeds the generator with 547311173 and draws once in each
+// shape; the first draw that breaks its rule is kept, and the checks print once, after the passes.
+// A draw spins by design (fast 0.5-1 s, normal 1-2 s, ultra 2-3 s), so one pass takes 4-7 s.
+
+satellite.capsule check(satellite.variable.bool show, satellite.variable.string what, satellite.variable.string got, satellite.variable.string want)
+{
+    satellite.statement.if(show)
+    {
+        satellite.statement.if(got == want)
+        {
+            satellite.console.display("ok " + what)
+        }
+        satellite.statement.else
+        {
+            satellite.console.display("WRONG " + what + ": " + got + " (expected " + want + ")")
+        }
+    }
+}
+
+satellite.capsule satellite.main()
+{
+    satellite.variable.number passes = 1
+    satellite.variable.number rounds = passes
+    satellite.statement.if(rounds < 1)
+    {
+        rounds = 1
+    }
+    satellite.variable.string seeds = ""
+    satellite.variable.string die_seen = "every draw 1 to 6"
+    satellite.variable.string step_seen = "every draw on the step"
+    satellite.variable.string big_seen = "every draw 10 ^ 40"
+    satellite.variable.string digits_seen = "every draw 0 to 99"
+    satellite.statement.for(satellite.variable.number turn = 1; turn <= rounds; turn + 1)
+    {
+        seeds = satellite.random.seed(7).string + " " + satellite.random.seed(10 ^ 30).string + " " + satellite.random.seed(-5).string
+        satellite.random.seed(547311173)
+        satellite.variable.number die = satellite.random.fast(1, 6)
+        satellite.statement.if(die < 1)
+        {
+            die_seen = die.string
+        }
+        satellite.statement.if(die > 6)
+        {
+            die_seen = die.string
+        }
+        satellite.variable.number stepped = satellite.random.fast(0, 100, 5)
+        satellite.statement.if(stepped < 0)
+        {
+            step_seen = stepped.string
+        }
+        satellite.statement.if(stepped > 100)
+        {
+            step_seen = stepped.string
+        }
+        satellite.statement.if(stepped % 5 != 0)
+        {
+            step_seen = stepped.string
+        }
+        satellite.variable.number big = satellite.random.normal(10 ^ 40, 10 ^ 40)
+        satellite.statement.if(big != 10 ^ 40)
+        {
+            big_seen = big.string
+        }
+        satellite.variable.number two_digits = satellite.random.ultra(2)
+        satellite.statement.if(two_digits < 0)
+        {
+            digits_seen = two_digits.string
+        }
+        satellite.statement.if(two_digits > 99)
+        {
+            digits_seen = two_digits.string
+        }
+    }
+    satellite.variable.bool show = satellite.bool.true
+    check(show, "random seed(n) answers the seed back, any whole number, past one limb and below zero", seeds, "7 1000000000000000000000000000000 -5")
+    check(show, "random fast(1, 6) draws a die, both ends included", die_seen, "every draw 1 to 6")
+    check(show, "random fast(0, 100, 5) lands on min, min + step and so on up to max", step_seen, "every draw on the step")
+    check(show, "random normal(10 ^ 40, 10 ^ 40) is exact at any size", big_seen, "every draw 10 ^ 40")
+    check(show, "random ultra(2) is a count of digits, 0 up to 99", digits_seen, "every draw 0 to 99")
+    satellite.return(satellite)
+}

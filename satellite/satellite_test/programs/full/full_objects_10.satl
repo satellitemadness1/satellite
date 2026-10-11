@@ -1,0 +1,17 @@
+satellite.include(satellite)
+
+// full_objects_10 -- REFUSED when its line runs: join() on a thread never started (THREADS.md T1:
+// "Before .start() it is S723").
+
+satellite.capsule twice(satellite.variable.number n)
+{
+    satellite.return(n * 2)
+}
+
+satellite.capsule satellite.main()
+{
+    satellite.variable.number passes = 1
+    satellite.variable.thread t = satellite.thread.new(twice(2))
+    satellite.console.display(t.join())
+    satellite.return(satellite)
+}

@@ -1,0 +1,11 @@
+// THE SWITCH BY ITS FULL NAME (MS-2): satellite.library.arguments.missing is arguments.missing, and
+// satellite.bool.false is the bare false (D22) -- the same line, the same row.
+
+satellite.include(satellite)
+satellite.library.arguments.missing = satellite.bool.false
+
+satellite.capsule satellite.main(satellite.variable.arguments args)
+{
+    satellite.console.display(args.missing)
+    satellite.return(satellite)
+}

@@ -1,0 +1,25 @@
+satellite.include(satellite)
+
+// A COLOUR GIVEN A VALUE ON A LATER LINE, where the lexer does not know it is a
+// colour: six digits written without the x still read as six digits -- `123456` is
+// a number token that keeps its digits, `abcdef` a name no variable has. A name a
+// variable HAS is the variable, even when it is spelled all in hex digits. The
+// comma and its transparency follow digits written without the x as well.
+satellite.capsule satellite.main()
+{
+    satellite.variable.color my_color = x000000
+    my_color = 123456
+    satellite.console.display(my_color)
+    my_color = abcdef
+    satellite.console.display(my_color)
+    my_color = x00ff00
+    satellite.console.display(my_color)
+    satellite.variable.color facade = x0000FF
+    my_color = facade
+    satellite.console.display(my_color)
+    my_color = ff00aa, 5
+    satellite.console.display(my_color)
+    my_color = 000000, 75
+    satellite.console.display(my_color)
+    satellite.return(satellite)
+}

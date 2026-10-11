@@ -1,0 +1,90 @@
+#!/bin/sh
+# install.sh -- install satellite 004 (satl, every word inside it) into $HOME/.satl,
+# or into a folder you name.
+#
+#     sh satellite_enterprise/install.sh                  into $HOME/.satl
+#     sh satellite_enterprise/install.sh --root <folder>
+#
+# 004 INSTALLS INTO $HOME/.satl, AND `make install` DOES IT (D0.5.1, the author,
+# 2026-09-22: "yes let's install 004 to ~/.satl with every make"; since 2026-10-07 a
+# bare make builds and then ASKS whether to install, installing unless told n, and
+# `make install` installs without asking -- make_support/080-install.mk). ~/.local/bin/satl
+# is a link to $HOME/.satl/satl,
+# so the word `satl` is 004's from the first install. A satl already there that
+# this installer did not put there -- satellite 003's -- is KEPT beside it as
+# satl.bak-<date>, never deleted; 003's satl-term and everything else of 003's in
+# that folder is left alone.
+#
+# ANY OTHER ROOT keeps every refusal it had: /usr/local, which is 003's --system;
+# a folder on PATH, where a second satl would compete for the word; the
+# repository's top folder; and a root holding a satl this installer did not put
+# there. It refuses 003's --link, --desktop and --system rather than half-doing
+# them.
+#
+# THE LAUNCHER TOO, for $HOME/.satl: the rest of D0.5.1 was settled the same day,
+# when the author clicked the app and got 003's satl-term around 004's satl.
+# 004's window keeps org.satellite.terminal; 070-desktop.sh writes its entry.
+#
+# WHAT IT INSTALLS:
+#
+#     <root>/satl                   the interpreter, every word inside it (2026-10-07)
+#     <root>/satellite.help/        the help files satellite.help() reads beside satl
+#     <root>/.satellite-004-install what this installer put there, and each file's sha256
+#
+# The record is how a later install knows a satl in the root is its own: it is
+# never learnt by running the file. A satellite-numbers/ an earlier install put
+# beside satl is removed once the record proves it was this installer's: every
+# word is built into satl now, and nothing reads that folder.
+#
+# THE INSTALL IS PROVEN by running the installed satl on
+# examples/hello_world.satl -- never with --version, which answers before the
+# words are filed.
+#
+# POSIX sh (003's rule): the installer is the program that runs before anything
+# is installed. THIS FILE IS AN INDEX; the fragments below are sourced in order,
+# and the order is the script:
+#
+#     010-defaults.sh ....... where things are, and what hello_world says
+#     020-saying-things.sh .. die, refuse, usage
+#     030-arguments.sh ...... the command line
+#     040-root.sh ........... the root, and every root that is refused
+#     050-building.sh ....... make, every time (the just-built shortcut went 2026-10-07)
+#     060-install-tree.sh ... the copy, the rename and the record
+#     065-config.sh ......... $HOME/.satl/config.ini, never overwritten
+#     070-desktop.sh ........ the Satellite launcher, for $HOME/.satl only
+#     080-report.sh ......... the proof and the title lines
+#
+# check_install.sh beside this file runs the installer against the refusals and
+# failures a review found; make test runs it.
+#
+# NOT PORTED from 003: 040-machine.sh (the Enterprise Linux checks and the
+# --system prefix), 070-desktop.sh (the ~/.local links, launcher, icons and .satl
+# type) and 075-system.sh -- a 004 launcher under org.satellite.terminal would
+# take 003's (D0.5.1). The artwork in icons/ and icon_artwork/ is 003's and stays
+# as it is.
+
+set -eu
+# An exported CDPATH makes `cd dir` print where it went, which $(cd ... && pwd)
+# would capture as part of the path.
+unset CDPATH
+
+self=$0
+here=$(dirname -- "$self")
+here=$(cd -- "$here" && pwd)
+repo=$(cd -- "$here/.." && pwd)
+
+support=$here/install_support
+if [ ! -d "$support" ]; then
+    printf 'install.sh: %s\n' "install_support/ is not beside $self. Copy the whole satellite_enterprise/ folder." >&2
+    exit 1
+fi
+
+. "$support/010-defaults.sh"
+. "$support/020-saying-things.sh"
+. "$support/030-arguments.sh"
+. "$support/040-root.sh"
+. "$support/050-building.sh"
+. "$support/060-install-tree.sh"
+. "$support/065-config.sh"
+. "$support/070-desktop.sh"
+. "$support/080-report.sh"

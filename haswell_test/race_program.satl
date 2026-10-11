@@ -1,0 +1,44 @@
+
+satellite.include(satellite)
+
+satellite.spacesuit my_class()
+{
+    satellite.protected
+    {
+        satellite.variable.number class_id = 0
+
+        satellite.capsule set_class_id(satellite.variable.number class_id_input)
+        {
+            class_id = class_id_input
+        }
+    }
+
+    satellite.public
+    {
+        satellite.capsule call_set_class_id(satellite.variable.number call_id_input)
+        {
+            set_class_id(call_id_input)
+        }
+    }
+}
+
+satellite.capsule satellite.main(satellite.variable.arguments arguments)
+{
+    satellite.variable.number huge_int = 94287532189763127896139786298436284976532874612879436123874132798463189479231874238956872365327864523981457692874598275928347592385473298457329874618724618272436187236478123648721364873637373773733333
+
+    satellite.variable.number another_huge_int = 354279879243783425748932872954789453789542798452798245879425789457895478945279825378923478925389724357895347985379823478952438792435789423587945238790423578942357894352789452378942357892345798542379824359782435798452378924597845328745279823457887942387954289754284253894528890542
+
+    satellite.variable.number register1 = 0
+
+    satellite.variable.number counter = 0
+    satellite.variable.number target = 9999999
+
+    satellite.statement.while(counter < target)
+    {
+        register1 = huge_int * another_huge_int + register1
+
+        counter = counter + 1     
+    }
+
+    satellite.return(satellite)
+}

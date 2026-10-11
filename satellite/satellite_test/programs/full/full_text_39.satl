@@ -1,0 +1,12 @@
+satellite.include(satellite)
+
+// full_text_39 -- REFUSED: map .append is refused: a map has keys and not positions.
+// satellite.help(satellite.container.map). Nothing reaches stdout; satl exits with the refusal's code.
+
+satellite.capsule satellite.main()
+{
+    satellite.variable.number passes = 1
+    satellite.container.map m = {"a": 1}
+    m.append(2)
+    satellite.return(satellite)
+}

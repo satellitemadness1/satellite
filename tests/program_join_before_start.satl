@@ -1,0 +1,9 @@
+satellite.include(satellite)
+
+// join() before start() is S741 (bytecode/program_calls.hpp).
+satellite.capsule satellite.main(satellite.variable.arguments args)
+{
+    satellite.variable.program never = {"echo", "never shown"}
+    satellite.console.display(never.join())
+    satellite.return(satellite)
+}

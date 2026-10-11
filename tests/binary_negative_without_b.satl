@@ -1,0 +1,11 @@
+// A binary keeps its sign, and a minus does not hide a missing b: -1010 is
+// ERROR: expected -b1010, before anything runs.
+
+satellite.include(satellite)
+
+satellite.capsule satellite.main()
+{
+    satellite.console.display("before")
+    satellite.variable.binary my_number = -1010
+    satellite.return(satellite)
+}

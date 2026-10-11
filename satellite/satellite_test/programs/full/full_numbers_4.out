@@ -1,0 +1,14 @@
+ok binary shows exactly as written, b and leading zeros, and .string is that; bin is its second spelling
+ok binary the width is part of the value, b0010 is not b10
+ok binary .number .to_number and .as_number are what the bits are worth
+ok binary .binary and .bin are the digits without the b, .hex its worth in base 16
+ok binary .reverse() turns the bits round and keeps the width
+ok binary + - * / % ^ read a binary by its worth and answer a number
+ok binary .add(x) is +
+ok binary meets a number by its worth, and orders by its worth
+ok binary keeps a sign: -b0101 is worth -5, is not b0101, and orders below b0001
+ok binary a minus turns it over, and zero has no sign
+ok binary .reverse() .binary and .hex keep the sign
+ok binary a number name given b0011 holds 3, and a binary name takes another binary
+ok binary has no length limit, 80 ones
+ok binary a string joins a binary as its .string

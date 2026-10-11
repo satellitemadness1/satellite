@@ -1,0 +1,15 @@
+ok percentage shows with its %, and .string is that; percent is its second spelling
+ok percentage two percentages stay a percentage: 50% + 25%, 50% - 25%, 50% * 50%
+ok percentage 50% / 4 is 12.5%, a share of it
+ok percentage a number and a percentage answer a number: 200 * 50% and 50% * 200
+ok percentage 200 - 50% is 100 and 200 + 50% is 300, reduced and grown by it
+ok percentage 200 / 50% is 400, what 200 is 50% of
+ok percentage 0.1% + 0.2% is 0.3%, exactly
+ok percentage keeps 32 digits after the point, the last rounded half away from zero
+ok percentage a 33rd digit of 5 carries and of 4 drops
+ok percentage has no ceiling above, 1000000000000%
+ok percentage below zero, written with its minus and its %
+ok percentage == != < > <= >= between two percentages
+ok percentage a binary is read by its worth, b1010 * 50% is 5
+ok percentage a percentage name keeps a percentage answer, 50% - 75%
+ok percentage a string joins a percentage as its .string

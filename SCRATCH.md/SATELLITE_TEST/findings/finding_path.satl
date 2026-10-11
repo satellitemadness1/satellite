@@ -1,0 +1,13 @@
+satellite.include(satellite)
+
+satellite.capsule satellite.main()
+{
+    satellite.variable.number passes = 1
+    satellite.variable.file f = satellite.file.new("as_written.se")
+    satellite.console.display(f.path)
+    f.close()
+    satellite.variable.program rm = {"rm", "-f", "as_written.se"}
+    rm.start("hide")
+    rm.join()
+    satellite.return(satellite)
+}

@@ -1,0 +1,13 @@
+satellite.include(satellite)
+
+// full_numbers_16 -- satellite.test.full(), a program satl must REFUSE.
+// float: 12.5.number is refused, satellite rounds nothing on its own (S402).
+// It exits 24, and its report on stderr holds: 12.5 is not a whole number, so there is no number
+// Nothing is printed on stdout.
+
+satellite.capsule satellite.main()
+{
+    satellite.variable.number passes = 1
+    satellite.console.display(12.5.number)
+    satellite.return(satellite)
+}

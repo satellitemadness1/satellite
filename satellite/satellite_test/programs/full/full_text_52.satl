@@ -1,0 +1,12 @@
+satellite.include(satellite)
+
+// full_text_52 -- REFUSED: nested <type> is checked on every way in: grid[x][y] = v.
+// satellite.help(satellite.container). Nothing reaches stdout; satl exits with the refusal's code.
+
+satellite.capsule satellite.main()
+{
+    satellite.variable.number passes = 1
+    satellite.container.list<satellite.container.list<satellite.variable.number>> grid = {{1, 2}, {3, 4}}
+    grid[1][1] = "x"
+    satellite.return(satellite)
+}

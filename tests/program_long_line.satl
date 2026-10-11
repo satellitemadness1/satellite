@@ -1,0 +1,12 @@
+satellite.include(satellite)
+
+// A LINE 40,000,000 CHARACTERS LONG WITH NO END: its new bytes are searched, not the whole line
+// again each time (the review, 2026-10-01: 80 MB took 20.8 s), and it is shown in 64 KiB pieces.
+satellite.capsule satellite.main(satellite.variable.arguments args)
+{
+    satellite.variable.program long_line = {"sh", "-c", "head -c 40000000 /dev/zero | tr '\\0' a"}
+    long_line.start()
+    long_line.join()
+    satellite.console.display("")
+    satellite.return(satellite)
+}

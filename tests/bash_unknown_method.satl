@@ -1,0 +1,10 @@
+satellite.include(satellite)
+
+// A BASH LINE HAS A PROGRAM'S METHODS AND NO OTHERS, and the refusal says so before anything runs.
+satellite.capsule satellite.main(satellite.variable.arguments args)
+{
+    satellite.console.display("before")
+    satellite.variable.bash c = "echo hello"
+    c.size()
+    satellite.return(satellite)
+}

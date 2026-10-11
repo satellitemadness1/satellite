@@ -1,0 +1,11 @@
+// A time where a string's method takes text is refused before anything runs, as a percentage is
+// (the review, 2026-10-10).
+satellite.include(satellite)
+
+satellite.capsule satellite.main()
+{
+    satellite.variable.string s = "a"
+    satellite.console.display("before")
+    s.satellite.append(1s)
+    satellite.return(satellite)
+}

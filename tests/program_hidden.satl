@@ -1,0 +1,21 @@
+satellite.include(satellite)
+
+// start("hide") -- the author, 2026-10-01: "the output will be displayed unless
+// my_program.start("hide") is called". Its output and its errors go nowhere; the run is otherwise
+// the same, and answers the same.
+satellite.capsule satellite.main(satellite.variable.arguments args)
+{
+    satellite.variable.program quiet = {"sh", "-c", "echo this must not show; echo nor this >&2; exit 4"}
+    satellite.console.display("before")                     // before
+    quiet.start("hide")
+    satellite.console.display(quiet.join())                 // 4
+    satellite.console.display(quiet.error())                // it ended with code 4
+    satellite.variable.string how = "hide"
+    quiet.start(how)                                        // the word may come from a name
+    satellite.console.display(quiet.code())                 // 4
+    satellite.variable.program loud = {"echo", "shown"}
+    loud.start()
+    loud.join()                                             // shown
+    satellite.console.display("after")                      // after
+    satellite.return(satellite)
+}

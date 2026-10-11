@@ -1,0 +1,11 @@
+satellite.include(satellite)
+
+// full_text_48 -- REFUSED: multiple with one type says nothing and is refused (S110).
+// satellite.help(satellite.container.multiple). Nothing reaches stdout; satl exits with the refusal's code.
+
+satellite.capsule satellite.main()
+{
+    satellite.variable.number passes = 1
+    satellite.container.multiple<satellite.variable.string> either = "a"
+    satellite.return(satellite)
+}

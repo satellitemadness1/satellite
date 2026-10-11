@@ -1,0 +1,11 @@
+satellite.include(satellite)
+
+// A TRANSPARENCY IS 0 TO 99, the author's range. Written out after the comma it is
+// judged before anything runs.
+satellite.capsule satellite.main()
+{
+    satellite.console.display("before")
+    satellite.variable.color my_color = x000000, 100
+    satellite.console.display(my_color)
+    satellite.return(satellite)
+}

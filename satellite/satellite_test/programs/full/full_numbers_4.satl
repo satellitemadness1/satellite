@@ -1,0 +1,57 @@
+satellite.include(satellite)
+
+// full_numbers_4 -- satellite.test.full(): satellite.variable.binary (and its second spelling,
+// bin). The width is part of the value, a binary keeps a sign, the conversions .number (.to_number,
+// .as_number), .string, .binary (.bin), .hex and .reverse(), .add(x), and arithmetic that reads a
+// binary by what it is worth and answers a number.
+// The checks run `passes` times and print on the last pass only, so the lines never change.
+
+satellite.capsule check(satellite.variable.bool show, satellite.variable.string what, satellite.variable.string got, satellite.variable.string want)
+{
+    satellite.statement.if(show)
+    {
+        satellite.statement.if(got == want)
+        {
+            satellite.console.display("ok " + what)
+        }
+        satellite.statement.else
+        {
+            satellite.console.display("WRONG " + what + ": " + got + " (expected " + want + ")")
+        }
+    }
+}
+
+satellite.capsule satellite.main()
+{
+    satellite.variable.number passes = 1
+    satellite.variable.number rounds = passes
+    satellite.statement.if(rounds < 1)
+    {
+        rounds = 1
+    }
+    satellite.statement.for(satellite.variable.number turn = 1; turn <= rounds; turn + 1)
+    {
+        satellite.variable.bool show = turn == rounds
+        satellite.variable.binary flags = b0010
+        satellite.variable.bin second = b1010
+        check(show, "binary shows exactly as written, b and leading zeros, and .string is that; bin is its second spelling", flags.string + " " + second.string, "b0010 b1010")
+        check(show, "binary the width is part of the value, b0010 is not b10", (flags == b10).string + " " + (flags == b0010).string, "false true")
+        check(show, "binary .number .to_number and .as_number are what the bits are worth", flags.number.string + " " + flags.to_number.string + " " + flags.as_number.string, "2 2 2")
+        check(show, "binary .binary and .bin are the digits without the b, .hex its worth in base 16", flags.binary + " " + flags.bin + " " + b10101010.hex, "0010 0010 AA")
+        check(show, "binary .reverse() turns the bits round and keeps the width", b1000.reverse().string, "b0001")
+        check(show, "binary + - * / % ^ read a binary by its worth and answer a number", (b1000 + b0101).string + " " + (b1111 - b0001).string + " " + (b1111 * 2).string + " " + (b1111 / b0010).string + " " + (b1111 % b0100).string + " " + (b0010 ^ b0011).string, "13 14 30 7 3 8")
+        check(show, "binary .add(x) is +", b0101.add(3).string, "8")
+        check(show, "binary meets a number by its worth, and orders by its worth", (b1010 == 10).string + " " + (b1010 != 10).string + " " + (b1010 < b1011).string + " " + (b1010 > 9).string, "true false true true")
+        satellite.variable.bin below = -b0101
+        check(show, "binary keeps a sign: -b0101 is worth -5, is not b0101, and orders below b0001", below.string + " " + below.number.string + " " + (below == b0101).string + " " + (below == -b0101).string + " " + (below < b0001).string, "-b0101 -5 false true true")
+        check(show, "binary a minus turns it over, and zero has no sign", (-below).string + " " + (-b0000).string, "b0101 b0000")
+        check(show, "binary .reverse() .binary and .hex keep the sign", below.reverse().string + " " + below.bin + " " + below.hex, "-b1010 -0101 -5")
+        satellite.variable.number worth = b0011
+        flags = b0000
+        check(show, "binary a number name given b0011 holds 3, and a binary name takes another binary", worth.string + " " + flags.string, "3 b0000")
+        flags = b11111111111111111111111111111111111111111111111111111111111111111111111111111111
+        check(show, "binary has no length limit, 80 ones", flags.number.string + " " + flags.hex, "1208925819614629174706175 FFFFFFFFFFFFFFFFFFFF")
+        check(show, "binary a string joins a binary as its .string", "b " + b1010, "b b1010")
+    }
+    satellite.return(satellite)
+}

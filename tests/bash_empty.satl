@@ -1,0 +1,11 @@
+satellite.include(satellite)
+
+// AN EMPTY LINE IS REFUSED, as an empty program name is: there is nothing in it for bash to run.
+satellite.capsule satellite.main(satellite.variable.arguments args)
+{
+    satellite.console.display("before")
+    satellite.variable.bash blank = ""
+    blank.start()
+    blank.join()
+    satellite.return(satellite)
+}

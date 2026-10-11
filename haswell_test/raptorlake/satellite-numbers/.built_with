@@ -1,0 +1,1 @@
+/home/madness/opt/clang-current/bin/clang++ -std=c++20 -O2 -Wall -Wextra -march=raptorlake -shared -fPIC -fuse-ld=lld  [clang version 24.0.0git (https://github.com/llvm/llvm-project.git 3c2eaf3920a8320930a8334b328a040ec0402091)]

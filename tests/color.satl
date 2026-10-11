@@ -1,0 +1,20 @@
+satellite.include(satellite)
+
+// satellite.variable.color (the author, 2026-09-22): "satellite.variable.color my_color =
+// x000000 or just 000000 without the x, but a variable.color is always width 6
+// hexadecimal number". Every spelling on the line that declares one, each shown
+// with its x and in upper case; colour, the second spelling, is the same word.
+satellite.capsule satellite.main()
+{
+    satellite.variable.color black = 000000
+    satellite.console.display(black)
+    satellite.variable.color also_black = x000000
+    satellite.console.display(also_black)
+    satellite.variable.color pink = ff00aa
+    satellite.console.display(pink)
+    satellite.variable.color green = 00ff00
+    satellite.console.display(green)
+    satellite.variable.colour blue = x0000FF
+    satellite.console.display(blue)
+    satellite.return(satellite)
+}

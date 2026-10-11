@@ -1,0 +1,16 @@
+satellite.include(satellite)
+// full_structure_13 -- REFUSED by satellite.test.full(): satellite.capsule: an argument of the wrong type, refused when the call is reached.
+// The rule: satellite.capsule: an argument of the wrong type is refused when the call is reached (machine code 27).
+// satl refuses it: exit 27, and its report on stderr says "twice's n was declared satellite.variable.number, and it holds a". It prints nothing.
+
+satellite.capsule twice(satellite.variable.number n)
+{
+    satellite.return(n * 2)
+}
+
+satellite.capsule satellite.main()
+{
+    satellite.variable.number passes = 1
+    satellite.variable.number four = twice("two")
+    satellite.return(satellite)
+}

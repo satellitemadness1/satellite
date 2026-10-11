@@ -1,0 +1,74 @@
+--------------------------------------------------------------------------------
+SATELLITE 004: satellite.legal
+--------------------------------------------------------------------------------
+
+satellite.legal is the one master list of the places an operation is legal in:
+satellite.legal.main for satellite.main, satellite.legal.greet for a capsule
+called greet, satellite.legal.prompt for the prompt. Each place holds the names
+legal in it, and the first is always satellite -- legal in every place, and
+immutable: nothing else may be named satellite, and it is never changed or
+deleted. The author: "using the name "satellite" for anything becomes illegal,
+"satellite" becomes the first legal object".
+
+Before anything runs, the checker reads each capsule line by line, knowing
+which of its place's names are legal on each line, and refuses a line that uses
+one that is not. A name declared inside a block -- the lines between a { and its
+} -- is legal to that }, and no further: a line after the block that names it is
+refused before anything runs, saying which } ended it. An if and its else may
+each declare the same name, and so may a line after them. The author: "this
+prevents a single kind of programming, and allows for super faster other types
+of programming, it's a trade off that i'm willing to do". A name declared again
+while it is still legal -- an object of the same spacesuit made again, a name
+the prompt kept declared again -- is the same name, and keeps the block it was
+first declared in.
+
+Every named object carries its place, and whether it is still accessible: when
+its block ends it becomes inaccessible, and its record stays. satellite.access(x)
+shows the place, on its line legal. A file only a block's name held is saved and
+closed at that block's }, as at the end of a capsule.
+
+The rule belongs to the switch arguments.access, on by default. Written
+arguments.access = false at the top of a file, a name lasts to the end of its
+capsule, as it did before satellite.legal -- what the author called "bad
+programming habits that some people have". The rule is decided before a run
+begins, so arguments.access(false) written inside a capsule does not change it
+for that run; at the prompt, a capsule keeps the rule it was declared under.
+
+satellite.legal is satl's own: a program cannot change it or list it. The
+checker reads it and writes it: as it reads a capsule, each name a line declares
+goes into the capsule's place, each name a } ends is ended there, and each name
+a line uses is looked up there and nowhere else -- the author's "we ourselves
+will use satellite.legal for checking whether operations are legal or not". The
+lists satellite.access(filename) will read come later.
+
+example:
+
+satellite.include(satellite)
+
+satellite.capsule satellite.main()
+{
+    satellite.variable.number n = 1
+    satellite.statement.if (n == 1)
+    {
+        satellite.variable.string x = "in the if"
+        satellite.console.display(x)
+    }
+    satellite.variable.number x = 5   // a new x: the if's ended at its }
+    satellite.access(x)               // ... legal  satellite.legal.main
+    satellite.return(satellite)
+}
+
+refused, before anything runs -- a name used after its block ended:
+
+satellite.include(satellite)
+
+satellite.capsule satellite.main()
+{
+    satellite.variable.number n = 1
+    satellite.statement.if (n == 1)
+    {
+        satellite.variable.number x = 5
+    }
+    satellite.console.display(x) // refused: S201, x is not legal here
+    satellite.return(satellite)
+}

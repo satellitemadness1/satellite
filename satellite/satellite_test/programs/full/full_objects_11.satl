@@ -1,0 +1,13 @@
+satellite.include(satellite)
+
+// full_objects_11 -- REFUSED before anything runs: satellite.thread.new given something that is not a
+// call of a capsule (S721).
+
+satellite.capsule satellite.main()
+{
+    satellite.variable.number passes = 1
+    satellite.variable.thread t = satellite.thread.new(5)
+    t.start()
+    t.join()
+    satellite.return(satellite)
+}

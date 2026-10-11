@@ -1,0 +1,45 @@
+// A sleep lets go of its object's lock while it waits, as join() does (time_calls.cpp): main writes
+// the field the sleeping thread read, at once, and does not wait out the 10 s (the review, 2026-10-10).
+satellite.include(satellite)
+
+satellite.spacesuit timer()
+{
+    satellite.protected
+    {
+        satellite.variable.time pause = 10s
+    }
+    satellite.public
+    {
+        satellite.capsule call_wait()
+        {
+            satellite.time.sleep(pause)
+        }
+        satellite.capsule call_set(satellite.variable.time t)
+        {
+            pause = t
+        }
+        satellite.capsule call_get()
+        {
+            satellite.return(pause)
+        }
+    }
+}
+
+satellite.capsule waiter(timer a)
+{
+    a.call_wait()
+}
+
+satellite.capsule satellite.main()
+{
+    timer a
+    a.lock()
+    satellite.variable.thread th = satellite.thread.new(waiter(a))
+    th.start()
+    satellite.time.sleep(100ms)
+    a.call_set(5ms)
+    th.stop()
+    th.join()
+    satellite.console.display(a.call_get())
+    satellite.return(satellite)
+}

@@ -1,0 +1,12 @@
+satellite.include(satellite)
+
+// full_text_47 -- REFUSED: multiple a value of a type not on its list is refused, naming the types it takes.
+// satellite.help(satellite.container.multiple). Nothing reaches stdout; satl exits with the refusal's code.
+
+satellite.capsule satellite.main()
+{
+    satellite.variable.number passes = 1
+    satellite.container.multiple<satellite.variable.string, satellite.variable.number> either = "a"
+    either = 50%
+    satellite.return(satellite)
+}

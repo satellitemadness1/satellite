@@ -1,0 +1,14 @@
+satellite.include(satellite)
+
+// full_numbers_42 -- satellite.test.full(), a program satl must REFUSE.
+// color: on a later line, digits that start with a number and hold a letter need their x.
+// It exits 27, and its report on stderr holds: ERROR: write x00ff00
+// Nothing is printed on stdout.
+
+satellite.capsule satellite.main()
+{
+    satellite.variable.number passes = 1
+    satellite.variable.color c = x000000
+    c = 00ff00
+    satellite.return(satellite)
+}

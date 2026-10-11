@@ -1,0 +1,24 @@
+
+--------------------------------------------------------------------------------
+SATELLITE 004: satellite.include()
+--------------------------------------------------------------------------------
+
+satellite.include() allows you to include other .satl files into your programs,
+and you can include files using their absolute path or their relative path,
+relative to a changing current_working_directory. This relative directory is
+not configurable via the special arguments variable, unlike almost all things
+in satellite.
+
+example:
+
+satellite.include(satellite)
+satellite.include("/dir/sub_dir/file_name") // then from that file, we could...
+
+satellite.include("file_name_inside_sub_dir.satl")
+
+// ".." and "./" is also available
+
+satellite.capsule satellite.main(satellite.container.list<satellite.variable.string> arguments)
+{
+    satellite.return(satellite)
+}

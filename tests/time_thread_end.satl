@@ -1,0 +1,16 @@
+// At satellite.return(satellite) a thread still asleep is asked to stop, and the run ends at once.
+satellite.include(satellite)
+
+satellite.capsule nap()
+{
+    satellite.time.sleep(3600s)
+}
+
+satellite.capsule satellite.main()
+{
+    satellite.variable.thread t = satellite.thread.new(nap())
+    t.start()
+    satellite.time.sleep(50ms)
+    satellite.console.display("main ends while its thread sleeps")
+    satellite.return(satellite)
+}

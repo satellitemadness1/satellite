@@ -1,0 +1,14 @@
+satellite.include(satellite)
+
+// full_numbers_20 -- satellite.test.full(), a program satl must REFUSE.
+// infinity: .number is refused, an infinity is larger than every number.
+// It exits 27, and its report on stderr holds: there is no number to make of it
+// Nothing is printed on stdout.
+
+satellite.capsule satellite.main()
+{
+    satellite.variable.number passes = 1
+    satellite.variable.infinity i = satellite.infinity()
+    satellite.console.display(i.number)
+    satellite.return(satellite)
+}

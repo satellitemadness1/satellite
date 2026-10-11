@@ -1,0 +1,39 @@
+satellite.include(satellite)
+
+// ... AND A for IN THE OUTER BLOCK MAY NOT NAME ITS NUMBER LIKE IT: still declared, so declared twice (S202),
+// as before satellite.legal. It once freed a box an outer block still listed (the fresh reader, 2026-10-06).
+
+satellite.spacesuit box()
+{
+    satellite.protected
+    {
+        satellite.variable.number value = 7
+    }
+    satellite.public
+    {
+        satellite.capsule call_show()
+        {
+            satellite.console.display(value)
+        }
+    }
+}
+
+satellite.capsule satellite.main()
+{
+    satellite.variable.number n = 1
+    satellite.statement.if (n == 1)
+    {
+        box b
+        satellite.statement.if (n == 1)
+        {
+            box b
+        }
+        satellite.statement.for (satellite.variable.number b = 0; b < 2; b++)
+        {
+            satellite.console.display(b)
+        }
+        satellite.console.display("end of the outer block")
+    }
+    satellite.console.display("after")
+    satellite.return(satellite)
+}

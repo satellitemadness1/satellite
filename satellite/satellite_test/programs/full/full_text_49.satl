@@ -1,0 +1,11 @@
+satellite.include(satellite)
+
+// full_text_49 -- REFUSED: multiple satellite.variable.variant is numbered and not built (S110).
+// satellite.help(satellite.container.multiple). Nothing reaches stdout; satl exits with the refusal's code.
+
+satellite.capsule satellite.main()
+{
+    satellite.variable.number passes = 1
+    satellite.variable.variant v = 5
+    satellite.return(satellite)
+}

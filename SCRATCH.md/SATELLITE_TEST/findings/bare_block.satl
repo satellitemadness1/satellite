@@ -1,0 +1,11 @@
+satellite.include(satellite)
+
+satellite.capsule satellite.main()
+{
+    satellite.console.display("before")
+    {
+        satellite.console.display("inside")
+    }
+    satellite.console.display("after")
+    satellite.return(satellite)
+}

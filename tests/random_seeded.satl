@@ -1,0 +1,9 @@
+// satellite.random.seeded is numbered (1 7 13 to 1 7 16) and not built: 14, before anything runs.
+satellite.include(satellite)
+
+satellite.capsule satellite.main()
+{
+    satellite.console.display("never printed")
+    satellite.console.display(satellite.random.seeded(5))
+    satellite.return(satellite)
+}

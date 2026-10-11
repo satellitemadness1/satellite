@@ -1,0 +1,14 @@
+satellite.include(satellite)
+
+// A program's lines and satl's own, 2,000 each at the same time: every line comes out whole.
+satellite.capsule satellite.main(satellite.variable.arguments args)
+{
+    satellite.variable.program counter = {"sh", "-c", "i=1; while [ $i -le 2000 ]; do echo program-line-$i-abcdefghijklmnopqrstuvwxyz; i=$((i+1)); done"}
+    counter.start()
+    satellite.statement.for (satellite.variable.number i = 1; i < 2001; i++)
+    {
+        satellite.console.display("satl-line-" + i + "-abcdefghijklmnopqrstuvwxyz")
+    }
+    counter.join()
+    satellite.return(satellite)
+}

@@ -1,0 +1,696 @@
+#pragma once
+// satellite-numbers/machine_facts.hpp -- THE READERS BEHIND arguments.*
+// SATELLITE_ARGUMENTS B7-B11.
+//
+// satl's OWN SINCE 2026-10-03. Every word that answers a fact about the machine was a
+// numbered library of its own, compiled from exactly one .cpp -- so anything two of them
+// needed had to be inline in a header. They are built into satl now, one table
+// (satellite/arguments/argument_words.hpp), and this stays header-only so that table and
+// arguments.cpp share one reader each, and the harnesses beside satl need no extra .cpp.
+//
+// A FACT THAT CHANGES IS READ EVERY TIME IT IS ASKED FOR. `arguments.memory.free`
+// that answers what was free a minute ago is a wrong answer wearing a right
+// answer's face, and SATELLITE_ARGUMENTS says the same of the feature register:
+// "composing them would mean caching a fact that changes".
+//
+// A FACT THAT DOES NOT IS READ ONCE, ON THE FIRST START, AND KEPT IN config.ini
+// (the author, 2026-10-03; Remembered and remember_the_machine below): the
+// processor's name and its cores, and which system this is -- facts that stay true
+// while the machine stays the same machine, and are believed only on that machine.
+//
+// A FAILURE IS AN ANSWER. Every reader says whether it could read, and the
+// library turns that into a refusal naming the file it could not read -- rather
+// than answering 0, which is a number a program would happily divide by.
+
+#include "number_row.hpp"
+#include "../satellite/config/config_file.hpp"
+#include "../satellite/machine/machine_codes.hpp"
+
+#include <pwd.h>
+#include <sys/utsname.h>
+#include <unistd.h>
+
+#include <cctype>
+#include <cstddef>
+#include <cstdio>
+#include <cstdlib>
+#include <cstring>
+#include <fstream>
+#include <set>
+#include <string>
+#include <utility>
+
+namespace satellite004 {
+namespace machine_facts {
+
+// WHAT THE FIRST START READ, KEPT IN config.ini. The author, 2026-10-03: "have a variable at
+// the top of it: FIRST_START=FALSE or TRUE if it is the first start, and then it will run a
+// special function to grab everything from /proc/meminfo and /proc/cpuinfo and /etc/os-release",
+// and "if config_missing == false load the arguments from config.ini, and if config_missing ==
+// true, load the arguments from /proc/meminfo, etc etc".
+//
+// ONLY WHAT STAYS TRUE WHILE THE MACHINE STAYS THE SAME. The count of cores was the one that
+// cost: reading all of /proc/cpuinfo to count them took 322,492 ns here, and a hello world
+// counted them three times. Free and used memory, the process and the session change from one
+// moment to the next, and are still read when asked -- and so is the WHOLE memory (the review,
+// 2026-10-03): it moves with a kernel update or a resized machine, a kept one disagreed with
+// args.memory.total and made total - free differ from used, and it costs 8,164 ns to read.
+//
+// AN EMPTY FIELD IS ONE NOT KEPT -- no config.ini, a fact the machine would not state, a row a
+// person deleted -- and its reader goes to the machine exactly as it did before anything was kept.
+struct Remembered {
+    unsigned long long int cores = 0;
+    std::string cpu;
+    std::string distribution;
+    std::string distribution_id;
+    std::string distribution_version;
+};
+
+// SET ONCE, AT START-UP, before any thread can ask (remember_the_machine, at the end of this
+// file), and only read after that.
+inline Remembered &remembered()
+{
+    static Remembered kept;
+    return kept;
+}
+
+// THE ROWS IN config.ini: the arguments' own names without `arguments.`, as every row there is
+// spelled (access, directory.default), and first_start -- the author wrote it FIRST_START, and
+// that spelling is read as well.
+inline constexpr const char *kFirstStart = "first_start";
+inline constexpr const char *kFirstStartAsWritten = "FIRST_START";
+inline constexpr const char *kKeptRows[] = {"machine.cpu",         "machine.cores",          "system.hostname",
+                                            "system.distribution", "system.distribution_id", "system.distribution_version"};
+// A ROW AN EARLIER satl KEPT AND THIS ONE DOES NOT: read by nothing, taken out at the next first start,
+// and known to S016 until then, so a config.ini that holds one is not called wrong.
+inline constexpr const char *kRetiredRows[] = {"memory.total"};
+
+// A named kilobyte count out of /proc/meminfo: "MemTotal:", "MemFree:",
+// "MemAvailable:", "SwapTotal:", "SwapFree:". The file states kB and this
+// answers BYTES, because a program asking for memory means bytes unless it says
+// otherwise -- and the unit words (B4-B6) are not built yet, so there is nowhere
+// to say otherwise.
+inline bool meminfo_bytes(const char *wanted, unsigned long long int &out)
+{
+    std::ifstream file("/proc/meminfo");
+    if (!file.is_open()) return false;
+    std::string name;
+    while (file >> name) {
+        if (name == wanted) {
+            unsigned long long int kilobytes = 0;
+            if (!(file >> kilobytes)) return false;
+            out = kilobytes * 1024ULL;
+            return true;
+        }
+        std::string rest;
+        std::getline(file, rest);
+    }
+    return false;
+}
+
+// The login name of the user this interpreter is running as.
+//
+// getpwuid AND NOT $USER, deliberately: the environment's copy is whatever was
+// exported and the passwd entry is who the process really is, and under `sudo`
+// they disagree. SATELLITE_ERROR's environment allowlist keeps BOTH for exactly
+// that reason -- but a program asking `arguments.username` wants the true one.
+inline bool username(std::string &out)
+{
+    const struct passwd *entry = getpwuid(geteuid());
+    if (entry == nullptr || entry->pw_name == nullptr) return false;
+    out = entry->pw_name;
+    return true;
+}
+
+// The working directory this interpreter is in now.
+inline bool working_directory(std::string &out)
+{
+    std::string room(1024, '\0');
+    while (room.size() <= (1u << 20)) {
+        if (getcwd(&room[0], room.size()) != nullptr) {
+            out = room.c_str();      // getcwd wrote a NUL; trim to it
+            return true;
+        }
+        room.assign(room.size() * 2, '\0');   // the path is longer than the room
+    }
+    return false;
+}
+
+// THE FACTS THAT ARE A `sysconf` CALL. `_SC_NPROCESSORS_ONLN` is the count of
+// CPUs the kernel will schedule on NOW -- every hardware THREAD, so 24 on a
+// 12-core processor that runs two threads a core. It is what answer_cores falls
+// back on when the machine will not say how many cores it has.
+inline bool cores_online(unsigned long long int &out)
+{
+    const long said = sysconf(_SC_NPROCESSORS_ONLN);
+    if (said <= 0) return false;
+    out = static_cast<unsigned long long int>(said);
+    return true;
+}
+
+// PHYSICAL CORES: the distinct (physical id, core id) pairs in /proc/cpuinfo -- 12 on
+// a 12-core processor that runs 24 threads. 0 when the file does not say (a machine
+// whose cpuinfo carries no core id), and the caller falls back to cores_online.
+// ONE READER, used by these libraries AND by the arguments variable's own row
+// (satellite/arguments/arguments.cpp), which had a copy of its own: the copy counted
+// cores and the libraries counted threads, so arguments.machine.cores said 12 and
+// its alias arguments.cores said 24 in the same program (the error sweep, 2026-09-25).
+inline unsigned long long int physical_cores()
+{
+    std::FILE *cpuinfo = std::fopen("/proc/cpuinfo", "r");
+    if (cpuinfo == nullptr)
+        return 0;
+    std::set<std::pair<long, long>> cores;
+    long physical = -1;
+    char line[512];
+    while (std::fgets(line, sizeof line, cpuinfo) != nullptr) {
+        const char *colon = std::strchr(line, ':');
+        if (colon == nullptr)
+            continue;
+        if (std::strncmp(line, "physical id", 11) == 0)
+            physical = std::strtol(colon + 1, nullptr, 10);
+        else if (std::strncmp(line, "core id", 7) == 0)
+            cores.insert({physical, std::strtol(colon + 1, nullptr, 10)});
+    }
+    std::fclose(cpuinfo);
+    return cores.size();
+}
+
+// THE CORES, AS EVERYTHING ELSE ASKS FOR THEM: the count the first start kept, or the count read
+// now when none was kept. arguments.cpp's gather() asks this for arguments.machine.cores and the
+// warm threads, so a start with config.ini reads no /proc/cpuinfo at all.
+inline unsigned long long int cores_of_this_machine()
+{
+    return remembered().cores != 0 ? remembered().cores : physical_cores();
+}
+
+// A reply that failed, naming what could not be read. One spelling, so every
+// library refuses in the same words.
+inline FactReply could_not_read(const char *what, signed long long int code)
+{
+    FactReply reply;
+    reply.code = code;
+    reply.reason = std::string("this machine does not state ") + what;
+    return reply;
+}
+
+inline FactReply a_count(unsigned long long int value)
+{
+    FactReply reply;
+    reply.code = success;
+    reply.count = value;
+    return reply;
+}
+
+inline FactReply some_text(std::string value)
+{
+    FactReply reply;
+    reply.code = success;
+    reply.is_text = true;
+    reply.text = std::move(value);
+    return reply;
+}
+
+// ---------------------------------------------------------------------------
+// THE ANSWERS THEMSELVES, SO AN ALIAS CANNOT DRIFT FROM WHAT IT ALIASES.
+//
+// The author, 2026-09-18: *"let's use the longer choice for each one, can we
+// have an alias for them though?"* -- so `arguments.machine.cores` is the name
+// and `arguments.cores` is a second way to write it. An alias is a second word
+// ROW and a second `.so`, because a code is one number and one library; what it
+// must NOT be is a second copy of the answer. These functions are the one copy,
+// and every library -- canonical or alias -- is a dozen lines pointing here.
+//
+// So an alias cannot answer a different number from the word it aliases, which
+// is the only way an alias can really go wrong.
+// ---------------------------------------------------------------------------
+
+inline FactReply answer_memory_total()
+{
+    unsigned long long int said = 0;
+    if (meminfo_bytes("MemTotal:", said) == false)
+        return could_not_read("MemTotal in /proc/meminfo", machine_fact_not_read);
+    return a_count(said);
+}
+
+inline FactReply answer_memory_free()
+{
+    unsigned long long int said = 0;
+    if (meminfo_bytes("MemAvailable:", said) == false)
+        return could_not_read("MemAvailable in /proc/meminfo", machine_fact_not_read);
+    return a_count(said);
+}
+
+inline FactReply answer_memory_used()
+{
+    unsigned long long int whole = 0, spare = 0;
+    if (meminfo_bytes("MemTotal:", whole) == false || meminfo_bytes("MemAvailable:", spare) == false)
+        return could_not_read("MemTotal and MemAvailable in /proc/meminfo", machine_fact_not_read);
+    // TOTAL LESS MemAvailable, NOT TOTAL LESS MemFree. MemFree leaves out the
+    // page cache, which the kernel hands back the moment anything wants it -- so
+    // `free` off MemFree reads as almost nothing on a machine that is perfectly
+    // healthy, and `used` off it reads as almost everything.
+    return a_count(spare > whole ? 0 : whole - spare);
+}
+
+// HOW MANY CORES EXIST, NOT HOW MANY THREADS THEY RUN. The author, 2026-09-18:
+// *"arguments.cores = how many cores exist on the machine, so for this it's 12"* --
+// on a 12-core, 24-thread processor. The thread count is arguments.cpu's business.
+inline FactReply answer_cores()
+{
+    const unsigned long long int physical = cores_of_this_machine();
+    if (physical > 0)
+        return a_count(physical);
+    unsigned long long int said = 0;
+    if (cores_online(said) == false)
+        return could_not_read("a count of online processors", machine_fact_not_read);
+    return a_count(said);
+}
+
+// HOW MANY THREADS THE MACHINE'S PROCESSORS RUN AT ONCE -- 24 on a 12-core processor that
+// runs two a core. The author, 2026-09-25: *"arguments.machine.thread = how many physical
+// threads exist on the machine"*, where arguments.threads is how many the INTERPRETER can
+// create (satellite.library.arguments.threads, read from machine_probe.hpp). Until
+// then the machine's word answered the interpreter's count, and the arguments variable's
+// own row said 24: the two names disagreed in one program (NEW_ERROR_LIST A2).
+inline FactReply answer_hardware_threads()
+{
+    unsigned long long int said = 0;
+    if (cores_online(said) == false)
+        return could_not_read("a count of online processors", machine_fact_not_read);
+    return a_count(said);
+}
+
+inline FactReply answer_username()
+{
+    std::string said;
+    if (username(said) == false)
+        return could_not_read("a passwd entry for this user", machine_fact_not_read);
+    return some_text(std::move(said));
+}
+
+inline FactReply answer_directory()
+{
+    std::string said;
+    if (working_directory(said) == false)
+        return could_not_read("a working directory", machine_fact_not_read);
+    return some_text(std::move(said));
+}
+
+// ---------------------------------------------------------------------------
+// THE REST OF THE FREE ONES. Each is a uname field, a sysconf call, a getenv or
+// a compiler macro -- nothing here opens anything that is not already open.
+// ---------------------------------------------------------------------------
+
+// `uname` gives five of the words in one call. A field the system left empty is
+// a field this refuses, rather than answering "".
+inline bool uname_field(int which, std::string &out)
+{
+    struct utsname said {};
+    if (uname(&said) != 0) return false;
+    const char *field = nullptr;
+    switch (which) {
+    case 0: field = said.nodename; break;   // system.hostname
+    case 1: field = said.sysname;  break;   // system.kernel
+    case 2: field = said.release;  break;   // system.kernel_version
+    case 3: field = said.machine;  break;   // machine.architecture
+    case 4: field = said.version;  break;   // system.name
+    default: return false;
+    }
+    if (field == nullptr || field[0] == '\0') return false;
+    out = field;
+    return true;
+}
+
+// A named value out of /etc/os-release: NAME, ID, VERSION_ID. Quotes stripped,
+// because the file writes them and nobody wants them in a string.
+inline bool os_release(const char *key, std::string &out)
+{
+    std::ifstream file("/etc/os-release");
+    if (!file.is_open()) return false;
+    const std::string wanted = std::string(key) + "=";
+    std::string line;
+    while (std::getline(file, line)) {
+        if (line.compare(0, wanted.size(), wanted) != 0) continue;
+        std::string value = line.substr(wanted.size());
+        if (value.size() >= 2 && value.front() == '"' && value.back() == '"')
+            value = value.substr(1, value.size() - 2);
+        if (value.empty()) return false;
+        out = value;
+        return true;
+    }
+    return false;
+}
+
+// The first "model name" in /proc/cpuinfo -- what a person calls their CPU.
+inline bool cpu_model(std::string &out)
+{
+    std::ifstream file("/proc/cpuinfo");
+    if (!file.is_open()) return false;
+    std::string line;
+    while (std::getline(file, line)) {
+        const std::size_t colon = line.find(':');
+        if (colon == std::string::npos) continue;
+        std::string key = line.substr(0, colon);
+        while (!key.empty() && (key.back() == ' ' || key.back() == '\t')) key.pop_back();
+        if (key != "model name") continue;
+        std::string value = line.substr(colon + 1);
+        std::size_t from = value.find_first_not_of(" \t");
+        if (from == std::string::npos) return false;
+        out = value.substr(from);
+        return true;
+    }
+    return false;
+}
+
+// An environment variable, refused when it is unset or empty. A daemon started
+// with a scrubbed environment has none of these, which is a real state and not a
+// reason to answer "".
+inline bool from_environment(const char *name, std::string &out)
+{
+    const char *said = std::getenv(name);
+    if (said == nullptr || said[0] == '\0') return false;
+    out = said;
+    return true;
+}
+
+// WHICH WAY ROUND THIS MACHINE STORES A NUMBER, asked of the machine rather than
+// of a macro, so it is true for whatever this was compiled on.
+inline bool byte_order(std::string &out)
+{
+    const unsigned int one = 1u;
+    unsigned char first = 0;
+    __builtin_memcpy(&first, &one, 1);
+    out = (first == 1) ? "little" : "big";
+    return true;
+}
+
+inline FactReply answer_hostname()
+{
+    std::string said;
+    if (uname_field(0, said) == false) return could_not_read("a hostname", machine_fact_not_read);
+    return some_text(std::move(said));
+}
+
+inline FactReply answer_kernel()
+{
+    std::string said;
+    if (uname_field(1, said) == false) return could_not_read("a kernel name", machine_fact_not_read);
+    return some_text(std::move(said));
+}
+
+inline FactReply answer_kernel_version()
+{
+    std::string said;
+    if (uname_field(2, said) == false) return could_not_read("a kernel version", machine_fact_not_read);
+    return some_text(std::move(said));
+}
+
+inline FactReply answer_architecture()
+{
+    std::string said;
+    if (uname_field(3, said) == false) return could_not_read("an architecture", machine_fact_not_read);
+    return some_text(std::move(said));
+}
+
+inline FactReply answer_distribution()
+{
+    if (!remembered().distribution.empty())
+        return some_text(remembered().distribution);
+    std::string said;
+    if (os_release("NAME", said) == false) return could_not_read("NAME in /etc/os-release", machine_fact_not_read);
+    return some_text(std::move(said));
+}
+
+inline FactReply answer_distribution_id()
+{
+    if (!remembered().distribution_id.empty())
+        return some_text(remembered().distribution_id);
+    std::string said;
+    if (os_release("ID", said) == false) return could_not_read("ID in /etc/os-release", machine_fact_not_read);
+    return some_text(std::move(said));
+}
+
+inline FactReply answer_distribution_version()
+{
+    if (!remembered().distribution_version.empty())
+        return some_text(remembered().distribution_version);
+    std::string said;
+    if (os_release("VERSION_ID", said) == false)
+        return could_not_read("VERSION_ID in /etc/os-release", machine_fact_not_read);
+    return some_text(std::move(said));
+}
+
+inline FactReply answer_cpu()
+{
+    if (!remembered().cpu.empty())
+        return some_text(remembered().cpu);
+    std::string said;
+    if (cpu_model(said) == false) return could_not_read("a model name in /proc/cpuinfo", machine_fact_not_read);
+    return some_text(std::move(said));
+}
+
+inline FactReply answer_byte_order()
+{
+    std::string said;
+    byte_order(said);
+    return some_text(std::move(said));
+}
+
+inline FactReply answer_page_size()
+{
+    const long said = sysconf(_SC_PAGESIZE);
+    if (said <= 0) return could_not_read("a page size", machine_fact_not_read);
+    return a_count(static_cast<unsigned long long int>(said));
+}
+
+// HOW WIDE A POINTER IS ON THIS BUILD. sizeof, not a guess: a 32-bit build on a
+// 64-bit machine answers 32, which is the true answer for the interpreter that
+// is actually running.
+inline FactReply answer_pointer_bits()
+{
+    return a_count(static_cast<unsigned long long int>(sizeof(void *) * 8));
+}
+
+inline FactReply answer_process_id()
+{
+    return a_count(static_cast<unsigned long long int>(getpid()));
+}
+
+inline FactReply answer_process_parent()
+{
+    return a_count(static_cast<unsigned long long int>(getppid()));
+}
+
+inline FactReply answer_shell()
+{
+    std::string said;
+    if (from_environment("SHELL", said) == false) return could_not_read("$SHELL", machine_fact_not_read);
+    return some_text(std::move(said));
+}
+
+inline FactReply answer_terminal()
+{
+    std::string said;
+    if (from_environment("TERM", said) == false) return could_not_read("$TERM", machine_fact_not_read);
+    return some_text(std::move(said));
+}
+
+inline FactReply answer_language()
+{
+    std::string said;
+    if (from_environment("LANG", said) == false) return could_not_read("$LANG", machine_fact_not_read);
+    return some_text(std::move(said));
+}
+
+inline FactReply answer_home()
+{
+    std::string said;
+    if (from_environment("HOME", said) == false) return could_not_read("$HOME", machine_fact_not_read);
+    return some_text(std::move(said));
+}
+
+// ---------------------------------------------------------------------------
+// THE FIRST START, AND EVERY START AFTER IT -- the author's design, 2026-10-03 (Remembered,
+// at the top of this file, quotes it).
+// ---------------------------------------------------------------------------
+
+// A count as config.ini writes it: digits only, or 0 -- which is "not kept", so a row a person
+// mistyped is read from the machine instead of being believed.
+inline unsigned long long int count_in(const std::string &written)
+{
+    if (written.empty() || written.size() > 19 || written.find_first_not_of("0123456789") != std::string::npos)
+        return 0;
+    return std::strtoull(written.c_str(), nullptr, 10);
+}
+
+// What first_start says, in small letters, under either spelling; "" when there is no such row.
+inline std::string first_start_says()
+{
+    std::string said;
+    if (!config_file::read_value(kFirstStart, said))
+        config_file::read_value(kFirstStartAsWritten, said);
+    for (char &letter : said)
+        letter = static_cast<char>(std::tolower(static_cast<unsigned char>(letter)));
+    return said;
+}
+
+inline bool is_first_start_row(const std::string &line)
+{
+    std::string key, value;
+    return config_file::key_and_value(line, key, value) && (key == kFirstStart || key == kFirstStartAsWritten);
+}
+
+inline bool is_kept_row(const std::string &line)
+{
+    std::string key, value;
+    if (!config_file::key_and_value(line, key, value))
+        return false;
+    for (const char *kept : kKeptRows)
+        if (key == kept)
+            return true;
+    for (const char *retired : kRetiredRows)
+        if (key == retired)
+            return true;
+    return false;
+}
+
+// WHERE A NEW first_start GOES -- "a variable at the top of it": under the comment the file opens
+// with and the blank line after it. A file whose opening comment runs straight into a row has no
+// such place, and it goes above everything rather than between a comment and its row.
+inline std::size_t top_of(const std::vector<std::string> &lines)
+{
+    std::size_t at = 0;
+    while (at < lines.size() && config_file::trimmed(lines[at]).rfind('#', 0) == 0)
+        ++at;
+    return at < lines.size() && config_file::trimmed(lines[at]).empty() ? at + 1 : 0;
+}
+
+inline std::vector<std::string> first_start_comment()
+{
+    return {"# first_start -- true until satl has read this machine once. Then it reads /proc/cpuinfo",
+            "# and /etc/os-release, writes what they said in the rows below with the machine's name, and",
+            "# sets this false; every start after that, on this machine, reads those rows instead. satl",
+            "# --rebuild sets it true again: run it after new hardware or a new system, or write true here."};
+}
+
+// THE ROWS THE FIRST START WRITES: `first_start = false` and, under it in kKeptRows' order, each
+// fact the machine stated -- one it would not state is left out, and is refused when it is asked,
+// as before. Every older copy of these rows, wherever a person or an earlier start left one, is
+// taken out first, so the file holds one of each.
+inline signed long long int write_the_machine(const Remembered &found, const std::string &host, std::string &why)
+{
+    std::vector<std::string> rows = {std::string(kFirstStart) + " = false"};
+    if (!found.cpu.empty()) rows.push_back("machine.cpu = " + found.cpu);
+    if (found.cores != 0) rows.push_back("machine.cores = " + std::to_string(found.cores));
+    if (!host.empty()) rows.push_back("system.hostname = " + host);
+    if (!found.distribution.empty()) rows.push_back("system.distribution = " + found.distribution);
+    if (!found.distribution_id.empty()) rows.push_back("system.distribution_id = " + found.distribution_id);
+    if (!found.distribution_version.empty())
+        rows.push_back("system.distribution_version = " + found.distribution_version);
+    return config_file::rewrite(
+        [&](std::vector<std::string> &lines) {
+            std::size_t at = std::string::npos;   // where first_start already stood, if it did
+            std::vector<std::string> kept;
+            for (const std::string &line : lines) {
+                if (is_first_start_row(line)) {
+                    if (at == std::string::npos) at = kept.size();
+                    continue;
+                }
+                if (!is_kept_row(line)) kept.push_back(line);
+            }
+            if (at == std::string::npos) {
+                at = top_of(kept);
+                std::vector<std::string> block = first_start_comment();
+                block.insert(block.end(), rows.begin(), rows.end());
+                block.push_back("");
+                rows = std::move(block);
+            }
+            kept.insert(kept.begin() + static_cast<std::ptrdiff_t>(at), rows.begin(), rows.end());
+            lines = std::move(kept);
+        },
+        why);
+}
+
+// EVERY START, BEFORE ANYTHING ASKS FOR A FACT (structured-library.cpp calls it ahead of gather).
+// Answers what it did, and --debug says it.
+inline std::string remember_the_machine()
+{
+    // NO config.ini: nothing is kept and nothing is written. satl does not make the person's file
+    // behind their back (the author, 2026-09-18) -- S010 has already said it is missing -- so the
+    // machine is read whenever a fact is asked for, as it always was.
+    if (!config_file::exists())
+        return "no config.ini, so the machine is read whenever a fact is asked for";
+    std::string host;
+    uname_field(0, host);   // 547 ns: which machine this is, asked every start
+    std::string why_again;
+    if (first_start_says() == "false") {
+        // EVERY START AFTER THE FIRST: the facts are read out of config.ini, and nothing else --
+        // but only BELIEVED on the machine that wrote them, and only when they could be true
+        // (the review, 2026-10-03). A config.ini on a shared or copied home answered another
+        // machine's processor; and the cores decide how many warm threads start, so a row of
+        // 300000 -- a typo, a pasted file -- would have asked for 600,000 threads at every start.
+        // Either one is a first start again: the machine is read, and the rows are written right.
+        Remembered kept;
+        std::string said, kept_host;
+        if (config_file::read_value("machine.cpu", said)) kept.cpu = said;
+        if (config_file::read_value("machine.cores", said)) kept.cores = count_in(said);
+        if (config_file::read_value("system.hostname", said)) kept_host = said;
+        if (config_file::read_value("system.distribution", said)) kept.distribution = said;
+        if (config_file::read_value("system.distribution_id", said)) kept.distribution_id = said;
+        if (config_file::read_value("system.distribution_version", said)) kept.distribution_version = said;
+        unsigned long long int online = 0;
+        cores_online(online);
+        if (kept_host != host)
+            why_again = "config.ini's facts were read on " + (kept_host.empty() ? std::string("a machine it does not name") : kept_host) +
+                        ", and this is " + host;
+        else if (kept.cores == 0 || (online != 0 && kept.cores > online))
+            why_again = "config.ini says machine.cores = " + std::to_string(kept.cores) + ", and this machine runs " +
+                        std::to_string(online) + " threads";
+        if (why_again.empty()) {
+            remembered() = kept;
+            return "the machine's facts read from config.ini";
+        }
+    }
+    // THE FIRST START -- first_start = true, or no first_start row at all, which is every
+    // config.ini written before 2026-10-03 -- and the author's special function: the facts in
+    // /proc/cpuinfo and /etc/os-release, read once and written down with the machine's name.
+    Remembered found;
+    found.cores = physical_cores();
+    cpu_model(found.cpu);
+    os_release("NAME", found.distribution);
+    os_release("ID", found.distribution_id);
+    os_release("VERSION_ID", found.distribution_version);
+    remembered() = found;
+    std::string why;
+    const std::string what = why_again.empty() ? std::string("the machine read on its first start")
+                                               : "the machine read again, because " + why_again;
+    if (write_the_machine(found, host, why) != success)
+        return what + ", and config.ini could not be written (" + why + "), so the next start reads it again";
+    return what + ", and written into config.ini";
+}
+
+// satl --rebuild MAKES THE NEXT START A FIRST START (rebuild.hpp). New hardware or a new system is
+// when a person rebuilds, and facts kept from the old machine would be answered as this one's.
+inline signed long long int ask_for_a_first_start(std::string &why)
+{
+    return config_file::rewrite(
+        [&](std::vector<std::string> &lines) {
+            bool there = false;
+            for (std::string &line : lines)
+                if (is_first_start_row(line)) {
+                    line = std::string(kFirstStart) + " = true";
+                    there = true;
+                }
+            if (there) return;
+            std::vector<std::string> block = first_start_comment();
+            block.push_back(std::string(kFirstStart) + " = true");
+            block.push_back("");
+            const std::size_t at = top_of(lines);
+            lines.insert(lines.begin() + static_cast<std::ptrdiff_t>(at), block.begin(), block.end());
+        },
+        why);
+}
+
+} // namespace machine_facts
+} // namespace satellite004

@@ -1,0 +1,12 @@
+satellite.include(satellite)
+
+// full_text_43 -- REFUSED: map .sort().by_name() is a list's, and a map refuses it.
+// satellite.help(satellite.container.map). Nothing reaches stdout; satl exits with the refusal's code.
+
+satellite.capsule satellite.main()
+{
+    satellite.variable.number passes = 1
+    satellite.container.map m = {"a": 1}
+    satellite.console.display(m.sort().by_name())
+    satellite.return(satellite)
+}

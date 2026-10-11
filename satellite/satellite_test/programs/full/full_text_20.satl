@@ -1,0 +1,12 @@
+satellite.include(satellite)
+
+// full_text_20 -- REFUSED: string a colour added to a string is refused (S301): write its .string.
+// satellite.help(satellite.variable.string). Nothing reaches stdout; satl exits with the refusal's code.
+
+satellite.capsule satellite.main()
+{
+    satellite.variable.number passes = 1
+    satellite.variable.color c = x00FF00
+    satellite.console.display("c: " + c)
+    satellite.return(satellite)
+}

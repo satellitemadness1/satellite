@@ -1,0 +1,13 @@
+satellite.include(satellite)
+
+// tests/library_settings.satl -- a file whose satellite.library values another file reads.
+// tests/library.satl includes it, and reads these as satellite.library.library_settings.majors;
+// its own capsule reads them bare, as satellite.library.majors.
+
+satellite.library.majors = 50
+satellite.library.label = "settings label"
+
+satellite.capsule show()
+{
+    satellite.console.display("its own capsule reads " + satellite.library.label)
+}

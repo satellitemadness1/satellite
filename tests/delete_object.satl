@@ -1,0 +1,37 @@
+satellite.include(satellite)
+
+// satellite.delete(name) ON AN OBJECT OF A SPACESUIT: the name goes, and the object with the last name
+// that held it -- a spacesuit is a reference, so `shared = a` is a second name for ONE object, and
+// a.pointer() reads it as gone only when no name holds it any more. check.sh reads every line.
+satellite.spacesuit box()
+{
+    satellite.protected
+    {
+        satellite.variable.number value = 0
+    }
+    satellite.public
+    {
+        satellite.capsule call_put(satellite.variable.number n)
+        {
+            value = n
+        }
+        satellite.capsule call_take()
+        {
+            satellite.return(value)
+        }
+    }
+}
+
+satellite.capsule satellite.main()
+{
+    box a
+    a.call_put(7)
+    box p = a.pointer()
+    box shared = a
+    satellite.delete(a)
+    satellite.console.display(p.ok())
+    satellite.console.display(shared.call_take())
+    satellite.delete(shared)
+    satellite.console.display(p.ok())
+    satellite.return(satellite)
+}

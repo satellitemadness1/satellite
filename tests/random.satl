@@ -1,0 +1,25 @@
+// satellite.random (2026-10-02, SCRATCH.md/RANDOM.md): the nine drawing shapes through a
+// program, once each -- every call spins for its grade's window first, half a second to
+// three -- printed as "<grade> <shape> <n>" for check.sh to hold inside its bounds. The
+// numbers differ every run: that is the point.
+satellite.include(satellite)
+
+satellite.capsule satellite.main()
+{
+    satellite.console.display("fast digits " + satellite.random.fast(20))
+    satellite.console.display("fast range " + satellite.random.fast(1, 6))
+    satellite.console.display("fast step " + satellite.random.fast(0, 100, 5))
+    satellite.console.display("normal digits " + satellite.random.normal(20))
+    satellite.console.display("normal range " + satellite.random.normal(-5, 5))
+    satellite.console.display("normal step " + satellite.random.normal(10, 50, 10))
+    satellite.console.display("ultra digits " + satellite.random.ultra(160))
+    satellite.console.display("ultra range " + satellite.random.ultra(1, 1000000000000000000000))
+    satellite.console.display("ultra step " + satellite.random.ultra(-100, 100, 25))
+    // A variable holds one; a range of one answers it; zero digits is 0; a range of two
+    // past 10^40 is one of the two.
+    satellite.variable.number n = satellite.random.fast(7, 7)
+    satellite.console.display("one " + n)
+    satellite.console.display("zero " + satellite.random.fast(0))
+    satellite.console.display("big " + satellite.random.fast(10 ^ 40, 10 ^ 40 + 1))
+    satellite.return(satellite)
+}

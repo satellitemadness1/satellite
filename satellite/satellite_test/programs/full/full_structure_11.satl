@@ -1,0 +1,19 @@
+satellite.include(satellite)
+// full_structure_11 -- REFUSED by satellite.test.full(): satellite.capsule: a capsule declared inside another capsule.
+// The rule: satellite.capsule: a capsule declared inside another capsule (S110).
+// satl refuses it: exit 13, and its report on stderr says "satellite.capsule goes at the top of a file or inside a". It prints nothing.
+
+satellite.capsule outer()
+{
+    satellite.capsule inner()
+    {
+        satellite.return(1)
+    }
+}
+
+satellite.capsule satellite.main()
+{
+    satellite.variable.number passes = 1
+    outer()
+    satellite.return(satellite)
+}

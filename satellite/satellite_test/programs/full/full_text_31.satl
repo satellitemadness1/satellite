@@ -1,0 +1,13 @@
+satellite.include(satellite)
+
+// full_text_31 -- REFUSED: list writing past the end does not make the list longer (S501).
+// satellite.help(satellite.container.list). Nothing reaches stdout; satl exits with the refusal's code.
+
+satellite.capsule satellite.main()
+{
+    satellite.variable.number passes = 1
+    satellite.container.list a = {1, 2}
+    satellite.variable.number k = 3
+    a[k] = 5
+    satellite.return(satellite)
+}

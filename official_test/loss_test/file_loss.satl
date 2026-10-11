@@ -1,0 +1,231 @@
+// file_loss.satl -- A DATA-LOSS TEST FOR satellite.variable.file, written 2026-10-06.
+//
+// THE AUTHOR'S STANDARD (2026-10-06): "for the loss testing, we will use the number 547311173 so we
+// have to start with that number, and end at that number, after say, 1,000,000 million operations...
+// That will be the loss test" -- "it's 'satellite' spelled as numbers, 5 looks like S, 4 looks like A,
+// 7 looks like T" -- "so we will use the number satellite, and the numbers 1 trillion and 1 million
+// for testing".
+//
+// A file cannot be a number, so this one is made of 547311173: its first line is 547311173, then its
+// binary, its hex, its float, its name, and its nine digits one a line -- 14 lines, written to the
+// disk, file_loss_547311173.se beside this file. Each pass runs 100 DIFFERENT file operations on it:
+// append, insert, replace by line and by text, remove_at, remove, remove_first, remove_last,
+// truncate, clear, f[n], first, last, size, index_of, search, read_all, a text of several lines,
+// an empty line, the whole file through a string and back, and close() and open() -- the file
+// written to the disk and read back -- at the middle of every pass, when it is furthest from where
+// it began (23 lines, its digits spelled as words). 59 operations forward and 41 back, last first.
+// A line the forward half overwrites or takes out is READ out of the file first, and the way back
+// puts back what was read -- never the test's own copy of it -- so a line the interpreter changed
+// stays changed; a line the test wrote is taken out by its text, which does nothing when the text
+// is not there. 10000 passes x 100 operations = 1,000,000 operations.
+//
+// EVERY PASS IS CHECKED: it ends by comparing the whole file with the 14 lines it began as, and the
+// run stops at the first pass that did not come back. At the end the file is closed, opened again
+// under a new name, and read back from the disk; and then it is removed (satellite.system.delete is
+// not built yet, so bash removes it, by the path satl gives).
+//
+// THE ANSWER IS ALWAYS 547311173 -- the first line of the file, read back from the disk. Anything
+// else printed is the first pass that went wrong and the file's lines at its end: pass 0: | ...
+
+satellite.include(satellite)
+
+satellite.capsule satellite.main()
+{
+    satellite.variable.string name = "file_loss_547311173.se"
+    satellite.variable.file f = satellite.file.new(name, "text")
+    satellite.statement.if (!f.ok)
+    {
+        // a run that was stopped left the file behind: it is opened and emptied, never added to
+        f.open()
+        f.clear()
+    }
+
+    // THE FILE AT THE START: 14 lines, written and put on the disk
+    f.append("547311173")
+    f.append("b100000100111110100111001000101")
+    f.append("x209F4E45")
+    f.append("547311173.0")
+    f.append("satellite")
+    f.append("5")
+    f.append("4")
+    f.append("7")
+    f.append("3")
+    f.append("1")
+    f.append("1")
+    f.append("1")
+    f.append("7")
+    f.append("3")
+    f.close()
+    f.open()
+    satellite.variable.string begun = f.read_all
+
+    // what the passes read out of the file
+    satellite.variable.string a = ""
+    satellite.variable.string all = ""
+    satellite.variable.string b = ""
+    satellite.variable.string c = ""
+    satellite.variable.string d = ""
+    satellite.variable.string e = ""
+    satellite.variable.string g = ""
+    satellite.variable.string h = ""
+    satellite.variable.string k = ""
+    satellite.variable.string m = ""
+    satellite.variable.number at = 0
+    satellite.variable.number at2 = 0
+    satellite.variable.number dot = 0
+    satellite.variable.number hx = 0
+    satellite.variable.number n = 0
+    satellite.variable.string seen = ""
+
+    satellite.statement.for(satellite.variable.number pass = 0; pass < 10000; pass + 1)
+    {
+        // FORWARD: 59 operations
+        f.append("547311173 is satellite")
+        f.insert(1, "S A T E L L I T E")
+        f.replace("x209F4E45", "x209F4E45 is hex")
+        a = f[3]
+        f.replace(3, "thirty bits")
+        at = f.index_of("satellite")
+        b = f[at]
+        f.remove_at(at)
+        f.insert(13, b)
+        f.remove("7")
+        f.replace("547311173.0", "547311173.5")
+        hx = f.search("is hex")
+        c = f[hx]
+        f.replace(hx, a)
+        d = f.first
+        f.remove_first()
+        e = f.last
+        f.remove_last()
+        f.append(c)
+        f.insert(1, e)
+        n = f.size
+        f.insert(n, "second to last")
+        f.replace("1", "one")
+        f.replace("3", "three")
+        f.replace("5", "five")
+        f.replace("7", "seven")
+        f.replace("4", "four")
+        g = f[15]
+        h = f[16]
+        f.truncate(14)
+        f.append("a\nb\nc")
+        f.insert(2, "five four seven three one one one seven three")
+        at2 = f.index_of("thirty bits")
+        k = f[at2]
+        f.remove_at(at2)
+        f.append(k)
+        f.replace("thirty bits", "30 bits")
+        // the whole file through a string and back
+        all = f.read_all
+        f.clear()
+        f.append("cleared")
+        f.append(all)
+        f.remove("cleared")
+        f.replace("b100000100111110100111001000101", "binary 547311173")
+        f.replace("is satellite", "IS SATELLITE")
+        f.insert(4, "")
+        f.insert(3, "547311173 547311173 547311173")
+        f.replace("seven", "SEVEN")
+        f.append("x209F4E45")
+        f.replace("binary 547311173", "binary 547311173 (30 bits)")
+        f.insert(7, "547311173.0 is a float")
+        f.replace("SATELLITE", "satellite 547311173")
+        f.remove("3")
+        f.append("the end")
+        f.insert(1, "547311173")
+        dot = f.search(".5")
+        m = f[dot]
+        f.replace(dot, "547,311,173")
+        // the file as it is now, written to the disk and read back
+        f.close()
+        f.open()
+
+        // BACK: 41 operations, last first
+        f.replace("547,311,173", m)
+        f.remove("547311173")
+        f.remove("the end")
+        f.insert(11, "3")
+        f.replace("satellite 547311173", "SATELLITE")
+        f.remove("547311173.0 is a float")
+        f.replace("binary 547311173 (30 bits)", "binary 547311173")
+        f.remove("x209F4E45")
+        f.replace("SEVEN", "seven")
+        f.remove("547311173 547311173 547311173")
+        f.remove("")
+        f.replace("IS SATELLITE", "is satellite")
+        f.replace("binary 547311173", "b100000100111110100111001000101")
+        f.replace("30 bits", "thirty bits")
+        f.remove(k)
+        f.insert(at2, k)
+        f.remove("five four seven three one one one seven three")
+        f.remove("c")
+        f.remove("b")
+        f.remove("a")
+        f.append(g)
+        f.append(h)
+        f.replace("four", "4")
+        f.replace("seven", "7")
+        f.replace("five", "5")
+        f.replace("three", "3")
+        f.replace("one", "1")
+        f.remove("second to last")
+        f.remove(e)
+        f.remove(c)
+        f.append(e)
+        f.insert(1, d)
+        f.replace(a, c)
+        f.replace("547311173.5", "547311173.0")
+        f.insert(8, "7")
+        f.remove(b)
+        f.insert(at, b)
+        f.replace("thirty bits", a)
+        f.replace("x209F4E45 is hex", "x209F4E45")
+        f.remove("S A T E L L I T E")
+        f.remove("547311173 is satellite")
+
+        // THE PASS ENDS WHERE IT BEGAN -- or the run stops at the first pass that does not, and says so
+        satellite.statement.if (f.read_all != begun)
+        {
+            satellite.statement.if (seen == "")
+            {
+                seen = "pass " + pass.string + ":"
+                satellite.statement.for(satellite.variable.number i = 1; i < f.size + 1; i + 1)
+                {
+                    seen = seen + " | " + f[i]
+                }
+            }
+            satellite.statement.break
+        }
+    }
+
+    // THE ROUND TRIP THROUGH THE DISK: closed, opened again under a new name, read back
+    f.close()
+    satellite.variable.file disk = satellite.file.open(name)
+    satellite.statement.if (seen == "")
+    {
+        satellite.statement.if (disk.read_all == begun)
+        {
+            seen = disk.first
+        }
+        satellite.statement.else
+        {
+            seen = "on the disk:"
+            satellite.statement.for(satellite.variable.number i = 1; i < disk.size + 1; i + 1)
+            {
+                seen = seen + " | " + disk[i]
+            }
+        }
+    }
+
+    // NOTHING LEFT BEHIND
+    satellite.variable.string where = disk.path
+    disk.close()
+    satellite.variable.bash gone = "rm -f -- '" + where + "'"
+    gone.start()
+    gone.join()
+
+    satellite.console.display(seen)
+    satellite.return(satellite)
+}

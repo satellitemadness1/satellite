@@ -1,0 +1,308 @@
+satellite.include(satellite)
+arguments.float.decimal(128)
+arguments.float.whole(4096)
+arguments.infinity_display(128)
+
+// FLOAT LOSS TEST -- satellite.variable.float
+//
+// The author's standard, 2026-10-06: "for the loss testing, we will use the number 547311173 so we
+// have to start with that number, and end at that number, after say, 1,000,000 million operations...
+// That will be the loss test" -- 547311173 is "satellite" spelled as numbers.
+//
+// x starts as the float 547311173.0. Each pass of the loop runs 100 different operations on it: 50
+// that carry it far away, then the 50 that undo them, in reverse order. On the way out it goes down to
+// 0.000...0547311173 (91 zeros after the point), out to the 128th place, the last one a float keeps,
+// through a run of 9s, across zero five times, and up to 1000 digits before the point; it turns round
+// with 977 digits before the point and 128 after it. The loop runs 10,000 times: 100 x 10,000 =
+// 1,000,000 operations.
+//
+// The operations are + - * / % and ^ between two floats, between a float and a whole number either
+// way round, and between a float and text ("0.375"); x squared and cubed and divided by itself; x's
+// whole part taken as a whole number with % and .number; and x through its own text with .string and
+// back. A line with % keeps all of x and adds to it an amount % made from it, and the line that undoes
+// it takes that exact amount away again, the same every pass. Every operation is exact by the float's
+// own rules: no value ever has more than 128 places after the point (float.decimal) or 4096 digits
+// before it (float.whole), so nothing is ever rounded. The three lines under satellite.include hold
+// those two rules for this run, whatever config.ini says, and show a float's every place
+// (infinity_display), so a wrong value shows all of itself and .string carries all 128 places.
+//
+// THE CHECKS (2026-10-06, after a fresh reviewer injected losses that still ended at 547311173).
+// A division, or a * by a number below 1, rounds at the 128th place. That never happens on the right
+// path, but once something is lost it can round the loss away and carry x back to the right value.
+// A loss made at the turn came back unseen up to about 5 * 10^337 -- all 128 places and the lowest
+// 338 of the 977 digits before the point -- so .string could have lost every place after the point
+// unseen; x / 10 ^ 100 hid any loss below 5 * 10^-29 made in nearly every line before it; and a loss
+// in the last place came back from almost anywhere. So x is kept in `before` just before each of the
+// 24 operations that can do that, and just after it x is multiplied back and compared with `before`.
+// On the right path that gives `before` again. When the rounding has carried a loss away, x is the
+// RIGHT value, and multiplied back it gives the right value from before the line -- which is not
+// `before`, so `wrong` counts it. Every other operation is exact, or multiplies x by a number further
+// from zero than a half (x / 1.6 multiplies it by 0.625), or is x ^ 2 / x or x ^ 3 / x ^ 2 on a
+// number near 820966760, which always gives x back; none of those can round a loss to nothing. A %
+// line is two-to-one: x and x moved by half its modulus can land on the same value. So what each %
+// line adds is checked against the literal its undo takes away: -7.3125, -663, and
+// -2577402686 * 10 ^ 50. The 100 operations are the same as before.
+//
+// The answer is always 547311173. Anything else is the value x ended at, or "lost:", how many checks
+// failed, and the value x ended at: the interpreter lost information on the way.
+
+satellite.capsule satellite.main()
+{
+    satellite.variable.float start = 547311173
+    satellite.variable.float x = 547311173.0
+    satellite.variable.float before = x
+    satellite.variable.number wrong = 0
+    satellite.statement.for(satellite.variable.number pass = 0; pass < 10000; pass + 1)
+    {
+        // out: 50 operations carry x far away
+        before = x
+        x = x * 10 ^ -100
+        satellite.statement.if (x * 10 ^ 100 != before)
+        {
+            wrong = wrong + 1
+        }
+        x = x - 0.00000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000007
+        x = x * 10 ^ 100
+        x = x + 0.5
+        x = x * 1.5
+        x = x ^ 2 / x
+        x = x - 12.3456789
+        x = x * 2.25
+        before = x
+        x = x / 8
+        satellite.statement.if (x * 8 != before)
+        {
+            wrong = wrong + 1
+        }
+        x = x + x
+        x = x * 1.0001
+        x = x / 1.25
+        x = x + 7
+        x = 3 * x
+        x = x - 0.000000001
+        before = x
+        x = x * 0.125
+        satellite.statement.if (x * 8 != before)
+        {
+            wrong = wrong + 1
+        }
+        before = x
+        x = x / 1024
+        satellite.statement.if (x * 1024 != before)
+        {
+            wrong = wrong + 1
+        }
+        x = x * 1.5 ^ 3
+        x = x + "0.375"
+        before = x
+        x = x * 2 ^ -7
+        satellite.statement.if (x * 2 ^ 7 != before)
+        {
+            wrong = wrong + 1
+        }
+        x = x - 0.5 ^ 30
+        before = x
+        x = x / 6.25
+        satellite.statement.if (x * 6.25 != before)
+        {
+            wrong = wrong + 1
+        }
+        x = 100.5 - x
+        x = x * 1.1
+        before = x
+        x = x + (x - x % 0.0625) % 7.5
+        satellite.statement.if (x - before != -7.3125)
+        {
+            wrong = wrong + 1
+        }
+        x = x * 10 ^ 30
+        x = x * 12345.6789
+        before = x
+        x = x + (x - x % 1).number % 1000
+        satellite.statement.if (x - before != -663)
+        {
+            wrong = wrong + 1
+        }
+        x = x + 98765.4321098765432109876543210987654321
+        x = x * 10
+        x = x - 10 ^ 20
+        x = 0 - x
+        x = x * 1.0001 ^ 5
+        before = x
+        x = x / 3.2
+        satellite.statement.if (x * 3.2 != before)
+        {
+            wrong = wrong + 1
+        }
+        x = x * 3.14159265358979323846
+        x = x / -0.5
+        x = x * 7
+        x = x * 2 ^ 200
+        before = x
+        x = x / 20.48
+        satellite.statement.if (x * 20.48 != before)
+        {
+            wrong = wrong + 1
+        }
+        before = x
+        x = x + (x - x % 10 ^ 50) % 10 ^ 60
+        satellite.statement.if (x - before != -2577402686 * 10 ^ 50)
+        {
+            wrong = wrong + 1
+        }
+        x = x * 10 ^ 300
+        x = x + 10 ^ 1000
+        x = -x
+        x = x + 3.14159265358979323846264338327950288419716939937510
+        x = x / 1.6
+        before = x
+        x = x * 0.0001
+        satellite.statement.if (x * 10000 != before)
+        {
+            wrong = wrong + 1
+        }
+        before = x
+        x = x / 2 ^ 64
+        satellite.statement.if (x * 2 ^ 64 != before)
+        {
+            wrong = wrong + 1
+        }
+        x = x - 0.0000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000001
+        x = x * 2.5
+        x = 1.75 + x.string
+        // back: the 50 that undo them, in reverse order
+        x = x - 1.75
+        before = x
+        x = x / 2.5
+        satellite.statement.if (x * 2.5 != before)
+        {
+            wrong = wrong + 1
+        }
+        x = x + 0.0000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000001
+        x = x * 2 ^ 64
+        x = x / 0.0001
+        x = x * 1.6
+        x = x - 3.14159265358979323846264338327950288419716939937510
+        x = x / -1
+        x = x - 10 ^ 1000
+        before = x
+        x = x / 10 ^ 300
+        satellite.statement.if (x * 10 ^ 300 != before)
+        {
+            wrong = wrong + 1
+        }
+        x = x + 2577402686 * 10 ^ 50
+        x = x * 20.48
+        before = x
+        x = x / 2 ^ 200
+        satellite.statement.if (x * 2 ^ 200 != before)
+        {
+            wrong = wrong + 1
+        }
+        before = x
+        x = x / 7
+        satellite.statement.if (x * 7 != before)
+        {
+            wrong = wrong + 1
+        }
+        before = x
+        x = x * -0.5
+        satellite.statement.if (x * -2 != before)
+        {
+            wrong = wrong + 1
+        }
+        before = x
+        x = x / 3.14159265358979323846
+        satellite.statement.if (x * 3.14159265358979323846 != before)
+        {
+            wrong = wrong + 1
+        }
+        x = x * 3.2
+        x = x / 1.0001 ^ 5
+        x = x * -1
+        x = x + 10 ^ 20
+        before = x
+        x = x / 10
+        satellite.statement.if (x * 10 != before)
+        {
+            wrong = wrong + 1
+        }
+        x = x - 98765.4321098765432109876543210987654321
+        x = x + 663
+        before = x
+        x = x / 12345.6789
+        satellite.statement.if (x * 12345.6789 != before)
+        {
+            wrong = wrong + 1
+        }
+        before = x
+        x = x / 10 ^ 30
+        satellite.statement.if (x * 10 ^ 30 != before)
+        {
+            wrong = wrong + 1
+        }
+        x = x + 7.3125
+        x = x / 1.1
+        x = -x + 100.5
+        x = x * 6.25
+        x = x + 0.5 ^ 30
+        x = x / 2 ^ -7
+        x = x + "-0.375"
+        before = x
+        x = x / 1.5 ^ 3
+        satellite.statement.if (x * 1.5 ^ 3 != before)
+        {
+            wrong = wrong + 1
+        }
+        x = x * 1024
+        x = x / 0.125
+        x = x + 0.000000001
+        before = x
+        x = x / 3
+        satellite.statement.if (x * 3 != before)
+        {
+            wrong = wrong + 1
+        }
+        x = x - 7
+        x = x * 1.25
+        x = x / 1.0001
+        before = x
+        x = x * 0.5
+        satellite.statement.if (x * 2 != before)
+        {
+            wrong = wrong + 1
+        }
+        x = x * 8
+        before = x
+        x = x / 2.25
+        satellite.statement.if (x * 2.25 != before)
+        {
+            wrong = wrong + 1
+        }
+        x = x + 12.3456789
+        x = x ^ 3 / x ^ 2
+        x = x / 1.5
+        x = x - 0.5
+        before = x
+        x = x / 10 ^ 100
+        satellite.statement.if (x * 10 ^ 100 != before)
+        {
+            wrong = wrong + 1
+        }
+        x = x + 0.00000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000007
+        x = x / 10 ^ -100
+    }
+    satellite.statement.if (wrong > 0)
+    {
+        satellite.console.display("lost: " + wrong + " checks failed, and x ended at " + x)
+    }
+    satellite.statement.else satellite.statement.if (x == start)
+    {
+        satellite.console.display(547311173)
+    }
+    satellite.statement.else
+    {
+        satellite.console.display(x)
+    }
+    satellite.return(satellite)
+}

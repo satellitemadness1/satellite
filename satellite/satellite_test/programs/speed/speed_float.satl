@@ -1,0 +1,24 @@
+satellite.include(satellite)
+
+// speed_float.satl -- satellite.test.speed(): FLOAT ARITHMETIC, + - * / and %.
+// satl's float is decimal, 128 places. Every value here is a whole number of sixteenths, small enough
+// that a C++ double holds it exactly too, so both sides answer the same with no rounding at all:
+// f = (f * 3 + 0.75) % 1000.75 stays in quarters below 1000.75 (4002 values before it repeats),
+// s adds f / 4 - 0.5 every pass, and t adds f * 0.5.
+// Prints: f, s and t.  C++ twin: speed_float(), on double.
+
+satellite.capsule satellite.main()
+{
+    satellite.variable.number passes = 390000
+    satellite.variable.float f = 0.25
+    satellite.variable.float s = 0.0
+    satellite.variable.float t = 0.0
+    satellite.statement.for(satellite.variable.number i = 0; i < passes; i + 1)
+    {
+        f = (f * 3 + 0.75) % 1000.75
+        s = s + f / 4 - 0.5
+        t = t + f * 0.5
+    }
+    satellite.console.display(f.string + " " + s.string + " " + t.string)
+    satellite.return(satellite)
+}

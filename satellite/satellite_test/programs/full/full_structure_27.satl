@@ -1,0 +1,11 @@
+satellite.include(satellite)
+// full_structure_27 -- REFUSED by satellite.test.full(): arguments: arguments.missing is the file's switch, never a line in a capsule.
+// The rule: arguments: arguments.missing ... Inside a capsule it is refused.
+// satl refuses it: exit 35, and its report on stderr says "args.missing is the program's switch". It prints nothing.
+
+satellite.capsule satellite.main(satellite.variable.arguments args)
+{
+    satellite.variable.number passes = 1
+    args.missing = false
+    satellite.return(satellite)
+}

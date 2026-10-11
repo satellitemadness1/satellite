@@ -1,0 +1,9 @@
+// sleep(5) is refused before anything runs, so the line above it never prints (the review, 2026-10-10).
+satellite.include(satellite)
+
+satellite.capsule satellite.main()
+{
+    satellite.console.display("before")
+    satellite.time.sleep(5)
+    satellite.return(satellite)
+}

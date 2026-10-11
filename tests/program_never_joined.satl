@@ -1,0 +1,14 @@
+satellite.include(satellite)
+
+// "forcing the user to use both .start() and .join() together": a program never joined is
+// stopped at the end and fails the run, S742 -- once, for the one that ran; the one that could
+// not start never ran, so there was nothing to wait for.
+satellite.capsule satellite.main(satellite.variable.arguments args)
+{
+    satellite.variable.program left = {"sleep", "30"}
+    left.start()
+    satellite.variable.program nowhere = "no-such-program-for-satl"
+    nowhere.start()
+    satellite.console.display("main ends")
+    satellite.return(satellite)
+}

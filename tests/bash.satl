@@ -1,0 +1,92 @@
+satellite.include(satellite)
+
+// satellite.variable.bash (STEP 5, 2026-10-01), the author's:
+//     satellite.variable.bash my_command = "mkdir /home/madness/code/satl"
+//     my_command.start()
+// A line bash reads, with every method a program has. What each line prints is written beside it;
+// check.sh reads them in this order, from the top of the tree.
+
+// A CAPSULE THAT TAKES A PROGRAM TAKES A BASH LINE.
+satellite.capsule run_it(satellite.variable.program p)
+{
+    p.start()
+    satellite.console.display(p.join())
+}
+
+// AND A BASH PARAMETER MAKES ONE FROM A STRING.
+satellite.capsule run_line(satellite.variable.bash command)
+{
+    command.start()
+    satellite.console.display(command.join())
+}
+
+satellite.capsule satellite.main(satellite.variable.arguments args)
+{
+    // HIS OWN LINE'S SHAPE: a folder made, then looked for by a second line.
+    satellite.variable.bash clear = "rm -rf build/bash_made"
+    clear.start()
+    clear.join()
+    satellite.variable.bash my_command = "mkdir build/bash_made"
+    my_command.start()
+    satellite.console.display(my_command.join())                    // 0
+    satellite.variable.bash look = "test -d build/bash_made && echo made"
+    look.start()
+    look.join()                                                      // made
+
+    // WHAT BASH READS AND A PROGRAM WOULD NOT: a pipe, a >, a *, $(( )) and ||.
+    satellite.variable.bash piped = "echo one two three | wc -w"
+    piped.start()
+    piped.join()                                                     // 3
+    satellite.variable.bash saved = "echo saved > build/bash_made/saved.txt; touch build/bash_made/b.txt; echo build/bash_made/*.txt; cat build/bash_made/saved.txt"
+    saved.start()
+    saved.join()                                                     // build/bash_made/b.txt build/bash_made/saved.txt, then saved
+    satellite.variable.bash sums = "echo $((6 * 7)) || echo never"
+    sums.start()
+    sums.join()                                                      // 42
+
+    // ITS CODE IS THE LINE'S.
+    satellite.variable.bash seven = "exit 7"
+    seven.start()
+    satellite.console.display(seven.code())                          // 7
+    satellite.console.display(seven.error())                         // it ended with code 7
+
+    // A COMMAND THAT IS NOT THERE: bash started, so ok() is true; bash says so itself, and answers 127.
+    satellite.variable.bash missing = "no-such-command-for-satl"
+    missing.start()
+    satellite.console.display(missing.join())                        // bash's "command not found", then 127
+    satellite.console.display(missing.ok())                          // true
+
+    // A LINE THAT BEGINS WITH - is the line, not bash's own options.
+    satellite.variable.bash dashed = "-n"
+    dashed.start()
+    satellite.console.display(dashed.join())                         // bash's "command not found", then 127
+
+    // SHOWN AS ITS LINE.
+    satellite.console.display(piped)                                 // (bash echo one two three | wc -w, ended with 0)
+
+    // HIDE, PASS AND END ARE THE PROGRAM'S.
+    satellite.variable.bash quiet = "echo must not show; exit 4"
+    quiet.start("hide")
+    satellite.console.display(quiet.join())                          // 4
+    satellite.variable.bash reader = "read a; read b; echo got $a and $b"
+    reader.start()
+    reader.pass({"first", "second"})
+    reader.join()                                                    // got first and second
+    satellite.variable.bash sleeper = "sleep 7.59; echo never"
+    sleeper.start()
+    satellite.console.display(sleeper.end())                         // 143 -- and bash's sleep is gone too
+
+    // A BASH LINE IS A PROGRAM: a program name may hold one, and it stays a bash line.
+    satellite.variable.program same = piped
+    satellite.console.display(same == piped)                         // true
+    satellite.console.display(same)                                  // (bash echo one two three | wc -w, ended with 0)
+    run_it(look)                                                     // made, then 0
+    run_line("echo from a parameter")                                // from a parameter, then 0
+
+    // A NEW LINE INTO THE SAME NAME, from a string held elsewhere.
+    satellite.variable.string again = "rm -r build/bash_made && echo removed"
+    my_command = again
+    my_command.start()
+    my_command.join()                                                // removed
+    satellite.return(satellite)
+}

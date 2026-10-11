@@ -1,0 +1,24 @@
+satellite.include(satellite)
+
+satellite.capsule satellite.main(satellite.container.list<satellite.variable.string> arguments)
+{
+    satellite.variable.number n = 87
+    satellite.variable.string s = "87"
+
+    satellite.console.display(n.to_string())
+    satellite.console.display(n.str())
+    satellite.console.display(n.string())
+    satellite.console.display(n.binary())
+    satellite.console.display(n.bin())
+    satellite.console.display(n.hex())
+    satellite.console.display(s.satellite.number())
+    satellite.console.display(s.satellite.as_number())
+    satellite.console.display(s.satellite.bin)
+    satellite.console.display(s.satellite.bin.satellite.find("10101"))
+    satellite.console.display(n.bin.satellite.find("111"))
+    satellite.console.display(n.add(13))
+    satellite.console.display(s.satellite.add("!"))
+    satellite.console.display(n.to_string().satellite.add("x"))
+
+    satellite.return(satellite)
+}

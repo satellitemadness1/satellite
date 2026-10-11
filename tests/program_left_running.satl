@@ -1,0 +1,15 @@
+satellite.include(satellite)
+
+// WHAT A PROGRAM LEAVES RUNNING goes on writing after it has ended and been joined, as on a terminal,
+// and is not killed by SIGPIPE when it does (the review, 2026-10-01).
+satellite.capsule satellite.main(satellite.variable.arguments args)
+{
+    satellite.variable.program leaver = {"sh", "-c", "(sleep 0.3; echo late line; echo reached > build/program_marker) & echo early line"}
+    leaver.start()
+    leaver.join()
+    satellite.variable.program wait_a_little = {"sleep", "0.8"}
+    wait_a_little.start()
+    wait_a_little.join()
+    satellite.console.display("after the wait")
+    satellite.return(satellite)
+}

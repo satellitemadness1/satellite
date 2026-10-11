@@ -1,0 +1,45 @@
+
+--------------------------------------------------------------------------------
+SATELLITE 004: satellite.help()
+--------------------------------------------------------------------------------
+
+satellite.help() is the help system: it brings up satellite's own text about a
+part of the language, at the satl prompt. satellite.help() with nothing between
+the brackets lists every topic there is, and satellite.help(include) or
+satellite.help(satellite.include) brings up one of them -- that one is the
+info on including other files.
+
+You can name a topic by its whole name, satellite.include, by its last part,
+include, by a second spelling -- double finds satellite.variable.float, colour
+finds satellite.variable.color -- or by the start of its last part, so
+percentage finds satellite.variable.percent. When two topics answer, as
+satellite.window and satellite.variable.window both end in window, satl does not
+pick one for you: it names both, and you write the one you meant. When nothing
+answers, it says there is no help on that yet, and satellite.help() shows you
+the topics there are.
+
+Every topic is a plain text file that you can read and change yourself. The
+list is satellite.help/help.txt, and a topic is the file help_text.txt in a
+folder named after it -- satellite.help/satellite.include/help_text.txt is the
+include topic. The files are read when you ask for them and are never built
+into satl, so a topic you edit is the topic you get the next time you ask, and
+a new topic is a new folder.
+
+satellite.help is typed at the prompt, on a line of its own. It is something
+you ask satl, not a statement your program runs.
+
+Still to come, and not built yet in satellite 004: satellite.help(a_name), for
+a name your program uses (MILESTONES M34). It finds that object's type and
+shows everything the type can do. It needs a register of every name in use
+and its type, which satellite.access(a_name) will read too -- in the author's
+words, "access is just info on that type, help is more detailed info on that
+type".
+
+example:
+
+satellite.help()                     // the topic list
+satellite.help(include)              // including other files
+satellite.help(satellite.include)    // the same topic, by its whole name
+satellite.help(capsule)              // functions
+satellite.help(satellite.main)       // the entry point for the app
+satellite.help(help)                 // this text

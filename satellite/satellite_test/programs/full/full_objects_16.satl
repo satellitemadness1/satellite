@@ -1,0 +1,12 @@
+satellite.include(satellite)
+
+// full_objects_16 -- REFUSED before anything runs: a colour written into a display line that is not six
+// hex digits. satellite.help(satellite.console): "A colour written into the line that is not six hex
+// digits -- xFFF, "red" -- is refused before a line runs".
+
+satellite.capsule satellite.main()
+{
+    satellite.variable.number passes = 1
+    satellite.console.display("never shown", foreground=xFFF)
+    satellite.return(satellite)
+}

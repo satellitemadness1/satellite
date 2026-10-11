@@ -1,0 +1,11 @@
+satellite.include(satellite)
+
+// full_text_35 -- REFUSED: list satellite.container.list() takes nothing.
+// satellite.help(satellite.container.list). Nothing reaches stdout; satl exits with the refusal's code.
+
+satellite.capsule satellite.main()
+{
+    satellite.variable.number passes = 1
+    satellite.container.list b = satellite.container.list(1, 2)
+    satellite.return(satellite)
+}

@@ -1,0 +1,19 @@
+satellite.include(satellite)
+// full_structure_16 -- REFUSED by satellite.test.full(): satellite.return: an answer used, from a capsule that ended without handing one back the way it went.
+// The rule: satellite.return: one whose answer is used and that ended without handing one back, the way it went, is refused when it happens -- also S240.
+// satl refuses it: exit 53, and its report on stderr says "maybe's answer is used, and it ended without handing one back". It prints nothing.
+
+satellite.capsule maybe(satellite.variable.number n)
+{
+    satellite.statement.if (n > 0)
+    {
+        satellite.return(n)
+    }
+}
+
+satellite.capsule satellite.main()
+{
+    satellite.variable.number passes = 1
+    satellite.variable.number n = maybe(0)
+    satellite.return(satellite)
+}

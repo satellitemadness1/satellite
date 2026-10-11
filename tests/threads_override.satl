@@ -1,0 +1,42 @@
+// satellite.thread.new(call_speak()) by its bare name inside a dog runs the DOG's call_speak, which
+// overrides the animal's -- as a call does (the second review, 2026-09-24: it ran the animal's).
+satellite.include(satellite)
+
+satellite.spacesuit animal()
+{
+    satellite.public
+    {
+        satellite.capsule call_speak()
+        {
+            satellite.console.display("animal")
+        }
+        satellite.capsule call_both()
+        {
+            call_speak()
+            satellite.variable.thread t = satellite.thread.new(call_speak())
+            t.start()
+            t.join()
+        }
+    }
+}
+
+satellite.spacesuit dog(animal)
+{
+    satellite.public
+    {
+        satellite.capsule call_speak()
+        {
+            satellite.console.display("dog")
+        }
+    }
+}
+
+satellite.capsule satellite.main()
+{
+    dog d()
+    d.call_both()
+    satellite.variable.thread u = satellite.thread.new(d.call_speak())
+    u.start()
+    u.join()
+    satellite.return(satellite)
+}

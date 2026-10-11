@@ -1,0 +1,20 @@
+satellite.include(satellite)
+
+satellite.capsule satellite.main()
+{
+    satellite.variable.number n = 0
+    satellite.statement.while (n < 300000)
+    {
+        satellite.variable.number a = n
+        satellite.variable.number b = n
+        satellite.variable.number c = n
+        satellite.variable.number d = n
+        satellite.variable.number e = n
+        satellite.variable.number f = n
+        satellite.variable.number g = n
+        satellite.variable.number h = n
+        n = n + 1
+    }
+    satellite.console.display(n)
+    satellite.return(satellite)
+}

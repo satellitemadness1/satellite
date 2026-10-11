@@ -1,0 +1,17 @@
+satellite.include(satellite)
+// full_structure_14 -- REFUSED by satellite.test.full(): satellite.capsule: a capsule cannot see the caller's variables -- no globals.
+// The rule: satellite.capsule: the capsule runs in a frame of its own and cannot see the caller's variables.
+// satl refuses it: exit 25, and its report on stderr says "secret has no satellite.variable line declaring it". It prints nothing.
+
+satellite.capsule peek()
+{
+    satellite.return(secret + 1)
+}
+
+satellite.capsule satellite.main()
+{
+    satellite.variable.number passes = 1
+    satellite.variable.number secret = 7
+    satellite.variable.number seen = peek()
+    satellite.return(satellite)
+}

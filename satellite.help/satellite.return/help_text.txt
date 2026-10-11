@@ -1,0 +1,63 @@
+--------------------------------------------------------------------------------
+SATELLITE 004: satellite.return()
+--------------------------------------------------------------------------------
+
+satellite.return(args) ends the capsule it is written in -- from wherever it
+stands, inside an if, a while or a for -- and hands back what is between its
+brackets. satellite.return() hands back nothing. A capsule other than main may
+leave it out: reaching its closing } ends it the same way, with nothing handed
+back.
+
+satellite.return(satellite) is different: it ends the WHOLE PROGRAM, from any
+capsule, at any depth, on any thread, and satl exits 0. It is how a program
+quits early.
+
+Every satellite.main ends with satellite.return(satellite) as its last line,
+just before main's closing }. satl refuses a main without it before anything
+runs (S103, exit 12) -- execution ends inside main, and main has to say so.
+Written outside every capsule it is refused too: nothing runs there.
+
+A capsule answers whatever its satellite.return hands back. Nothing after its
+brackets says what that is: only line ends and comments come between its ) and
+its {. A capsule is called for its answer inside any line:
+
+satellite.variable.number n = five()
+
+A call whose answer is used, from a capsule that can never hand one back, is
+refused before anything runs (S240). One whose answer is used and that ended
+without handing one back, the way it went, is refused when it happens -- also
+S240.
+
+At the satl prompt there is nothing to return from, and satellite.return is
+refused there by name.
+
+example:
+
+satellite.include(satellite)
+
+satellite.capsule sign_of(satellite.variable.number n)
+{
+    satellite.statement.if (n < 0)
+    {
+        satellite.return("below zero")
+    }
+    satellite.statement.if (n == 0)
+    {
+        satellite.return("zero")
+    }
+    satellite.return("above zero")
+}
+
+satellite.capsule satellite.main()
+{
+    satellite.console.display(sign_of(-5))
+    satellite.console.display(sign_of(0))
+    satellite.console.display(sign_of(7))
+    satellite.return(satellite)
+}
+
+prints:
+
+below zero
+zero
+above zero

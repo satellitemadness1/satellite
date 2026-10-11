@@ -1,0 +1,40 @@
+
+satellite.include(satellite)
+
+satellite.capsule satellite.main(satellite.variable.arguments arguments)
+{
+    satellite.variable.window main_window = satellite.window.new("SATELLITE SOURCE EDITOR", "VERSION 001 REVISION 01", 800x600)
+
+    main_window.satellite.section("files_display", 100%, 250)
+
+    main_window.files_display.satellite.widgets.display.file("list_of_files", 100%, 100%)
+
+    // now 50% of the window is made of this file display,
+
+    main_window.open()
+
+    // satellite.variable.string local_directory_input = main_window.file_display.text_input.listen()
+
+    // main_window.file_display("/home/" + arguments.username + "/")
+
+    // main_window.widgets.text.source("source_display")
+
+    // main_window.open()
+
+    // satellite.statement.if(satellite.variable.directory entered_directory = satellite.directory.open(local_user_input)
+    // {
+        // we have already opened the directory, so it exists at this point
+
+    //    main_window.file_display(local_user_input) // pass the directory to the file display widget we named
+    // } satellite.statement.else()
+    // {
+        // directory cannot be opened,
+
+    //    main_window.file_display.text_input.write("directory does not exist!")
+    // }
+
+    // satellite.console.input(">>") // hold the window open until something is entered, and then...
+
+    // main_window.close() // close the window!
+    satellite.return(satellite) // exit the program
+}

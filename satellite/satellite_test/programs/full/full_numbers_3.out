@@ -1,0 +1,9 @@
+ok infinity satellite.infinity() shows (infinity), and .string is that
+ok infinity a minus in front turns it over, and a second turns it back
+ok infinity is larger than every number, and (-infinity) smaller
+ok infinity orders against a binary
+ok infinity == != < > <= >= against an infinity
+ok infinity is no number, however large
+ok infinity a copy is equal to it
+ok infinity an infinity name takes a plain number, then an infinity
+ok infinity a list holds infinities and sorts them by value
