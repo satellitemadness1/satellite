@@ -1267,9 +1267,78 @@ Value map_literal(const std::vector<std::bitset<16>> &row, std::size_t &at, std:
     return maybe_a_method(row, at, Value::of_index(std::move(made)), "that map", context);
 }
 
+// satellite.convert.whole(a / b) AND satellite.convert.number(a / b) OF TWO NAMES OR NUMBERS, the shape a program
+// divides two numbers in since 2026-10-12: `(`, a name or a number, `/`, a name or a number, `)`, and no word after
+// it. `divide_at` and `close` are where its `/` and its `)` stand. Read from the codes alone -- nothing is worked out.
+bool a_converted_division(const std::vector<std::bitset<16>> &row, std::size_t at, std::size_t &divide_at,
+                          std::size_t &close)
+{
+    std::size_t k = at + 1;
+    if (code_at(row, k) != token::left_parenthesis_token)
+        return false;
+    ++k;
+    for (int side = 0; side < 2; ++side) {
+        const Code part = code_at(row, k);
+        if (part != token::name_token && part != token::number_token)
+            return false;
+        skip_payload(row, k);
+        if (side == 0) {
+            if (code_at(row, k) != token::divide_token)
+                return false;
+            divide_at = k++;
+        }
+    }
+    if (code_at(row, k) != token::right_parenthesis_token || a_method_period(code_at(row, k + 1)))
+        return false;
+    close = k;
+    return true;
+}
+
 Value one_operand(const std::vector<std::bitset<16>> &row, std::size_t &at, ExpressionContext &context)
 {
     const Code code = code_at(row, at);
+
+    // THE HOT PATH: satellite.convert.whole(a / b) AND .number(a / b) (the author, 2026-10-12: "these things should
+    // be hot paths in C++"). Its two names or numbers are read here and divided once, as `a / b` was before it was a
+    // fraction -- none of a word call's work, which cost a loop ~900 instructions a turn (callgrind on BUILD 0053:
+    // .whole 11% behind %, .number 16%). Reading a name or a number twice changes nothing, so two that are not both
+    // numbers, or any other shape, go the whole way round (call_convert_word) and answer exactly as before.
+    if (code == word::fixed_code<1, 35, 3> || code == word::fixed_code<1, 35, 1>) {
+        std::size_t divide_at = 0, close = 0;
+        if (a_converted_division(row, at, divide_at, close)) {
+            std::size_t k = at + 2;
+            const Value left = one_operand(row, k, context);
+            if (context.code != success)
+                return Value();
+            if (k == divide_at) {
+                ++k;
+                const Value right = one_operand(row, k, context);
+                if (context.code != success)
+                    return Value();
+                if (k == close && left.is_number() && right.is_number()) {
+                    if (context.state.features.on(Feature::word_counts))
+                        word_counts().saw(code);
+                    Value answer;
+                    std::string why;
+                    bool lost = false;
+                    const signed long long int made = code == word::fixed_code<1, 35, 3>
+                                                          ? left.divide_whole(right, answer, why)
+                                                          : left.divide_rounded(right, answer, why, lost);
+                    if (made != success) {
+                        context.refuse(made, why, divide_at);
+                        return Value();
+                    }
+                    if (lost)    // S021, as the root's division says it (evaluate_at)
+                        warn_number_rounded(
+                            context.state,
+                            [&] { return left.as_number()->to_text() + " / " + right.as_number()->to_text(); },
+                            [&] { return answer.as_number()->to_text(); });
+                    at = close + 1;
+                    return answer;
+                }
+            }
+        }
+    }
 
     // A TOUCHING MINUS IS THE UNARY ONE, and that falls out of the author's
     // whitespace rule rather than being a special case bolted on: `5 - 4` has
