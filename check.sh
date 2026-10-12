@@ -308,6 +308,38 @@ expect "6: n = -9 and a = -b still run" "0|0|1" \
        "$(infinity_says '    satellite.variable.number n = 5
     n = -9
     satellite.variable.number a = -n' 'does not begin')"
+# 4 OF 2026-10-12 (the author: "fix this as the next thing that you do"): A LINE THAT BEGINS WITH A { THAT OPENS NO
+# BODY is refused before anything runs. The walker steps over a code it has no arm for, so `{1, 2}` on a line of its
+# own ended the capsule at the list's }, every line after it skipped, exit 0; a bare { ... } ended it at its }.
+expect "4: {1, 2} on a line of its own is refused before anything runs, told to give the list to a name" "13|1|0" \
+       "$(infinity_says '    {1, 2}
+    satellite.console.display("after")' 'a line does not begin with { here -- a { opens the body of satellite.statement.if, else, while or for, and a list on a line of its own does nothing')"
+expect "4: a bare { ... } is refused the same way" "13|1|0" \
+       "$(infinity_says '    {
+        satellite.console.display("inside")
+    }
+    satellite.console.display("after")' 'a line does not begin with { here')"
+expect "4: the { of an if, an else, a while and a for still opens its body" "0|0|1|1|1" \
+       "$(infinity_says '    satellite.statement.if(1 > 2)
+    {
+        satellite.console.display("if")
+    }
+    satellite.statement.else
+    {
+        satellite.console.display("else")
+    }
+    satellite.variable.number n = 0
+    satellite.statement.while(n < 1)
+    {
+        n = n + 1
+    }
+    satellite.statement.for(satellite.variable.number i = 0; i < 1; i + 1)
+    {
+        satellite.console.display("for")
+    }' 'does not begin')|$(grep -cx else build/infinity_probe.out)|$(grep -cx for build/infinity_probe.out)"
+printf '{1, 2}\nsatellite.console.display("after")\n' | "$interpreter" --repl > build/prompt_brace.out 2>&1; code=$?
+expect "4: at the prompt too, and the session goes on" "13|1|1" \
+       "$code|$(tr '\n' ' ' < build/prompt_brace.out | grep -c 'a line does not begin with { here')|$(grep -cx after build/prompt_brace.out)"
 # 3 (the author, 2026-10-12: "commit, always, unless I say replace main"): EVERY BUILD'S COMMIT GOES TO GITHUB too, on
 # the checked-out branch's name and never main, without old_versions/, read for his machines first, never --force.
 cu=satellite_enterprise/commit_and_upload.sh

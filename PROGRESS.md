@@ -33,6 +33,22 @@ machine; satl-term is gone since 2026-09-22, and satl opens its own console.]
 
 ## 1. What is built and checked
 
+**2026-10-12 -- TWO NUMBERS DIVIDED ARE A FRACTION, AND A FRACTION ADDS (BUILD 0050, commit a9bb63b69, repo-30; BUILD
+0051, commit 87c3e0588, repo-31; both installed).** The author: *"what about always a fraction? 4 / 2 is the fraction"*,
+*"7 / 2 = 4 if a number"*, *"With a warning"*, then *"A yes b change the programming so they still work if needed c.
+Yes"*. 0050: `a / b` of two numbers is a fraction kept as written (7 / 2 is 7/2, 4 / 2 is 4/2, never reduced);
+`satellite.convert.number` is the whole number nearest (half away from zero: 7 / 2 is 4, -7 / 2 is -4) with S021
+NUMBER_ROUNDED on the screen once a line and the run going on; NEW `satellite.convert.whole` (`1 35 3`) cuts toward zero
+and says nothing (his B), and the tree's 258 divisions and his ~/code/satl's 383 were wrapped in it so their answers
+stay; a fraction given to a number or float name is refused before the run (S301). 0051 (his C): a fraction's `+` and
+`-` over the LOWEST COMMON DENOMINATOR, never reduced -- 7/2 + 1/3 is 23/6, 1/4 + 1/4 is 2/4, 7/2 + 1 is 9/2 (a number
+is itself over 1), 1.5/2 + 1/3 is 6.5/6 (`object_fraction.cpp` fraction_added: Euclid's gcd, then the lcm of the
+bottoms); `* / % ^` on a fraction are still refused by name (S210), before the run when a fraction name is given one.
+check.sh 1541/0 on 0051; every `//` answer on the convert, fraction, number and float help pages run and matched.
+**MEASURED SLOWER, the author's to rule on:** 5,000,000 turns on 0051 -- `n = a + b` 6.4 s and `n = a % b` 6.4 s (the
+old `n = a / b` ran as `+` did, 7.10 s beside `+`'s 7.03-7.21 s on 0049), `n = satellite.convert.whole(a / b)` 7.4 s
+(+16%) and `n = satellite.convert.number(a / b)` 7.8 s (+23%); /home/madness/.nm8/bench/.
+
 **2026-10-11 (afternoon) -- NM-8 FOR EVERY TYPE LEFT: THE FOUNDATION (BUILD 0032, commit 09c2defa, installed, uploaded
 repo-11); EVERY TYPE'S NUMBERING IN PROGRESS.** The author, ~13:50: *"we still need to get the word satellite onto
 everything, before we do anything... .pointer, numbers floats, everything builtin needs the word satellite still"*, and

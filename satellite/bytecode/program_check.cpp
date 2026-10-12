@@ -196,6 +196,9 @@ struct Where {
     // satellite.statement.break AND .continue NEED A LOOP AROUND THEM (2026-09-26). A while or a
     // for leaves its `{` marked as a loop's; the body loops keep one mark an open brace.
     bool opening_a_loop = false;
+    // THE `{` AN if, else, while OR for FOUND AFTER ITS HEADER -- the only `{` a line may begin with
+    // (a_brace_that_opens_nothing, below).
+    std::size_t body_brace = kNowhere;
     std::vector<bool> open_blocks;
     bool inside_a_loop() const
     {
@@ -243,6 +246,22 @@ struct Where {
     // words.join(",")` over a kept list is judged as the list's join.
     std::vector<std::pair<std::string, Code>> replacing;
 };
+
+// A `{` THAT OPENS NO BODY, refused before anything runs (the author, 2026-10-12: "fix this as the next thing that
+// you do", on his "refuse yes" of 2026-10-11). The walker steps over a code it has no arm for, so `{1, 2}` on a line
+// of its own ran as nothing and its `}` ended the capsule there -- every line after it skipped, exit 0 -- and a bare
+// { ... } ended it the same way at its `}`. A line begins with { only where an if, else, while or for opened a body.
+bool a_brace_that_opens_nothing(Where &where, std::size_t at, std::string &why)
+{
+    if (at == where.body_brace) {
+        where.body_brace = kNowhere;
+        return false;
+    }
+    why = "a line does not begin with { here -- a { opens the body of satellite.statement.if, else, while or for, "
+          "and a list on a line of its own does nothing: give it to a name, "
+          "satellite.container.list<satellite.variable.number> a = {1, 2}";
+    return true;
+}
 
 // THE FILE A STATEMENT STANDS IN, as load_program read it -- for reading back what it wrote.
 // A line typed at the prompt with nothing declared around it is session.cpp's "<typed>".
@@ -3282,6 +3301,7 @@ signed long long int check_statement(const std::vector<std::bitset<16>> &row,
             return satl_line_not_understood;
         }
         at = brace;                 // left ON the brace, as while is: the loop counts it
+        where.body_brace = brace;
         return success;
     }
 
@@ -3309,6 +3329,7 @@ signed long long int check_statement(const std::vector<std::bitset<16>> &row,
             return satl_line_not_understood;
         }
         at = after_else;
+        where.body_brace = after_else;
         return success;
     }
 
@@ -3327,6 +3348,7 @@ signed long long int check_statement(const std::vector<std::bitset<16>> &row,
         // and stepping over this one would make the body's `}` read as the
         // capsule's and end the check early.
         at = brace;
+        where.body_brace = brace;
         where.opening_a_loop = true;
         return success;
     }
@@ -3435,6 +3457,7 @@ signed long long int check_statement(const std::vector<std::bitset<16>> &row,
         }
         ending.push_back({past_matching_brace(row, brace), name});
         at = brace;                 // ON the brace, as if and while are
+        where.body_brace = brace;
         where.opening_a_loop = true;
         return success;
     }
@@ -4043,6 +4066,9 @@ signed long long int check_typed_line(const BytecodeRegistry &registry,
         // A BLOCK TYPED AT THE PROMPT (2026-09-25): its braces are stepped over as a
         // capsule body's are, and each statement inside is judged in turn.
         if (code_at(row, at) == token::left_brace_token || code_at(row, at) == token::right_brace_token) {
+            std::string why;
+            if (code_at(row, at) == token::left_brace_token && a_brace_that_opens_nothing(where, at, why))
+                return report_error("satl(prompt): " + why, satl_line_not_understood);
             if (code_at(row, at) == token::left_brace_token) where.opened(); else close_the_block(where, declared, at);
             ++at;
             continue;
@@ -4114,7 +4140,12 @@ signed long long int check_prompt_statements(const BytecodeRegistry &registry,
             ++at;
             continue;
         }
-        if (code == token::left_brace_token) { ++depth; where.opened(); ++at; continue; }
+        if (code == token::left_brace_token) {
+            std::string why;
+            if (a_brace_that_opens_nothing(where, at, why))
+                return report_error("satl(prompt): " + why, satl_line_not_understood);
+            ++depth; where.opened(); ++at; continue;
+        }
         const std::size_t was = at;
         std::string why;
         if (habit_from_another_language(row, at, why))
@@ -4340,7 +4371,12 @@ signed long long int check_program(const BytecodeRegistry &registry,
                 ++at;
                 continue;
             }
-            if (code == token::left_brace_token) { ++depth; where.opened(); ++at; continue; }
+            if (code == token::left_brace_token) {
+                std::string why;
+                if (a_brace_that_opens_nothing(where, at, why))
+                    return raise_at(satl_line_not_understood, why, site.shown, state, row, at, "satl(check)");
+                ++depth; where.opened(); ++at; continue;
+            }
             const std::size_t was = at;
             if (depth == 0) last_statement = at;
             std::string why;
