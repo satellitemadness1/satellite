@@ -32,6 +32,8 @@
 #include "suit_run.hpp"
 #include "file_calls.hpp"
 #include "info_calls.hpp"
+#include "convert_calls.hpp"
+#include "fraction_check.hpp"
 #include "access_calls.hpp"
 #include "argument_switches.hpp"
 #include "color_values.hpp"
@@ -773,7 +775,6 @@ signed long long int written_right_for(Code type, const std::vector<std::bitset<
     if (type == word::code_of(1, 6, 10)) return float_is_written_right(row, at, declared, why);
     if (type == word::code_of(1, 6, 11)) return hexadecimal_is_written_right(row, at, declared, why);
     if (type == word::code_of(1, 6, 19)) return color_is_written_right(row, at, declared, why);
-    if (type == word::code_of(1, 6, 20)) return fraction_is_written_right(row, at, declared, why);
     return success;
 }
 
@@ -862,7 +863,12 @@ std::string literal_refused(Code type, Literal kind)
 signed long long int literal_fits_the_name(Code type, const std::string &name, const std::vector<std::bitset<16>> &row,
                                            std::size_t value_at, std::string &why)
 {
-    const std::string holds = literal_refused(type, lone_literal(row, value_at));
+    const Literal kind = lone_literal(row, value_at);
+    // A FRACTION GIVEN TO A NUMBER OR A FLOAT NAME is fraction_given_where_none_goes's, asked next, which
+    // says what to write (his 9b of 2026-10-12) -- the same sentence for 5/4 as for 5 / 4.
+    if (kind == Literal::fraction && (type == word::code_of(1, 6, 4) || type == word::code_of(1, 6, 10)))
+        return success;
+    const std::string holds = literal_refused(type, kind);
     if (holds.empty()) return success;
     why = name + " was declared " + std::string(word::spelling_of(type)) + ", and it holds " + holds;
     // AN INFINITY NAME HOLDS AN INFINITY (the author's H of 2026-10-11: "= 5 is an error, the correct syntax should
@@ -1653,8 +1659,10 @@ satelliteObject::Kind kind_a_word_answers(Code code)
         return O::list;
     if (code == word::code_of(1, 5, 2) || code == word::code_of(1, 5, 3))
         return O::string;
-    if (code == word::code_of(1, 18, 7))
+    if (code == word::code_of(1, 18, 7) || code == word::code_of(1, 35, 2))   // ... and satellite.convert.float(x)
         return O::floating;
+    if (code == word::code_of(1, 35, 1) || code == word::code_of(1, 35, 3))   // satellite.convert.number(x), .whole(x)
+        return O::number;
     if (is_infinity_word(code))
         return O::infinity;              // satellite.infinity(x), not built, is refused before this is asked
     for (int draw = 4; draw <= 12; ++draw)       // fast, normal and ultra: digits, a range, a range and a step
@@ -2716,7 +2724,7 @@ signed long long int names_in_statement(const std::vector<std::bitset<16>> &row,
         if (word::is_word_code(code) && code_at(row, at + 1) == token::left_parenthesis_token &&
             functions[code] == nullptr && !is_file_word(code) && !is_infinity_word(code) &&
             !is_window_word(code) && !is_container_word(code) && !is_console_word(code) && !is_info_word(code) &&
-            !is_random_word(code) && !is_test_word(code) && !is_time_word(code)) {
+            !is_random_word(code) && !is_test_word(code) && !is_time_word(code) && !is_convert_word(code)) {
             why = std::string(word::spelling_of(code)) + " has no library built for it yet";
             return not_built_yet;
         }
@@ -3574,6 +3582,9 @@ signed long long int check_statement(const std::vector<std::bitset<16>> &row,
         if (code_at(row, k) == token::assign_token) {
             const signed long long int fits = literal_fits_the_name(code, name, row, k + 1, why);
             if (fits != success) { at = stop; return fits; }
+            // A FRACTION WHERE NONE CAN GO (fraction_check.hpp): `number n = a / b`, his 9b of 2026-10-12.
+            const signed long long int whole = fraction_given_where_none_goes(code, name, row, k + 1, declared, why);
+            if (whole != success) { at = stop; return whole; }
         }
         const signed long long int held = names_in_statement(row, k, stop, declared, where, why);
         at = stop;
@@ -3973,6 +3984,9 @@ signed long long int check_statement(const std::vector<std::bitset<16>> &row,
         if (found != declared.end() && code_at(row, k) == token::assign_token) {
             const signed long long int fits = literal_fits_the_name(found->second, name, row, k + 1, why);
             if (fits != success) { at = stop; return fits; }
+            const signed long long int whole =
+                fraction_given_where_none_goes(found->second, name, row, k + 1, declared, why);
+            if (whole != success) { at = stop; return whole; }
         }
         // satellite.variable.color (2026-09-22): `c = ff00aa` IS SIX HEX DIGITS AND NOT A
         // NAME (color_check.cpp's color_names_start), so the names are looked for after it.

@@ -14,7 +14,7 @@ satellite.capsule satellite.main()
     satellite.statement.for(satellite.variable.number i = 0; i < passes; i + 1)
     {
         x = x * 1000003 + i
-        x = x / 1000033
+        x = satellite.convert.whole(x / 1000033)
         y = y + x
     }
     satellite.console.display((x % 1000000007).satellite.string + " " + (y % 1000000007).satellite.string + " " + x.satellite.string.satellite.size.satellite.string + " " + y.satellite.string.satellite.size.satellite.string)

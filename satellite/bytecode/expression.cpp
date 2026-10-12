@@ -16,6 +16,7 @@
 #include "file_calls.hpp"
 #include "info_calls.hpp"
 #include "access_calls.hpp"
+#include "convert_calls.hpp"
 #include "color_values.hpp"
 #include "container_calls.hpp"
 #include "string_calls.hpp"
@@ -26,6 +27,7 @@
 #include "program_calls.hpp"
 #include "../satellite_object/object_lock.hpp"
 #include "../machine/console_lock.hpp"
+#include "../machine/s_codes.hpp"
 #include "../machine/thread_stop.hpp"
 #include "main_arguments.hpp"
 #include "setting_writes.hpp"
@@ -329,6 +331,12 @@ bool refuse_if_reserved(const std::vector<std::bitset<16>> &row, Code code, std:
     return true;
 }
 
+// WHAT THE DIVISION AT THE ROOT IS: a fraction, as everywhere (every expression but two); cut, for
+// evaluate_whole_expression (a for's step); rounded, for evaluate_rounded_expression
+// (satellite.convert.number). The branch that reads it is not compiled into the fraction one.
+enum class AtTheRoot { fraction, cut, rounded };
+
+template <AtTheRoot Root = AtTheRoot::fraction>
 Value evaluate_at(const std::vector<std::bitset<16>> &row, std::size_t &at, int lowest, ExpressionContext &context);
 
 // A METHOD'S SPELLING, for a refusal a person has to act on. One name a TOKEN and
@@ -938,7 +946,13 @@ bool position_of(const Value &index, unsigned long long int &out, const std::str
 {
     const satellite_number *number = index.as_number();
     if (number == nullptr) {
-        context.refuse(types_do_not_meet, what + "[...] takes an item number, and was given " + index.kind_name(),
+        // A FRACTION IS TOLD WHAT TO WRITE: every a / b of two numbers is one since 2026-10-12, and l[n / 2]
+        // was the middle item before it was.
+        context.refuse(types_do_not_meet,
+                       what + "[...] takes an item number, and was given " + index.kind_name() +
+                           (index.is_fraction() ? " -- write satellite.convert.number(...) for the whole number "
+                                                  "nearest it"
+                                                : ""),
                        where);
         return false;
     }
@@ -1846,6 +1860,7 @@ static void past_the_operand(const std::vector<std::bitset<16>> &row, std::size_
     }
 }
 
+template <AtTheRoot Root>
 Value evaluate_at(const std::vector<std::bitset<16>> &row, std::size_t &at, int lowest, ExpressionContext &context)
 {
     Value left = one_operand(row, at, context);
@@ -1896,6 +1911,35 @@ Value evaluate_at(const std::vector<std::bitset<16>> &row, std::size_t &at, int 
         const Value right = evaluate_at(row, at, next, context);
         if (context.code != success)
             return Value();
+        // THE ROOT'S DIVISION IS WHOLE (evaluate_whole_expression, evaluate_rounded_expression): the LAST
+        // operator this loop applies is the root, and a `/` is the last when nothing after its right side
+        // goes on -- the code there is no operator, or one below this level, which is exactly when the
+        // loop ends. Two numbers are then divided whole -- cut, as `/` did before 2026-10-12, or rounded,
+        // .5 and above one more -- and no fraction is made to be cut or rounded.
+        if constexpr (Root != AtTheRoot::fraction) {
+            if (op == token::divide_token) {
+                const int then = precedence_of(code_at(row, at));
+                if (then == 0 || then < lowest) {
+                    Value answer;
+                    std::string why;
+                    bool lost = false;
+                    const signed long long int code = Root == AtTheRoot::cut
+                                                          ? left.divide_whole(right, answer, why)
+                                                          : left.divide_rounded(right, answer, why, lost);
+                    if (code != success) {
+                        context.refuse(code, why, op_at);
+                        return Value();
+                    }
+                    if (lost)    // S021, "With a warning" (the author, 2026-10-12); two numbers, or nothing is lost
+                        warn_number_rounded(
+                            context.state,
+                            [&] { return left.as_number()->to_text() + " / " + right.as_number()->to_text(); },
+                            answer.as_number()->to_text());
+                    left = std::move(answer);
+                    continue;
+                }
+            }
+        }
         left = apply(op, op_at, left, right, context);
     }
     return left;
@@ -2012,6 +2056,10 @@ Value call_word(const std::vector<std::bitset<16>> &row, std::size_t &at, Expres
     // ...and satellite.access's argument is a NAME, read by its declaration (access_calls.hpp).
     if (is_access_word(code) && code_at(row, at) == token::left_parenthesis_token)
         return call_access(row, at, context);
+    // ...and satellite.convert's is worked out by convert_calls.cpp itself, so a division at its root is
+    // whole and makes no fraction (his 9e, 2026-10-12: "at today's speed").
+    if (is_convert_word(code) && code_at(row, at) == token::left_parenthesis_token)
+        return call_convert_word(code, row, at, context);
 
     // THE ARGUMENTS ARE A LIST (2026-09-18), divided by commas at their own depth:
     // `satellite.file.new(path, "text")` is the first word a program can call with
@@ -2495,6 +2543,16 @@ signed long long int write_through_index(Value &root, const std::vector<Value> &
 Value evaluate_expression(const std::vector<std::bitset<16>> &row, std::size_t &at, ExpressionContext &context)
 {
     return evaluate_at(row, at, 1, context);
+}
+
+Value evaluate_whole_expression(const std::vector<std::bitset<16>> &row, std::size_t &at, ExpressionContext &context)
+{
+    return evaluate_at<AtTheRoot::cut>(row, at, 1, context);
+}
+
+Value evaluate_rounded_expression(const std::vector<std::bitset<16>> &row, std::size_t &at, ExpressionContext &context)
+{
+    return evaluate_at<AtTheRoot::rounded>(row, at, 1, context);
 }
 
 std::string link_spelled(const std::vector<std::bitset<16>> &row, std::size_t dot)

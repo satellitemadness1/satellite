@@ -15,11 +15,17 @@ every one of them is written with a space on both sides. * / % bind tighter
 than + and -, and ^ groups right to left, so 2 ^ 3 ^ 2 is 2 ^ 9. == != < >
 <= and >= answer true or false.
 
-/ is whole-number division, so 4 / 3 is 1. It cuts toward zero, and % takes the
-sign of the number being divided: -7 / 2 is -3 and -7 % 2 is -1. 1 / 0 is
-refused (S401). 2 ^ -1 is 0.5: an answer a whole number cannot hold becomes a
-satellite.variable.float, while 4 / 3 stays 1 -- write 4.0 / 3 for the float
-(satellite.help(float)).
+/ on two numbers is a fraction, kept as written: 4 / 3 is 4/3 and 4 / 2 is 4/2
+(satellite.help(fraction)). satellite.convert.number(7 / 2) is the whole number
+nearest it, 4: .5 and above is one more, below .5 is not, so
+satellite.convert.number(4 / 3) is 1, and satl warns on the screen when
+something after the point was dropped. satellite.convert.float(4 / 3) is the
+float (satellite.help(convert)). A number name given a / b is refused before
+anything runs, told to declare a fraction or to write
+satellite.convert.number(a / b). % takes the sign of the number being
+divided: -7 % 2 is -1. 1 / 0 is refused (S401). 2 ^ -1 is 0.5: an answer a
+whole number cannot hold becomes a satellite.variable.float, and 4.0 / 3 is the
+float (satellite.help(float)).
 
 A number meets text by what the text says: 5 + "2" is the number 7, because
 "2" spells a number, and 5 + "a" is the text 5a. Every other conversion you say
@@ -54,7 +60,8 @@ satellite.capsule satellite.main(satellite.variable.arguments arguments)
 {
     satellite.variable.number n = 87
     satellite.console.display(n + 13)                       // 100
-    satellite.console.display(4 / 3)                        // 1
+    satellite.console.display(4 / 3)                        // 4/3
+    satellite.console.display(satellite.convert.number(4 / 3))  // 1
     satellite.console.display(-7 % 2)                       // -1
     satellite.console.display(2 ^ 3 ^ 2)                    // 512
     satellite.console.display(2 ^ 70)                       // 1180591620717411303424

@@ -443,6 +443,17 @@ public:
     signed long long int subtract(const satelliteObject &other, satelliteObject &out, std::string &why) const;
     signed long long int multiply(const satelliteObject &other, satelliteObject &out, std::string &why) const;
     signed long long int divide(const satelliteObject &other, satelliteObject &out, std::string &why) const;
+    // TWO NUMBERS DIVIDED WHOLE, CUT TOWARD ZERO -- 7 / 2 is 3 -- where `/` makes the fraction 7/2 (the
+    // author's 9a, 2026-10-12: "4 / 2 is the fraction"). Every other pair is divide's. Asked by a binary
+    // and a hex, which divide whole by their worth (his 9f), and by the evaluator at the root of
+    // satellite.convert.number(a / b) and of a for's step, so neither makes a fraction to cut (his 9e).
+    signed long long int divide_whole(const satelliteObject &other, satelliteObject &out, std::string &why) const;
+    // TWO NUMBERS DIVIDED AND ROUNDED -- 7 / 2 is 4, 5 / 4 is 1: .5 and above is one more (the author,
+    // 2026-10-12: ".500000000 is plus one .499999999 is not plus one"). satellite.convert.number(a / b)'s,
+    // at its root (expression.cpp); `lost` is set when something was left over, for its warning (S021).
+    // Every other pair is divide_whole's, which leaves a float or a fraction for the word to round.
+    signed long long int divide_rounded(const satelliteObject &other, satelliteObject &out, std::string &why,
+                                        bool &lost) const;
     signed long long int modulus(const satelliteObject &other, satelliteObject &out, std::string &why) const;
     signed long long int power(const satelliteObject &other, satelliteObject &out, std::string &why) const;
 

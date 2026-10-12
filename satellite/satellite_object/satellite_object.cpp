@@ -35,6 +35,7 @@
 #include "number_and_number_add.hpp"
 #include "number_and_number_compare.hpp"
 #include "number_and_number_divide.hpp"
+#include "number_and_number_divide_rounded.hpp"
 #include "number_and_number_modulus.hpp"
 #include "number_and_number_multiply.hpp"
 #include "number_and_number_power.hpp"
@@ -616,17 +617,47 @@ signed long long int satelliteObject::divide(const satelliteObject &other, satel
     // are both false whenever both sides are numbers. Hoisting is behaviour-
     // identical for exactly that reason: read_by_worth() needs one side BINARY,
     // and is_percentage() needs one side a percentage.
+    //
+    // TWO NUMBERS MAKE THE FRACTION, KEPT AS IT WAS WRITTEN (the author, 2026-10-12: "what about
+    // always a fraction? 4 / 2 is the fraction", his 9a): 4 / 2 is 4/2 and 6 / 4 is 6/4, never
+    // put in lowest terms (his 9d), and x / 0 is refused as it always was. The whole-number
+    // division this was is divide_whole's, below.
     if (pair_of(kind(), other.kind()) == pair_of(number, number))
-        return run_number_pair(*this, other, number_and_number_divide, "/", out, why);
+        return fraction_of_division(*as_number(), *other.as_number(), out, why);
     if (refuse_infinity_arithmetic(*this, other, "/", "INF-3 and INF-4", why))
         return not_built_yet;
     if (signed long long int code = success; answered_by_its_own_file('/', *this, other, out, why, code))
         return code;
     if (is_percentage() || other.is_percentage())
         return percentage_operation('/', worth_of(*this), worth_of(other), out, why);
+    // A BINARY DIVIDES WHOLE, BY ITS WORTH (his 9f: "binary and hex division stay whole"), as a hex
+    // does in object_hexadecimal.cpp -- `worth / b1001` in his loss tests is the number it always was.
     if (read_by_worth(*this, other))
-        return worth_of(*this).divide(worth_of(other), out, why);
+        return worth_of(*this).divide_whole(worth_of(other), out, why);
     return refuse_pair(*this, other, "/", why);
+}
+
+signed long long int satelliteObject::divide_whole(const satelliteObject &other, satelliteObject &out,
+                                                   std::string &why) const
+{
+    if (pair_of(kind(), other.kind()) == pair_of(number, number))
+        return run_number_pair(*this, other, number_and_number_divide, "/", out, why);
+    return divide(other, out, why);
+}
+
+signed long long int satelliteObject::divide_rounded(const satelliteObject &other, satelliteObject &out,
+                                                     std::string &why, bool &lost) const
+{
+    if (pair_of(kind(), other.kind()) != pair_of(number, number))
+        return divide_whole(other, out, why);
+    satellite_number answer;
+    const signed long long int code = number_and_number_divide_rounded(*as_number(), *other.as_number(), answer, lost);
+    if (code != success) {
+        why = "the / of " + as_number()->to_text() + " and " + other.as_number()->to_text() + " is a division by zero";
+        return code;
+    }
+    out = satelliteObject::of_number(std::move(answer));
+    return success;
 }
 
 signed long long int satelliteObject::modulus(const satelliteObject &other, satelliteObject &out,

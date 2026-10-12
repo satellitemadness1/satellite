@@ -12,6 +12,6 @@ satellite.capsule satellite.main()
         f.satellite.append(i)
     }
     satellite.variable.number z = 0
-    satellite.variable.number x = 1 / z
+    satellite.variable.number x = satellite.convert.whole(1 / z)
     satellite.return(satellite)
 }

@@ -23,8 +23,9 @@
 //
 // THE SIGN RIDES ON THE NUMERATOR: -1/3 is (-1, 3). Nothing makes a denominator
 // below zero -- the lexer makes a fraction only when a DIGIT follows the slash,
-// and a number given to a fraction name is put over 1 -- so a fraction keeps its
-// one sign in one place, as a float keeps its one bool.
+// a number given to a fraction name is put over 1, and `5 / -4` (two numbers
+// divided, a fraction since 2026-10-12) is made -5/4 by fraction_of_division --
+// so a fraction keeps its one sign in one place, as a float keeps its one bool.
 
 #include "../satellite_variable_float/satellite_float.hpp"
 

@@ -41,4 +41,25 @@ std::string fraction_written(const satellite_fraction &value);
 // kept, and how a number is read when it is compared with a fraction.
 satellite_fraction fraction_of_number(const satellite_number &value);
 
+// TWO NUMBERS DIVIDED: `a / b` IS THE FRACTION a/b, KEPT AS WRITTEN (the author, 2026-10-12:
+// "what about always a fraction? 4 / 2 is the fraction", and 9d "no" to lowest terms) -- 4 / 2
+// is 4/2. A bottom number of 0 is refused, division_by_zero, as it always was.
+signed long long int fraction_of_division(const satellite_number &above, const satellite_number &below,
+                                          satelliteObject &out, std::string &why);
+
+// THE WHOLE NUMBER A FRACTION IS WORTH, CUT TOWARD ZERO: 7/2 is 3, -7/2 is -3, 1.5/2 is 0.
+satellite_number fraction_cut_toward_zero(const satellite_fraction &value);
+
+// THE WHOLE NUMBER NEAREST A FRACTION -- satellite.convert.number(7 / 2) is 4 (the author, 2026-10-12:
+// "7 / 2 = 4 if a number", ".500000000 is plus one .499999999 is not plus one"): .5 and above is one
+// more, and half away from zero on the minus side, so -7/2 is -4. `lost` is set when it did not come
+// out even, for the warning ("With a warning", S021): 4/2 is 2 and leaves it alone.
+satellite_number fraction_rounded(const satellite_fraction &value, bool &lost);
+
+// WHAT TO WRITE WHERE A FRACTION CANNOT GO -- a number or a float name, an item's place, + - * / % ^
+// (his 9b: "declare a fraction, or write satellite.convert.number(a / b)").
+inline constexpr const char *kConvertTheFraction =
+    "write satellite.convert.number(...) for the whole number nearest it (.5 and above is one more), or "
+    "satellite.convert.float(...) for the float";
+
 } // namespace satellite004

@@ -1024,11 +1024,14 @@ signed long long int run_for_step(const std::vector<std::bitset<16>> &row,
     ExpressionContext context{variables, functions, state};
     {
         const ObjectHold step(lock_of(variables.self), what_the_line_does(row, parts.step, variables, state.capsules));
+        // A STEP OF h / 2 KEEPS THE NUMBER WHOLE (2026-10-12): every other a / b of two numbers is a
+        // fraction, and a fraction would stop the loop below -- so the step's last division is whole, cut
+        // toward zero, as it was (the author, "That's okay"; expression.hpp's evaluate_whole_expression).
         if (step.code() != success)
             context.refuse(step.code(), "this for's step needs its object's lock, and a thread holding it is "
                                         "waiting for this one");
         else
-            answer = evaluate_expression(row, at, context);
+            answer = evaluate_whole_expression(row, at, context);
     }
     if (context.code != success)
         return raise_context(context, "satellite.statement.for",

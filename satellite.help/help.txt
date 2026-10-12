@@ -73,3 +73,5 @@ TOPICS:
 33) satellite.time (1s, 250ms, 30ns, and satellite.time.sleep)
 
 34) satellite.variable.time (a length of time, exact to the nanosecond)
+
+35) satellite.convert (a value as a whole number or a float: satellite.convert.number(7 / 2) is 4, satellite.convert.whole(7 / 2) is 3)

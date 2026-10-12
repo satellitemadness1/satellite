@@ -48,36 +48,36 @@ satellite.capsule satellite.main()
     satellite.variable.number start = 547311173
 
     // THE 30 BITS OF 547311173, from the top: b100000100111110100111001000101
-    satellite.variable.bool s29 = (start / 536870912) % 2 == 1
-    satellite.variable.bool s28 = (start / 268435456) % 2 == 1
-    satellite.variable.bool s27 = (start / 134217728) % 2 == 1
-    satellite.variable.bool s26 = (start / 67108864) % 2 == 1
-    satellite.variable.bool s25 = (start / 33554432) % 2 == 1
-    satellite.variable.bool s24 = (start / 16777216) % 2 == 1
-    satellite.variable.bool s23 = (start / 8388608) % 2 == 1
-    satellite.variable.bool s22 = (start / 4194304) % 2 == 1
-    satellite.variable.bool s21 = (start / 2097152) % 2 == 1
-    satellite.variable.bool s20 = (start / 1048576) % 2 == 1
-    satellite.variable.bool s19 = (start / 524288) % 2 == 1
-    satellite.variable.bool s18 = (start / 262144) % 2 == 1
-    satellite.variable.bool s17 = (start / 131072) % 2 == 1
-    satellite.variable.bool s16 = (start / 65536) % 2 == 1
-    satellite.variable.bool s15 = (start / 32768) % 2 == 1
-    satellite.variable.bool s14 = (start / 16384) % 2 == 1
-    satellite.variable.bool s13 = (start / 8192) % 2 == 1
-    satellite.variable.bool s12 = (start / 4096) % 2 == 1
-    satellite.variable.bool s11 = (start / 2048) % 2 == 1
-    satellite.variable.bool s10 = (start / 1024) % 2 == 1
-    satellite.variable.bool s09 = (start / 512) % 2 == 1
-    satellite.variable.bool s08 = (start / 256) % 2 == 1
-    satellite.variable.bool s07 = (start / 128) % 2 == 1
-    satellite.variable.bool s06 = (start / 64) % 2 == 1
-    satellite.variable.bool s05 = (start / 32) % 2 == 1
-    satellite.variable.bool s04 = (start / 16) % 2 == 1
-    satellite.variable.bool s03 = (start / 8) % 2 == 1
-    satellite.variable.bool s02 = (start / 4) % 2 == 1
-    satellite.variable.bool s01 = (start / 2) % 2 == 1
-    satellite.variable.bool s00 = (start / 1) % 2 == 1
+    satellite.variable.bool s29 = (satellite.convert.whole(start / 536870912)) % 2 == 1
+    satellite.variable.bool s28 = (satellite.convert.whole(start / 268435456)) % 2 == 1
+    satellite.variable.bool s27 = (satellite.convert.whole(start / 134217728)) % 2 == 1
+    satellite.variable.bool s26 = (satellite.convert.whole(start / 67108864)) % 2 == 1
+    satellite.variable.bool s25 = (satellite.convert.whole(start / 33554432)) % 2 == 1
+    satellite.variable.bool s24 = (satellite.convert.whole(start / 16777216)) % 2 == 1
+    satellite.variable.bool s23 = (satellite.convert.whole(start / 8388608)) % 2 == 1
+    satellite.variable.bool s22 = (satellite.convert.whole(start / 4194304)) % 2 == 1
+    satellite.variable.bool s21 = (satellite.convert.whole(start / 2097152)) % 2 == 1
+    satellite.variable.bool s20 = (satellite.convert.whole(start / 1048576)) % 2 == 1
+    satellite.variable.bool s19 = (satellite.convert.whole(start / 524288)) % 2 == 1
+    satellite.variable.bool s18 = (satellite.convert.whole(start / 262144)) % 2 == 1
+    satellite.variable.bool s17 = (satellite.convert.whole(start / 131072)) % 2 == 1
+    satellite.variable.bool s16 = (satellite.convert.whole(start / 65536)) % 2 == 1
+    satellite.variable.bool s15 = (satellite.convert.whole(start / 32768)) % 2 == 1
+    satellite.variable.bool s14 = (satellite.convert.whole(start / 16384)) % 2 == 1
+    satellite.variable.bool s13 = (satellite.convert.whole(start / 8192)) % 2 == 1
+    satellite.variable.bool s12 = (satellite.convert.whole(start / 4096)) % 2 == 1
+    satellite.variable.bool s11 = (satellite.convert.whole(start / 2048)) % 2 == 1
+    satellite.variable.bool s10 = (satellite.convert.whole(start / 1024)) % 2 == 1
+    satellite.variable.bool s09 = (satellite.convert.whole(start / 512)) % 2 == 1
+    satellite.variable.bool s08 = (satellite.convert.whole(start / 256)) % 2 == 1
+    satellite.variable.bool s07 = (satellite.convert.whole(start / 128)) % 2 == 1
+    satellite.variable.bool s06 = (satellite.convert.whole(start / 64)) % 2 == 1
+    satellite.variable.bool s05 = (satellite.convert.whole(start / 32)) % 2 == 1
+    satellite.variable.bool s04 = (satellite.convert.whole(start / 16)) % 2 == 1
+    satellite.variable.bool s03 = (satellite.convert.whole(start / 8)) % 2 == 1
+    satellite.variable.bool s02 = (satellite.convert.whole(start / 4)) % 2 == 1
+    satellite.variable.bool s01 = (satellite.convert.whole(start / 2)) % 2 == 1
+    satellite.variable.bool s00 = (satellite.convert.whole(start / 1)) % 2 == 1
 
     satellite.container.list<satellite.variable.bool> begun = {s29, s28, s27, s26, s25, s24, s23, s22, s21, s20, s19, s18, s17, s16, s15, s14, s13, s12, s11, s10, s09, s08, s07, s06, s05, s04, s03, s02, s01, s00}
     satellite.variable.string seen = ""

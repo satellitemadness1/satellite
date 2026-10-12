@@ -31,7 +31,7 @@ namespace word {
 inline constexpr token::Code kBase = 4096;       // reserved: no word has it
 inline constexpr token::Code kFirst = 4097;      // satellite
 inline constexpr token::Code kLast = 8191;       // the end of the range
-inline constexpr unsigned int kWordsInTable = 675;
+inline constexpr unsigned int kWordsInTable = 679;
 inline constexpr unsigned int kMaxDepth = 7;
 
 inline constexpr bool is_word_code(token::Code code) { return code >= kBase && code <= kLast; }
@@ -87,6 +87,7 @@ inline constexpr KeyedWord kKeyedWords[] = {
     {0x0201200000000000ULL, 4633},  // 1 32 -- satellite.delete
     {0x0201210000000000ULL, 4635},  // 1 33 -- satellite.test
     {0x0201220000000000ULL, 4768},  // 1 34 -- satellite.arguments
+    {0x0201230000000000ULL, 4772},  // 1 35 -- satellite.convert
     {0x0301010000000000ULL, 4099},  // 1 1 0 -- satellite.include()
     {0x0301010100000000ULL, 4100},  // 1 1 1 -- satellite.include(satellite)
     {0x0301010200000000ULL, 4101},  // 1 1 2 -- satellite.include(spaceship)
@@ -264,6 +265,9 @@ inline constexpr KeyedWord kKeyedWords[] = {
     {0x0301210200000000ULL, 4638},  // 1 33 2 -- satellite.test.speed
     {0x0301210300000000ULL, 4640},  // 1 33 3 -- satellite.test.loss
     {0x0301210400000000ULL, 4642},  // 1 33 4 -- satellite.test.all
+    {0x0301230100000000ULL, 4773},  // 1 35 1 -- satellite.convert.number(x)
+    {0x0301230200000000ULL, 4774},  // 1 35 2 -- satellite.convert.float(x)
+    {0x0301230300000000ULL, 4775},  // 1 35 3 -- satellite.convert.whole(x)
     {0x0401040100000000ULL, 4110},  // 1 4 1 0 -- satellite.container.map()
     {0x0401040101000000ULL, 4111},  // 1 4 1 1 -- satellite.container.map.set(k, v)
     {0x0401040102000000ULL, 4112},  // 1 4 1 2 -- satellite.container.map.get(k)
@@ -1410,6 +1414,10 @@ inline constexpr WordFacts kWordFacts[] = {
     {"satellite.variable.bool.add(x)", {1, 6, 6, 2, 0, 0, 0}, 4},
     {"satellite.variable.float.reverse", {1, 6, 10, 6, 0, 0, 0}, 4},
     {"satellite.variable.fraction.reverse", {1, 6, 20, 4, 0, 0, 0}, 4},
+    {"satellite.convert", {1, 35, 0, 0, 0, 0, 0}, 2},
+    {"satellite.convert.number(x)", {1, 35, 1, 0, 0, 0, 0}, 3},
+    {"satellite.convert.float(x)", {1, 35, 2, 0, 0, 0, 0}, 3},
+    {"satellite.convert.whole(x)", {1, 35, 3, 0, 0, 0, 0}, 3},
 };
 
 inline constexpr std::size_t kWordFactsCount = sizeof kWordFacts / sizeof kWordFacts[0];
@@ -1520,6 +1528,10 @@ inline constexpr SpelledWord kSpelledWords[] = {
     {"satellite.container.map.values", 4119},
     {"satellite.container.multiple", 4477},
     {"satellite.container.result", 4160},
+    {"satellite.convert", 4772},
+    {"satellite.convert.float(x)", 4774},
+    {"satellite.convert.number(x)", 4773},
+    {"satellite.convert.whole(x)", 4775},
     {"satellite.delete", 4633},
     {"satellite.delete(name)", 4634},
     {"satellite.directory", 4397},

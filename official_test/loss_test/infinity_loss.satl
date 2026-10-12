@@ -172,7 +172,7 @@ satellite.capsule satellite.main()
         x = x * -3
         held = x % 1000
         x = x - held
-        x = x / 1000 + x % 1000 * far
+        x = satellite.convert.whole(x / 1000) + x % 1000 * far
         satellite.statement.if (x > up)
         {
             x = x + 2 ^ 100
@@ -241,7 +241,7 @@ satellite.capsule satellite.main()
         }
 
         // BACK: the same 50 undone, last first, each spelled another way
-        x = x / 6 + x % 6 * far
+        x = satellite.convert.whole(x / 6) + x % 6 * far
         x = x - 2 ^ 90
         satellite.statement.if (x < -up)
         {
@@ -251,21 +251,21 @@ satellite.capsule satellite.main()
         {
             x = x + 9
         }
-        x = x / 1000003 + x % 1000003 * far
-        x = (x + 9) / 10 + (x + 9) % 10 * far
+        x = satellite.convert.whole(x / 1000003) + x % 1000003 * far
+        x = satellite.convert.whole((x + 9) / 10) + (x + 9) % 10 * far
         x = x + 10 ^ 25
         satellite.statement.if (-satellite.infinity() == up)
         {
-            x = x / 17 + x % 17 * far
+            x = satellite.convert.whole(x / 17) + x % 17 * far
         }
         satellite.statement.else
         {
-            x = x / 19 + x % 19 * far
+            x = satellite.convert.whole(x / 19) + x % 19 * far
         }
         x = x - 547311173
-        x = x / -1 + x % -1 * far
+        x = satellite.convert.whole(x / -1) + x % -1 * far
         x = x.satellite.string.satellite.reverse().satellite.number + (x % 10 - 8) * far
-        x = (x - 3) / 10 + (x - 3) % 10 * far
+        x = satellite.convert.whole((x - 3) / 10) + (x - 3) % 10 * far
         satellite.statement.if (x < satellite.infinity())
         {
             x = x - 5
@@ -283,7 +283,7 @@ satellite.capsule satellite.main()
         {
             x = x - 2
         }
-        x = x / 3 ^ 40 + x % 3 ^ 40 * far
+        x = satellite.convert.whole(x / 3 ^ 40) + x % 3 ^ 40 * far
         x = x + 987654321
         satellite.statement.if (up < x)
         {
@@ -296,15 +296,15 @@ satellite.capsule satellite.main()
         x = x * 1000
         x = x + held
         held = held - x % 1000
-        x = x / -3 + x % -3 * far
+        x = satellite.convert.whole(x / -3) + x % -3 * far
         x = x - -12345
         satellite.statement.if (547311173 <= up)
         {
-            x = x / 11 + x % 11 * far
+            x = satellite.convert.whole(x / 11) + x % 11 * far
         }
         satellite.statement.else
         {
-            x = x / 13 + x % 13 * far
+            x = satellite.convert.whole(x / 13) + x % 13 * far
         }
         x = x + 10 ^ 40
         x = - x
@@ -337,11 +337,11 @@ satellite.capsule satellite.main()
         x = -((x))
         satellite.statement.if (up < x)
         {
-            held = held / 5 + held % 5 * far
+            held = satellite.convert.whole(held / 5) + held % 5 * far
         }
         satellite.statement.else
         {
-            held = held / 4 + held % 4 * far
+            held = satellite.convert.whole(held / 4) + held % 4 * far
         }
         up = -(-(-up))
         satellite.statement.if (up == x)
@@ -359,7 +359,7 @@ satellite.capsule satellite.main()
         }
         x = held
         held = held - x
-        x = x / 2 ^ 64 + x % 2 ^ 64 * far
+        x = satellite.convert.whole(x / 2 ^ 64) + x % 2 ^ 64 * far
         satellite.statement.if (10 ^ 100 < up)
         {
             x = x - 1000
@@ -372,14 +372,14 @@ satellite.capsule satellite.main()
         x = x - 123456789
         satellite.statement.if (x > up)
         {
-            x = x / 3 + x % 3 * far
+            x = satellite.convert.whole(x / 3) + x % 3 * far
         }
         satellite.statement.else
         {
-            x = x / 2 + x % 2 * far
+            x = satellite.convert.whole(x / 2) + x % 2 * far
         }
         x = x - 10 ^ 30
-        x = x / 10 ^ 20 + x % 10 ^ 20 * far
+        x = satellite.convert.whole(x / 10 ^ 20) + x % 10 ^ 20 * far
         x = x + 99
         x = -1 * x
         satellite.statement.if (up > x)
@@ -391,7 +391,7 @@ satellite.capsule satellite.main()
             x = x + 5
         }
         up = -((up))
-        x = x / 7 + x % 7 * far
+        x = satellite.convert.whole(x / 7) + x % 7 * far
         x = x - 1
 
         // THE PASS ENDS WHERE IT BEGAN -- or the run stops at the first pass that does not, and says so

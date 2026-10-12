@@ -112,7 +112,7 @@ satellite.spacesuit vault()
             {
                 wrong = wrong + 1
             }
-            value = value / n
+            value = satellite.convert.whole(value / n)
         }
 
         satellite.capsule negate()

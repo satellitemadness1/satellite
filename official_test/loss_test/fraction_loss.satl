@@ -186,7 +186,7 @@ satellite.capsule satellite.main()
         f = f.satellite.numerator + f.satellite.denominator * 1000000 + (f.satellite.denominator - 1) * far
         f = f.satellite.numerator * 2% + (f.satellite.denominator - 1) * far
         f = f.satellite.numerator - 547311173547311173 + (f.satellite.denominator - 1) * far
-        k = f.satellite.numerator / -7 + (f.satellite.denominator - 1) * far
+        k = satellite.convert.whole(f.satellite.numerator / -7) + (f.satellite.denominator - 1) * far
         satellite.statement.if (k * -7 != f.satellite.numerator)
         {
             wrong = wrong + 1
@@ -204,7 +204,7 @@ satellite.capsule satellite.main()
         f = f.satellite.numerator - 1 + (f.satellite.denominator - 1) * far
         f = (f.satellite.string - "/1").satellite.number * 50% + (f.satellite.denominator - 1) * far
         f = f.satellite.numerator * 1% + (f.satellite.denominator - 1) * far
-        n = f.satellite.numerator / -311 + (f.satellite.denominator - 1) * far
+        n = satellite.convert.whole(f.satellite.numerator / -311) + (f.satellite.denominator - 1) * far
         satellite.statement.if (n * -311 != f.satellite.numerator)
         {
             wrong = wrong + 1
@@ -219,7 +219,7 @@ satellite.capsule satellite.main()
         f = f.satellite.numerator * 12.5% + (f.satellite.denominator - 1) * far
         f = f.satellite.numerator + 1000000000000 + (f.satellite.denominator - 1) * far
         f = 7 - f.satellite.numerator + (f.satellite.denominator - 1) * far
-        k = f.satellite.numerator / 41 + (f.satellite.denominator - 1) * far
+        k = satellite.convert.whole(f.satellite.numerator / 41) + (f.satellite.denominator - 1) * far
         satellite.statement.if (k * 41 != f.satellite.numerator)
         {
             wrong = wrong + 1
@@ -233,7 +233,7 @@ satellite.capsule satellite.main()
         f = f.satellite.numerator * 0.00000001% + (f.satellite.denominator - 1) * far
         f = f.satellite.numerator * 0.09765625% + (f.satellite.denominator - 1) * far
         f = f.satellite.numerator + 547311173 + (f.satellite.denominator - 1) * far
-        n = f.satellite.numerator / 3 + (f.satellite.denominator - 1) * far
+        n = satellite.convert.whole(f.satellite.numerator / 3) + (f.satellite.denominator - 1) * far
         satellite.statement.if (n * 3 != f.satellite.numerator)
         {
             wrong = wrong + 1

@@ -13,6 +13,8 @@
 //     2/4 == 1/2     true      but compared BY VALUE, by cross-multiplying
 //     1/3 < 1/2      true      the same ordering, six spellings
 //     1/2 == 1       false     a plain number is read as itself over 1
+//     6 / 4          6/4       two numbers divided, kept as written (the author, 2026-10-12:
+//                              "what about always a fraction? 4 / 2 is the fraction")
 //
 // AND WHAT DOES NOT, YET: + - * / % ^ with a fraction on either side. "let's just
 // start with" is two numbers tied together, so fraction arithmetic is refused by
@@ -22,6 +24,7 @@
 
 #include "object_fraction.hpp"
 
+#include "number_and_number_divide_rounded.hpp"
 #include "../satellite_variable_float/float_scaled.hpp"
 
 #include <string>
@@ -121,6 +124,53 @@ satellite_fraction fraction_of_number(const satellite_number &value)
     return satellite_fraction{float_of_number(value), float_of_number(satellite_number(1ull))};
 }
 
+// THE SIGN RIDES ON THE NUMERATOR (satellite_fraction.hpp), so a bottom number below zero turns both
+// over: 5 / -4 is -5/4 and -6 / -4 is 6/4. Nothing else is changed -- 6 / 4 stays 6/4.
+signed long long int fraction_of_division(const satellite_number &above, const satellite_number &below,
+                                          satelliteObject &out, std::string &why)
+{
+    if (below.is_zero()) {
+        why = "the / of " + above.to_text() + " and " + below.to_text() + " is a division by zero";
+        return division_by_zero;
+    }
+    if (below.negative())
+        out = satelliteObject::of_fraction(satellite_fraction{float_of_number(-above), float_of_number(-below)});
+    else
+        out = satelliteObject::of_fraction(satellite_fraction{float_of_number(above), float_of_number(below)});
+    return success;
+}
+
+// A/B IS (A's digits * 10^B's places) / (B's digits * 10^A's places), and the division of two whole numbers
+// cuts toward zero (satellite_number.hpp) -- so 1.5/2 is 15 / 20, which is 0, and -7/2 is -3. The bottom
+// number is above zero, so only the top one's sign reaches the answer.
+satellite_number fraction_cut_toward_zero(const satellite_fraction &value)
+{
+    satellite_number above = float_scaled(value.numerator, value.numerator.places);
+    satellite_number below = float_scaled(value.denominator, value.denominator.places);
+    if (value.denominator.places != 0)
+        above = above * ten_to_the(value.denominator.places);
+    if (value.numerator.places != 0)
+        below = below * ten_to_the(value.numerator.places);
+    satellite_number quotient, remainder;
+    satellite_number::divide(above, below, quotient, remainder);
+    return quotient;
+}
+
+// THE SAME TWO WHOLE NUMBERS, DIVIDED AND ROUNDED as two numbers are (number_and_number_divide_rounded.hpp),
+// so satellite.convert.number(f) of a fraction f = 7 / 2 is what satellite.convert.number(7 / 2) is: 4.
+satellite_number fraction_rounded(const satellite_fraction &value, bool &lost)
+{
+    satellite_number above = float_scaled(value.numerator, value.numerator.places);
+    satellite_number below = float_scaled(value.denominator, value.denominator.places);
+    if (value.denominator.places != 0)
+        above = above * ten_to_the(value.denominator.places);
+    if (value.numerator.places != 0)
+        below = below * ten_to_the(value.numerator.places);
+    satellite_number quotient;
+    number_and_number_divide_rounded(above, below, quotient, lost);   // below is never zero (satellite_fraction.hpp)
+    return quotient;
+}
+
 // FRACTION ARITHMETIC IS NOT BUILT, and says so by name. `1/3 + 1/3` has one right
 // answer (2/3) and several right spellings of it (2/3, 6/9, 0.666...), and which
 // one a program gets back is the author's to say -- "let's just start with" two
@@ -131,9 +181,11 @@ signed long long int fraction_operation(char sign, const satelliteObject &left, 
     satellite_fraction left_made, right_made;
     if (fraction_of(left, left_made) == nullptr || fraction_of(right, right_made) == nullptr)
         return refuse_meeting(std::string(1, sign), left, right, why);
+    // AND WHAT TO WRITE INSTEAD, since every a / b is a fraction now (2026-10-12): the whole number or
+    // the float it is worth, made first.
     why = std::string("the ") + sign + " of " + shown(left) + " and " + shown(right) +
           " is fraction arithmetic, and fraction arithmetic is not built yet -- so far a fraction is two numbers "
-          "tied together, written, shown and compared";
+          "tied together, written, shown and compared; " + kConvertTheFraction;
     return not_built_yet;
 }
 
@@ -162,13 +214,15 @@ signed long long int fraction_to_string(const satellite_fraction &value, satelli
     return satellite_string::from_utf8(fraction_written(value), out, bad_offset);
 }
 
-// NOT BUILT: 4/2 is 2 and 1/3 is no whole number, and which of cutting, rounding or
-// refusing 1/3 means is the float's question too (float_to_number refuses). A
-// fraction's own numbers are its .satellite.numerator and .satellite.denominator.
+// NOT BUILT HERE: 4/2 is 2 and 1/3 is no whole number, so a number made of a fraction is
+// said out loud -- satellite.convert.number(f), rounded with a warning when it was not
+// even (the author, 2026-10-12; fraction_rounded) -- and a fraction's own numbers are its
+// .satellite.numerator and .satellite.denominator.
 signed long long int fraction_to_number(const satellite_fraction &value, satellite_number &, std::string &why)
 {
     why = "a number made of the fraction " + fraction_written(value) +
-          " is not built yet -- its two numbers are .satellite.numerator and .satellite.denominator";
+          " is written satellite.convert.number(...), the whole number nearest it -- its two numbers are "
+          ".satellite.numerator and .satellite.denominator";
     return not_built_yet;
 }
 

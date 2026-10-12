@@ -38,6 +38,7 @@
 #include "source_position.hpp"
 
 #include <cstdint>
+#include <cstring>
 #include <string>
 #include <unordered_map>
 
@@ -576,6 +577,82 @@ inline void log_warning_here(const MachineState &state, const char *code, const 
     log_only_warning(report);
     if (logged_tally().keys.size() > before)
         warned_places()[place] = before;
+}
+
+// A WARNING ON THE SCREEN AS WELL, PLACED WHERE THE WALKER IS -- the author's S021, 2026-10-12: "with
+// an error displayed to the console", then "A warning", then "But don't stop the interpreter". Said
+// by print_notice, so on the screen and into satellite.log, ONCE A PLACE: a place said before is
+// counted by its address before anything is read (warned_places' reason, above), and the end of the
+// run says how many times it happened in all. `means` is asked only the first time, so a loop that
+// warns every turn builds its sentence once -- and the place is looked up by the statement's address,
+// its position and the code, with no text made, so that turn costs a look-up and a count. At the
+// prompt there is no place and every typed line is said, as log_warning_here logs each.
+struct DisplayedPlace {
+    const void *row;
+    std::size_t at;
+    const char *code;
+    bool operator==(const DisplayedPlace &other) const
+    {
+        return row == other.row && at == other.at && std::strcmp(code, other.code) == 0;
+    }
+};
+struct DisplayedPlaceHash {
+    std::size_t operator()(const DisplayedPlace &place) const
+    {
+        return std::hash<const void *>{}(place.row) ^ (place.at * 0x9E3779B97F4A7C15ull);
+    }
+};
+inline std::unordered_map<DisplayedPlace, std::size_t, DisplayedPlaceHash> &displayed_places()
+{
+    static std::unordered_map<DisplayedPlace, std::size_t, DisplayedPlaceHash> one;
+    return one;
+}
+
+template <typename Means>
+void display_warning_here(const MachineState &state, const char *code, const char *name, Means &&means)
+{
+    const ConsoleHold one_warning;
+    const bool placed = state.program != nullptr && state.program_files != nullptr && state.statement_row != nullptr;
+    const DisplayedPlace place{state.statement_row, state.statement_at, code};
+    if (placed) {
+        const auto seen = displayed_places().find(place);
+        if (seen != displayed_places().end()) {
+            ++report_tally().counts[seen->second];
+            return;
+        }
+    }
+    CriticalReport report;
+    report.code = code;
+    report.name = name;
+    report.description = means();
+    place_here(report, state);
+    if (!placed) {
+        const std::string text = notice_text(report);
+        std::cerr << text << "\n";
+        std::cerr.flush();
+        write_entry(lines_of(text));
+        return;
+    }
+    const std::size_t before = report_tally().keys.size();
+    print_notice(report);
+    if (report_tally().keys.size() > before)
+        displayed_places()[place] = before;
+}
+
+// S021 -- A NUMBER MADE OF A FLOAT OR A FRACTION WAS ROUNDED (the author, 2026-10-12: "7 / 2 = 4 if a
+// number", ".500000000 is plus one .499999999 is not plus one", "With a warning", "But don't stop the
+// interpreter"). Said only when something after the point was dropped: satellite.convert.number(4 / 2)
+// is 2 and says nothing. `what` and `answer` give the value as written and the number it became, up to
+// 60 characters each -- a 128-place float is a line no one reads whole.
+template <typename What>
+void warn_number_rounded(const MachineState &state, What &&what, const std::string &answer)
+{
+    display_warning_here(state, "S021", "NUMBER_ROUNDED", [&] {
+        const auto said = [](const std::string &text) { return text.size() <= 60 ? text : text.substr(0, 57) + "..."; };
+        return "satellite.convert.number(" + said(what()) + ") is " + said(answer) +
+               ", the whole number nearest it -- .5 and above is one more, below .5 is not; "
+               "satellite.convert.float(...) keeps what is after the point";
+    });
 }
 
 // S020 -- A NUMBER WHERE TEXT IS EXPECTED WAS TAKEN AS ITS DIGITS (the author, 2026-09-16:

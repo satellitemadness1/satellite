@@ -123,6 +123,17 @@ struct ExpressionContext {
 // `n = satellite.variable.string.size("abc")` mean anything.
 Value evaluate_expression(const std::vector<std::bitset<16>> &row, std::size_t &at, ExpressionContext &context);
 
+// THE SAME, WITH THE DIVISION AT ITS ROOT WHOLE. Every `a / b` of two numbers is the fraction a/b
+// (the author, 2026-10-12, his 9a) -- except the last one worked out here, which is divided whole and
+// cut toward zero, as `/` was before: a for's step `h / 2` keeps its number counter whole (his
+// "That's okay"). `(a / b)` in brackets, and a / b inside a longer sum, are fractions as anywhere else.
+Value evaluate_whole_expression(const std::vector<std::bitset<16>> &row, std::size_t &at, ExpressionContext &context);
+
+// AND WITH IT ROUNDED: satellite.convert.number(a / b) is the whole number nearest a / b -- 7 / 2 is 4,
+// .5 and above is one more (the author, 2026-10-12) -- worked out as one whole-number division "at
+// today's speed" (his 9e), with no fraction made, and the S021 warning when something was left over.
+Value evaluate_rounded_expression(const std::vector<std::bitset<16>> &row, std::size_t &at, ExpressionContext &context);
+
 // One word's call at `at` -- its arguments evaluated, its scenario chosen by the
 // KIND of the argument, its machine code answered as a number. Public because
 // run_body calls a word as a STATEMENT as well as inside an expression.

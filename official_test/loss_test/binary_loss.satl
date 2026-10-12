@@ -139,7 +139,7 @@ satellite.capsule satellite.main()
             satellite.statement.break
         }
         // the 50 inverse operations, in the reverse order: the value comes back
-        worth = worth / (wide_held % b100000000 + b1) + worth % (wide_held % b100000000 + b1) * far
+        worth = satellite.convert.whole(worth / (wide_held % b100000000 + b1)) + worth % (wide_held % b100000000 + b1) * far
         worth = worth - held.satellite.add(wide_held)
         wide = -wide_held
         worth = worth + (held + held) * b11
@@ -148,7 +148,7 @@ satellite.capsule satellite.main()
         worth = worth - xFFFF * b1111
         worth = worth - -b10011
         worth = worth - (wide - b1)
-        worth = worth / (b1 + xF) + worth % (b1 + xF) * far
+        worth = satellite.convert.whole(worth / (b1 + xF)) + worth % (b1 + xF) * far
         worth = worth - b11 * b101 * b111
         wide_held = -wide.satellite.reverse()
         worth = worth - -b00000000000000000000000000000000000000000000000000000000000000000000000000000000111
@@ -157,7 +157,7 @@ satellite.capsule satellite.main()
         worth = worth - wide_held.satellite.number
         worth = worth + held * wide_held
         wide_turned = wide_held
-        worth = worth / (held % b10000000) + worth % (held % b10000000) * far
+        worth = satellite.convert.whole(worth / (held % b10000000)) + worth % (held % b10000000) * far
         worth = worth - held ^ b10
         worth = worth - held % b1000
         turned = held
@@ -168,7 +168,7 @@ satellite.capsule satellite.main()
         wide = -wide_turned.satellite.reverse()
         worth = worth - (turned + wide)
         worth = worth + xFF * b10
-        worth = worth / (b10 + b1) + worth % (b10 + b1) * far
+        worth = satellite.convert.whole(worth / (b10 + b1)) + worth % (b10 + b1) * far
         worth = worth - (b1100 + xFF)
         worth = worth + wide * b100
         bits = -turned.satellite.reverse()

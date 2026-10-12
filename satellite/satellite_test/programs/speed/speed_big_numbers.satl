@@ -17,7 +17,7 @@ satellite.capsule satellite.main()
     {
         x = (x * 1000003 + i) % m
         s = s + x
-        p = (p + x / 18446744073709551616 * (x % 18446744073709551616)) % m
+        p = (p + satellite.convert.whole(x / 18446744073709551616) * (x % 18446744073709551616)) % m
     }
     satellite.console.display(x.satellite.string + " " + s.satellite.string + " " + p.satellite.string)
     satellite.return(satellite)

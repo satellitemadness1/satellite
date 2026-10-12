@@ -158,7 +158,7 @@ satellite.capsule satellite.main()
         x[12] = x[12] + 1000000000000000000000000000000000000  // 78: undoes 23
         wrong = wrong + lost(x[12], 929536090025945992)        // check: 79's .reverse() drops a number's end zeros too
         x[12] = x[12].satellite.string.satellite.reverse().satellite.number                  // 79: undoes 22
-        x[12] = x[12] / 547311173 + x[12] % 547311173 * far    // 80: undoes 21, its remainder kept
+        x[12] = satellite.convert.whole(x[12] / 547311173) + x[12] % 547311173 * far    // 80: undoes 21, its remainder kept
         x[1].satellite.remove("satellite")                               // 81: undoes 20
         x[1] = x[1].satellite.join("one")                                // 82: undoes 19
         wrong = wrong + lost(x[1], "37oneoneone3745SATELLITE") // check: 83 cannot see a "one" that never came
@@ -171,17 +171,17 @@ satellite.capsule satellite.main()
         x.satellite.remove_at(x.satellite.search(547311173.0))                     // 87: undoes 14
         x.satellite.remove("547311173")                                  // 88: undoes 13
         x.satellite.remove_at(x.satellite.index_of(547311173))                     // 89: undoes 12
-        x[9] = x[9] / 5 + x[9] % 5 * far                       // 90: undoes 11, its remainder kept
-        x[8] = x[8] / 1000000000000000000000000000000 + x[8] % 1000000000000000000000000000000 * far // 91: undoes 10, its remainder kept
+        x[9] = satellite.convert.whole(x[9] / 5) + x[9] % 5 * far                       // 90: undoes 11, its remainder kept
+        x[8] = satellite.convert.whole(x[8] / 1000000000000000000000000000000) + x[8] % 1000000000000000000000000000000 * far // 91: undoes 10, its remainder kept
         x[7] = x[7] * -1                                       // 92: undoes 9
         wrong = wrong + lost(x[6], "1")                        // check: 93's .number cannot see that 8 never made it text
         x[6] = x[6].satellite.number                                     // 93: undoes 8
         wrong = wrong + lost(x[5], 1.0)                        // check: 94's .number cannot see that 7 never made it a float
         x[5] = x[5].satellite.number                                     // 94: undoes 7
         x[4] = x[4] - 547311172000                             // 95: undoes 6
-        x[3] = x[3] / 12157665459056928801 + x[3] % 12157665459056928801 * far // 96: undoes 5, 3 ^ 41 / 3 ^ 40, its remainder kept
+        x[3] = satellite.convert.whole(x[3] / 12157665459056928801) + x[3] % 12157665459056928801 * far // 96: undoes 5, 3 ^ 41 / 3 ^ 40, its remainder kept
         x[2] = x[2] + 547311180                                // 97: undoes 4
-        x[1] = x[1] / 136827793 + x[1] % 136827793 * far       // 98: undoes 3, its remainder kept
+        x[1] = satellite.convert.whole(x[1] / 136827793) + x[1] % 136827793 * far       // 98: undoes 3, its remainder kept
         x.satellite.insert(1, x.satellite.last)                                    // 99: undoes 2, the last item copied to the front ...
         x.satellite.remove_last()                                        // 100: undoes 1, ... and taken off the end
         wrong = wrong + lost(x, start)                         // check: every pass ends where it began

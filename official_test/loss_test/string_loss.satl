@@ -171,9 +171,9 @@ satellite.capsule satellite.main()
         s = s - "ñ"  // undoes F37
         s = s.satellite.substring(4, s.satellite.size) + s.satellite.at(1) + s.satellite.at(2) + s.satellite.at(3)  // undoes F36
         s = s[s.satellite.size] + s.satellite.substring(1, s.satellite.size - 1)  // undoes F35
-        s = s.satellite.replace(s.satellite.substring(s.satellite.size / 2 + 1, s.satellite.size) + s.satellite.substring(s.satellite.size / 2 + 1, s.satellite.size), s.satellite.substring(s.satellite.size / 2 + 1, s.satellite.size))  // undoes F34
+        s = s.satellite.replace(s.satellite.substring(satellite.convert.whole(s.satellite.size / 2) + 1, s.satellite.size) + s.satellite.substring(satellite.convert.whole(s.satellite.size / 2) + 1, s.satellite.size), s.satellite.substring(satellite.convert.whole(s.satellite.size / 2) + 1, s.satellite.size))  // undoes F34
         s = s.satellite.split("").satellite.reverse().satellite.join("")  // undoes F33
-        s = s.satellite.replace(s.satellite.substring(1, s.satellite.size / 2) + s.satellite.substring(1, s.satellite.size / 2), s.satellite.substring(1, s.satellite.size / 2))  // undoes F32
+        s = s.satellite.replace(s.satellite.substring(1, satellite.convert.whole(s.satellite.size / 2)) + s.satellite.substring(1, satellite.convert.whole(s.satellite.size / 2)), s.satellite.substring(1, satellite.convert.whole(s.satellite.size / 2)))  // undoes F32
         // CHECK: F50 back to F32 undone exactly -- the string is its literal again
         satellite.statement.if (s != after_f31)
         {

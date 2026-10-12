@@ -95,7 +95,7 @@ signed long long int hexadecimal_operation(char sign, const satelliteObject &lef
     case '+': return left_worth.add(right_worth, out, why);
     case '-': return left_worth.subtract(right_worth, out, why);
     case '*': return left_worth.multiply(right_worth, out, why);
-    case '/': return left_worth.divide(right_worth, out, why);
+    case '/': return left_worth.divide_whole(right_worth, out, why);   // whole, by worth (his 9f)
     case '%': return left_worth.modulus(right_worth, out, why);
     case '^': return left_worth.power(right_worth, out, why);
     default: break;

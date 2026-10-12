@@ -5,6 +5,11 @@
 // in individual .hpp files, one function, one file, and name it like this:
 // number_and_string_add.hpp".
 //
+// SINCE 2026-10-12 `/` ON TWO NUMBERS IS THE FRACTION, KEPT AS WRITTEN (the author: "what
+// about always a fraction? 4 / 2 is the fraction"; object_fraction.cpp's fraction_of_division),
+// and this is satelliteObject::divide_whole's: satellite.convert.number(a / b), a for's step
+// h / 2, and a binary or a hex divided by its worth, which stay whole.
+//
 // number / number -> number, TRUNCATED TOWARD ZERO. 7 / 2 is 3, -7 / 2 is -3,
 // which is the rule satellite_number.hpp wrote down and check_numbers.py has
 // checked against Python across 482,465 cases.

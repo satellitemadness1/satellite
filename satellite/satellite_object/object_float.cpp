@@ -18,7 +18,8 @@
 // AND WHAT DOES NOT: a float meeting an infinity, a percentage, a binary, a hex, a
 // colour or a fraction is the author's "grand finale", the new types mixed
 // together, and until then it says that; anything else is a pair with no scenario,
-// named as one. `4 / 3` is still 1 -- two plain numbers never come here -- and
+// named as one. `4 / 3` is the fraction 4/3 (object_fraction.cpp, since the author's
+// "always a fraction" of 2026-10-12) -- two plain numbers never come here -- and
 // `4.0 / 3` is the float (SATELLITE_INFINITY.md Q13).
 
 #include "object_float.hpp"

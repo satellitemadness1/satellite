@@ -6776,11 +6776,11 @@ printf '%s\n' "satellite.variable.file f = satellite.file.new(\"$log_room/prompt
 expect "satellite.log: three conversions typed at the prompt are three entries" 3 \
        "$(($(grep -c 'S020 NUMBER_TAKEN_AS_TEXT' "$log_file") - before))"
 # A tab in the syntax row is a space, and the caret stays under its character.
-printf 'satellite.include(satellite)\n\nsatellite.capsule satellite.main()\n{\n    satellite.variable.number z = 0\n    satellite.variable.number x = 1 / z\t\t// divide\n    satellite.return(satellite)\n}\n' \
+printf 'satellite.include(satellite)\n\nsatellite.capsule satellite.main()\n{\n    satellite.variable.number z = 0\n    satellite.variable.number x = satellite.convert.whole(1 / z)\t\t// divide\n    satellite.return(satellite)\n}\n' \
     > build/syntax_tabs.satl
 "$interpreter" build/syntax_tabs.satl > /dev/null 2> build/syntax_tabs.err
 expect "a tab in the syntax row shows as a space, not \\x09" "1|0" \
-       "$(grep -cF 'syntax: satellite.variable.number x = 1 / z  // divide' build/syntax_tabs.err)|$(grep -cF '\x09' build/syntax_tabs.err)"
+       "$(grep -cF 'syntax: satellite.variable.number x = satellite.convert.whole(1 / z)  // divide' build/syntax_tabs.err)|$(grep -cF '\x09' build/syntax_tabs.err)"
 # A repeated conversion reads nothing: its place is counted by address, so a loop 5,000
 # lines down a file costs what the same loop near the top does. Before the fix it re-read
 # the file every turn -- 31 times slower there.
@@ -7692,7 +7692,7 @@ expect "printing satellite: a string, numbers, a float, a bool, binary, hex, a p
        "$code|$(tr '\n' '|' < "$printing/kinds.out" | sed 's/|$//')"
 # A REPORT COMES AFTER THE LINES BEFORE IT: std::cerr flushes std::cout, and a flush waits for the
 # display thread. 100,000 lines, then a division by zero, into one file.
-printf 'satellite.include(satellite)\n\nsatellite.capsule satellite.main()\n{\n    satellite.statement.for(satellite.variable.number i = 1; i < 100001; i++)\n    {\n        satellite.console.display(i)\n    }\n    satellite.variable.number z = 0\n    satellite.variable.number q = 1 / z\n    satellite.return(satellite)\n}\n' > "$printing/report_after.satl"
+printf 'satellite.include(satellite)\n\nsatellite.capsule satellite.main()\n{\n    satellite.statement.for(satellite.variable.number i = 1; i < 100001; i++)\n    {\n        satellite.console.display(i)\n    }\n    satellite.variable.number z = 0\n    satellite.variable.number q = satellite.convert.whole(1 / z)\n    satellite.return(satellite)\n}\n' > "$printing/report_after.satl"
 HOME="$printing_home" "$interpreter" "$printing/report_after.satl" > "$printing/report_after.out" 2>&1; code=$?
 expect "printing satellite: the division-by-zero report comes after all 100,000 lines before it" "22|100000|yes" \
        "$code|$(grep -cx '[0-9][0-9]*' "$printing/report_after.out")|$([ "$(grep -n 'S401' "$printing/report_after.out" | head -1 | cut -d: -f1)" -gt "$(grep -nx '100000' "$printing/report_after.out" | cut -d: -f1)" ] && echo yes)"

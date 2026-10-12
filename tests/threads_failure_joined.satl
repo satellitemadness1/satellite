@@ -3,7 +3,7 @@ satellite.include(satellite)
 
 satellite.capsule divide(satellite.variable.number by)
 {
-    satellite.return(10 / by)
+    satellite.return(satellite.convert.whole(10 / by))
 }
 
 satellite.capsule satellite.main()

@@ -95,17 +95,17 @@ satellite.capsule satellite.main()
         paint_held = paint, paint.satellite.transparency
         worth = worth - paint_held.satellite.number * paint_held.satellite.number
         paint_held = paint_held, paint_held.satellite.transparency + 66
-        worth = worth / (paint_held.satellite.transparency + b1) + worth % (paint_held.satellite.transparency + b1) * far
+        worth = satellite.convert.whole(worth / (paint_held.satellite.transparency + b1)) + worth % (paint_held.satellite.transparency + b1) * far
         paint_held.satellite.transparency(paint_held.satellite.transparency - x63)
         worth = worth + paint_held.satellite.binary.satellite.number * x2
         paint_moved = paint_held, 99 - paint_held.satellite.transparency
         worth = worth - paint_moved.satellite.transparency * x1000000
         paint_moved = paint_moved, paint_moved.satellite.transparency - 99
-        worth = worth / (paint_moved.satellite.number % x1000 + x1) + worth % (paint_moved.satellite.number % x1000 + x1) * far
+        worth = satellite.convert.whole(worth / (paint_moved.satellite.number % x1000 + x1)) + worth % (paint_moved.satellite.number % x1000 + x1) * far
         paint_moved.satellite.transparency(paint_moved.satellite.transparency + b1000110)
         worth = worth + paint_moved.satellite.number * x10
         paint = paint_moved, paint_moved.satellite.transparency + 7
-        worth = worth / (paint.satellite.number % x100) + worth % (paint.satellite.number % x100) * far
+        worth = satellite.convert.whole(worth / (paint.satellite.number % x100)) + worth % (paint.satellite.number % x100) * far
         paint = paint_hex, paint.satellite.transparency - 77
         worth = worth - paint.satellite.binary.satellite.number
         paint.satellite.transparency(paint.satellite.transparency + x5A)
@@ -114,18 +114,18 @@ satellite.capsule satellite.main()
         worth = worth - paint.satellite.transparency * paint.satellite.number
         paint.satellite.transparency(paint.satellite.transparency + 90)
         paint_held = paint
-        worth = worth / paint_held.satellite.transparency + worth % paint_held.satellite.transparency * far
+        worth = satellite.convert.whole(worth / paint_held.satellite.transparency) + worth % paint_held.satellite.transparency * far
         paint_held.satellite.transparency(paint_held.satellite.transparency - b110001)
         worth = worth + paint_held.satellite.number * x3
         paint_held = paint_hex.satellite.reverse(), paint_held.satellite.transparency - 50
         worth = worth - paint_held.satellite.binary.satellite.number
         paint_held.satellite.transparency(paint_held.satellite.transparency + 1)
-        worth = worth / (paint_held.satellite.transparency() - x0B) + worth % (paint_held.satellite.transparency() - x0B) * far
+        worth = satellite.convert.whole(worth / (paint_held.satellite.transparency() - x0B)) + worth % (paint_held.satellite.transparency() - x0B) * far
         paint_held = paint_held, paint_held.satellite.transparency + 95
         worth = worth + paint_held.satellite.number * paint_held.satellite.transparency
         paint_moved = paint_held
         paint_moved.satellite.transparency(paint_moved.satellite.transparency - 64)
-        worth = worth / (paint_moved.satellite.transparency + x1) + worth % (paint_moved.satellite.transparency + x1) * far
+        worth = satellite.convert.whole(worth / (paint_moved.satellite.transparency + x1)) + worth % (paint_moved.satellite.transparency + x1) * far
         paint_moved.satellite.transparency(paint_moved.satellite.transparency - xA)
         worth = worth - paint_moved.satellite.number
         paint_moved = paint_hex, paint_moved.satellite.transparency
@@ -134,7 +134,7 @@ satellite.capsule satellite.main()
         paint = paint_moved
         worth = worth + paint.satellite.transparency * x1000000
         paint = paint, paint.satellite.transparency - 40
-        worth = worth / paint.satellite.transparency + worth % paint.satellite.transparency * far
+        worth = satellite.convert.whole(worth / paint.satellite.transparency) + worth % paint.satellite.transparency * far
         paint.satellite.transparency(paint.satellite.transparency - 5)
         worth = worth - paint.satellite.number
     }

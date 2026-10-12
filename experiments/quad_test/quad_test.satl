@@ -297,7 +297,7 @@ satellite.spacesuit counts()
 // words are and how far apart they stand. These are the things that come "almost instantly".
 satellite.capsule kind_of(satellite.variable.string from_is, satellite.variable.string to_is, satellite.variable.number distance)
 {
-    satellite.container.map kind = {"kind": "in the same sentence", "strength": 30 / distance,
+    satellite.container.map kind = {"kind": "in the same sentence", "strength": satellite.convert.whole(30 / distance),
                                     "meaning": "two words of one sentence, weaker the further apart"}
     satellite.statement.if(from_is == "greeting")
     {

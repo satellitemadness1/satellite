@@ -104,7 +104,7 @@ satellite.capsule satellite.main()
         x[satellite.bool.true] = x[satellite.bool.true] * 2                                                              // 27: 1094622347.0, under the bool key
         x["digits"].satellite.append(x["sat"])                                                                                     // 28: 7 ^ 50 copied into the list in the map ...
         x.satellite.remove("sat")                                                                                                  // 29: ... and "sat" taken out: it lives only in the list
-        x["digits"][10] = x["digits"][10] / 7 + x["digits"][10] % 7 * far                                                // 30: 7 ^ 49, written inside the list inside the map, its remainder kept
+        x["digits"][10] = satellite.convert.whole(x["digits"][10] / 7) + x["digits"][10] % 7 * far                                                // 30: 7 ^ 49, written inside the list inside the map, its remainder kept
         x["map"]["s"] = x["s"]                                                                                           // 31: 547311173 copied into the map in the map ...
         x.satellite.remove("s")                                                                                                    // 32: ... and "s" taken out
         x["moved"] = x.satellite.get("satel")                                                                                      // 33: the first entry's value copied with .get ...
@@ -137,7 +137,7 @@ satellite.capsule satellite.main()
         x["number"] = x["number"] - 14                                                                                   // 55: undoes 46
         x["satelli"] = x["satelli"] + 1                                                                                  // 56: undoes 45
         x["satellit"] = x["satellit"] - 256923577521058878088611477224235621321607                                       // 57: undoes 44, 7 ^ 49
-        x["satellite"] = x["satellite"] / 10 + x["satellite"] % 10 * far                                                 // 58: undoes 43, its remainder kept
+        x["satellite"] = satellite.convert.whole(x["satellite"] / 10) + x["satellite"] % 10 * far                                                 // 58: undoes 43, its remainder kept
         x["string"] = x["string"] - "? false"                                                                            // 59: undoes 42
         x["string"] = x["string"] - " true"                                                                              // 60: undoes 41
         x["string"] = x["string"] - " false"                                                                             // 61: undoes 40
@@ -158,7 +158,7 @@ satellite.capsule satellite.main()
         wrong = wrong + lost(x[547311173], "satellite!")                                                                 // check: 75 answers the text unchanged when its "!" never came
         x[547311173] = x[547311173] - "!"                                                                                // 75: undoes 26
         x["map"]["satellite"] = x["map"]["satellite"] + 547311170                                                        // 76: undoes 25
-        x["digits"][1] = x["digits"][1] / 32 + x["digits"][1] % 32 * far                                                 // 77: undoes 24, its remainder kept
+        x["digits"][1] = satellite.convert.whole(x["digits"][1] / 32) + x["digits"][1] % 32 * far                                                 // 77: undoes 24, its remainder kept
         x["string"] = x["string"].satellite.split("").satellite.reverse().satellite.join("")                                                           // 78: undoes 23
         wrong = wrong + lost(x["string"], "547311173SATELLITE")                                                          // check: 79 cannot see a capital letter that went missing
         x["string"] = x["string"].satellite.lower()                                                                                // 79: undoes 22
@@ -167,15 +167,15 @@ satellite.capsule satellite.main()
         x["float"] = x["float"] * 64                                                                                     // 82: undoes 19
         wrong = wrong + lost(x["number"], 371113745)                                                                     // check: 83's .reverse() drops a number's end zeros too
         x["number"] = x["number"].satellite.string.satellite.reverse().satellite.number                                                                // 83: undoes 18
-        x["satellite"] = x["satellite"] / x["digits"].satellite.join("").satellite.number + x["satellite"] % x["digits"].satellite.join("").satellite.number * far // 84: undoes 17, the list in the map joined back into 547311173, its remainder kept
-        x["satellit"] = x["satellit"] / 10000000000000000000000000000000000000000 + x["satellit"] % 10000000000000000000000000000000000000000 * far // 85: undoes 16, its remainder kept
+        x["satellite"] = satellite.convert.whole(x["satellite"] / x["digits"].satellite.join("").satellite.number) + x["satellite"] % x["digits"].satellite.join("").satellite.number * far // 84: undoes 17, the list in the map joined back into 547311173, its remainder kept
+        x["satellit"] = satellite.convert.whole(x["satellit"] / 10000000000000000000000000000000000000000) + x["satellit"] % 10000000000000000000000000000000000000000 * far // 85: undoes 16, its remainder kept
         x["satelli"] = x["satelli"] + x["number"]                                                                        // 86: undoes 15, adding back what "number" holds
         x["satell"] = x["satell"] - x["string"].satellite.number                                                                   // 87: undoes 14, taking away what "string" spells
         wrong = wrong + lost(x["satel"], 547311173.0)                                                                    // check: dividing by 547311173.0 rounds a loss in its last places away
         x["satel"] = (x["satel"] / x["float"]).satellite.number                                                                    // 88: undoes 13, dividing by what "float" holds
         x["sate"] = x["sate"] + x["map"]["satellite"] + 3                                                                // 89: undoes 12, adding back what the map in the map holds
-        x["sat"] = x["sat"] / 256923577521058878088611477224235621321607 + x["sat"] % 256923577521058878088611477224235621321607 * far // 90: undoes 11, 7 ^ 50 / 7 ^ 49, its remainder kept
-        x["sa"] = x["sa"] / 136827793 + x["sa"] % 136827793 * far                                                        // 91: undoes 10, its remainder kept
+        x["sat"] = satellite.convert.whole(x["sat"] / 256923577521058878088611477224235621321607) + x["sat"] % 256923577521058878088611477224235621321607 * far // 90: undoes 11, 7 ^ 50 / 7 ^ 49, its remainder kept
+        x["sa"] = satellite.convert.whole(x["sa"] / 136827793) + x["sa"] % 136827793 * far                                                        // 91: undoes 10, its remainder kept
         x["s"] = x["s"] - 547311168                                                                                      // 92: undoes 9
         wrong = wrong + lost(x[satellite.bool.true], 547311173.5)                                                        // check: the bool key's value, which nothing else ever reads, before 93 drops it
         x.satellite.remove(satellite.bool.true)                                                                                    // 93: undoes 8

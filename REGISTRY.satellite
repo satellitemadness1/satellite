@@ -230,13 +230,13 @@ bits              name                         what it is
 0000001100000000  plus_token                   +  with whitespace on BOTH sides
 0000001100000001  minus_token                  -  with whitespace on BOTH sides
 0000001100000010  times_token                  *  with whitespace on BOTH sides
-0000001100000011  divide_token                 /  with whitespace on BOTH sides; a touching / is a path or a fraction
+0000001100000011  divide_token                 /  with whitespace on BOTH sides; a touching / is a path or a fraction. Two numbers make the fraction as written, 4 / 2 is 4/2 (the author, 2026-10-12); a binary or a hex divides whole
 0000001100000100  modulus_token                %  with whitespace on BOTH sides
 0000001100000101  power_token                  ^  with whitespace on BOTH sides. The author ruled ^ is power, 2026-09-16; ** spaced is its second spelling (SATELLITE_INFINITY.md, INF-1)
 0000001100000110  tight_plus_token             +  touching: not an operation. Reserved
 0000001100000111  tight_minus_token            -  touching: the UNARY minus, which is how -5 is written
 0000001100001000  tight_times_token            *  touching: not an operation. Reserved
-0000001100001001  fraction_token               /  touching, between two numbers: 5/4 is a fraction (not built yet)
+0000001100001001  fraction_token               /  touching, between two numbers: 5/4 is a fraction (satellite.variable.fraction, 2026-09-22)
 0000001100001010  tight_modulus_token          %  touching: not an operation. Reserved -- except straight after a number's digits, where 50% is percentage_token
 0000001100001011  tight_power_token            ^  touching: not an operation. Reserved
 0000001100001100  free                         to 0000001111111111, free for this family

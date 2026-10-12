@@ -1,0 +1,76 @@
+--------------------------------------------------------------------------------
+SATELLITE 004: satellite.convert
+--------------------------------------------------------------------------------
+
+satellite.convert makes a value into another kind, when you say so out loud.
+Three of its words are built: satellite.convert.number(x),
+satellite.convert.float(x) and satellite.convert.whole(x).
+
+Two numbers divided are a fraction, kept as written: 7 / 2 is 7/2, and 4 / 2 is
+4/2 (satellite.help(fraction)). satellite.convert.number(7 / 2) is the whole
+number nearest it, 4: .5 and above is one more, below .5 is not, so
+satellite.convert.number(5 / 4) is 1 and satellite.convert.number(-7 / 2) is -4.
+satellite.convert.float(7 / 2) is the float 3.5. A division straight inside
+satellite.convert.number is worked out as one whole-number division, so it
+costs what the division costs and no fraction is made.
+
+When something after the point is dropped, satl says so on the screen and the
+run goes on (S021, NUMBER_ROUNDED) -- once for each line, and at the end of the
+run how many times it happened in all. 4 / 2 comes out even, so
+satellite.convert.number(4 / 2) is 2 and nothing is said.
+
+satellite.convert.number takes a number (it stays as it is), a fraction and a
+float, rounded the same way: 2.75 is 3, 2.4999 is 2, -2.5 is -3.
+satellite.convert.whole is the whole number CUT toward zero, with nothing said:
+satellite.convert.whole(7 / 2) is 3, satellite.convert.whole(-7 / 2) is -3 and
+satellite.convert.whole(2.75) is 2. It is what / of two numbers answered before
+it was a fraction, so a program written for that keeps its answers.
+satellite.convert.float takes a number (9 is 9.0), a fraction (its top number
+over its bottom one, to arguments.float.decimal places) and a float. Any other
+kind is refused, naming it: the rest of satellite.convert is built later.
+
+A fraction where a number or a float goes is refused, and told to declare a
+fraction or to write satellite.convert.number(a / b) -- before anything runs
+when the names say what they are, as below.
+
+example:
+
+satellite.include(satellite)
+
+satellite.capsule satellite.main(satellite.variable.arguments arguments)
+{
+    satellite.variable.number total = 7
+    satellite.variable.number count = 2
+    satellite.console.display(total / count)                            // 7/2
+    satellite.console.display(satellite.convert.number(total / count))  // 4
+    satellite.console.display(satellite.convert.number(-7 / 2))         // -4
+    satellite.console.display(satellite.convert.number(5 / 4))          // 1
+    satellite.console.display(satellite.convert.number(4 / 2))          // 2
+    satellite.console.display(satellite.convert.float(total / count))   // 3.5
+    satellite.variable.fraction part = total / count
+    satellite.console.display(satellite.convert.number(part))           // 4
+    satellite.console.display(satellite.convert.number(2.75))           // 3
+    satellite.console.display(satellite.convert.number(2.4999))         // 2
+    satellite.console.display(satellite.convert.float(9))               // 9.0
+    satellite.console.display(satellite.convert.whole(total / count))   // 3
+    satellite.console.display(satellite.convert.whole(-7 / 2))          // -3
+    satellite.variable.number middle = satellite.convert.number(total / count)
+    satellite.console.display(middle + 1)                               // 5
+    satellite.return(satellite)
+}
+
+refused today:
+
+satellite.include(satellite)
+
+satellite.capsule satellite.main(satellite.variable.arguments arguments)
+{
+    satellite.variable.number total = 7
+    satellite.variable.number count = 2
+    satellite.variable.number middle = total / count
+    satellite.return(satellite)
+}
+
+satl says, before anything runs: middle was declared satellite.variable.number,
+and total / count is a fraction -- declare a fraction, or write the value as
+satellite.convert.number(total / count) (S301).

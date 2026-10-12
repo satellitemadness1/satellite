@@ -27,12 +27,10 @@ namespace satellite004 {
 signed long long int fraction_literal(const std::string &top, const std::vector<std::bitset<16>> &row,
                                       std::size_t &at, Value &out, std::string &why);
 
-// THE CHECKER, BEFORE ANYTHING RUNS: the value given to a name declared satellite.variable.fraction,
-// `at` on the first code straight after the `=` -- in the declaration and in every
-// later `name = ...`. `declared` is every name the checker knows and its type word.
-signed long long int fraction_is_written_right(const std::vector<std::bitset<16>> &row, std::size_t at,
-                                            const LegalNames &declared,
-                                            std::string &why);
+// A SPACED SLASH IN A FRACTION'S VALUE IS THE FRACTION SINCE 2026-10-12 (the author: "what about always a
+// fraction? 4 / 2 is the fraction"), so `satellite.variable.fraction f = 1 / 3` holds 1/3 and is no longer
+// refused before the run as whole-number division. What the checker still refuses about a fraction's value
+// -- fraction arithmetic in it -- is fraction_check.hpp's.
 
 // THE CHECKER: the first method written on a name declared satellite.variable.fraction -- and
 // THE WALKER, for a method a fraction has no number for (expression.cpp refuses it in this

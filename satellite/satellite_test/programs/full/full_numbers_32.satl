@@ -8,6 +8,6 @@ satellite.include(satellite)
 satellite.capsule satellite.main()
 {
     satellite.variable.number passes = 1
-    satellite.variable.fraction f = 1 / 3
+    satellite.variable.fraction f = satellite.convert.whole(1 / 3)
     satellite.return(satellite)
 }

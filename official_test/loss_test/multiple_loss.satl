@@ -137,7 +137,7 @@ satellite.capsule satellite.main()
         x = x["outer"]                                                                          // 54: undoes 47
         x = x.satellite.first                                                                             // 55: undoes 46
         x = {"satellite": x[1], "number": x[2], "string": x[3], 547311173: x[4], "copy": x[5]}  // 56: undoes 45, the MAP rebuilt from the values
-        x["number"] = x["number"] / x["satellite"].satellite.size + x["number"] % x["satellite"].satellite.size * far // 57: undoes 44, divided by the list's size, read again, its remainder kept
+        x["number"] = satellite.convert.whole(x["number"] / x["satellite"].satellite.size) + x["number"] % x["satellite"].satellite.size * far // 57: undoes 44, divided by the list's size, read again, its remainder kept
         x["string"] = x["string"].satellite.split("").satellite.reverse().satellite.join("")                                  // 58: undoes 43
         wrong = wrong + lost(x["copy"][1], 0)                                                   // check: the 0 42 wrote, before 59 writes over it
         x["copy"][1] = x["satellite"][1]                                                        // 59: undoes 42, from the list the copy was made from
@@ -157,7 +157,7 @@ satellite.capsule satellite.main()
         wrong = wrong + lost(x[x.satellite.size]["s"], 5)                                                 // check: the 5 33 filed, before 68 drops it unread
         x[x.satellite.size].satellite.remove("s")                                                                   // 68: undoes 33
         x.satellite.remove({"satellite": 547311173})                                                      // 69: undoes 32
-        x[x.satellite.size] = x[x.satellite.size] / 2 + x[x.satellite.size] % 2 * far                                         // 70: undoes 31, its remainder kept
+        x[x.satellite.size] = satellite.convert.whole(x[x.satellite.size] / 2) + x[x.satellite.size] % 2 * far                                         // 70: undoes 31, its remainder kept
         wrong = wrong + lost(x[2], "Mm")                                                        // check: 71 answers the text unchanged when its "m" never came
         x[2] = x[2] - "m"                                                                       // 71: undoes 30
         x.satellite.remove(547311173.0)                                                                   // 72: undoes 29
@@ -187,15 +187,15 @@ satellite.capsule satellite.main()
         wrong = wrong + lost(x, "-1496768818498832403746275442147474960348")                    // check: 90 reads a number out of the text the same way
         x = x.satellite.to_number                                                                         // 90: undoes 11, a NUMBER again
         x = x * -1                                                                              // 91: undoes 10
-        x = x / 2 + x % 2 * far                                                                 // 92: undoes 9, its remainder kept
+        x = satellite.convert.whole(x / 2) + x % 2 * far                                                                 // 92: undoes 9, its remainder kept
         x = x - 547311173                                                                       // 93: undoes 8
         wrong = wrong + lost(x, 748384409249416201873137721073190169001)                        // check: 94's .reverse() drops the zeros a number ends with
         x = x.satellite.string.satellite.reverse().satellite.number                                                           // 94: undoes 7
         x = x - 7                                                                               // 95: undoes 6
-        x = x / 10 + x % 10 * far                                                               // 96: undoes 5, its remainder kept
-        x = x / 2 ^ 64 + x % 2 ^ 64 * far                                                       // 97: undoes 4, its remainder kept
+        x = satellite.convert.whole(x / 10) + x % 10 * far                                                               // 96: undoes 5, its remainder kept
+        x = satellite.convert.whole(x / 2 ^ 64) + x % 2 ^ 64 * far                                                       // 97: undoes 4, its remainder kept
         x = x + 1                                                                               // 98: undoes 3
-        x = x / 547311173 + x % 547311173 * far                                                 // 99: undoes 2, its remainder kept
+        x = satellite.convert.whole(x / 547311173) + x % 547311173 * far                                                 // 99: undoes 2, its remainder kept
         x = x - 452688827                                                                       // 100: undoes 1
         wrong = wrong + lost(x, start)                                                          // check: every pass ends where it began
         satellite.statement.if (wrong > 0)

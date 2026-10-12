@@ -65,67 +65,6 @@ signed long long int fraction_literal(const std::string &top, const std::vector<
     return success;
 }
 
-// A SPACED SLASH IN A FRACTION'S VALUE IS REFUSED BEFORE ANYTHING RUNS.
-// `satellite.variable.fraction f = 1 / 3` is whole-number division -- 0 -- and
-// would be kept as 0/1 without a word, when the person plainly meant 1/3. The
-// author's rule is that a touching slash is the fraction (2026-09-16), so the
-// answer names the spelling that is: "a fraction is written with a touching
-// slash: 1/3".
-//
-// THE WHOLE VALUE IS READ, NOT ONLY ITS FIRST CODE, because `f = n / 2` and
-// `f = (a + b) / 2` are the same mistake. What is inside a call's brackets or an
-// index is not: `f = halves[n / 2]` picks a fraction, and `f = pick(n / 2)` is
-// whatever pick answers. A bracket that only groups -- `(1 / 3)` -- hides nothing.
-// If the author rules the other way, this answers success and a spaced slash
-// stores its whole-number answer over 1.
-signed long long int fraction_is_written_right(const std::vector<std::bitset<16>> &row, std::size_t at,
-                                            const LegalNames &,
-                                            std::string &why)
-{
-    std::vector<bool> opened;         // each open bracket: true when it is a call's or an index's
-    std::size_t inside = 0;           // how many of those are open
-    token::Code previous = 0;
-    std::string before;               // the number written just before, if the last code was one
-    while (at < row.size()) {
-        const token::Code code = code_in(row, at);
-        if (code == token::line_end_token || code == token::end_of_file_token)
-            break;
-        if (token::carries_a_count(code)) {
-            const std::string text = text_at(row, at);
-            before = code == token::number_token ? text : std::string();
-            previous = code;
-            continue;
-        }
-        if (code == token::left_parenthesis_token || code == token::left_square_bracket_token ||
-            code == token::left_brace_token) {
-            const bool a_call = code != token::left_parenthesis_token || previous == token::name_token ||
-                                previous == token::right_parenthesis_token ||
-                                previous == token::right_square_bracket_token || word::is_word_code(previous) ||
-                                token::is_method_code(previous);
-            opened.push_back(a_call);
-            if (a_call) ++inside;
-        } else if (code == token::right_parenthesis_token || code == token::right_square_bracket_token ||
-                   code == token::right_brace_token) {
-            if (!opened.empty()) {
-                if (opened.back()) --inside;
-                opened.pop_back();
-            }
-        } else if (code == token::divide_token && inside == 0) {
-            std::size_t k = at + 1;
-            const std::string after = code_in(row, k) == token::number_token ? text_at(row, k) : std::string();
-            const std::string spaced = before.empty() || after.empty() ? "a / with a space on both sides"
-                                                                      : before + " / " + after;
-            why = spaced + " is whole-number division -- a fraction is written with a touching slash: " +
-                  (before.empty() || after.empty() ? std::string("1/3") : before + "/" + after);
-            return types_do_not_meet;
-        }
-        before.clear();
-        previous = code;
-        ++at;
-    }
-    return success;
-}
-
 // WHAT IS BUILT, AND NOTHING ELSE -- the words a fraction runs a number for
 // (scalar_calls.cpp's fraction_number_of, asked and never copied, since 2026-10-11).
 // This answer is final for a fraction name (program_check.cpp's method_right_for), so

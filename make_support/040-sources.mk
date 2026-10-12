@@ -137,7 +137,7 @@ INTERPRETER_SOURCES = $(SATELLITE)/structured-library.cpp \
                       $(BYTECODE)/capsule_calls.cpp $(BYTECODE)/pointer_calls.cpp $(BYTECODE)/library_values.cpp \
                       $(BYTECODE)/argument_switches.cpp $(BYTECODE)/setting_writes.cpp \
                       $(BYTECODE)/expression.cpp \
-                      $(BYTECODE)/file_calls.cpp $(BYTECODE)/info_calls.cpp $(BYTECODE)/access_calls.cpp $(BYTECODE)/access_words.cpp $(BYTECODE)/delete_calls.cpp $(BYTECODE)/satellite_legal.cpp $(BYTECODE)/container_calls.cpp \
+                      $(BYTECODE)/file_calls.cpp $(BYTECODE)/info_calls.cpp $(BYTECODE)/convert_calls.cpp $(BYTECODE)/fraction_check.cpp $(BYTECODE)/access_calls.cpp $(BYTECODE)/access_words.cpp $(BYTECODE)/delete_calls.cpp $(BYTECODE)/satellite_legal.cpp $(BYTECODE)/container_calls.cpp \
                       $(BYTECODE)/string_calls.cpp $(BYTECODE)/string_check.cpp $(BYTECODE)/number_calls.cpp \
                       $(BYTECODE)/scalar_calls.cpp \
                       $(BYTECODE)/console_style.cpp $(BYTECODE)/console_calls.cpp $(SATELLITE)/satellite_variable_file/satellite_file.cpp \
@@ -206,7 +206,7 @@ HEADERS = $(ARGUMENTS)/arguments.hpp $(ARGUMENTS)/argument_words.hpp $(ARGUMENTS
           $(SATELLITE)/satellite_test/speed_values_twins.hpp \
           $(RANDOM_DIR)/pcg_512.hpp $(RANDOM_DIR)/wide_unsigned.hpp $(RANDOM_DIR)/random_constants.hpp \
           $(MACHINE)/console_lock.hpp $(MACHINE)/thread_stop.hpp $(OBJECT)/object_lock.hpp \
-          $(BYTECODE)/file_calls.hpp $(BYTECODE)/info_calls.hpp $(BYTECODE)/access_calls.hpp $(BYTECODE)/access_words.hpp $(BYTECODE)/delete_calls.hpp $(BYTECODE)/satellite_legal.hpp $(BYTECODE)/container_calls.hpp \
+          $(BYTECODE)/file_calls.hpp $(BYTECODE)/info_calls.hpp $(BYTECODE)/convert_calls.hpp $(BYTECODE)/fraction_check.hpp $(BYTECODE)/access_calls.hpp $(BYTECODE)/access_words.hpp $(BYTECODE)/delete_calls.hpp $(BYTECODE)/satellite_legal.hpp $(BYTECODE)/container_calls.hpp \
           $(BYTECODE)/string_calls.hpp $(BYTECODE)/number_calls.hpp $(BYTECODE)/method_periods.hpp $(OBJECT)/string_pieces.hpp \
           $(BYTECODE)/scalar_calls.hpp \
           $(BYTECODE)/console_style.hpp $(BYTECODE)/console_calls.hpp $(SATELLITE)/satellite_variable_file/satellite_file.hpp \

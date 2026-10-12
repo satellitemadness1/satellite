@@ -77,6 +77,14 @@ bool value_fits(const TypeShape &shape, const satelliteObject &value, std::strin
         // `multiple` is the exception and says its list, because the declaration
         // alone does not name the types it accepts.
         why = "it holds " + std::string(value.kind_name());
+        // A FRACTION WHERE A NUMBER OR A FLOAT GOES -- every a / b of two numbers is one since 2026-10-12 --
+        // is told what to write, in the author's words (his 9b): "declare a fraction, or write
+        // satellite.convert.number(a / b)".
+        if (value.is_fraction() && (wanted == satelliteObject::number || wanted == satelliteObject::floating))
+            why += wanted == satelliteObject::number
+                       ? " -- declare a fraction, or write satellite.convert.number(...) for the whole number "
+                         "nearest it"
+                       : " -- declare a fraction, or write satellite.convert.float(...) for the float it is worth";
         return false;
     }
 

@@ -690,6 +690,10 @@ inline constexpr WordRow kWords[] = {
     {"satellite.variable.bool.add(x)", {1, 6, 6, 2, 0, 0}, 4},
     {"satellite.variable.float.reverse", {1, 6, 10, 6, 0, 0}, 4},
     {"satellite.variable.fraction.reverse", {1, 6, 20, 4, 0, 0}, 4},
+    {"satellite.convert", {1, 35, 0, 0, 0, 0}, 2},
+    {"satellite.convert.number(x)", {1, 35, 1, 0, 0, 0}, 3},
+    {"satellite.convert.float(x)", {1, 35, 2, 0, 0, 0}, 3},
+    {"satellite.convert.whole(x)", {1, 35, 3, 0, 0, 0}, 3},
 };
 
 // Removed words, with the numbers they had in 003 06.
@@ -711,7 +715,7 @@ struct NextFree {
 };
 
 inline constexpr NextFree kNextFree[] = {
-    {"satellite", {1, 35, 0, 0, 0, 0, 0}, 2},
+    {"satellite", {1, 36, 0, 0, 0, 0, 0}, 2},
     {"satellite.include", {1, 1, 3, 0, 0, 0, 0}, 3},
     {"satellite.capsule", {1, 2, 2, 0, 0, 0, 0}, 3},
     {"satellite.capsule.launch", {1, 2, 1, 1, 0, 0, 0}, 4},
@@ -1059,6 +1063,7 @@ inline constexpr NextFree kNextFree[] = {
     {"satellite.arguments", {1, 34, 1, 0, 0, 0, 0}, 3},
     {"satellite.variable.float.reverse", {1, 6, 10, 6, 1, 0, 0}, 5},
     {"satellite.variable.fraction.reverse", {1, 6, 20, 4, 1, 0, 0}, 5},
+    {"satellite.convert", {1, 35, 4, 0, 0, 0, 0}, 3},
 };
 
 } // namespace satellite004

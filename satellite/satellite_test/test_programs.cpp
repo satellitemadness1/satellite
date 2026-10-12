@@ -1787,15 +1787,15 @@ satellite.capsule satellite.main()
         satellite.variable.bool show = turn == rounds
         satellite.variable.number n = 87
         check(show, "number + - * add, take away and multiply, below zero too", (n + 13).satellite.string + " " + (n - 100).satellite.string + " " + (6 * 7).satellite.string, "100 -13 42")
-        check(show, "number / is whole-number division, cut toward zero", (4 / 3).satellite.string + " " + (-7 / 2).satellite.string, "1 -3")
+        check(show, "number / is whole-number division, cut toward zero", (satellite.convert.whole(4 / 3)).satellite.string + " " + (satellite.convert.whole(-7 / 2)).satellite.string, "1 -3")
         check(show, "number % takes the sign of the number divided", (-7 % 2).satellite.string + " " + (7 % -2).satellite.string, "-1 1")
         check(show, "number ^ is power, grouped right to left", (2 ^ 10).satellite.string + " " + (2 ^ 3 ^ 2).satellite.string, "1024 512")
         check(show, "number ** is the second spelling of ^", (2 ** 3 ** 2).satellite.string, "512")
-        check(show, "number * / % bind tighter than + and -", (2 + 3 * 4).satellite.string + " " + (2 + 10 % 4).satellite.string + " " + (1 - 10 / 3).satellite.string, "14 4 -2")
-        check(show, "number - and / group left to right, and brackets come first", (10 - 3 - 2).satellite.string + " " + (100 / 10 / 5).satellite.string + " " + ((2 + 3) * 4).satellite.string, "5 2 20")
+        check(show, "number * / % bind tighter than + and -", (2 + 3 * 4).satellite.string + " " + (2 + 10 % 4).satellite.string + " " + (1 - satellite.convert.whole(10 / 3)).satellite.string, "14 4 -2")
+        check(show, "number - and / group left to right, and brackets come first", (10 - 3 - 2).satellite.string + " " + (satellite.convert.whole(satellite.convert.whole(100 / 10) / 5)).satellite.string + " " + ((2 + 3) * 4).satellite.string, "5 2 20")
         check(show, "number a touching minus is part of the number, -2 ^ 2 is 4", (-2 ^ 2).satellite.string, "4")
         check(show, "number has no size limit and never wraps", (2 ^ 70).satellite.string + " " + (18446744073709551615 + 1).satellite.string, "1180591620717411303424 18446744073709551616")
-        check(show, "number * / % past one unsigned long long", (12345678901234567890123 * 98765432109876543210).satellite.string + " " + (2 ^ 64 / 3).satellite.string + " " + (2 ^ 64 % 1000007).satellite.string, "1219326311370217952249611949260778341714830 6148914691236517205 919788")
+        check(show, "number * / % past one unsigned long long", (12345678901234567890123 * 98765432109876543210).satellite.string + " " + (satellite.convert.whole(2 ^ 64 / 3)).satellite.string + " " + (2 ^ 64 % 1000007).satellite.string, "1219326311370217952249611949260778341714830 6148914691236517205 919788")
         check(show, "number 2 ^ -1 is the float 0.5", (2 ^ -1).satellite.string, "0.5")
         check(show, "number == != < > <= >= answer true or false", (5 == 5).satellite.string + " " + (5 != 5).satellite.string + " " + (-5 < 3).satellite.string + " " + (n > 50).satellite.string + " " + (5 <= 5).satellite.string + " " + (5 >= 6).satellite.string, "true false true true true false")
         check(show, "number - in front of a name turns it over", (-n).satellite.string, "-87")
@@ -2178,7 +2178,7 @@ satellite.capsule satellite.main()
         check(show, "fraction orders by its worth, and != <= >= too", (third < half).satellite.string + " " + (third > half).satellite.string + " " + (2/4 != 1/2).satellite.string + " " + (1/3 <= 1/3).satellite.string + " " + (2/3 >= 3/4).satellite.string, "true false false true false")
         check(show, "fraction each part shows as the number it is: 1.5/2, and 1.0/3 shows 1/3", 1.5/2.satellite.string + " " + 1.0/3.satellite.string, "1.5/2 1/3")
         check(show, "fraction the sign goes on top, -1/3", (-1/3).satellite.string, "-1/3")
-        check(show, "fraction 1 / 3 with spaces is whole-number division", (1 / 3).satellite.string, "0")
+        check(show, "fraction 1 / 3 with spaces is whole-number division", (satellite.convert.whole(1 / 3)).satellite.string, "0")
         check(show, "fraction .satellite.numerator and .satellite.denominator are its parts, a whole number or a float", third.satellite.numerator.satellite.string + " " + third.satellite.denominator.satellite.string + " " + (half.satellite.numerator + 1).satellite.string + " " + 1.5/2.satellite.numerator.satellite.string, "1 3 3 1.5")
         check(show, "fraction compares with a whole number by its worth", (4/2 == 2).satellite.string + " " + (1/2 == 1).satellite.string, "true false")
         check(show, "fraction compares exactly past 128 places, by cross-multiplying", (1/10000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000 < 2/10000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000).satellite.string, "true")
@@ -2469,7 +2469,7 @@ ok random ultra(2) is a count of digits, 0 up to 99
 satellite.capsule satellite.main()
 {
     satellite.variable.number passes = 1
-    satellite.console.display(1 / 0)
+    satellite.console.display(satellite.convert.whole(1 / 0))
     satellite.return(satellite)
 }
 )satl",
@@ -2850,7 +2850,7 @@ satellite.capsule satellite.main()
 satellite.capsule satellite.main()
 {
     satellite.variable.number passes = 1
-    satellite.variable.fraction f = 1 / 3
+    satellite.variable.fraction f = satellite.convert.whole(1 / 3)
     satellite.return(satellite)
 }
 )satl",
@@ -8044,10 +8044,10 @@ satellite.capsule satellite.main()
     satellite.statement.for(satellite.variable.number i = 0; i < passes; i + 1)
     {
         x = x * 48271 % 2147483647
-        q = x / 1000
+        q = satellite.convert.whole(x / 1000)
         r = x % 1000
         s = s + q - r * 3 + (r % 10) ^ 2
-        t = (t * 31 + q / 7 - r) % 1000000007
+        t = (t * 31 + satellite.convert.whole(q / 7) - r) % 1000000007
     }
     satellite.console.display(x.satellite.string + " " + s.satellite.string + " " + t.satellite.string)
     satellite.return(satellite)
@@ -8075,7 +8075,7 @@ satellite.capsule satellite.main()
     {
         x = (x * 1000003 + i) % m
         s = s + x
-        p = (p + x / 18446744073709551616 * (x % 18446744073709551616)) % m
+        p = (p + satellite.convert.whole(x / 18446744073709551616) * (x % 18446744073709551616)) % m
     }
     satellite.console.display(x.satellite.string + " " + s.satellite.string + " " + p.satellite.string)
     satellite.return(satellite)
@@ -8100,7 +8100,7 @@ satellite.capsule satellite.main()
     satellite.statement.for(satellite.variable.number i = 0; i < passes; i + 1)
     {
         x = x * 1000003 + i
-        x = x / 1000033
+        x = satellite.convert.whole(x / 1000033)
         y = y + x
     }
     satellite.console.display((x % 1000000007).satellite.string + " " + (y % 1000000007).satellite.string + " " + x.satellite.string.satellite.size.satellite.string + " " + y.satellite.string.satellite.size.satellite.string)
@@ -8774,7 +8774,7 @@ satellite.capsule nine_digits(satellite.variable.number value)
     {
         d = (rest % 10 + 10) % 10
         digits.satellite.insert(1, d)
-        rest = (rest - d) / 10
+        rest = satellite.convert.whole((rest - d) / 10)
     }
     digits.satellite.insert(1, rest)
     satellite.return(digits)
@@ -8858,7 +8858,7 @@ satellite.capsule map_loss(satellite.variable.number given, satellite.variable.n
         x[satellite.bool.true] = x[satellite.bool.true] * 2                                                              // 27: 1094622347.0, under the bool key
         x["digits"].satellite.append(x["sat"])                                                                                     // 28: 7 ^ 50 copied into the list in the map ...
         x.satellite.remove("sat")                                                                                                  // 29: ... and "sat" taken out: it lives only in the list
-        x["digits"][10] = x["digits"][10] / 7 + x["digits"][10] % 7 * far                                                // 30: 7 ^ 49, written inside the list inside the map, its remainder kept
+        x["digits"][10] = satellite.convert.whole(x["digits"][10] / 7) + x["digits"][10] % 7 * far                                                // 30: 7 ^ 49, written inside the list inside the map, its remainder kept
         x["map"]["s"] = x["s"]                                                                                           // 31: 547311173 copied into the map in the map ...
         x.satellite.remove("s")                                                                                                    // 32: ... and "s" taken out
         x["moved"] = x.satellite.get("satel")                                                                                      // 33: the first entry's value copied with .get ...
@@ -8891,7 +8891,7 @@ satellite.capsule map_loss(satellite.variable.number given, satellite.variable.n
         x["number"] = x["number"] - 14                                                                                   // 55: undoes 46
         x["satelli"] = x["satelli"] + 1                                                                                  // 56: undoes 45
         x["satellit"] = x["satellit"] - 256923577521058878088611477224235621321607                                       // 57: undoes 44, 7 ^ 49
-        x["satellite"] = x["satellite"] / 10 + x["satellite"] % 10 * far                                                 // 58: undoes 43, its remainder kept
+        x["satellite"] = satellite.convert.whole(x["satellite"] / 10) + x["satellite"] % 10 * far                                                 // 58: undoes 43, its remainder kept
         x["string"] = x["string"] - "? false"                                                                            // 59: undoes 42
         x["string"] = x["string"] - " true"                                                                              // 60: undoes 41
         x["string"] = x["string"] - " false"                                                                             // 61: undoes 40
@@ -8912,7 +8912,7 @@ satellite.capsule map_loss(satellite.variable.number given, satellite.variable.n
         wrong = wrong + lost(x[547311173], "satellite!")                                                                 // check: 75 answers the text unchanged when its "!" never came
         x[547311173] = x[547311173] - "!"                                                                                // 75: undoes 26
         x["map"]["satellite"] = x["map"]["satellite"] + 547311170                                                        // 76: undoes 25
-        x["digits"][1] = x["digits"][1] / 32 + x["digits"][1] % 32 * far                                                 // 77: undoes 24, its remainder kept
+        x["digits"][1] = satellite.convert.whole(x["digits"][1] / 32) + x["digits"][1] % 32 * far                                                 // 77: undoes 24, its remainder kept
         x["string"] = x["string"].satellite.split("").satellite.reverse().satellite.join("")                                                           // 78: undoes 23
         wrong = wrong + lost(x["string"], "547311173SATELLITE")                                                          // check: 79 cannot see a capital letter that went missing
         x["string"] = x["string"].satellite.lower()                                                                                // 79: undoes 22
@@ -8921,15 +8921,15 @@ satellite.capsule map_loss(satellite.variable.number given, satellite.variable.n
         x["float"] = x["float"] * 64                                                                                     // 82: undoes 19
         wrong = wrong + lost(x["number"], 371113745)                                                                     // check: 83's .reverse() drops a number's end zeros too
         x["number"] = x["number"].satellite.string.satellite.reverse().satellite.number                                                                // 83: undoes 18
-        x["satellite"] = x["satellite"] / x["digits"].satellite.join("").satellite.number + x["satellite"] % x["digits"].satellite.join("").satellite.number * far // 84: undoes 17, the list in the map joined back into 547311173, its remainder kept
-        x["satellit"] = x["satellit"] / 10000000000000000000000000000000000000000 + x["satellit"] % 10000000000000000000000000000000000000000 * far // 85: undoes 16, its remainder kept
+        x["satellite"] = satellite.convert.whole(x["satellite"] / x["digits"].satellite.join("").satellite.number) + x["satellite"] % x["digits"].satellite.join("").satellite.number * far // 84: undoes 17, the list in the map joined back into 547311173, its remainder kept
+        x["satellit"] = satellite.convert.whole(x["satellit"] / 10000000000000000000000000000000000000000) + x["satellit"] % 10000000000000000000000000000000000000000 * far // 85: undoes 16, its remainder kept
         x["satelli"] = x["satelli"] + x["number"]                                                                        // 86: undoes 15, adding back what "number" holds
         x["satell"] = x["satell"] - x["string"].satellite.number                                                                   // 87: undoes 14, taking away what "string" spells
         wrong = wrong + lost(x["satel"], 547311173.0)                                                                    // check: dividing by 547311173.0 rounds a loss in its last places away
         x["satel"] = (x["satel"] / x["float"]).satellite.number                                                                    // 88: undoes 13, dividing by what "float" holds
         x["sate"] = x["sate"] + x["map"]["satellite"] + 3                                                                // 89: undoes 12, adding back what the map in the map holds
-        x["sat"] = x["sat"] / 256923577521058878088611477224235621321607 + x["sat"] % 256923577521058878088611477224235621321607 * far // 90: undoes 11, 7 ^ 50 / 7 ^ 49, its remainder kept
-        x["sa"] = x["sa"] / 136827793 + x["sa"] % 136827793 * far                                                        // 91: undoes 10, its remainder kept
+        x["sat"] = satellite.convert.whole(x["sat"] / 256923577521058878088611477224235621321607) + x["sat"] % 256923577521058878088611477224235621321607 * far // 90: undoes 11, 7 ^ 50 / 7 ^ 49, its remainder kept
+        x["sa"] = satellite.convert.whole(x["sa"] / 136827793) + x["sa"] % 136827793 * far                                                        // 91: undoes 10, its remainder kept
         x["s"] = x["s"] - 547311168                                                                                      // 92: undoes 9
         wrong = wrong + lost(x[satellite.bool.true], 547311173.5)                                                        // check: the bool key's value, which nothing else ever reads, before 93 drops it
         x.satellite.remove(satellite.bool.true)                                                                                    // 93: undoes 8
@@ -9360,7 +9360,7 @@ satellite.capsule list_loss(satellite.variable.number given, satellite.variable.
         x[12] = x[12] + 1000000000000000000000000000000000000  // 78: undoes 23
         wrong = wrong + lost(x[12], 929536090025945992)        // check: 79's .reverse() drops a number's end zeros too
         x[12] = x[12].satellite.string.satellite.reverse().satellite.number                  // 79: undoes 22
-        x[12] = x[12] / 547311173 + x[12] % 547311173 * far    // 80: undoes 21, its remainder kept
+        x[12] = satellite.convert.whole(x[12] / 547311173) + x[12] % 547311173 * far    // 80: undoes 21, its remainder kept
         // chain: removed by its value, and remove refuses an item that is not there
         satellite.statement.if (!x[1].satellite.contains("satellite"))
         {
@@ -9397,17 +9397,17 @@ satellite.capsule list_loss(satellite.variable.number given, satellite.variable.
             satellite.statement.break
         }
         x.satellite.remove_at(x.satellite.index_of(547311173))                     // 89: undoes 12
-        x[9] = x[9] / 5 + x[9] % 5 * far                       // 90: undoes 11, its remainder kept
-        x[8] = x[8] / 1000000000000000000000000000000 + x[8] % 1000000000000000000000000000000 * far // 91: undoes 10, its remainder kept
+        x[9] = satellite.convert.whole(x[9] / 5) + x[9] % 5 * far                       // 90: undoes 11, its remainder kept
+        x[8] = satellite.convert.whole(x[8] / 1000000000000000000000000000000) + x[8] % 1000000000000000000000000000000 * far // 91: undoes 10, its remainder kept
         x[7] = x[7] * -1                                       // 92: undoes 9
         wrong = wrong + lost(x[6], "1")                        // check: 93's .number cannot see that 8 never made it text
         x[6] = x[6].satellite.number                                     // 93: undoes 8
         wrong = wrong + lost(x[5], 1.0)                        // check: 94's .number cannot see that 7 never made it a float
         x[5] = x[5].satellite.number                                     // 94: undoes 7
         x[4] = x[4] - 547311172000                             // 95: undoes 6
-        x[3] = x[3] / 12157665459056928801 + x[3] % 12157665459056928801 * far // 96: undoes 5, 3 ^ 41 / 3 ^ 40, its remainder kept
+        x[3] = satellite.convert.whole(x[3] / 12157665459056928801) + x[3] % 12157665459056928801 * far // 96: undoes 5, 3 ^ 41 / 3 ^ 40, its remainder kept
         x[2] = x[2] + 547311180                                // 97: undoes 4
-        x[1] = x[1] / 136827793 + x[1] % 136827793 * far       // 98: undoes 3, its remainder kept
+        x[1] = satellite.convert.whole(x[1] / 136827793) + x[1] % 136827793 * far       // 98: undoes 3, its remainder kept
         x.satellite.insert(1, x.satellite.last)                                    // 99: undoes 2, the last item copied to the front ...
         x.satellite.remove_last()                                        // 100: undoes 1, ... and taken off the end
         wrong = wrong + lost(x, start)                         // check: every pass ends where it began
@@ -9579,9 +9579,9 @@ satellite.capsule string_loss(satellite.variable.number given, satellite.variabl
         s = s - "ñ"  // undoes F37
         s = s.satellite.substring(4, s.satellite.size) + s.satellite.at(1) + s.satellite.at(2) + s.satellite.at(3)  // undoes F36
         s = s[s.satellite.size] + s.satellite.substring(1, s.satellite.size - 1)  // undoes F35
-        s = s.satellite.replace(s.satellite.substring(s.satellite.size / 2 + 1, s.satellite.size) + s.satellite.substring(s.satellite.size / 2 + 1, s.satellite.size), s.satellite.substring(s.satellite.size / 2 + 1, s.satellite.size))  // undoes F34
+        s = s.satellite.replace(s.satellite.substring(satellite.convert.whole(s.satellite.size / 2) + 1, s.satellite.size) + s.satellite.substring(satellite.convert.whole(s.satellite.size / 2) + 1, s.satellite.size), s.satellite.substring(satellite.convert.whole(s.satellite.size / 2) + 1, s.satellite.size))  // undoes F34
         s = s.satellite.split("").satellite.reverse().satellite.join("")  // undoes F33
-        s = s.satellite.replace(s.satellite.substring(1, s.satellite.size / 2) + s.satellite.substring(1, s.satellite.size / 2), s.satellite.substring(1, s.satellite.size / 2))  // undoes F32
+        s = s.satellite.replace(s.satellite.substring(1, satellite.convert.whole(s.satellite.size / 2)) + s.satellite.substring(1, satellite.convert.whole(s.satellite.size / 2)), s.satellite.substring(1, satellite.convert.whole(s.satellite.size / 2)))  // undoes F32
         // CHECK: F50 back to F32 undone exactly -- the string is its literal again
         satellite.statement.if (s != after_f31)
         {
@@ -9828,7 +9828,7 @@ satellite.capsule multiple_loss(satellite.variable.number given, satellite.varia
         x = x["outer"]                                                                          // 54: undoes 47
         x = x.satellite.first                                                                             // 55: undoes 46
         x = {"satellite": x[1], "number": x[2], "string": x[3], 547311173: x[4], "copy": x[5]}  // 56: undoes 45, the MAP rebuilt from the values
-        x["number"] = x["number"] / x["satellite"].satellite.size + x["number"] % x["satellite"].satellite.size * far // 57: undoes 44, divided by the list's size, read again, its remainder kept
+        x["number"] = satellite.convert.whole(x["number"] / x["satellite"].satellite.size) + x["number"] % x["satellite"].satellite.size * far // 57: undoes 44, divided by the list's size, read again, its remainder kept
         x["string"] = x["string"].satellite.split("").satellite.reverse().satellite.join("")                                  // 58: undoes 43
         wrong = wrong + lost(x["copy"][1], 0)                                                   // check: the 0 42 wrote, before 59 writes over it
         x["copy"][1] = x["satellite"][1]                                                        // 59: undoes 42, from the list the copy was made from
@@ -9872,7 +9872,7 @@ satellite.capsule multiple_loss(satellite.variable.number given, satellite.varia
             satellite.statement.break
         }
         x.satellite.remove({"satellite": 547311173})                                                      // 69: undoes 32
-        x[x.satellite.size] = x[x.satellite.size] / 2 + x[x.satellite.size] % 2 * far                                         // 70: undoes 31, its remainder kept
+        x[x.satellite.size] = satellite.convert.whole(x[x.satellite.size] / 2) + x[x.satellite.size] % 2 * far                                         // 70: undoes 31, its remainder kept
         wrong = wrong + lost(x[2], "Mm")                                                        // check: 71 answers the text unchanged when its "m" never came
         x[2] = x[2] - "m"                                                                       // 71: undoes 30
         // chain: removed by its value, and remove refuses an item that is not there
@@ -9914,15 +9914,15 @@ satellite.capsule multiple_loss(satellite.variable.number given, satellite.varia
         wrong = wrong + lost(x, "-1496768818498832403746275442147474960348")                    // check: 90 reads a number out of the text the same way
         x = x.satellite.to_number                                                                         // 90: undoes 11, a NUMBER again
         x = x * -1                                                                              // 91: undoes 10
-        x = x / 2 + x % 2 * far                                                                 // 92: undoes 9, its remainder kept
+        x = satellite.convert.whole(x / 2) + x % 2 * far                                                                 // 92: undoes 9, its remainder kept
         x = x - 547311173                                                                       // 93: undoes 8
         wrong = wrong + lost(x, 748384409249416201873137721073190169001)                        // check: 94's .reverse() drops the zeros a number ends with
         x = x.satellite.string.satellite.reverse().satellite.number                                                           // 94: undoes 7
         x = x - 7                                                                               // 95: undoes 6
-        x = x / 10 + x % 10 * far                                                               // 96: undoes 5, its remainder kept
-        x = x / 2 ^ 64 + x % 2 ^ 64 * far                                                       // 97: undoes 4, its remainder kept
+        x = satellite.convert.whole(x / 10) + x % 10 * far                                                               // 96: undoes 5, its remainder kept
+        x = satellite.convert.whole(x / 2 ^ 64) + x % 2 ^ 64 * far                                                       // 97: undoes 4, its remainder kept
         x = x + 1                                                                               // 98: undoes 3
-        x = x / 547311173 + x % 547311173 * far                                                 // 99: undoes 2, its remainder kept
+        x = satellite.convert.whole(x / 547311173) + x % 547311173 * far                                                 // 99: undoes 2, its remainder kept
         x = x - 452688827                                                                       // 100: undoes 1
         wrong = wrong + lost(x, start)                                                          // check: every pass ends where it began
         satellite.statement.if (wrong > 0)
@@ -10066,7 +10066,7 @@ satellite.capsule infinity_loss(satellite.variable.number given, satellite.varia
         x = x * -3
         held = x % 1000
         x = x - held
-        x = x / 1000 + x % 1000 * far
+        x = satellite.convert.whole(x / 1000) + x % 1000 * far
         satellite.statement.if (x > up)
         {
             x = x + 2 ^ 100
@@ -10138,7 +10138,7 @@ satellite.capsule infinity_loss(satellite.variable.number given, satellite.varia
         }
 
         // BACK: the same 50 undone, last first, each spelled another way
-        x = x / 6 + x % 6 * far
+        x = satellite.convert.whole(x / 6) + x % 6 * far
         x = x - 2 ^ 90
         satellite.statement.if (x < -up)
         {
@@ -10148,19 +10148,19 @@ satellite.capsule infinity_loss(satellite.variable.number given, satellite.varia
         {
             x = x + 9
         }
-        x = x / 1000003 + x % 1000003 * far
-        x = (x + 9) / 10 + (x + 9) % 10 * far
+        x = satellite.convert.whole(x / 1000003) + x % 1000003 * far
+        x = satellite.convert.whole((x + 9) / 10) + (x + 9) % 10 * far
         x = x + 10 ^ 25
         satellite.statement.if (-satellite.infinity() == up)
         {
-            x = x / 17 + x % 17 * far
+            x = satellite.convert.whole(x / 17) + x % 17 * far
         }
         satellite.statement.else
         {
-            x = x / 19 + x % 19 * far
+            x = satellite.convert.whole(x / 19) + x % 19 * far
         }
         x = x - 547311173
-        x = x / -1 + x % -1 * far
+        x = satellite.convert.whole(x / -1) + x % -1 * far
         // chain: its text turned round would end in its minus, which .number cannot read (S120); x is never below zero here
         satellite.statement.if (x < 0)
         {
@@ -10168,7 +10168,7 @@ satellite.capsule infinity_loss(satellite.variable.number given, satellite.varia
             satellite.statement.break
         }
         x = x.satellite.string.satellite.reverse().satellite.number + (x % 10 - 8) * far
-        x = (x - 3) / 10 + (x - 3) % 10 * far
+        x = satellite.convert.whole((x - 3) / 10) + (x - 3) % 10 * far
         satellite.statement.if (x < satellite.infinity())
         {
             x = x - 5
@@ -10186,7 +10186,7 @@ satellite.capsule infinity_loss(satellite.variable.number given, satellite.varia
         {
             x = x - 2
         }
-        x = x / 3 ^ 40 + x % 3 ^ 40 * far
+        x = satellite.convert.whole(x / 3 ^ 40) + x % 3 ^ 40 * far
         x = x + 987654321
         satellite.statement.if (up < x)
         {
@@ -10199,15 +10199,15 @@ satellite.capsule infinity_loss(satellite.variable.number given, satellite.varia
         x = x * 1000
         x = x + held
         held = held - x % 1000
-        x = x / -3 + x % -3 * far
+        x = satellite.convert.whole(x / -3) + x % -3 * far
         x = x - -12345
         satellite.statement.if (547311173 <= up)
         {
-            x = x / 11 + x % 11 * far
+            x = satellite.convert.whole(x / 11) + x % 11 * far
         }
         satellite.statement.else
         {
-            x = x / 13 + x % 13 * far
+            x = satellite.convert.whole(x / 13) + x % 13 * far
         }
         x = x + 10 ^ 40
         x = - x
@@ -10240,11 +10240,11 @@ satellite.capsule infinity_loss(satellite.variable.number given, satellite.varia
         x = -((x))
         satellite.statement.if (up < x)
         {
-            held = held / 5 + held % 5 * far
+            held = satellite.convert.whole(held / 5) + held % 5 * far
         }
         satellite.statement.else
         {
-            held = held / 4 + held % 4 * far
+            held = satellite.convert.whole(held / 4) + held % 4 * far
         }
         up = -(-(-up))
         satellite.statement.if (up == x)
@@ -10263,7 +10263,7 @@ satellite.capsule infinity_loss(satellite.variable.number given, satellite.varia
         }
         x = held
         held = held - x
-        x = x / 2 ^ 64 + x % 2 ^ 64 * far
+        x = satellite.convert.whole(x / 2 ^ 64) + x % 2 ^ 64 * far
         satellite.statement.if (10 ^ 100 < up)
         {
             x = x - 1000
@@ -10276,14 +10276,14 @@ satellite.capsule infinity_loss(satellite.variable.number given, satellite.varia
         x = x - 123456789
         satellite.statement.if (x > up)
         {
-            x = x / 3 + x % 3 * far
+            x = satellite.convert.whole(x / 3) + x % 3 * far
         }
         satellite.statement.else
         {
-            x = x / 2 + x % 2 * far
+            x = satellite.convert.whole(x / 2) + x % 2 * far
         }
         x = x - 10 ^ 30
-        x = x / 10 ^ 20 + x % 10 ^ 20 * far
+        x = satellite.convert.whole(x / 10 ^ 20) + x % 10 ^ 20 * far
         x = x + 99
         x = -1 * x
         satellite.statement.if (up > x)
@@ -10295,7 +10295,7 @@ satellite.capsule infinity_loss(satellite.variable.number given, satellite.varia
             x = x + 5
         }
         up = -((up))
-        x = x / 7 + x % 7 * far
+        x = satellite.convert.whole(x / 7) + x % 7 * far
         x = x - 1
 
         // THE PASS ENDS WHERE IT BEGAN -- or the run stops at the first pass that does not, and says so
@@ -10426,7 +10426,7 @@ satellite.spacesuit vault()
             {
                 wrong = wrong + 1
             }
-            value = value / n
+            value = satellite.convert.whole(value / n)
         }
 
         satellite.capsule negate()
@@ -10823,9 +10823,9 @@ satellite.capsule number_loss(satellite.variable.number given, satellite.variabl
         n = n - 3 ** 100                                                 // 17: ** is ^
         n = n * 10 ^ 40 + 547311173                                      // 18: the satellite digits appended
         n = n.satellite.reverse() + (n % 10 - 3) * far                             // 19: its digits turned round (a 0 at its end would vanish: kept up in far)
-        n = n % 2 ^ 64 * 2 ^ 576 + n / 2 ^ 64 + n / 2 ^ 640 * far        // 20: the lowest limb rotated to the top (a value past 2^640 would wrap: kept up in far)
+        n = n % 2 ^ 64 * 2 ^ 576 + satellite.convert.whole(n / 2 ^ 64) + satellite.convert.whole(n / 2 ^ 640) * far        // 20: the lowest limb rotated to the top (a value past 2^640 would wrap: kept up in far)
         n = (n + 5) ^ 2 - (n - 5) ^ 2                                    // 21: its own squares: 20 n
-        n = n / 4 + n % 4 * far                                          // 22: an exact division, its remainder kept
+        n = satellite.convert.whole(n / 4) + n % 4 * far                                          // 22: an exact division, its remainder kept
         n = n.satellite.add(n)                                                     // 23: .add() its own value
         n = n - 547311173547311173547311173547311173547311173547311173547311173547311173 // 24: satellite 8 times
         n = n * 3 + 1                                                    // 25: * before +
@@ -10836,7 +10836,7 @@ satellite.capsule number_loss(satellite.variable.number given, satellite.variabl
         n = 547311173 - n                                                // 30: a reflection below zero
         n = n * xFF                                                      // 31: hex
         n = n - b1111111111111111111111111111111111111111111111111111111111111111111111111111111 // 32: 79 binary ones
-        n = n % 10 ^ 9 * 10 ^ 300 + n / 10 ^ 9 + n / 10 ^ 309 * far      // 33: the last 9 digits moved up above the rest (past 10^309 it would wrap: kept up in far)
+        n = n % 10 ^ 9 * 10 ^ 300 + satellite.convert.whole(n / 10 ^ 9) + satellite.convert.whole(n / 10 ^ 309) * far      // 33: the last 9 digits moved up above the rest (past 10^309 it would wrap: kept up in far)
         n = n + n                                                        // 34: the value added to itself with +
         n = n.satellite.add(xDEADBEEF)                                             // 35: .add() a hex
         n = n.satellite.add("547311173")                                           // 36: .add() text
@@ -10862,24 +10862,24 @@ satellite.capsule number_loss(satellite.variable.number given, satellite.variabl
             satellite.statement.break
         }
 
-        n = n / 10 + n % 10 * far                                        // 51: undoes 50
+        n = satellite.convert.whole(n / 10) + n % 10 * far                                        // 51: undoes 50
         n = n / x8000000000000003 + n % x8000000000000003 * far - x7FFFFFFFFFFFFFFF * 2 ^ 2048 // 52: undoes 49
-        n = n / 4294967296 + n % 4294967296 * far                        // 53: undoes 48
+        n = satellite.convert.whole(n / 4294967296) + n % 4294967296 * far                        // 53: undoes 48
         n = n / x200000000000000000000000000000003 + n % x200000000000000000000000000000003 * far - xFFFFFFFFFFFFFFFEFFFFFFFFFFFFFFFF * 2 ^ 1408 // 54: undoes 47
-        n = (n.satellite.string - "547").satellite.number + (n / 10 ^ 350 - 547) * far      // 55: undoes 46 (anything but 547 in front of 350 digits: kept up in far)
-        n = n / 1000 + (n % 1000 - 173) * far                            // 56: undoes 45
+        n = (n.satellite.string - "547").satellite.number + (satellite.convert.whole(n / 10 ^ 350) - 547) * far      // 55: undoes 46 (anything but 547 in front of 350 digits: kept up in far)
+        n = satellite.convert.whole(n / 1000) + (n % 1000 - 173) * far                            // 56: undoes 45
         n = -1 * n                                                       // 57: undoes 44
         n = n - 9223372036854775808                                      // 58: undoes 43
-        n = n / 9223372036854775807 + n % 9223372036854775807 * far      // 59: undoes 42
-        n = (n + 1) / 2 + (n + 1) % 2 * far                              // 60: undoes 41
+        n = satellite.convert.whole(n / 9223372036854775807) + n % 9223372036854775807 * far      // 59: undoes 42
+        n = satellite.convert.whole((n + 1) / 2) + (n + 1) % 2 * far                              // 60: undoes 41
         n = n + 7 ** 77                                                  // 61: undoes 40
-        n = n / 3 ** 40 + n % 3 ** 40 * far                              // 62: undoes 39
+        n = satellite.convert.whole(n / 3 ** 40) + n % 3 ** 40 * far                              // 62: undoes 39
         n = n / b10 + n % b10 * far                                      // 63: undoes 38
         n = n - 2 ^ 200                                                  // 64: undoes 37
         n = n.satellite.add("-547311173")                                          // 65: undoes 36
         n = n.satellite.add(-xDEADBEEF)                                            // 66: undoes 35
-        n = n / 2 + n % 2 * far                                          // 67: undoes 34
-        n = n % 10 ^ 300 * 10 ^ 9 + n / 10 ^ 300 + n / 10 ^ 309 * far    // 68: undoes 33 (the same guard)
+        n = satellite.convert.whole(n / 2) + n % 2 * far                                          // 67: undoes 34
+        n = n % 10 ^ 300 * 10 ^ 9 + satellite.convert.whole(n / 10 ^ 300) + satellite.convert.whole(n / 10 ^ 309) * far    // 68: undoes 33 (the same guard)
         n = n + b1111111111111111111111111111111111111111111111111111111111111111111111111111111 // 69: undoes 32
         n = n / xFF + n % xFF * far                                      // 70: undoes 31
         n = -(n - 547311173)                                             // 71: undoes 30
@@ -10887,29 +10887,29 @@ satellite.capsule number_loss(satellite.variable.number given, satellite.variabl
         n = n / 112.5%                                                   // 73: undoes 28
         n = n * 12.5%                                                    // 74: undoes 27
         n = 0 + n.satellite.to_string                                              // 75: undoes 26
-        n = (n - 1) / 3 + (n - 1) % 3 * far                              // 76: undoes 25
+        n = satellite.convert.whole((n - 1) / 3) + (n - 1) % 3 * far                              // 76: undoes 25
         n = n + 547311173547311173547311173547311173547311173547311173547311173547311173 // 77: undoes 24
         n = n * 50%                                                      // 78: undoes 23
         n = n * 4                                                        // 79: undoes 22
-        n = n / 20 + n % 20 * far                                        // 80: undoes 21
-        n = n % 2 ^ 576 * 2 ^ 64 + n / 2 ^ 576 + n / 2 ^ 640 * far       // 81: undoes 20 (the same guard)
+        n = satellite.convert.whole(n / 20) + n % 20 * far                                        // 80: undoes 21
+        n = n % 2 ^ 576 * 2 ^ 64 + satellite.convert.whole(n / 2 ^ 576) + satellite.convert.whole(n / 2 ^ 640) * far       // 81: undoes 20 (the same guard)
         n = (0 + n.satellite.string.satellite.reverse()) + (n % 10 - 3) * far                // 82: undoes 19 (a 0 at its end would vanish: kept up in far)
-        n = n / 10 ^ 40 + (n % 10 ^ 40 - 547311173) * far                // 83: undoes 18
+        n = satellite.convert.whole(n / 10 ^ 40) + (n % 10 ^ 40 - 547311173) * far                // 83: undoes 18
         n = n + 3 ** 100                                                 // 84: undoes 17
-        n = n / 340282366920938463463374607431768211507 + n % 340282366920938463463374607431768211507 * far // 85: undoes 16
-        n = n / 2 ^ 3 ^ 2 + n % 2 ^ 3 ^ 2 * far                          // 86: undoes 15
-        n = n / 18446744073709551557 + n % 18446744073709551557 * far    // 87: undoes 14
+        n = satellite.convert.whole(n / 340282366920938463463374607431768211507) + n % 340282366920938463463374607431768211507 * far // 85: undoes 16
+        n = satellite.convert.whole(n / 2 ^ 3 ^ 2) + n % 2 ^ 3 ^ 2 * far                          // 86: undoes 15
+        n = satellite.convert.whole(n / 18446744073709551557) + n % 18446744073709551557 * far    // 87: undoes 14
         n = n + "-123456789012345678901234567890123456789012345678901234567890123456789012345" // 88: undoes 13
-        n = n / 1000000007 + n % 1000000007 * far                        // 89: undoes 12
+        n = satellite.convert.whole(n / 1000000007) + n % 1000000007 * far                        // 89: undoes 12
         n = n + 99999999999999999999999999999999999999999999999999999999999999 // 90: undoes 11
-        n = n / -7 + n % -7 * far                                        // 91: undoes 10
+        n = satellite.convert.whole(n / -7) + n % -7 * far                                        // 91: undoes 10
         n = n - 10 ^ 50                                                  // 92: undoes 9
         n = n * -1                                                       // 93: undoes 8
         n = n.satellite.add(-1)                                                    // 94: undoes 7
         n = n - xFFFFFFFFFFFFFFFF                                        // 95: undoes 6
         n = n / x10000000000000000 + n % x10000000000000000 * far        // 96: undoes 5
         n = n + "1"                                                      // 97: undoes 4
-        n = n / 547311173 + n % 547311173 * far                          // 98: undoes 3
+        n = satellite.convert.whole(n / 547311173) + n % 547311173 * far                          // 98: undoes 3
         n = n - 1                                                        // 99: undoes 2
         n = n - 18446744073162240442                                     // 100: undoes 1
 
@@ -11079,7 +11079,7 @@ satellite.capsule fraction_loss(satellite.variable.number given, satellite.varia
         f = f.satellite.numerator + f.satellite.denominator * 1000000 + (f.satellite.denominator - 1) * far
         f = f.satellite.numerator * 2% + (f.satellite.denominator - 1) * far
         f = f.satellite.numerator - 547311173547311173 + (f.satellite.denominator - 1) * far
-        k = f.satellite.numerator / -7 + (f.satellite.denominator - 1) * far
+        k = satellite.convert.whole(f.satellite.numerator / -7) + (f.satellite.denominator - 1) * far
         satellite.statement.if (k * -7 != f.satellite.numerator)
         {
             wrong = wrong + 1
@@ -11099,7 +11099,7 @@ satellite.capsule fraction_loss(satellite.variable.number given, satellite.varia
         f = f.satellite.numerator - 1 + (f.satellite.denominator - 1) * far
         f = (f.satellite.string - "/1").satellite.number * 50% + (f.satellite.denominator - 1) * far
         f = f.satellite.numerator * 1% + (f.satellite.denominator - 1) * far
-        n = f.satellite.numerator / -311 + (f.satellite.denominator - 1) * far
+        n = satellite.convert.whole(f.satellite.numerator / -311) + (f.satellite.denominator - 1) * far
         satellite.statement.if (n * -311 != f.satellite.numerator)
         {
             wrong = wrong + 1
@@ -11116,7 +11116,7 @@ satellite.capsule fraction_loss(satellite.variable.number given, satellite.varia
         f = f.satellite.numerator * 12.5% + (f.satellite.denominator - 1) * far
         f = f.satellite.numerator + 1000000000000 + (f.satellite.denominator - 1) * far
         f = 7 - f.satellite.numerator + (f.satellite.denominator - 1) * far
-        k = f.satellite.numerator / 41 + (f.satellite.denominator - 1) * far
+        k = satellite.convert.whole(f.satellite.numerator / 41) + (f.satellite.denominator - 1) * far
         satellite.statement.if (k * 41 != f.satellite.numerator)
         {
             wrong = wrong + 1
@@ -11132,7 +11132,7 @@ satellite.capsule fraction_loss(satellite.variable.number given, satellite.varia
         f = f.satellite.numerator * 0.00000001% + (f.satellite.denominator - 1) * far
         f = f.satellite.numerator * 0.09765625% + (f.satellite.denominator - 1) * far
         f = f.satellite.numerator + 547311173 + (f.satellite.denominator - 1) * far
-        n = f.satellite.numerator / 3 + (f.satellite.denominator - 1) * far
+        n = satellite.convert.whole(f.satellite.numerator / 3) + (f.satellite.denominator - 1) * far
         satellite.statement.if (n * 3 != f.satellite.numerator)
         {
             wrong = wrong + 1
@@ -11917,7 +11917,7 @@ satellite.capsule binary_loss(satellite.variable.number given, satellite.variabl
             satellite.statement.break
         }
         // the 50 inverse operations, in the reverse order: the value comes back
-        worth = worth / (wide_held % b100000000 + b1) + worth % (wide_held % b100000000 + b1) * far
+        worth = satellite.convert.whole(worth / (wide_held % b100000000 + b1)) + worth % (wide_held % b100000000 + b1) * far
         worth = worth - held.satellite.add(wide_held)
         wide = -wide_held
         worth = worth + (held + held) * b11
@@ -11926,7 +11926,7 @@ satellite.capsule binary_loss(satellite.variable.number given, satellite.variabl
         worth = worth - xFFFF * b1111
         worth = worth - -b10011
         worth = worth - (wide - b1)
-        worth = worth / (b1 + xF) + worth % (b1 + xF) * far
+        worth = satellite.convert.whole(worth / (b1 + xF)) + worth % (b1 + xF) * far
         worth = worth - b11 * b101 * b111
         wide_held = -wide.satellite.reverse()
         worth = worth - -b00000000000000000000000000000000000000000000000000000000000000000000000000000000111
@@ -11935,7 +11935,7 @@ satellite.capsule binary_loss(satellite.variable.number given, satellite.variabl
         worth = worth - wide_held.satellite.number
         worth = worth + held * wide_held
         wide_turned = wide_held
-        worth = worth / (held % b10000000) + worth % (held % b10000000) * far
+        worth = satellite.convert.whole(worth / (held % b10000000)) + worth % (held % b10000000) * far
         worth = worth - held ^ b10
         worth = worth - held % b1000
         turned = held
@@ -11946,7 +11946,7 @@ satellite.capsule binary_loss(satellite.variable.number given, satellite.variabl
         wide = -wide_turned.satellite.reverse()
         worth = worth - (turned + wide)
         worth = worth + xFF * b10
-        worth = worth / (b10 + b1) + worth % (b10 + b1) * far
+        worth = satellite.convert.whole(worth / (b10 + b1)) + worth % (b10 + b1) * far
         worth = worth - (b1100 + xFF)
         worth = worth + wide * b100
         bits = -turned.satellite.reverse()
@@ -12106,7 +12106,7 @@ satellite.capsule hex_operations_loss(satellite.variable.number given, satellite
             satellite.statement.break
         }
         // the 50 inverse operations, in the reverse order: the value comes back
-        worth = worth / (hx_wide_held.satellite.width + x1) + worth % (hx_wide_held.satellite.width + x1) * far
+        worth = satellite.convert.whole(worth / (hx_wide_held.satellite.width + x1)) + worth % (hx_wide_held.satellite.width + x1) * far
         worth = worth - hx_held.satellite.add(hx_wide_held)
         hx_wide = -hx_wide_held
         worth = worth + (hx_held + hx_held) * x3
@@ -12115,7 +12115,7 @@ satellite.capsule hex_operations_loss(satellite.variable.number given, satellite
         worth = worth - xffff * x0F
         worth = worth - -x13
         worth = worth - (hx_wide - x1)
-        worth = worth / (xF + b1) + worth % (xF + b1) * far
+        worth = satellite.convert.whole(worth / (xF + b1)) + worth % (xF + b1) * far
         worth = worth - x3 * x5 * x7
         hx_wide_held = -hx_wide.satellite.reverse()
         worth = worth - -x0000000000000000000007
@@ -12124,7 +12124,7 @@ satellite.capsule hex_operations_loss(satellite.variable.number given, satellite
         worth = worth - hx_wide_held.satellite.number
         worth = worth + hx_held * hx_wide_held
         hx_wide_turned = hx_wide_held
-        worth = worth / (hx_held % x100) + worth % (hx_held % x100) * far
+        worth = satellite.convert.whole(worth / (hx_held % x100)) + worth % (hx_held % x100) * far
         worth = worth - hx_held ^ x2
         worth = worth - hx_held % x10
         hx_turned = hx_held
@@ -12135,7 +12135,7 @@ satellite.capsule hex_operations_loss(satellite.variable.number given, satellite
         hx_wide = -hx_wide_turned.satellite.reverse()
         worth = worth - (hx_turned + hx_wide)
         worth = worth + b10 * xFF
-        worth = worth / (x02 + x1) + worth % (x02 + x1) * far
+        worth = satellite.convert.whole(worth / (x02 + x1)) + worth % (x02 + x1) * far
         worth = worth - (xFF + b1100)
         worth = worth + hx_wide * x04
         hx = -hx_turned.satellite.reverse()
@@ -12294,17 +12294,17 @@ satellite.capsule color_loss(satellite.variable.number given, satellite.variable
         paint_held = paint, paint.satellite.transparency
         worth = worth - paint_held.satellite.number * paint_held.satellite.number
         paint_held = paint_held, paint_held.satellite.transparency + 66
-        worth = worth / (paint_held.satellite.transparency + b1) + worth % (paint_held.satellite.transparency + b1) * far
+        worth = satellite.convert.whole(worth / (paint_held.satellite.transparency + b1)) + worth % (paint_held.satellite.transparency + b1) * far
         paint_held.satellite.transparency(paint_held.satellite.transparency - x63)
         worth = worth + paint_held.satellite.binary.satellite.number * x2
         paint_moved = paint_held, 99 - paint_held.satellite.transparency
         worth = worth - paint_moved.satellite.transparency * x1000000
         paint_moved = paint_moved, paint_moved.satellite.transparency - 99
-        worth = worth / (paint_moved.satellite.number % x1000 + x1) + worth % (paint_moved.satellite.number % x1000 + x1) * far
+        worth = satellite.convert.whole(worth / (paint_moved.satellite.number % x1000 + x1)) + worth % (paint_moved.satellite.number % x1000 + x1) * far
         paint_moved.satellite.transparency(paint_moved.satellite.transparency + b1000110)
         worth = worth + paint_moved.satellite.number * x10
         paint = paint_moved, paint_moved.satellite.transparency + 7
-        worth = worth / (paint.satellite.number % x100) + worth % (paint.satellite.number % x100) * far
+        worth = satellite.convert.whole(worth / (paint.satellite.number % x100)) + worth % (paint.satellite.number % x100) * far
         paint = paint_hex, paint.satellite.transparency - 77
         worth = worth - paint.satellite.binary.satellite.number
         paint.satellite.transparency(paint.satellite.transparency + x5A)
@@ -12313,18 +12313,18 @@ satellite.capsule color_loss(satellite.variable.number given, satellite.variable
         worth = worth - paint.satellite.transparency * paint.satellite.number
         paint.satellite.transparency(paint.satellite.transparency + 90)
         paint_held = paint
-        worth = worth / paint_held.satellite.transparency + worth % paint_held.satellite.transparency * far
+        worth = satellite.convert.whole(worth / paint_held.satellite.transparency) + worth % paint_held.satellite.transparency * far
         paint_held.satellite.transparency(paint_held.satellite.transparency - b110001)
         worth = worth + paint_held.satellite.number * x3
         paint_held = paint_hex.satellite.reverse(), paint_held.satellite.transparency - 50
         worth = worth - paint_held.satellite.binary.satellite.number
         paint_held.satellite.transparency(paint_held.satellite.transparency + 1)
-        worth = worth / (paint_held.satellite.transparency() - x0B) + worth % (paint_held.satellite.transparency() - x0B) * far
+        worth = satellite.convert.whole(worth / (paint_held.satellite.transparency() - x0B)) + worth % (paint_held.satellite.transparency() - x0B) * far
         paint_held = paint_held, paint_held.satellite.transparency + 95
         worth = worth + paint_held.satellite.number * paint_held.satellite.transparency
         paint_moved = paint_held
         paint_moved.satellite.transparency(paint_moved.satellite.transparency - 64)
-        worth = worth / (paint_moved.satellite.transparency + x1) + worth % (paint_moved.satellite.transparency + x1) * far
+        worth = satellite.convert.whole(worth / (paint_moved.satellite.transparency + x1)) + worth % (paint_moved.satellite.transparency + x1) * far
         paint_moved.satellite.transparency(paint_moved.satellite.transparency - xA)
         worth = worth - paint_moved.satellite.number
         paint_moved = paint_hex, paint_moved.satellite.transparency
@@ -12333,7 +12333,7 @@ satellite.capsule color_loss(satellite.variable.number given, satellite.variable
         paint = paint_moved
         worth = worth + paint.satellite.transparency * x1000000
         paint = paint, paint.satellite.transparency - 40
-        worth = worth / paint.satellite.transparency + worth % paint.satellite.transparency * far
+        worth = satellite.convert.whole(worth / paint.satellite.transparency) + worth % paint.satellite.transparency * far
         paint.satellite.transparency(paint.satellite.transparency - 5)
         worth = worth - paint.satellite.number
         // THE PASS ENDS WHERE IT BEGAN -- or the passes stop here (the chain's, kept from the first chain)
@@ -12389,39 +12389,39 @@ satellite.capsule bool_loss(satellite.variable.number given, satellite.variable.
     satellite.variable.number wrong = 0
     satellite.variable.number base = 1073741824                      // the chain: 2 ^ 30
     satellite.variable.number start = (given % base + base) % base     // the chain: the low 30 bits of the value handed in
-    satellite.variable.number above = (given - start) / base           // the chain: what 30 bits cannot hold, 0 for 547311173
+    satellite.variable.number above = satellite.convert.whole((given - start) / base)           // the chain: what 30 bits cannot hold, 0 for 547311173
 
     // THE 30 BITS OF 547311173, from the top: b100000100111110100111001000101
-    satellite.variable.bool s29 = (start / 536870912) % 2 == 1
-    satellite.variable.bool s28 = (start / 268435456) % 2 == 1
-    satellite.variable.bool s27 = (start / 134217728) % 2 == 1
-    satellite.variable.bool s26 = (start / 67108864) % 2 == 1
-    satellite.variable.bool s25 = (start / 33554432) % 2 == 1
-    satellite.variable.bool s24 = (start / 16777216) % 2 == 1
-    satellite.variable.bool s23 = (start / 8388608) % 2 == 1
-    satellite.variable.bool s22 = (start / 4194304) % 2 == 1
-    satellite.variable.bool s21 = (start / 2097152) % 2 == 1
-    satellite.variable.bool s20 = (start / 1048576) % 2 == 1
-    satellite.variable.bool s19 = (start / 524288) % 2 == 1
-    satellite.variable.bool s18 = (start / 262144) % 2 == 1
-    satellite.variable.bool s17 = (start / 131072) % 2 == 1
-    satellite.variable.bool s16 = (start / 65536) % 2 == 1
-    satellite.variable.bool s15 = (start / 32768) % 2 == 1
-    satellite.variable.bool s14 = (start / 16384) % 2 == 1
-    satellite.variable.bool s13 = (start / 8192) % 2 == 1
-    satellite.variable.bool s12 = (start / 4096) % 2 == 1
-    satellite.variable.bool s11 = (start / 2048) % 2 == 1
-    satellite.variable.bool s10 = (start / 1024) % 2 == 1
-    satellite.variable.bool s09 = (start / 512) % 2 == 1
-    satellite.variable.bool s08 = (start / 256) % 2 == 1
-    satellite.variable.bool s07 = (start / 128) % 2 == 1
-    satellite.variable.bool s06 = (start / 64) % 2 == 1
-    satellite.variable.bool s05 = (start / 32) % 2 == 1
-    satellite.variable.bool s04 = (start / 16) % 2 == 1
-    satellite.variable.bool s03 = (start / 8) % 2 == 1
-    satellite.variable.bool s02 = (start / 4) % 2 == 1
-    satellite.variable.bool s01 = (start / 2) % 2 == 1
-    satellite.variable.bool s00 = (start / 1) % 2 == 1
+    satellite.variable.bool s29 = (satellite.convert.whole(start / 536870912)) % 2 == 1
+    satellite.variable.bool s28 = (satellite.convert.whole(start / 268435456)) % 2 == 1
+    satellite.variable.bool s27 = (satellite.convert.whole(start / 134217728)) % 2 == 1
+    satellite.variable.bool s26 = (satellite.convert.whole(start / 67108864)) % 2 == 1
+    satellite.variable.bool s25 = (satellite.convert.whole(start / 33554432)) % 2 == 1
+    satellite.variable.bool s24 = (satellite.convert.whole(start / 16777216)) % 2 == 1
+    satellite.variable.bool s23 = (satellite.convert.whole(start / 8388608)) % 2 == 1
+    satellite.variable.bool s22 = (satellite.convert.whole(start / 4194304)) % 2 == 1
+    satellite.variable.bool s21 = (satellite.convert.whole(start / 2097152)) % 2 == 1
+    satellite.variable.bool s20 = (satellite.convert.whole(start / 1048576)) % 2 == 1
+    satellite.variable.bool s19 = (satellite.convert.whole(start / 524288)) % 2 == 1
+    satellite.variable.bool s18 = (satellite.convert.whole(start / 262144)) % 2 == 1
+    satellite.variable.bool s17 = (satellite.convert.whole(start / 131072)) % 2 == 1
+    satellite.variable.bool s16 = (satellite.convert.whole(start / 65536)) % 2 == 1
+    satellite.variable.bool s15 = (satellite.convert.whole(start / 32768)) % 2 == 1
+    satellite.variable.bool s14 = (satellite.convert.whole(start / 16384)) % 2 == 1
+    satellite.variable.bool s13 = (satellite.convert.whole(start / 8192)) % 2 == 1
+    satellite.variable.bool s12 = (satellite.convert.whole(start / 4096)) % 2 == 1
+    satellite.variable.bool s11 = (satellite.convert.whole(start / 2048)) % 2 == 1
+    satellite.variable.bool s10 = (satellite.convert.whole(start / 1024)) % 2 == 1
+    satellite.variable.bool s09 = (satellite.convert.whole(start / 512)) % 2 == 1
+    satellite.variable.bool s08 = (satellite.convert.whole(start / 256)) % 2 == 1
+    satellite.variable.bool s07 = (satellite.convert.whole(start / 128)) % 2 == 1
+    satellite.variable.bool s06 = (satellite.convert.whole(start / 64)) % 2 == 1
+    satellite.variable.bool s05 = (satellite.convert.whole(start / 32)) % 2 == 1
+    satellite.variable.bool s04 = (satellite.convert.whole(start / 16)) % 2 == 1
+    satellite.variable.bool s03 = (satellite.convert.whole(start / 8)) % 2 == 1
+    satellite.variable.bool s02 = (satellite.convert.whole(start / 4)) % 2 == 1
+    satellite.variable.bool s01 = (satellite.convert.whole(start / 2)) % 2 == 1
+    satellite.variable.bool s00 = (satellite.convert.whole(start / 1)) % 2 == 1
 
     satellite.container.list<satellite.variable.bool> begun = {s29, s28, s27, s26, s25, s24, s23, s22, s21, s20, s19, s18, s17, s16, s15, s14, s13, s12, s11, s10, s09, s08, s07, s06, s05, s04, s03, s02, s01, s00}
 
