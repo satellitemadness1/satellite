@@ -2839,40 +2839,40 @@ satellite.capsule satellite.main()
 )satl",
      nullptr,
      22, "1/0: a fraction's bottom number cannot be 0", nullptr},
-    {"full_numbers_32.satl", TestKind::refused, "fraction: a fraction name given a spaced slash, 1 / 3",
+    {"full_numbers_32.satl", TestKind::refused, "fraction: a number name given two numbers divided, 1 / 3 -- a fraction",
      R"satl(satellite.include(satellite)
 
 // full_numbers_32 -- satellite.test.full(), a program satl must REFUSE.
-// fraction: a fraction name given a spaced slash, 1 / 3.
-// It exits 27, and its report on stderr holds: written with a touching slash: 1/3
+// fraction: a number name given two numbers divided, 1 / 3 -- a fraction.
+// It exits 27, and its report on stderr holds: 1 / 3 is a fraction -- declare a fraction
 // Nothing is printed on stdout.
 
 satellite.capsule satellite.main()
 {
     satellite.variable.number passes = 1
-    satellite.variable.fraction f = satellite.convert.whole(1 / 3)
+    satellite.variable.number n = 1 / 3
     satellite.return(satellite)
 }
 )satl",
      nullptr,
-     27, "written with a touching slash: 1/3", nullptr},
-    {"full_numbers_33.satl", TestKind::refused, "fraction: fraction arithmetic is not built yet",
+     27, "1 / 3 is a fraction -- declare a fraction", nullptr},
+    {"full_numbers_33.satl", TestKind::refused, "fraction: * on a fraction is not built yet (+ and - are)",
      R"satl(satellite.include(satellite)
 
 // full_numbers_33 -- satellite.test.full(), a program satl must REFUSE.
-// fraction: fraction arithmetic is not built yet.
-// It exits 14, and its report on stderr holds: the + of 1/3 and 1/3 is fraction arithmetic
+// fraction: * on a fraction is not built yet (+ and - are, 2026-10-12).
+// It exits 14, and its report on stderr holds: the * of 1/3 and 3 is not built yet
 // Nothing is printed on stdout.
 
 satellite.capsule satellite.main()
 {
     satellite.variable.number passes = 1
-    satellite.console.display(1/3 + 1/3)
+    satellite.console.display(1/3 * 3)
     satellite.return(satellite)
 }
 )satl",
      nullptr,
-     14, "the + of 1/3 and 1/3 is fraction arithmetic", nullptr},
+     14, "the * of 1/3 and 3 is not built yet", nullptr},
     {"full_numbers_34.satl", TestKind::refused, "fraction: .number is not built yet",
      R"satl(satellite.include(satellite)
 
@@ -8306,7 +8306,7 @@ satellite.capsule satellite.main()
      R"satl(satellite.include(satellite)
 
 // speed_fraction.satl -- satellite.test.speed(): FRACTIONS, COMPARED BY WHAT THEY ARE WORTH.
-// Fraction arithmetic is not built yet, so this times what is: a whole number given to a fraction
+// It was written before a fraction's + and - (2026-10-12), so it times what was: a whole number given to a fraction
 // name (it becomes that number over 1) and fractions compared with < > and ==, by worth, so 50/2 == 25.
 // Prints: how many passes were below 100/3, above 200/3, and equal to 50/2.  C++ twin: speed_fraction().
 
@@ -10937,8 +10937,8 @@ satellite.capsule number_loss(satellite.variable.number given, satellite.variabl
 // a fraction name becomes that number over 1 -- and each pass runs the test's 100 operations, one a line: its sign
 // turned over, its numerator read, worked on as a whole number (+ - *, and * by a percentage to share it back out
 // exactly) and given back as n/1, its .denominator read, its .string read back as a number, trips through a list, a
-// map, another fraction name and two number names: 50 forward, then their 50 inverses in reverse order. Fraction
-// arithmetic itself is not built (1/3 + 1/3 is S210). All of the fixes are here: each whole-number division checked
+// map, another fraction name and two number names: 50 forward, then their 50 inverses in reverse order. A fraction's
+// * / % ^ are not built (1/3 * 3 is S210). All of the fixes are here: each whole-number division checked
 // right after it runs, the denominator checked after every move and folded into every reading, h = 547311173/7 making
 // 18 moves beside f (a fixture of the test's own, not the chain's value), both checked at the halfway point against
 // exact math, and every pass checked.

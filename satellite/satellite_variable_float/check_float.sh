@@ -19,11 +19,11 @@ float_lines() { "$@" 2>/dev/null | tr '\n' '|' | sed 's/|$//'; }
 expect "a float literal displays as written, less the zero at its end (FLT-1: 12.34, and 12.05 == 12.5 is false)" \
        "12.34|12.05|false|12.5|true|2.0|1.25|-12.5|-2.5|0.0|12.34|3" "$(float_lines "$interpreter" tests/float_literal.satl)"
 
-# A PLAIN NUMBER EITHER SIDE is read as the float it is. 4 / 3 is still 1 (Q13):
-# two plain numbers never become a float, and 4.0 / 3 is one. 2 ^ -1 is 0.5 (FLT-2),
+# A PLAIN NUMBER EITHER SIDE is read as the float it is. 4 / 3 is the fraction 4/3
+# (2026-10-12): two plain numbers never become a float, and 4.0 / 3 is one. 2 ^ -1 is 0.5 (FLT-2),
 # and a power a billion deep that rounds to 0.0 says so without building the number.
-expect "a float meets a plain number either side; 4 / 3 is still 1, 4.0 / 3 is the float, 2 ^ -1 is 0.5" \
-       "3.5|3.5|9.5|-9.5|3.0|4.5|1|1.33333333333333333333333333333333|0.75|true|true|true|0.5|0.0|0.0" \
+expect "a float meets a plain number either side; 4 / 3 is the fraction 4/3, 4.0 / 3 is the float, 2 ^ -1 is 0.5" \
+       "3.5|3.5|9.5|-9.5|3.0|4.5|4/3|1.33333333333333333333333333333333|0.75|true|true|true|0.5|0.0|0.0" \
        "$(float_lines "$interpreter" tests/float_mixed.satl)"
 
 expect "a plain number given to a float name becomes a float, in the declaration and after it" \

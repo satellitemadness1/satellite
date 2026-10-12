@@ -267,9 +267,10 @@ struct ReportTally {
 
     // What was held back, said once at the end. Empty when nothing repeated.
     //
-    // `logged` IS satellite.log's COUNT (M5): the place goes in with the code, because a
+    // `logged` IS satellite.log's COUNT (M5). THE PLACE GOES IN WITH THE CODE, in both: a
     // log holds the runs of weeks and "S020 happened 3 times" there names no line of any
-    // of them. The screen's count stays as it was -- the report it counts is just above.
+    // of them, and on the screen a warning the run goes on after (S021, 2026-10-12) is
+    // counted at the end, far below it and beside the counts of other lines.
     std::string repeats(bool logged = false) const
     {
         std::string out;
@@ -278,12 +279,10 @@ struct ReportTally {
                 continue;
             const std::string::size_type first_break = keys[i].find('\n');
             std::string what = keys[i].substr(0, first_break);
-            if (logged) {
-                const std::string::size_type second_break = keys[i].find('\n', first_break + 1);
-                const std::string place = keys[i].substr(first_break + 1, second_break - first_break - 1);
-                if (!place.empty())
-                    what += " at " + shown(place);
-            }
+            const std::string::size_type second_break = keys[i].find('\n', first_break + 1);
+            const std::string place = keys[i].substr(first_break + 1, second_break - first_break - 1);
+            if (!place.empty())
+                what += " at " + shown(place);
             out += "[satellite] " + what + " happened " + std::to_string(counts[i]) + " times in all; it was " +
                    (logged ? "logged" : "reported") + " once\n";
         }

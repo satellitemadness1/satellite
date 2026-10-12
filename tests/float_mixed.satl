@@ -1,8 +1,8 @@
 satellite.include(satellite)
 
 // A float and a plain number, either side of every operator: the number is read
-// as the float it is. Two plain numbers are not a float -- 4 / 3 is still 1 --
-// and 4.0 / 3 is.
+// as the float it is. Two plain numbers are not a float -- 4 / 3 is the fraction
+// 4/3 (2026-10-12) -- and 4.0 / 3 is.
 satellite.capsule satellite.main()
 {
     satellite.console.display(1.5 + 2)

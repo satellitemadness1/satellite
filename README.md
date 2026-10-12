@@ -108,8 +108,8 @@ Revision 10 runs real programs. What runs:
   and `for`; and a capsule whose last line calls itself runs in constant memory,
   as deep as it likes;
 - numbers of any size, floats, fractions, percentages, binary, hexadecimal,
-  colours and infinity; strings; lists, lists of lists and indexes (fraction
-  arithmetic is not built yet);
+  colours and infinity; strings; lists, lists of lists and indexes (a
+  fraction's + and - are built, its * / % ^ not yet);
 - files and folders, and `satellite.variable.info` for what a folder holds;
 - spacesuits (satellite's objects), namespaces, and every included file reached
   by its own name;

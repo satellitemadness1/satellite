@@ -1,13 +1,13 @@
 satellite.include(satellite)
 
 // full_numbers_33 -- satellite.test.full(), a program satl must REFUSE.
-// fraction: fraction arithmetic is not built yet.
-// It exits 14, and its report on stderr holds: the + of 1/3 and 1/3 is fraction arithmetic
+// fraction: * on a fraction is not built yet (+ and - are, 2026-10-12).
+// It exits 14, and its report on stderr holds: the * of 1/3 and 3 is not built yet
 // Nothing is printed on stdout.
 
 satellite.capsule satellite.main()
 {
     satellite.variable.number passes = 1
-    satellite.console.display(1/3 + 1/3)
+    satellite.console.display(1/3 * 3)
     satellite.return(satellite)
 }

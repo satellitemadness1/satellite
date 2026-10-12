@@ -2234,8 +2234,8 @@ satellite.capsule number_loss(satellite.variable.number given, satellite.variabl
 // a fraction name becomes that number over 1 -- and each pass runs the test's 100 operations, one a line: its sign
 // turned over, its numerator read, worked on as a whole number (+ - *, and * by a percentage to share it back out
 // exactly) and given back as n/1, its .denominator read, its .string read back as a number, trips through a list, a
-// map, another fraction name and two number names: 50 forward, then their 50 inverses in reverse order. Fraction
-// arithmetic itself is not built (1/3 + 1/3 is S210). All of the fixes are here: each whole-number division checked
+// map, another fraction name and two number names: 50 forward, then their 50 inverses in reverse order. A fraction's
+// * / % ^ are not built (1/3 * 3 is S210). All of the fixes are here: each whole-number division checked
 // right after it runs, the denominator checked after every move and folded into every reading, h = 547311173/7 making
 // 18 moves beside f (a fixture of the test's own, not the chain's value), both checked at the halfway point against
 // exact math, and every pass checked.

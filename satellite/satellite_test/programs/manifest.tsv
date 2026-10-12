@@ -64,8 +64,8 @@ full/full_numbers_28.satl	refused	hex: x1G is not hex	27	ERROR: x1G is not hex
 full/full_numbers_29.satl	refused	hex: a hex name holds only a hex, h = h + x01	27	a hex name holds only a hex	
 full/full_numbers_30.satl	refused	hex: a percentage meeting a hex is not built yet	14	a percentage meeting a hex is	
 full/full_numbers_31.satl	refused	fraction: a bottom number of 0 is refused	22	1/0: a fraction's bottom number cannot be 0	
-full/full_numbers_32.satl	refused	fraction: a fraction name given a spaced slash, 1 / 3	27	written with a touching slash: 1/3	
-full/full_numbers_33.satl	refused	fraction: fraction arithmetic is not built yet	14	the + of 1/3 and 1/3 is fraction arithmetic	
+full/full_numbers_32.satl	refused	fraction: a number name given two numbers divided, 1 / 3 -- a fraction	27	1 / 3 is a fraction -- declare a fraction	
+full/full_numbers_33.satl	refused	fraction: * on a fraction is not built yet (+ and - are)	14	the * of 1/3 and 3 is not built yet	
 full/full_numbers_34.satl	refused	fraction: .number is not built yet	14	f.number is not built for	
 full/full_numbers_35.satl	refused	percentage: the % is required, a percentage name given 50	27	ERROR: expected 50%	
 full/full_numbers_36.satl	refused	percentage: 50% + 5 is refused, the number goes first	27	number goes first -- 5 + 50%	

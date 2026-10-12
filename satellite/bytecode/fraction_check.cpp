@@ -203,12 +203,20 @@ Read expression(Reader &r, int lowest)
         Read right = expression(r, op == token::power_token ? level : level + 1);
         if (r.lost || r.refused != success)
             break;
-        // A FRACTION UNDER + - * / % ^ -- FRACTION ARITHMETIC IS NOT BUILT (object_fraction.cpp), in its words.
         if (level >= 5 && (left.is == Is::fraction || right.is == Is::fraction)) {
+            // A FRACTION UNDER + OR - IS A FRACTION (the author's C, 2026-10-12: the lowest common
+            // denominator) when the other side is a fraction or a number; with anything else, the walker's.
+            if (op == token::plus_token || op == token::minus_token) {
+                const auto adds = [](Is is) { return is == Is::fraction || is == Is::number; };
+                left = {adds(left.is) && adds(right.is) ? Is::fraction : Is::unknown,
+                        left.text + " " + sign_of(op) + " " + right.text};
+                continue;
+            }
+            // UNDER * / % ^ IT IS NOT BUILT YET (object_fraction.cpp), in its words.
             const std::string &fraction = left.is == Is::fraction ? left.text : right.text;
             r.refused = not_built_yet;
             r.why = fraction + " is a fraction, and the " + sign_of(op) +
-                    " of a fraction is fraction arithmetic, which is not built yet -- write satellite.convert.number(" +
+                    " of a fraction is not built yet (+ and - are) -- write satellite.convert.number(" +
                     fraction + ") for the whole number nearest it, or satellite.convert.float(" + fraction +
                     ") for the float";
             break;

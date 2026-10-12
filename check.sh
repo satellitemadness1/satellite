@@ -2331,7 +2331,8 @@ expect "a string minus a string takes away the first occurrence" "$wanted_minus"
 # is that a `+` in a program reaches it, with 003 DESIGN §6.6's precedence.
 # Python is the authority for every line, and writes them here itself.
 wanted_math=$(python3 -c "
-for n in (34587, 2+3, 10-4, 6*7, 20//3, 20%3, 2**10, 2+3*4, 10-3-2, 2**(3**2), -3, -1,
+from fractions import Fraction as F
+for n in (34587, 2+3, 10-4, 6*7, F(20, 3), 20%3, 2**10, 2+3*4, 10-3-2, 2**(3**2), F(-7, 2), -1,
           99999999999999999999999+1, 2**200, 0b1100+0xFF, sum(range(1000))): print(n)")
 expect "the six fast paths through their tokens" "$wanted_math" "$("$interpreter" tests/arithmetic.satl 2>/dev/null)"
 # `**` spaced is `^` (SATELLITE_INFINITY.md, INF-1): the same token, so the same answers

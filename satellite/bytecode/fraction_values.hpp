@@ -30,7 +30,7 @@ signed long long int fraction_literal(const std::string &top, const std::vector<
 // A SPACED SLASH IN A FRACTION'S VALUE IS THE FRACTION SINCE 2026-10-12 (the author: "what about always a
 // fraction? 4 / 2 is the fraction"), so `satellite.variable.fraction f = 1 / 3` holds 1/3 and is no longer
 // refused before the run as whole-number division. What the checker still refuses about a fraction's value
-// -- fraction arithmetic in it -- is fraction_check.hpp's.
+// -- * / % ^ on a fraction in it -- is fraction_check.hpp's.
 
 // THE CHECKER: the first method written on a name declared satellite.variable.fraction -- and
 // THE WALKER, for a method a fraction has no number for (expression.cpp refuses it in this

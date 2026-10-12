@@ -1,0 +1,24 @@
+satellite.include(satellite)
+
+// satellite.convert (the author, 2026-10-12). .number is the whole number NEAREST: ".500000000 is plus
+// one .499999999 is not plus one", half away from zero on the minus side, "With a warning" (S021, on the
+// screen, once a line, and the run goes on). .whole cuts toward zero and says nothing -- what / of two
+// numbers answered before every a / b was a fraction. .float is the float.
+satellite.capsule satellite.main()
+{
+    satellite.console.display(satellite.convert.number(7 / 2))
+    satellite.console.display(satellite.convert.number(-7 / 2))
+    satellite.console.display(satellite.convert.number(5 / 4))
+    satellite.console.display(satellite.convert.number(4 / 2))
+    satellite.console.display(satellite.convert.number(2.75))
+    satellite.console.display(satellite.convert.number(2.4999))
+    satellite.console.display(satellite.convert.whole(7 / 2))
+    satellite.console.display(satellite.convert.whole(-7 / 2))
+    satellite.console.display(satellite.convert.whole(2.75))
+    satellite.console.display(satellite.convert.float(7 / 2))
+    satellite.statement.for(satellite.variable.number i = 0; i < 6; i + 1)
+    {
+        satellite.console.display(satellite.convert.number(i / 2))
+    }
+    satellite.return(satellite)
+}

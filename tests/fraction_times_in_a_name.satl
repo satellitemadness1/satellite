@@ -1,0 +1,11 @@
+satellite.include(satellite)
+
+// * / % ^ ON A FRACTION ARE NOT BUILT YET, and a fraction name given one is refused before
+// anything runs, naming the fraction and what to write instead.
+satellite.capsule satellite.main()
+{
+    satellite.console.display("before")
+    satellite.variable.fraction f = 1/3 * 3
+    satellite.console.display(f)
+    satellite.return(satellite)
+}

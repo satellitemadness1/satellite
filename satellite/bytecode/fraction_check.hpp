@@ -18,8 +18,10 @@
 //   satellite.variable.number n = a / b      a fraction where a number goes (his 9b) -- S301,
 //                                            types_do_not_meet, as the walker says it
 //   satellite.variable.float x = 7 / 2       a fraction where a float goes, the same way
-//   n = a / b + 1                            a fraction under + - * / % ^: fraction arithmetic is not
-//                                            built yet -- S210, not_built_yet, as the walker says it
+//   n = a / b + 1                            the same: a fraction + or - a fraction or a number is a
+//                                            fraction (his C, the lowest common denominator)
+//   f = a / b * 2                            a fraction under * / % ^, which is not built yet -- S210,
+//                                            not_built_yet, as the walker says it
 //
 // A binary or a hex divided is whole (his 9f), so `n = worth / b1001` is a number and is never refused.
 

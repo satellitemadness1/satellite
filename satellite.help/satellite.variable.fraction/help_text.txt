@@ -27,11 +27,13 @@ front of them, as every word built into the language is, on a literal too:
 1/3.satellite.numerator is 1. The old third.numerator is refused before
 anything runs, naming the new spelling.
 
-Not built yet: arithmetic with fractions (1/3 + 1/3 is refused, "fraction
-arithmetic is not built yet", and so is a / b + 1 -- before anything runs when
-a and b are named numbers), a touching slash between names (a/b -- write
-a / b), a fraction meeting a float, a percentage or any other new type, and
-.satellite.number.
++ and - are built, over the lowest common denominator, and the answer is not
+put in lowest terms either: 7/2 + 1/3 is 23/6, 1/4 + 1/4 is 2/4, and a number
+is itself over 1, so 7/2 + 1 is 9/2.
+
+Not built yet: * / % and ^ with a fraction (1/3 * 3 is refused by name), a
+touching slash between names (a/b -- write a / b), a fraction meeting a float,
+a percentage or any other new type, and .satellite.number.
 
 example:
 
@@ -48,6 +50,7 @@ satellite.capsule satellite.main(satellite.variable.arguments arguments)
     satellite.console.display(third.satellite.denominator) // 3
     satellite.console.display(1.5/2) // 1.5/2
     satellite.console.display(1 / 3) // 1/3
+    satellite.console.display(7/2 + 1/3) // 23/6
     satellite.console.display(satellite.convert.number(7 / 2)) // 4
     satellite.return(satellite)
 }

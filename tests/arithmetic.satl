@@ -27,7 +27,8 @@ satellite.capsule satellite.main()
     satellite.console.display(10 - 3 - 2)
     satellite.console.display(2 ^ 3 ^ 2)
 
-    // Truncation toward zero, and the remainder taking the dividend's sign.
+    // Two numbers divided are a fraction, kept as written (the author, 2026-10-12):
+    // 20 / 3 is 20/3 and -7 / 2 is -7/2. The remainder takes the dividend's sign.
     satellite.console.display(-7 / 2)
     satellite.console.display(-7 % 2)
 

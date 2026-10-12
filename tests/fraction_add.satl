@@ -1,0 +1,23 @@
+satellite.include(satellite)
+
+// + AND - OVER THE LOWEST COMMON DENOMINATOR, NEVER REDUCED (the author, 2026-10-12: "we need lowest
+// common denominator code", his C "Yes"; 9d "no" to lowest terms). A plain number is itself over 1.
+satellite.capsule satellite.main()
+{
+    satellite.console.display(7/2 + 1/3)
+    satellite.console.display(7/2 - 1/3)
+    satellite.console.display(1/4 + 1/4)
+    satellite.console.display(7/2 + 1)
+    satellite.console.display(1 - 1/4)
+    satellite.console.display(2/4 + 1/6)
+    satellite.console.display(1/2 - 1/2)
+    satellite.console.display(-1/3 + 1/6)
+    satellite.console.display(1.5/2 + 1/3)
+    satellite.console.display(7 / 2 + 1 / 3)
+    satellite.variable.fraction f = 1 / 3 + 1
+    satellite.console.display(f)
+    f = f - 1/6
+    satellite.console.display(f)
+    satellite.console.display(satellite.convert.number(7 / 2 + 1 / 3))
+    satellite.return(satellite)
+}

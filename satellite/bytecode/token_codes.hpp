@@ -68,7 +68,7 @@ inline constexpr Code power_token = 0x0305;  // ^  with whitespace on BOTH sides
 inline constexpr Code tight_plus_token = 0x0306;  // +  touching: not an operation. Reserved
 inline constexpr Code tight_minus_token = 0x0307;  // -  touching: the UNARY minus, which is how -5 is written
 inline constexpr Code tight_times_token = 0x0308;  // *  touching: not an operation. Reserved
-inline constexpr Code fraction_token = 0x0309;  // /  touching, between two numbers: 5/4 is a fraction (not built yet)
+inline constexpr Code fraction_token = 0x0309;  // /  touching, between two numbers: 5/4 is a fraction (satellite.variable.fraction)
 inline constexpr Code tight_modulus_token = 0x030A;  // %  touching: not an operation. Reserved -- except straight after a number's digits, wher
 inline constexpr Code tight_power_token = 0x030B;  // ^  touching: not an operation. Reserved
 inline constexpr Code assign_token = 0x0400;  // =

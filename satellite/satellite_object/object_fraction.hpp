@@ -56,7 +56,7 @@ satellite_number fraction_cut_toward_zero(const satellite_fraction &value);
 // out even, for the warning ("With a warning", S021): 4/2 is 2 and leaves it alone.
 satellite_number fraction_rounded(const satellite_fraction &value, bool &lost);
 
-// WHAT TO WRITE WHERE A FRACTION CANNOT GO -- a number or a float name, an item's place, + - * / % ^
+// WHAT TO WRITE WHERE A FRACTION CANNOT GO -- a number or a float name, an item's place, * / % ^
 // (his 9b: "declare a fraction, or write satellite.convert.number(a / b)").
 inline constexpr const char *kConvertTheFraction =
     "write satellite.convert.number(...) for the whole number nearest it (.5 and above is one more), or "

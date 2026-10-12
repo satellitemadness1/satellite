@@ -15,18 +15,21 @@
 //     1/2 == 1       false     a plain number is read as itself over 1
 //     6 / 4          6/4       two numbers divided, kept as written (the author, 2026-10-12:
 //                              "what about always a fraction? 4 / 2 is the fraction")
+//     7/2 + 1/3      23/6      + and - over the LOWEST COMMON DENOMINATOR (the author,
+//     1/4 + 1/4      2/4       2026-10-12), never reduced
+//     7/2 - 1        5/2       a plain number is itself over 1
 //
-// AND WHAT DOES NOT, YET: + - * / % ^ with a fraction on either side. "let's just
-// start with" is two numbers tied together, so fraction arithmetic is refused by
-// name rather than guessed at. A fraction meeting a float, a hex, a colour, an
-// infinity, a percentage or a binary is the author's "grand finale", the new types
-// mixed together, and says so.
+// AND WHAT DOES NOT, YET: * / % ^ with a fraction on either side, refused by name
+// rather than guessed at. A fraction meeting a float, a hex, a colour, an infinity,
+// a percentage or a binary is the author's "grand finale", the new types mixed
+// together, and says so.
 
 #include "object_fraction.hpp"
 
 #include "number_and_number_divide_rounded.hpp"
 #include "../satellite_variable_float/float_scaled.hpp"
 
+#include <algorithm>
 #include <string>
 #include <utility>
 
@@ -105,6 +108,45 @@ int fraction_order(const satellite_fraction &left, const satellite_fraction &rig
     return left.denominator.negative != right.denominator.negative ? -order : order;
 }
 
+// EUCLID'S, on two whole numbers above zero: the largest number both divide by.
+satellite_number greatest_common_divisor(satellite_number a, satellite_number b)
+{
+    while (!b.is_zero()) {
+        satellite_number quotient, remainder;
+        satellite_number::divide(a, b, quotient, remainder);
+        a = std::move(b);
+        b = std::move(remainder);
+    }
+    return a;
+}
+
+// A/B + C/D OVER THE LOWEST COMMON DENOMINATOR, NEVER REDUCED (the author, 2026-10-12: "we need lowest
+// common denominator code", his C "Yes", and 9d "no" to lowest terms): 7/2 + 1/3 is 21/6 + 2/6 = 23/6,
+// and 1/4 + 1/4 is 2/4. Each bottom is a float, so both are first brought to the larger of their places
+// as whole numbers (1/0.5 and 1/3 are 1/5 and 1/30 at one place); the lowest common denominator L is
+// their least common multiple, each top is multiplied by what its own bottom goes into L, and L at those
+// places is the answer's bottom. Exact -- whole numbers multiplied and added (float_scaled.hpp) -- and
+// rounded only by the rows, as every float is.
+satellite_fraction fraction_added(const satellite_fraction &left, const satellite_fraction &right, bool take_away)
+{
+    const unsigned long long int below_places = std::max(left.denominator.places, right.denominator.places);
+    const satellite_number left_below = float_scaled(left.denominator, below_places);
+    const satellite_number right_below = float_scaled(right.denominator, below_places);
+    const satellite_number shared = greatest_common_divisor(left_below, right_below);
+    satellite_number left_times, right_times, none;
+    satellite_number::divide(right_below, shared, left_times, none);    // L / B is D / gcd
+    satellite_number::divide(left_below, shared, right_times, none);    // L / D is B / gcd
+    const unsigned long long int above_places = std::max(left.numerator.places, right.numerator.places);
+    satellite_number above = float_scaled(left.numerator, above_places) * left_times;
+    const satellite_number other = float_scaled(right.numerator, above_places) * right_times;
+    if (take_away)
+        above -= other;
+    else
+        above += other;
+    return satellite_fraction{float_from_scaled(std::move(above), above_places),
+                              float_from_scaled(left_below * left_times, below_places)};
+}
+
 } // namespace
 
 std::string fraction_part_written(const satellite_float &part)
@@ -171,21 +213,26 @@ satellite_number fraction_rounded(const satellite_fraction &value, bool &lost)
     return quotient;
 }
 
-// FRACTION ARITHMETIC IS NOT BUILT, and says so by name. `1/3 + 1/3` has one right
-// answer (2/3) and several right spellings of it (2/3, 6/9, 0.666...), and which
-// one a program gets back is the author's to say -- "let's just start with" two
-// numbers tied together.
+// + AND - ARE BUILT (fraction_added); a number either side is itself over 1, so 7/2 + 1 is 9/2 and
+// 1 - 1/4 is 3/4. * / % ^ ARE NOT, and say so by name: `1/3 * 3` has one right answer and several
+// right spellings of it (3/3, 1, 1.0), and which one a program gets back is the author's to say.
 signed long long int fraction_operation(char sign, const satelliteObject &left, const satelliteObject &right,
-                                     satelliteObject &, std::string &why)
+                                     satelliteObject &out, std::string &why)
 {
     satellite_fraction left_made, right_made;
-    if (fraction_of(left, left_made) == nullptr || fraction_of(right, right_made) == nullptr)
+    const satellite_fraction *a = fraction_of(left, left_made);
+    const satellite_fraction *b = fraction_of(right, right_made);
+    if (a == nullptr || b == nullptr)
         return refuse_meeting(std::string(1, sign), left, right, why);
+    if (sign == '+' || sign == '-') {
+        out = satelliteObject::of_fraction(fraction_added(*a, *b, sign == '-'));
+        return success;
+    }
     // AND WHAT TO WRITE INSTEAD, since every a / b is a fraction now (2026-10-12): the whole number or
     // the float it is worth, made first.
     why = std::string("the ") + sign + " of " + shown(left) + " and " + shown(right) +
-          " is fraction arithmetic, and fraction arithmetic is not built yet -- so far a fraction is two numbers "
-          "tied together, written, shown and compared; " + kConvertTheFraction;
+          " is not built yet -- so far a fraction is added and taken away (+ and -), written, shown and "
+          "compared; " + kConvertTheFraction;
     return not_built_yet;
 }
 

@@ -1,0 +1,11 @@
+satellite.include(satellite)
+
+// A FRACTION + A FRACTION IS A FRACTION (2026-10-12), so a number name given 1 / 2 + 1 / 2 is
+// refused before anything runs, as a number name given 1 / 2 is.
+satellite.capsule satellite.main()
+{
+    satellite.console.display("before")
+    satellite.variable.number n = 1 / 2 + 1 / 2
+    satellite.console.display(n)
+    satellite.return(satellite)
+}

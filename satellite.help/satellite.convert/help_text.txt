@@ -72,5 +72,5 @@ satellite.capsule satellite.main(satellite.variable.arguments arguments)
 }
 
 satl says, before anything runs: middle was declared satellite.variable.number,
-and total / count is a fraction -- declare a fraction, or write the value as
+and total / count is a fraction -- declare a fraction, or write
 satellite.convert.number(total / count) (S301).
