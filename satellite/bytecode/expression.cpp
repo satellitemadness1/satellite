@@ -1934,7 +1934,7 @@ Value evaluate_at(const std::vector<std::bitset<16>> &row, std::size_t &at, int 
                         warn_number_rounded(
                             context.state,
                             [&] { return left.as_number()->to_text() + " / " + right.as_number()->to_text(); },
-                            answer.as_number()->to_text());
+                            [&] { return answer.as_number()->to_text(); });
                     left = std::move(answer);
                     continue;
                 }

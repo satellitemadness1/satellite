@@ -101,23 +101,26 @@ Value call_convert_word(token::Code code, const std::vector<std::bitset<16>> &ro
 {
     const bool to_number = code == kToNumber;
     const bool to_whole = code == kToWhole;
-    const std::string spelled = to_number  ? "satellite.convert.number"
+    // ITS NAME IS MADE INTO TEXT ONLY FOR A REFUSAL: "satellite.convert.number" is past a string's short buffer,
+    // so a std::string here was a heap allocation on every call of a loop (the author, 2026-10-12: "these
+    // things should be hot paths in C++").
+    const char *const spelled = to_number  ? "satellite.convert.number"
                                 : to_whole ? "satellite.convert.whole"
                                            : "satellite.convert.float";
     const std::size_t open = at;
     ++at;                                                    // the (
     if (code_in(row, at) == token::right_parenthesis_token) {
-        context.refuse(satl_line_not_understood, spelled + " takes one argument, and was given 0", open);
+        context.refuse(satl_line_not_understood, std::string(spelled) + " takes one argument, and was given 0", open);
         return Value();
     }
-    const Value value = to_number  ? evaluate_rounded_expression(row, at, context)
-                        : to_whole ? evaluate_whole_expression(row, at, context)
-                                   : evaluate_expression(row, at, context);
+    Value value = to_number  ? evaluate_rounded_expression(row, at, context)
+                  : to_whole ? evaluate_whole_expression(row, at, context)
+                             : evaluate_expression(row, at, context);
     if (context.code != success)
         return Value();
     if (code_in(row, at) != token::right_parenthesis_token) {
         context.refuse(satl_line_not_understood,
-                       spelled + (code_in(row, at) == token::comma_token
+                       std::string(spelled) + (code_in(row, at) == token::comma_token
                                       ? " takes one argument, and was given more"
                                       : " was given something it could not read to the end of -- check that every "
                                         "math sign has a space on both sides"),
@@ -125,6 +128,12 @@ Value call_convert_word(token::Code code, const std::vector<std::bitset<16>> &ro
         return Value();
     }
     ++at;                                                    // the )
+
+    // THE HOT PATH: a number is its own whole number and its own nearest one -- what
+    // satellite.convert.whole(a / b) and .number(a / b) of two numbers hold, their division worked out at the
+    // root, whole or nearest, with S021 said there -- so it is handed back as it is, nothing made or copied.
+    if ((to_number || to_whole) && value.is_number())
+        return value;
 
     Value answer;
     std::string why;
@@ -139,7 +148,7 @@ Value call_convert_word(token::Code code, const std::vector<std::bitset<16>> &ro
                     const satellite_fraction *fraction = value.as_fraction();
                     return fraction != nullptr ? fraction_written(*fraction) : float_written(*value.as_float());
                 },
-                answer.as_number()->to_text());
+                [&] { return answer.as_number()->to_text(); });
     } else if (to_whole)
         code_made = cut_to_a_number(value, answer) ? success : not_built_yet;
     else
@@ -147,7 +156,7 @@ Value call_convert_word(token::Code code, const std::vector<std::bitset<16>> &ro
     if (code_made == success)
         return answer;
     if (why.empty())
-        why = spelled + " was given " + value.kind_name() +
+        why = std::string(spelled) + " was given " + value.kind_name() +
               ", and only a number, a fraction and a float are converted yet -- the rest of satellite.convert is "
               "built later";
     context.refuse(code_made, why, open);

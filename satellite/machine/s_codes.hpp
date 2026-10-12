@@ -643,13 +643,15 @@ void display_warning_here(const MachineState &state, const char *code, const cha
 // number", ".500000000 is plus one .499999999 is not plus one", "With a warning", "But don't stop the
 // interpreter"). Said only when something after the point was dropped: satellite.convert.number(4 / 2)
 // is 2 and says nothing. `what` and `answer` give the value as written and the number it became, up to
-// 60 characters each -- a 128-place float is a line no one reads whole.
-template <typename What>
-void warn_number_rounded(const MachineState &state, What &&what, const std::string &answer)
+// 60 characters each -- a 128-place float is a line no one reads whole. BOTH ARE MADE ONLY WHEN THE WARNING IS
+// SHOWN, once a line: a loop that rounds on every turn pays for a count, not for its answer's digits written out
+// (the author, 2026-10-12: "these things should be hot paths in C++").
+template <typename What, typename Answer>
+void warn_number_rounded(const MachineState &state, What &&what, Answer &&answer)
 {
     display_warning_here(state, "S021", "NUMBER_ROUNDED", [&] {
         const auto said = [](const std::string &text) { return text.size() <= 60 ? text : text.substr(0, 57) + "..."; };
-        return "satellite.convert.number(" + said(what()) + ") is " + said(answer) +
+        return "satellite.convert.number(" + said(what()) + ") is " + said(answer()) +
                ", the whole number nearest it -- .5 and above is one more, below .5 is not; "
                "satellite.convert.float(...) keeps what is after the point";
     });
