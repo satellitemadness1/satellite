@@ -28,6 +28,8 @@
 // caller's variables even by accident.
 
 #include "program_walk.hpp"
+
+#include "../machine/console_lock.hpp"
 #include "method_periods.hpp"
 
 #include "../machine/s_codes.hpp"
@@ -703,7 +705,10 @@ bool a_capsule_could_be(const CapsuleTable *capsules, const std::string &name)
 LockUse what_the_line_does(const std::vector<std::bitset<16>> &row, std::size_t at, VariableTable &variables,
                            const CapsuleTable *capsules)
 {
-    if (variables.self == nullptr || !variables.self->lock.on.load(std::memory_order_relaxed))
+    // THE AUTHOR'S LOCK ON, OR SATL'S OWN HOLD ONCE A THREAD HAS STARTED (object_lock.hpp, 2026-10-12): either needs
+    // to know what this line does to the object. Before the first start() with the lock off, nothing is read here.
+    if (variables.self == nullptr || (!variables.self->lock.on.load(std::memory_order_relaxed) &&
+                                      !a_thread_was_started().load(std::memory_order_relaxed)))
         return LockUse::none;
     const std::size_t end = past_the_statement(row, at);
     bool reads = false;
