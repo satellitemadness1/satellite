@@ -3,6 +3,7 @@
 
 #include "object_lock.hpp"
 
+#include "../machine/console_lock.hpp"
 #include "../machine/machine_codes.hpp"
 #include "../satellite_variable_thread/satellite_thread.hpp"
 
@@ -44,6 +45,8 @@ bool waits_for(const WaitNode *from, const WaitNode *me, std::vector<const WaitN
     if (const ObjectLock *lock = from->waiting_lock) {
         if (waits_for(lock->writer, me, seen))
             return true;
+        if (waits_for(lock->holder.load(std::memory_order_relaxed), me, seen))
+            return true;
         for (const WaitNode *reader : lock->readers)
             if (waits_for(reader, me, seen))
                 return true;
@@ -60,6 +63,9 @@ bool a_holder_waits_for(const ObjectLock &lock, const WaitNode *me)
 {
     std::vector<const WaitNode *> seen;
     if (lock.writer != nullptr && lock.writer != me && waits_for(lock.writer, me, seen))
+        return true;
+    const WaitNode *own = lock.holder.load(std::memory_order_relaxed);
+    if (own != nullptr && own != me && waits_for(own, me, seen))
         return true;
     for (const WaitNode *reader : lock.readers)
         if (reader != me && waits_for(reader, me, seen))
@@ -136,6 +142,61 @@ void give_back_object_lock(ObjectLock &lock, LockUse use)
     released().notify_all();
 }
 
+// SATL'S OWN HOLD (object_lock.hpp): THE FLIP when nobody holds it -- one compare-and-swap of `holder` -- and the
+// mutex, the circle check and a sleep only when somebody does. Every flip is sequentially consistent, as is `asleep`:
+// a thread letting go either sees one asleep and wakes it, or the sleeper's next flip sees the lock free.
+namespace {
+
+signed long long int take_own_hold(ObjectLock &lock)
+{
+    WaitNode &me = this_threads_node();
+    const WaitNode *nobody = nullptr;
+    if (lock.holder.compare_exchange_strong(nobody, &me, std::memory_order_seq_cst))
+        return success;
+    std::unique_lock<std::mutex> hold(graph());
+    for (;;) {
+        lock.asleep.fetch_add(1, std::memory_order_seq_cst);
+        nobody = nullptr;
+        if (lock.holder.compare_exchange_strong(nobody, &me, std::memory_order_seq_cst)) {
+            lock.asleep.fetch_sub(1, std::memory_order_seq_cst);
+            return success;
+        }
+        if (a_holder_waits_for(lock, &me)) {
+            lock.asleep.fetch_sub(1, std::memory_order_seq_cst);
+            released().notify_all();
+            return wait_never_ends;
+        }
+        me.waiting_lock = &lock;
+        released().wait(hold);
+        me.waiting_lock = nullptr;
+        lock.asleep.fetch_sub(1, std::memory_order_seq_cst);
+    }
+}
+
+void give_back_own_hold(ObjectLock &lock)
+{
+    lock.holder.store(nullptr, std::memory_order_seq_cst);
+    if (lock.asleep.load(std::memory_order_seq_cst) != 0) {
+        const std::lock_guard<std::mutex> hold(graph());
+        released().notify_all();
+    }
+}
+
+signed long long int take_either(ObjectLock &lock, LockUse use)
+{
+    return use == LockUse::own ? take_own_hold(lock) : take_object_lock(lock, use);
+}
+
+void give_back_either(ObjectLock &lock, LockUse use)
+{
+    if (use == LockUse::own)
+        give_back_own_hold(lock);
+    else
+        give_back_object_lock(lock, use);
+}
+
+} // namespace
+
 signed long long int start_waiting_for(const satellite_thread &thread)
 {
     WaitNode &me = this_threads_node();
@@ -156,13 +217,13 @@ void done_waiting_for_a_thread()
 void let_go_while_waiting()
 {
     for (auto each = held_here.rbegin(); each != held_here.rend(); ++each)
-        give_back_object_lock(*each->first, each->second);
+        give_back_either(*each->first, each->second);
 }
 
 signed long long int take_back_after_waiting()
 {
     for (const auto &[lock, use] : held_here) {
-        const signed long long int taken = take_object_lock(*lock, use);
+        const signed long long int taken = take_either(*lock, use);
         if (taken != success)
             return taken;     // the holds give back what they hold; one not taken back is a no-op
     }
@@ -183,15 +244,22 @@ void this_thread_ended(satellite_thread &thread)
 
 ObjectHold::ObjectHold(ObjectLock *lock, LockUse use)
 {
-    if (lock == nullptr || use == LockUse::none || !lock->on.load(std::memory_order_acquire))
+    if (lock == nullptr || use == LockUse::none)
         return;
+    // THE AUTHOR'S LOCK WHEN IT IS ON; SATL'S OWN HOLD WHEN IT IS OFF AND A THREAD HAS STARTED (object_lock.hpp);
+    // nothing before the first start(), where no other thread can be touching it.
+    if (!lock->on.load(std::memory_order_acquire)) {
+        if (!a_thread_was_started().load(std::memory_order_acquire))
+            return;
+        use = LockUse::own;
+    }
     for (const auto &[each, how] : held_here)
         if (each == lock)
             return;
     // NOTED BEFORE IT IS TAKEN, so an allocation failing here cannot leave a lock taken and
     // never given back (the third review).
     held_here.emplace_back(lock, use);
-    code_ = take_object_lock(*lock, use);
+    code_ = take_either(*lock, use);
     if (code_ != success) {
         held_here.pop_back();
         return;
@@ -205,7 +273,7 @@ ObjectHold::~ObjectHold()
     if (lock_ == nullptr)
         return;
     held_here.pop_back();
-    give_back_object_lock(*lock_, use_);
+    give_back_either(*lock_, use_);
 }
 
 } // namespace satellite004

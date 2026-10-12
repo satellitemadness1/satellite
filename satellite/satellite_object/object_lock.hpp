@@ -38,6 +38,17 @@
 //
 // ONE THREAD NEVER WAITS FOR ITSELF: a statement already holding the lock that calls a
 // capsule of the same object runs that capsule's statements without taking it again.
+//
+// AND SATL'S OWN HOLD, ONCE A THREAD HAS STARTED (the author, 2026-10-12: "2. yes", to "Should satl take that
+// lock itself, if it stays inside your 5%?" -- his 11 of 2026-10-11: satl takes the field/file lock itself,
+// "costing only an uncontended flip of a lock made ahead"). With the author's lock off, two threads wrote one
+// object's string, list or big number at once and freed it twice -- exit 134 every run, a file left empty
+// (SCRATCH.md/ERRORS4/001). So a statement that touches an object or a file nobody locked now holds it too:
+// one thread at a time, reading or writing, taken by one atomic flip of `holder` when nobody holds it, and
+// through the mutex and the circle check (S728) only when somebody does. Before the first start() nothing is
+// taken -- one more relaxed load a statement -- and the author's lock, when it is on, is used as it always was.
+// Turning a lock on or off while another thread is inside a statement on it can let one statement of each
+// kind overlap; turned on once, before the threads start, as every program here does, it cannot.
 
 #include <atomic>
 #include <vector>
@@ -49,6 +60,10 @@ struct WaitNode;
 
 struct ObjectLock {
     std::atomic<bool> on{false};
+    // SATL'S OWN HOLD (above): the thread holding it, flipped from null to itself and back.
+    std::atomic<const WaitNode *> holder{nullptr};
+    // THREADS ASLEEP FOR SATL'S HOLD: one letting go of it wakes them only when this is not 0.
+    std::atomic<unsigned int> asleep{0};
     // Held under object_lock.cpp's one mutex, never read or written elsewhere.
     const WaitNode *writer = nullptr;
     std::vector<const WaitNode *> readers;
@@ -62,7 +77,9 @@ struct WaitNode {
     const satellite_thread *waiting_thread = nullptr;
 };
 
-enum class LockUse { none, reading, writing };
+// `own` is satl's own hold (above): what ObjectHold takes for a reading or a writing statement when the
+// author's lock is off and a thread has started.
+enum class LockUse { none, reading, writing, own };
 
 // This OS thread's node.
 WaitNode &this_threads_node();

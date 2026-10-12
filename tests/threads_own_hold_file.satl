@@ -1,0 +1,28 @@
+// SATL TAKES A FILE'S LOCK ITSELF too (the author, 2026-10-12): two threads append to one file nobody locked.
+// Until BUILD 0056 that was heap corruption (exit 134) every run, and the file was left empty
+// (SCRATCH.md/ERRORS4/001, "Also seen as"). Now each append holds the file: 100 lines, every one whole.
+satellite.include(satellite)
+
+satellite.capsule writer(satellite.variable.file f, satellite.variable.string who)
+{
+    satellite.variable.number i = 0
+    satellite.statement.while(i < 50)
+    {
+        f.satellite.append(who + " " + i)
+        i = i + 1
+    }
+}
+
+satellite.capsule satellite.main()
+{
+    satellite.variable.file f = satellite.file.new("build/threads_own_hold_file.se")
+    satellite.variable.thread a = satellite.thread.new(writer(f, "alpha"))
+    satellite.variable.thread b = satellite.thread.new(writer(f, "bravo"))
+    a.satellite.start()
+    b.satellite.start()
+    a.satellite.join()
+    b.satellite.join()
+    f.satellite.close()
+    satellite.console.display("done")
+    satellite.return(satellite)
+}

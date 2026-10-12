@@ -6208,6 +6208,17 @@ expect "threads: workers[1].join() inside a locked object's capsule does not hol
 timeout 30 "$interpreter" tests/threads_lock_reader_join.satl > build/threads_lrj.out 2>/dev/null; code=$?
 expect "threads: a line reading a locked object while it joins a reading thread ends, with a writer queued" "0|joined|ended|" \
        "$code|$(tr '\n' '|' < build/threads_lrj.out)"
+# 2 OF 2026-10-12 (the author: "2. yes", to "Should satl take that lock itself, if it stays inside your 5%?"): SATL
+# TAKES THE LOCK ITSELF once a thread has started, on an object or a file nobody locked (object_lock.hpp). Until BUILD
+# 0056 two threads writing one object's string or list freed it twice, exit 134 every run, and two appending to one
+# file left it empty (SCRATCH.md/ERRORS4/001).
+timeout 60 "$interpreter" tests/threads_own_hold.satl > build/threads_own_hold.out 2>/dev/null; code=$?
+expect "threads: an object nobody locked, shared by 4 threads -- every count exact, nothing freed twice" "0|20000|2000|2000|4000|" \
+       "$code|$(tr '\n' '|' < build/threads_own_hold.out)"
+rm -f build/threads_own_hold_file.se
+timeout 60 "$interpreter" tests/threads_own_hold_file.satl > build/threads_own_file.out 2>/dev/null; code=$?
+expect "threads: a file nobody locked, appended to by 2 threads -- 100 lines, every one whole" "0|done|100|50|50" \
+       "$code|$(tr -d '\n' < build/threads_own_file.out)|$(wc -l < build/threads_own_hold_file.se)|$(grep -cx 'alpha [0-9]*' build/threads_own_hold_file.se)|$(grep -cx 'bravo [0-9]*' build/threads_own_hold_file.se)"
 expect "lock and unlock are registry rows 0x0B5B-0x0B5C, and token_codes.hpp agrees" "2|2" \
        "$(grep -c '^000010110101101[1]  lock_token \|^0000101101011100  unlock_token ' REGISTRY.satellite)|$(grep -c 'Code \(lock_token = 0x0B5B\|unlock_token = 0x0B5C\);' satellite/bytecode/token_codes.hpp)"
 expect "start, stop and wait are registry rows 0x0B58-0x0B5A, and token_codes.hpp agrees" "3|3" \

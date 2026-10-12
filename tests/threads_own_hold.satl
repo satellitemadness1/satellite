@@ -1,0 +1,86 @@
+// SATL TAKES THE LOCK ITSELF (the author, 2026-10-12: "2. yes", to "Should satl take that lock itself, if it stays
+// inside your 5%?"; his 11 of 2026-10-11: "satl takes the field/file lock itself"). Four threads share one object
+// whose .lock() nobody turned on. Until BUILD 0056 its heap-held fields were written by two threads at once --
+// a string or a list freed twice (exit 134), a big number S999 (SCRATCH.md/ERRORS4/001). Now every statement
+// that touches it holds it, so each count comes out exact:
+//
+//   20000   four threads, 5,000 adds each, on one number field
+//   2000    four threads, 500 appends each, on one list field
+//   2000    four threads, 500 letters each, on one string field
+//   4000    four threads, 1,000 adds each, on a number past 2^200 (the big kind)
+satellite.include(satellite)
+
+satellite.spacesuit shared_box()
+{
+    satellite.protected
+    {
+        satellite.variable.number total = 0
+        satellite.container.list<satellite.variable.number> seen = {}
+        satellite.variable.string letters = ""
+        satellite.variable.number big = 2 ^ 200
+    }
+    satellite.public
+    {
+        satellite.capsule call_add()
+        {
+            total = total + 1
+        }
+        satellite.capsule call_note(satellite.variable.number n)
+        {
+            seen.satellite.append(n)
+        }
+        satellite.capsule call_letter()
+        {
+            letters = letters + "d"
+        }
+        satellite.capsule call_big()
+        {
+            big = big + 1
+        }
+        satellite.capsule call_report()
+        {
+            satellite.console.display(total)
+            satellite.console.display(seen.satellite.size)
+            satellite.console.display(letters.satellite.size)
+            satellite.console.display(big - 2 ^ 200)
+        }
+    }
+}
+
+satellite.capsule work(shared_box b)
+{
+    satellite.variable.number i = 0
+    satellite.statement.while(i < 5000)
+    {
+        b.call_add()
+        satellite.statement.if(i < 500)
+        {
+            b.call_note(i)
+            b.call_letter()
+        }
+        satellite.statement.if(i < 1000)
+        {
+            b.call_big()
+        }
+        i = i + 1
+    }
+}
+
+satellite.capsule satellite.main()
+{
+    shared_box b()
+    satellite.variable.thread t1 = satellite.thread.new(work(b))
+    satellite.variable.thread t2 = satellite.thread.new(work(b))
+    satellite.variable.thread t3 = satellite.thread.new(work(b))
+    satellite.variable.thread t4 = satellite.thread.new(work(b))
+    t1.satellite.start()
+    t2.satellite.start()
+    t3.satellite.start()
+    t4.satellite.start()
+    t1.satellite.join()
+    t2.satellite.join()
+    t3.satellite.join()
+    t4.satellite.join()
+    b.call_report()
+    satellite.return(satellite)
+}
