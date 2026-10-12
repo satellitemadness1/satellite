@@ -49,7 +49,7 @@ int main(void)
            vte_get_features());
     GtkWidget *window = gtk_window_new();
     gtk_window_set_title(GTK_WINDOW(window), "hello-vte");
-    gtk_window_set_default_size(GTK_WINDOW(window), 640, 400);
+    gtk_window_set_default_size(GTK_WINDOW(window), 800, 600);
     GtkWidget *term = vte_terminal_new();
     gtk_window_set_child(GTK_WINDOW(window), term);
     g_signal_connect(term, "child-exited", G_CALLBACK(child_exited), window);

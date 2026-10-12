@@ -98,8 +98,51 @@ std::string program_method_takes(token::Code method);
 // For a refusal: the methods a program has -- and a bash line, which has the same.
 std::string program_methods_are(bool bash);
 
-Value call_program_method(token::Code method, const ProgramHandle &which, const std::vector<Value> &arguments,
-                          bool had_parentheses, const std::string &name, ExpressionContext &context);
+// EVERY ONE OF THEM RUNS BY ITS NUMBER (the author, 2026-10-11: "we still need to get the word satellite
+// onto everything, before we do anything ... everything builtin needs the word satellite still"). A
+// program's method is the word satellite.variable.program.<it>, 1 6 23 n, and a bash line's is
+// satellite.variable.bash.<it>, 1 6 24 n -- both numbered on 2026-10-01 -- each a file under
+// satellite-numbers/words/ named by its number. So they are written `.satellite.`: p.satellite.start(),
+// p.satellite.join().
+//
+// A PROGRAM AND A BASH LINE ARE ONE KIND (satelliteObject::program, STEP 5), and a name of either type may
+// hold either, so WHICH OF THE TWO SETS RUNS is the value's own to say, as it runs: a bash line runs
+// 1 6 24 n and a program 1 6 23 n -- the same words, each its own number, one body each in
+// program_method_parts below. And start() and start(how) are one spelling with two numbers, n = 1 and
+// n = 7: which runs is how many things its brackets hold.
+//
+// THE NUMBER A PROGRAM'S METHOD RUNS, 1 6 23 n, or 0 for a method a program does not have. It is what the
+// period rule asks (method_periods.hpp), for a bash line too: one has every word the other has. start's is
+// start()'s, 1 6 23 1.
+token::Code program_number_of(token::Code method);
+
+// THE SAME FOR A BASH LINE: 1 6 24 n, or 0.
+token::Code bash_number_of(token::Code method);
+
+// THE WALKER'S HALF. `number` is program_number_of(method) as the walker asked it, and 0 for a method a
+// program does not have. Everything a program refuses before a method runs is refused here, in the words
+// it always was: a method it does not have, a count or brackets that are wrong, a name that holds no
+// program yet, and -- for every method but start() -- a program never started, S741. Then the value's own
+// number runs: a bash line's or a program's, and start(how)'s for a start() given its word.
+Value run_program_number(token::Code method, token::Code number, const Value &receiver,
+                         const std::vector<Value> &arguments, bool had_parentheses, const std::string &name,
+                         ExpressionContext &context);
+
+// THE BODIES THE NUMBERS RUN (program_calls.cpp), one each for a program's word and a bash line's: start()
+// is 1 6 23 1's and 1 6 24 1's; start_how 7's, which says whether the word is "hide" and then starts it;
+// join() is 4's, 5's and 6's -- join, code and return; end() is 8's to 11's -- end, exit, quit and
+// shutdown; ok(), error() and pass() are 2's, 3's and 12's.
+namespace program_method_parts {
+
+Value start(const ProgramHandle &which, const std::string &name, bool hidden, ExpressionContext &context);
+Value start_how(const ProgramHandle &which, const Value &how, const std::string &name, ExpressionContext &context);
+Value ok(const ProgramHandle &which);
+Value error(const ProgramHandle &which);
+Value join(const ProgramHandle &which, ExpressionContext &context);
+Value end(const ProgramHandle &which);
+Value pass(const ProgramHandle &which, const Value &given, const std::string &name, ExpressionContext &context);
+
+} // namespace program_method_parts
 
 // THE END OF THE RUN -- close_every_program -- is satellite_variable_program/program_stop.hpp's.
 

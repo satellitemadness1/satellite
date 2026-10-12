@@ -220,13 +220,13 @@ void suit_line(CapsuleTable &table, const std::vector<std::bitset<16>> &row, std
     // over, one code, as a capsule's body steps over it.
     if (code == token::error_token) { skip_payload(row, i); return; }
 
-    // A SWITCH IS THE FILE'S OWN, WRITTEN AT ITS TOP (MS-2), and `arguments.missing = false` in a
-    // spacesuit is told so, not that it is no field.
+    // A SWITCH IS THE FILE'S OWN, WRITTEN AT ITS TOP (MS-2), and `satellite.arguments.missing = false` in
+    // a spacesuit is told so, not that it is no field.
     if (std::string key; starts_a_switch_line(row, i, key) && a_switch_a_file_writes(key)) {
         refuse(table, r, i, satl_line_not_understood,
-               "arguments." + key + " is written at the top of its file, not inside the spacesuit " + suit +
-                   " -- a switch is the file's own, outside every capsule and spacesuit: arguments." + key +
-                   "(value)");
+               "satellite.arguments." + key + " is written at the top of its file, not inside the spacesuit " +
+                   suit + " -- a switch is the file's own, outside every capsule and spacesuit: satellite.arguments." +
+                   key + "(value)");
         i = past_the_statement(row, i);
         return;
     }

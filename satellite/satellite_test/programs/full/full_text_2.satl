@@ -20,10 +20,10 @@ satellite.capsule check(satellite.variable.number round, satellite.variable.stri
     }
     satellite.statement.if (round == 1)
     {
-        satellite.console.display("WRONG " + what + ": ", end="")
-        satellite.console.display(got, end="")
-        satellite.console.display(" (expected ", end="")
-        satellite.console.display(want, end="")
+        satellite.console.display("WRONG " + what + ": ", satellite.end="")
+        satellite.console.display(got, satellite.end="")
+        satellite.console.display(" (expected ", satellite.end="")
+        satellite.console.display(want, satellite.end="")
         satellite.console.display(")")
     }
     satellite.return(1)
@@ -45,74 +45,74 @@ satellite.capsule satellite.main()
         satellite.variable.string s = "hello world"
 
         // .split answers a list of the pieces between separators
-        wrong = wrong + check(p, "string .split", s.satellite.split(" "), {"hello", "world"})
-        wrong = wrong + check(p, "string .split keeps an empty piece", "a,,b".satellite.split(","), {"a", "", "b"})
-        wrong = wrong + check(p, "string .split keeps empty pieces at both ends", ",a,".satellite.split(","), {"", "a", ""})
-        wrong = wrong + check(p, "string .split of a separator not there is one piece", "abc".satellite.split(","), {"abc"})
-        wrong = wrong + check(p, "string .split of empty text is every character", "héllo".satellite.split(""), {"h", "é", "l", "l", "o"})
+        wrong = wrong + check(p, "string .satellite.split", s.satellite.split(" "), {"hello", "world"})
+        wrong = wrong + check(p, "string .satellite.split keeps an empty piece", "a,,b".satellite.split(","), {"a", "", "b"})
+        wrong = wrong + check(p, "string .satellite.split keeps empty pieces at both ends", ",a,".satellite.split(","), {"", "a", ""})
+        wrong = wrong + check(p, "string .satellite.split of a separator not there is one piece", "abc".satellite.split(","), {"abc"})
+        wrong = wrong + check(p, "string .satellite.split of empty text is every character", "héllo".satellite.split(""), {"h", "é", "l", "l", "o"})
         satellite.container.list<satellite.variable.string> parts = "x;y;z".satellite.split(";")
-        wrong = wrong + check(p, "string .split read through a name", parts[2], "y")
+        wrong = wrong + check(p, "string .satellite.split read through a name", parts[2], "y")
 
         // .replace swaps every a for b, left to right, and leaves the name as it was
-        wrong = wrong + check(p, "string .replace swaps every one", s.satellite.replace("o", "0"), "hell0 w0rld")
-        wrong = wrong + check(p, "string .replace does not swap its own answer again", "aaa".satellite.replace("a", "aa"), "aaaaaa")
-        wrong = wrong + check(p, "string .replace goes left to right", "aaaa".satellite.replace("aa", "b"), "bb")
-        wrong = wrong + check(p, "string .replace of text not there", "abc".satellite.replace("x", "y"), "abc")
-        wrong = wrong + check(p, "string .replace leaves the name as it was", s, "hello world")
+        wrong = wrong + check(p, "string .satellite.replace swaps every one", s.satellite.replace("o", "0"), "hell0 w0rld")
+        wrong = wrong + check(p, "string .satellite.replace does not swap its own answer again", "aaa".satellite.replace("a", "aa"), "aaaaaa")
+        wrong = wrong + check(p, "string .satellite.replace goes left to right", "aaaa".satellite.replace("aa", "b"), "bb")
+        wrong = wrong + check(p, "string .satellite.replace of text not there", "abc".satellite.replace("x", "y"), "abc")
+        wrong = wrong + check(p, "string .satellite.replace leaves the name as it was", s, "hello world")
 
         // .trim takes spaces, tabs, carriage returns and newlines off both ends
-        wrong = wrong + check(p, "string .trim() of spaces", "  padded  ".satellite.trim(), "padded")
-        wrong = wrong + check(p, "string .trim of tabs returns and newlines", " \t\r\n padded \n\t ".satellite.trim, "padded")
-        wrong = wrong + check(p, "string .trim keeps the space inside", " a b ".satellite.trim, "a b")
-        wrong = wrong + check(p, "string .resolved answers the string as it is", "a\tb".satellite.resolved, "a\tb")
+        wrong = wrong + check(p, "string .satellite.trim() of spaces", "  padded  ".satellite.trim(), "padded")
+        wrong = wrong + check(p, "string .satellite.trim of tabs returns and newlines", " \t\r\n padded \n\t ".satellite.trim, "padded")
+        wrong = wrong + check(p, "string .satellite.trim keeps the space inside", " a b ".satellite.trim, "a b")
+        wrong = wrong + check(p, "string .satellite.resolved answers the string as it is", "a\tb".satellite.resolved, "a\tb")
 
         // .append and .clear change the string on the name
         satellite.variable.string t = "abc"
         t.satellite.append("def")
-        wrong = wrong + check(p, "string .append(x) changes the name", t, "abcdef")
+        wrong = wrong + check(p, "string .satellite.append(x) changes the name", t, "abcdef")
         t.satellite.append("!")
-        wrong = wrong + check(p, "string .append twice", t, "abcdef!")
+        wrong = wrong + check(p, "string .satellite.append twice", t, "abcdef!")
         t.satellite.clear
-        wrong = wrong + check(p, "string .clear empties the name", t, "")
+        wrong = wrong + check(p, "string .satellite.clear empties the name", t, "")
         t.satellite.append("x")
         t.satellite.clear()
-        wrong = wrong + check(p, "string .clear() with brackets", t.satellite.empty, satellite.bool.true)
+        wrong = wrong + check(p, "string .satellite.clear() with brackets", t.satellite.empty, satellite.bool.true)
 
         // .string .str .to_string answer the text unchanged
-        wrong = wrong + check(p, "string .string", s.satellite.string, "hello world")
-        wrong = wrong + check(p, "string .str", s.satellite.str, "hello world")
-        wrong = wrong + check(p, "string .to_string()", s.satellite.to_string(), "hello world")
+        wrong = wrong + check(p, "string .satellite.string", s.satellite.string, "hello world")
+        wrong = wrong + check(p, "string .satellite.str", s.satellite.str, "hello world")
+        wrong = wrong + check(p, "string .satellite.to_string()", s.satellite.to_string(), "hello world")
 
         // .number .as_number .to_number read a whole number out of the text
-        wrong = wrong + check(p, "string .number", "42".satellite.number + 1, 43)
-        wrong = wrong + check(p, "string .as_number", "42".satellite.as_number + 1, 43)
-        wrong = wrong + check(p, "string .to_number()", "42".satellite.to_number() + 1, 43)
-        wrong = wrong + check(p, "string .number of a negative", "-42".satellite.number, -42)
-        wrong = wrong + check(p, "string .number has no size limit", "123456789012345678901234567890".satellite.number + 1, 123456789012345678901234567891)
-        wrong = wrong + check(p, "string .number of a substring", "id=42".satellite.substring(4, 5).satellite.number * 2, 84)
+        wrong = wrong + check(p, "string .satellite.number", "42".satellite.number + 1, 43)
+        wrong = wrong + check(p, "string .satellite.as_number", "42".satellite.as_number + 1, 43)
+        wrong = wrong + check(p, "string .satellite.to_number()", "42".satellite.to_number() + 1, 43)
+        wrong = wrong + check(p, "string .satellite.number of a negative", "-42".satellite.number, -42)
+        wrong = wrong + check(p, "string .satellite.number has no size limit", "123456789012345678901234567890".satellite.number + 1, 123456789012345678901234567891)
+        wrong = wrong + check(p, "string .satellite.number of a substring", "id=42".satellite.substring(4, 5).satellite.number * 2, 84)
 
         // .binary .bin .as_binary and .hex .as_hex .to_hex read the number and answer its digits
-        wrong = wrong + check(p, "string .bin is the bits of the number", "1010".satellite.bin, "1111110010")
-        wrong = wrong + check(p, "string .binary", "42".satellite.binary, "101010")
-        wrong = wrong + check(p, "string .as_binary", "87".satellite.as_binary, "1010111")
-        wrong = wrong + check(p, "string .hex", "255".satellite.hex, "FF")
-        wrong = wrong + check(p, "string .as_hex", "4096".satellite.as_hex, "1000")
-        wrong = wrong + check(p, "string .to_hex", "48879".satellite.to_hex, "BEEF")
+        wrong = wrong + check(p, "string .satellite.bin is the bits of the number", "1010".satellite.bin, "1111110010")
+        wrong = wrong + check(p, "string .satellite.binary", "42".satellite.binary, "101010")
+        wrong = wrong + check(p, "string .satellite.as_binary", "87".satellite.as_binary, "1010111")
+        wrong = wrong + check(p, "string .satellite.hex", "255".satellite.hex, "FF")
+        wrong = wrong + check(p, "string .satellite.as_hex", "4096".satellite.as_hex, "1000")
+        wrong = wrong + check(p, "string .satellite.to_hex", "48879".satellite.to_hex, "BEEF")
 
         // characters, not bytes
-        wrong = wrong + check(p, "string .find counts characters not bytes", "a😀b".satellite.find("b"), 2)
+        wrong = wrong + check(p, "string .satellite.find counts characters not bytes", "a😀b".satellite.find("b"), 3)
         wrong = wrong + check(p, "string - takes away a wide character", "a😀b" - "😀", "ab")
 
         // .foreground and .background: the colour is part of the string
         satellite.variable.string g = "OK".satellite.foreground(x00FF00)
         satellite.variable.color green = x00FF00
-        wrong = wrong + check(p, "string .foreground is part of the string", g == "OK", satellite.bool.false)
-        wrong = wrong + check(p, "string .foreground keeps the text", g.satellite.contains("OK"), satellite.bool.true)
-        wrong = wrong + check(p, "string .find sees the colour", g.satellite.find("OK") > 0, satellite.bool.true)
-        wrong = wrong + check(p, "string .foreground takes a satellite.variable.color", "OK".satellite.foreground(green), g)
+        wrong = wrong + check(p, "string .satellite.foreground is part of the string", g == "OK", satellite.bool.false)
+        wrong = wrong + check(p, "string .satellite.foreground keeps the text", g.satellite.contains("OK"), satellite.bool.true)
+        wrong = wrong + check(p, "string .satellite.find sees the colour", g.satellite.find("OK") > 0, satellite.bool.true)
+        wrong = wrong + check(p, "string .satellite.foreground takes a satellite.variable.color", "OK".satellite.foreground(green), g)
         satellite.variable.string dark = "OK".satellite.background(x000000)
-        wrong = wrong + check(p, "string .background is part of the string", dark != "OK", satellite.bool.true)
-        wrong = wrong + check(p, "string .background keeps the text", dark.satellite.contains("OK"), satellite.bool.true)
+        wrong = wrong + check(p, "string .satellite.background is part of the string", dark != "OK", satellite.bool.true)
+        wrong = wrong + check(p, "string .satellite.background keeps the text", dark.satellite.contains("OK"), satellite.bool.true)
         satellite.variable.string nest = ("a" + "b".satellite.foreground(x0000FF) + "c").satellite.foreground(xFF0000)
         satellite.container.list<satellite.variable.string> before_a = nest.satellite.split("a")
         satellite.container.list<satellite.variable.string> after_b = nest.satellite.split("b")

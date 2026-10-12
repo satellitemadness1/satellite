@@ -5,7 +5,7 @@ satellite.capsule satellite.main(satellite.variable.arguments args)
 {
     satellite.console.display("before")
     satellite.variable.bash blank = ""
-    blank.start()
-    blank.join()
+    blank.satellite.start()
+    blank.satellite.join()
     satellite.return(satellite)
 }

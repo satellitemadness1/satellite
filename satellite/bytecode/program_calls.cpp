@@ -2,7 +2,9 @@
 // for each, and which choices are mine. A fresh reader found twelve defects in the first version
 // (2026-10-01); each fix says where it is made what it answers. The watcher -- the thread a run
 // has -- is satellite_variable_program/program_watch.cpp, and stopping a program -- end(), and the
-// end of the run -- is program_stop.cpp.
+// end of the run -- is program_stop.cpp. Each method runs BY ITS NUMBER since 2026-10-11: a program's
+// own code is a file under satellite-numbers/words/ named by its number -- 1.6.23.1.cpp is start() --
+// and a bash line's another -- 1.6.24.1.cpp -- and both call the one body here that does it.
 
 #include "program_calls.hpp"
 
@@ -47,6 +49,50 @@ void never_ran(satellite_program &program, std::uint64_t run, long long code, co
     program.ended_signal.notify_all();
 }
 
+// error()'s words as a string. They are made of a program's name, which came from a satellite
+// string, and the machine's English -- so this cannot fail, and is still asked.
+Value a_string(const std::string &text)
+{
+    Value out;
+    std::size_t bad_offset = 0;
+    if (Value::of_utf8(text, out, bad_offset) != success)
+        Value::of_utf8("its reason held a byte that is not part of any character", out, bad_offset);
+    return out;
+}
+
+// UNDER program.lock: the input closes once the watcher has written everything pass() typed --
+// so a program reading to its end (sort, cat, wc) gets that end and finishes.
+void close_the_input(satellite_program &program)
+{
+    if (program.input_closing)
+        return;
+    program.input_closing = true;
+    if (program.input_wake >= 0) {
+        const std::uint64_t one = 1;
+        [[maybe_unused]] const ssize_t said = write(program.input_wake, &one, sizeof one);
+    }
+}
+
+// ONE TYPED LINE: a value's text and an end of line, as a person would type it and press Enter.
+bool typed_line(const Value &value, std::string &typed, std::string &why)
+{
+    satellite_string text;
+    if (value.to_string(text, why) != success)
+        return false;
+    typed += text.to_utf8();
+    typed += '\n';
+    return true;
+}
+
+} // namespace
+
+// THE BODIES THE NUMBERS RUN (program_calls.hpp) -- moved out of the namespace above whole on 2026-10-11,
+// so a program's numbers and a bash line's can call them, each the one body every number of that word
+// runs. What they do, and the order they do it in -- the run claimed before anything is spawned, the
+// console handed over under its lock, the watcher, the input closed once it is written -- is what
+// call_program_method did; only the period in their sentences is new.
+namespace program_method_parts {
+
 Value start(const ProgramHandle &which, const std::string &name, bool hidden, ExpressionContext &context)
 {
     satellite_program &program = *which;
@@ -58,8 +104,9 @@ Value start(const ProgramHandle &which, const std::string &name, bool hidden, Ex
         // check of `running` that was only set after the spawn, and both started it).
         const std::lock_guard<std::mutex> hold(program.lock);
         if (program.running()) {
-            context.refuse(program_already_running, name + ".start() -- " + name + " is still running; " + name +
-                                                        ".join() waits for it to end, and then it may start again");
+            context.refuse(program_already_running, name + ".satellite.start() -- " + name + " is still running; " +
+                                                        name + ".satellite.join() waits for it to end, and then it "
+                                                        "may start again");
             return Value();
         }
         run = ++program.runs_started;
@@ -192,41 +239,6 @@ Value start(const ProgramHandle &which, const std::string &name, bool hidden, Ex
     return Value::of_program(which);
 }
 
-// error()'s words as a string. They are made of a program's name, which came from a satellite
-// string, and the machine's English -- so this cannot fail, and is still asked.
-Value a_string(const std::string &text)
-{
-    Value out;
-    std::size_t bad_offset = 0;
-    if (Value::of_utf8(text, out, bad_offset) != success)
-        Value::of_utf8("its reason held a byte that is not part of any character", out, bad_offset);
-    return out;
-}
-
-// UNDER program.lock: the input closes once the watcher has written everything pass() typed --
-// so a program reading to its end (sort, cat, wc) gets that end and finishes.
-void close_the_input(satellite_program &program)
-{
-    if (program.input_closing)
-        return;
-    program.input_closing = true;
-    if (program.input_wake >= 0) {
-        const std::uint64_t one = 1;
-        [[maybe_unused]] const ssize_t said = write(program.input_wake, &one, sizeof one);
-    }
-}
-
-// ONE TYPED LINE: a value's text and an end of line, as a person would type it and press Enter.
-bool typed_line(const Value &value, std::string &typed, std::string &why)
-{
-    satellite_string text;
-    if (value.to_string(text, why) != success)
-        return false;
-    typed += text.to_utf8();
-    typed += '\n';
-    return true;
-}
-
 // pass(text) and pass({"one", "two"}) -- "typed input while the program is running" (the author,
 // 2026-10-01): each a line, written to the program's input as it reads, never waited on here. It
 // answers true when the program was running and could still take input, and false when it had
@@ -243,7 +255,8 @@ Value pass(const ProgramHandle &which, const Value &given, const std::string &na
         made = typed_line(given, typed, why);
     }
     if (!made) {
-        context.refuse(types_do_not_meet, name + ".pass() was given something with no text to type -- " + why);
+        context.refuse(types_do_not_meet, name + ".satellite.pass() was given something with no text to type -- " +
+                                              why);
         return Value();
     }
     satellite_program &program = *which;
@@ -293,13 +306,14 @@ Value join(const ProgramHandle &which, ExpressionContext &context)
                 program.ended_signal.wait_for(hold, kJoinLooksUp);
                 if (stop_of_this_thread != nullptr && stop_of_this_thread->load(std::memory_order_relaxed)) {
                     program.done_waiting(run);
-                    context.refuse(thread_stopped, "a join() on a thread asked to stop");
+                    context.refuse(thread_stopped, "a .satellite.join() on a thread asked to stop");
                     context.reported = true;
                     return Value();
                 }
                 if (program_quit().load(std::memory_order_relaxed)) {
                     program.done_waiting(run);
-                    context.refuse(program_returned, "a join() when satellite.return(satellite) was reached");
+                    context.refuse(program_returned, "a .satellite.join() when satellite.return(satellite) was "
+                                                     "reached");
                     context.reported = true;
                     return Value();
                 }
@@ -350,6 +364,10 @@ Value end(const ProgramHandle &which)
     forget(which);
     return Value::of_number(satellite_number::from_signed(code));
 }
+
+} // namespace program_method_parts
+
+namespace {
 
 // ONE OF end()'s FOUR NAMES, or one of join()'s three -- each its own code since the review of steps
 // 2-5, so a spacesuit's quit and shutdown, or code and return, stay two names.
@@ -454,67 +472,149 @@ std::string program_method_takes(token::Code method)
 std::string program_methods_are(bool bash)
 {
     return std::string(bash ? "a bash line" : "a program") +
-           " has .start(), .ok(), .error(), .join(), .code(), .return(), .end(), .exit(), .quit(), "
-           ".shutdown() and .pass()";
+           " has .satellite.start(), .satellite.ok(), .satellite.error(), .satellite.join(), .satellite.code(), "
+           ".satellite.return(), .satellite.end(), .satellite.exit(), .satellite.quit(), .satellite.shutdown() and "
+           ".satellite.pass()";
 }
 
-Value call_program_method(token::Code method, const ProgramHandle &which, const std::vector<Value> &arguments,
-                          bool had_parentheses, const std::string &name, ExpressionContext &context)
+// start(how): "the output will be displayed unless my_program.start("hide") is called" (the author) -- so
+// "hide" is the one word it takes, and starts it with its output thrown away. Any other is refused, in the
+// sentence the checker says when the word is written in quotes (program_check.cpp).
+Value program_method_parts::start_how(const ProgramHandle &which, const Value &how, const std::string &name,
+                                      ExpressionContext &context)
 {
+    const satellite_string *word = how.as_string();
+    const bool hidden = word != nullptr && word->to_utf8() == "hide";
+    if (!hidden) {
+        satellite_string shown;
+        std::string why;
+        const std::string given = how.to_string(shown, why) == success ? shown.to_utf8() : "that";
+        context.refuse(satl_line_not_understood, name + ".satellite.start(" + given + ") -- .satellite.start() takes "
+                                                     "nothing, or \"hide\" to run it with its output thrown away");
+        return Value();
+    }
+    return start(which, name, hidden, context);
+}
+
+// ok() AND error() -- what the last start() could do, and why not, or how it ended. READ UNDER THE LOCK HERE,
+// in a hold of their own: run_program_number's S741 check before them was one hold with these reads until
+// 2026-10-11, and `started`, which it reads, is never set back -- so whatever these read is what that hold
+// would have read a moment later.
+Value program_method_parts::ok(const ProgramHandle &which)
+{
+    const std::lock_guard<std::mutex> hold(which->lock);
+    return Value::of_bool(which->could_start);
+}
+
+Value program_method_parts::error(const ProgramHandle &which)
+{
+    std::string why;
+    {
+        const std::lock_guard<std::mutex> hold(which->lock);
+        why = which->why;
+    }
+    return a_string(why);
+}
+
+// EVERY NUMBER BELOW IS IN words/words.tsv, OR THIS FILE DOES NOT COMPILE: a fixed_code of 0 would
+// quietly send that method to run_program_number's "a program has" refusal instead of to its number.
+template <int Type, int... Last>
+inline constexpr bool every_program_word_numbered = ((word::fixed_code<1, 6, Type, Last> != 0) && ...);
+static_assert(every_program_word_numbered<23, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12>,
+              "a program method's number is missing from words/words.tsv");
+static_assert(every_program_word_numbered<24, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12>,
+              "a bash line's method's number is missing from words/words.tsv");
+
+token::Code program_number_of(token::Code method)
+{
+    // ONE METHOD, ONE NUMBER, read off words/words.tsv -- the second names too: join, code and return are
+    // three words that run one body, and so are end, exit, quit and shutdown, each with its own token since
+    // the review of steps 2-5, so a spacesuit's own quit and shutdown, or code and return, stay two names.
+    // 1 6 23 7, start(how), is start's own code given one thing in its brackets (run_program_number).
+    switch (method) {
+    case token::start_token: return word::fixed_code<1, 6, 23, 1>;
+    case token::ok_token: return word::fixed_code<1, 6, 23, 2>;
+    case token::error_text_token: return word::fixed_code<1, 6, 23, 3>;
+    case token::join_token: return word::fixed_code<1, 6, 23, 4>;
+    case token::code_token: return word::fixed_code<1, 6, 23, 5>;
+    case token::return_token: return word::fixed_code<1, 6, 23, 6>;
+    case token::end_token: return word::fixed_code<1, 6, 23, 8>;
+    case token::exit_token: return word::fixed_code<1, 6, 23, 9>;
+    case token::quit_token: return word::fixed_code<1, 6, 23, 10>;
+    case token::shutdown_token: return word::fixed_code<1, 6, 23, 11>;
+    case token::pass_token: return word::fixed_code<1, 6, 23, 12>;
+    default: return 0;
+    }
+}
+
+token::Code bash_number_of(token::Code method)
+{
+    switch (method) {
+    case token::start_token: return word::fixed_code<1, 6, 24, 1>;
+    case token::ok_token: return word::fixed_code<1, 6, 24, 2>;
+    case token::error_text_token: return word::fixed_code<1, 6, 24, 3>;
+    case token::join_token: return word::fixed_code<1, 6, 24, 4>;
+    case token::code_token: return word::fixed_code<1, 6, 24, 5>;
+    case token::return_token: return word::fixed_code<1, 6, 24, 6>;
+    case token::end_token: return word::fixed_code<1, 6, 24, 8>;
+    case token::exit_token: return word::fixed_code<1, 6, 24, 9>;
+    case token::quit_token: return word::fixed_code<1, 6, 24, 10>;
+    case token::shutdown_token: return word::fixed_code<1, 6, 24, 11>;
+    case token::pass_token: return word::fixed_code<1, 6, 24, 12>;
+    default: return 0;
+    }
+}
+
+Value run_program_number(token::Code method, token::Code number, const Value &receiver,
+                         const std::vector<Value> &arguments, bool had_parentheses, const std::string &name,
+                         ExpressionContext &context)
+{
+    // call_program_method's refusals, in its words, before any number runs. A method a program does not
+    // have reaches here only as it was written, with its `.` -- `p.satellite.size()` was refused by the
+    // period check first (method_periods.hpp), saying a program has no size -- so it is said with that `.`.
+    const ProgramHandle *held = receiver.program_handle();
+    const bool bash = held != nullptr && *held != nullptr && (*held)->bash;
     const std::string spelling = token::method_name_of(method);
-    if (program_method_arity(method) < 0) {
-        context.refuse(types_do_not_meet,
-                       name + "." + spelling + " -- " + program_methods_are(which != nullptr && which->bash));
+    if (program_method_arity(method) < 0 || number == 0) {
+        context.refuse(types_do_not_meet, name + "." + spelling + " -- " + program_methods_are(bash));
         return Value();
     }
     if (!had_parentheses || arguments.size() > static_cast<std::size_t>(program_method_arity(method)) ||
         arguments.size() < static_cast<std::size_t>(program_method_least(method))) {
-        context.refuse(satl_line_not_understood, name + "." + spelling + program_method_takes(method));
+        context.refuse(satl_line_not_understood, name + ".satellite." + spelling + program_method_takes(method));
         return Value();
     }
-    if (which == nullptr) {
+    if (held == nullptr || *held == nullptr) {
         context.refuse(satl_line_not_understood, name + " holds no program yet -- give it one with = \"name\" or "
                                                         "= {\"name\", \"argument\"}");
         return Value();
     }
-    if (method == token::start_token) {
-        bool hidden = false;
-        if (!arguments.empty()) {
-            const satellite_string *how = arguments.front().as_string();
-            hidden = how != nullptr && how->to_utf8() == "hide";
-            if (!hidden) {
-                satellite_string shown;
-                std::string why;
-                const std::string given = arguments.front().to_string(shown, why) == success ? shown.to_utf8() : "that";
-                context.refuse(satl_line_not_understood, name + ".start(" + given + ") -- start() takes nothing, or "
-                                                             "\"hide\" to run it with its output thrown away");
-                return Value();
-            }
-        }
-        return start(which, name, hidden, context);
-    }
-    satellite_program &program = *which;
-    std::string why;
-    bool could_start = false;
-    {
-        const std::lock_guard<std::mutex> hold(program.lock);
-        if (!program.started) {
-            context.refuse(program_not_started, name + "." + spelling + "() -- " + name + " was never started; " +
-                                                    name + ".start() comes first");
+    const ProgramHandle &which = *held;
+    // EVERY METHOD BUT start() ASKS ABOUT A RUN, and before any start() there is none: S741.
+    if (method != token::start_token) {
+        const std::lock_guard<std::mutex> hold(which->lock);
+        if (!which->started) {
+            context.refuse(program_not_started, name + ".satellite." + spelling + "() -- " + name +
+                                                    " was never started; " + name + ".satellite.start() comes first");
             return Value();
         }
-        why = program.why;
-        could_start = program.could_start;
     }
-    if (method == token::ok_token)
-        return Value::of_bool(could_start);
-    if (method == token::error_text_token)
-        return a_string(why);
-    if (is_end(method))
-        return end(which);
-    if (method == token::pass_token)
-        return pass(which, arguments.front(), name, context);
-    return join(which, context);
+
+    // WHICH NUMBER: the value's own -- a bash line's, 1 6 24 n, or a program's, 1 6 23 n, whatever the name
+    // holding it was declared (program_calls.hpp) -- and start(how)'s, n = 7, for a start() given its word.
+    token::Code runs = bash ? bash_number_of(method) : number;
+    if (method == token::start_token && !arguments.empty())
+        runs = bash ? word::fixed_code<1, 6, 24, 7> : word::fixed_code<1, 6, 23, 7>;
+
+    // THE NUMBER RUNS: table[code], one subtraction and one load (function_table.hpp), and the
+    // function its file under satellite-numbers/words/ put in the row at start-up.
+    const NumberRow *row = context.functions.method(runs);
+    if (row == nullptr || row->scenarios.method_call == nullptr) {
+        context.refuse(not_built_yet, name + ".satellite." + spelling + " is not built for " +
+                                          (bash ? "a bash line" : "a program") + " yet");
+        return Value();
+    }
+    return row->scenarios.method_call(receiver, nullptr, nullptr, arguments, had_parentheses, name, context);
 }
 
 } // namespace satellite004

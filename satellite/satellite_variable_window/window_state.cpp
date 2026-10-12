@@ -63,7 +63,7 @@ bool window_on_of(satellite_window &which, bool &out, std::string &why)
     // satellite's, so a closed one has no last-known answer that is worth
     // anything -- it is refused, and the sentence is the same one `.text` uses.
     if (which.widget == nullptr) {
-        why = "it is closed -- read .on while the window is still open";
+        why = "it is closed -- read .satellite.on while the window is still open";
         return false;
     }
     GtkWidget *widget = static_cast<GtkWidget *>(which.widget);
@@ -125,7 +125,7 @@ bool window_value_of(satellite_window &which, long long int &out, std::string &w
         return false;
     }
     if (which.widget == nullptr) {
-        why = "it is closed -- read .value while the window is still open";
+        why = "it is closed -- read .satellite.value while the window is still open";
         return false;
     }
     GtkWidget *widget = static_cast<GtkWidget *>(which.widget);
@@ -299,7 +299,7 @@ bool window_chosen_of(satellite_window &which, std::string &out, std::string &wh
         return false;
     }
     if (which.widget == nullptr) {
-        why = "it is closed -- read .chosen while the window is still open";
+        why = "it is closed -- read .satellite.chosen while the window is still open";
         return false;
     }
     GtkWidget *widget = static_cast<GtkWidget *>(which.widget);

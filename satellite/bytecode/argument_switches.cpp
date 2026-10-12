@@ -26,18 +26,24 @@ const Code kTrue = word::code_of(1, 17, 2);    // satellite.bool.true
 const std::string kPlace = "satellite.library.arguments";
 const std::string kOldPlace = "satellite.library.main.arguments";   // where they lived until 2026-10-03
 
-// HOW A LINE AT `at` BEGINS AS THE ARGUMENTS, or "" when it does not: "arguments" for the bare
-// name, or the place a word is spelled under -- satellite.library.arguments itself, a word under
-// it (satellite.library.arguments.access lexes as ONE code), or the same at the old place.
-// `rest` is what a word under the place spells after it ("access"), `next` the code after the head.
+// HOW A LINE AT `at` BEGINS AS THE ARGUMENTS, or "" when it does not: "satellite.arguments" for the
+// run's own (main_arguments.hpp), "arguments" for the bare name they had until 2026-10-11 -- read, so
+// the line is refused naming the new spelling (switch_line) -- or the place a word is spelled under --
+// satellite.library.arguments itself, a word under it (satellite.library.arguments.access lexes as ONE
+// code), or the same at the old place. `rest` is what a word under the place spells after it ("access"),
+// `next` the code after the head.
 std::string head_of(const std::vector<std::bitset<16>> &row, std::size_t at, std::string &rest, std::size_t &next)
 {
     rest.clear();
     next = at;
     const Code code = code_at(row, at);
+    if (code == kTheRunsArgumentsWord) {
+        next = at + 1;
+        return code_at(row, next) == token::method_token ? std::string(kTheRunsArguments) : std::string();
+    }
     if (code == token::name_token) {
         const std::string name = text_at(row, next);   // past the name and its letters
-        return name == "arguments" && code_at(row, next) == token::method_token ? name : std::string();
+        return name == kTheOldBareArguments && code_at(row, next) == token::method_token ? name : std::string();
     }
     const char *spelled = word::is_word_code(code) ? word::spelling_of(code) : nullptr;
     if (spelled == nullptr)
@@ -147,11 +153,11 @@ std::string shown_with(const std::string &written, bool call, const std::string 
 std::string an_example_of(const Setting &setting)
 {
     switch (setting.kind) {
-    case SettingKind::flag: return "false";
+    case SettingKind::flag: return "satellite.bool.false";
     case SettingKind::number: return std::to_string(setting.least > 0 ? setting.least : 1);
     case SettingKind::text: return "\"~/folder\"";
     }
-    return "false";
+    return "satellite.bool.false";
 }
 
 // THE VALUE WRITTEN AT `at`, OF THE SETTING'S KIND, KEPT AS TEXT -- or "" in `kept` and the refusal,
@@ -164,20 +170,23 @@ std::string the_value_written(const std::vector<std::bitset<16>> &row, std::size
     const std::string example = shown_with(written, line.call, an_example_of(setting));
     switch (setting.kind) {
     case SettingKind::flag: {
-        // BARE OR satellite.bool's, the same here (D22).
-        const char *bare = line.call ? a_bare_true_or_false_in_brackets(row, at) : a_bare_true_or_false(row, at);
-        if (bare != nullptr) {
-            kept = bare;
-            return std::string();
-        }
+        // satellite.bool.true OR satellite.bool.false, AND NOTHING ELSE. A BARE true OR false IS REFUSED as it is
+        // everywhere, naming the value it meant (the author, 2026-10-11: "So there should be no true then only an
+        // error message, and satellite.bool.true" -- which ends MS-2's D22 of 2026-10-03, where the bare word was
+        // the value here).
         const Code value = code_at(row, at);
         if ((value == kTrue || value == kFalse) && ends_here(row, at + 1, line.call)) {
             kept = value == kTrue ? "true" : "false";
             return std::string();
         }
+        if (const char *bare = line.call ? a_bare_true_or_false_in_brackets(row, at) : a_bare_true_or_false(row, at)) {
+            code = name_not_declared;
+            return name_not_declared_why(bare) + ": " +
+                   shown_with(written, line.call, std::string("satellite.bool.") + bare);
+        }
         code = setting_is_not_a_flag;
-        return written + " is true or false, and nothing else -- " + example + " (a bare false and satellite.bool.false "
-               "are the same here), with nothing after it " + (line.call ? "in its brackets" : "on its line");
+        return written + " is true or false, and nothing else -- " + example + ", with nothing after it " +
+               (line.call ? "in its brackets" : "on its line");
     }
     case SettingKind::number: {
         std::size_t k = at;
@@ -231,8 +240,8 @@ std::string a_switch_written_too_late(const std::string &written, const std::str
     // SOME, NOT ALL: S031 and the S15x are said before main begins, S032-S034 when the run ends (the
     // fresh reader, 2026-10-04) -- and one value has to hold for all of them.
     return written + " is the program's switch, written once at the top of its file, outside every capsule: "
-                     "arguments." + key + " = false. It holds for the whole run, and some of what it turns off is "
-                     "said before satellite.main begins, so a line inside a capsule cannot be what sets it";
+                     "satellite.arguments." + key + " = satellite.bool.false. It holds for the whole run, and some of what it turns "
+                     "off is said before satellite.main begins, so a line inside a capsule cannot be what sets it";
 }
 
 namespace scan {
@@ -257,6 +266,19 @@ void switch_line(CapsuleTable &table, const std::vector<std::bitset<16>> &row, s
     const std::string written = line.head + "." + key;
     const Setting *setting = a_setting_named(key);
 
+    // THE BARE NAME THE RUN'S OWN ARGUMENTS HAD UNTIL 2026-10-11 (main_arguments.hpp): said first, in its spelling
+    // now -- and a switch's whole line, when the row is one.
+    if (line.head == kTheOldBareArguments) {
+        refuse(table, r, declared_at, name_not_declared,
+               written + " is written satellite.arguments." + key + " now -- the run's own arguments are under "
+                         "satellite" +
+                   (setting == nullptr ? std::string()
+                                       : ", and a file's switch is written satellite.arguments." + key +
+                                             (line.call ? "(" + an_example_of(*setting) + ")"
+                                                        : " = " + an_example_of(*setting))));
+        return;
+    }
+
     // NO NAME AFTER THE DOT, OR NO `=` AFTER A NAME THAT IS NO SETTING -- `arguments.update()`: a line
     // like any other at a file's top, refused in the words every other one is.
     if (key.empty() || (setting == nullptr && !line.call && code_at(row, line.sign) != token::assign_token)) {
@@ -277,9 +299,9 @@ void switch_line(CapsuleTable &table, const std::vector<std::bitset<16>> &row, s
     // THE OLD PLACE: its spelling now is a line that runs.
     if (line.head == kOldPlace) {
         refuse(table, r, declared_at, satl_line_not_understood,
-               written + " is where the arguments lived until 2026-10-03 -- a file's line is written arguments." +
-                   key + "(" + an_example_of(*setting) + "), or satellite.library.arguments." + key + " = " +
-                   an_example_of(*setting));
+               written + " is where the arguments lived until 2026-10-03 -- a file's line is written "
+                         "satellite.arguments." + key + "(" + an_example_of(*setting) + "), or "
+                         "satellite.library.arguments." + key + " = " + an_example_of(*setting));
         return;
     }
     // TOO LATE: a row satl reads as it starts, before it reads this file.
@@ -310,8 +332,8 @@ void switch_line(CapsuleTable &table, const std::vector<std::bitset<16>> &row, s
     CapsuleScope &file = table.scopes[file_scope];
     if (file.switches.count(key) != 0) {
         refuse(table, r, declared_at, name_declared_twice,
-               "arguments." + key + " is written twice in this file -- a switch is written once, and a second "
-                                   "would quietly replace the first");
+               "satellite.arguments." + key + " is written twice in this file -- a switch is written once, and a "
+                                             "second would quietly replace the first");
         return;
     }
     ArgumentSwitch switched;
@@ -336,10 +358,11 @@ void set_the_program_s_switches(const CapsuleTable &table, Arguments &arguments,
             continue;                        // the scan lets through nothing else
         // FOR THIS RUN (setting_writes.hpp): a file's line, and the scan has judged its value already.
         std::string why;
-        change_a_setting(*setting, a_value_the_scan_kept(*setting, line.kept), Lasting::this_run, "arguments." + key,
-                         state, why);
+        change_a_setting(*setting, a_value_the_scan_kept(*setting, line.kept), Lasting::this_run,
+                         "satellite.arguments." + key, state, why);
+        // --debug NAMES THE ROW AS IT NAMES EVERY ROW, as a program writes it: satellite.arguments.missing (his L).
         if (state.debug_mode)
-            state.set("arguments." + key + " = " + line.kept + " (the program's own line, at the top of its file)",
+            state.set("satellite.arguments." + key + " = " + line.kept + " (the program's own line, at the top of its file)",
                       success);
     }
 }

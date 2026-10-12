@@ -1,7 +1,7 @@
 satellite.include(satellite)
-arguments.float.decimal(128)
-arguments.float.whole(4096)
-arguments.infinity_display(32)
+satellite.arguments.float.decimal(128)
+satellite.arguments.float.whole(4096)
+satellite.arguments.infinity_display(32)
 
 // full_numbers_6 -- satellite.test.full(): satellite.variable.fraction. Two numbers tied together
 // by a touching slash, each held as a float and shown as the whole number it is; it stays as it
@@ -37,22 +37,22 @@ satellite.capsule satellite.main()
         satellite.variable.bool show = turn == rounds
         satellite.variable.fraction third = 1/3
         satellite.variable.fraction half = 2/4
-        check(show, "fraction 1/3 shows 1/3, and .string is that; it stays as written, 2/4 shows 2/4", third.string + " " + half.string, "1/3 2/4")
-        check(show, "fraction compares by its worth, 2/4 == 1/2", (half == 1/2).string + " " + (-1/2 == -2/4).string, "true true")
-        check(show, "fraction orders by its worth, and != <= >= too", (third < half).string + " " + (third > half).string + " " + (2/4 != 1/2).string + " " + (1/3 <= 1/3).string + " " + (2/3 >= 3/4).string, "true false false true false")
-        check(show, "fraction each part shows as the number it is: 1.5/2, and 1.0/3 shows 1/3", 1.5/2.string + " " + 1.0/3.string, "1.5/2 1/3")
-        check(show, "fraction the sign goes on top, -1/3", (-1/3).string, "-1/3")
-        check(show, "fraction 1 / 3 with spaces is whole-number division", (1 / 3).string, "0")
-        check(show, "fraction .numerator and .denominator are its parts, a whole number or a float", third.numerator.string + " " + third.denominator.string + " " + (half.numerator + 1).string + " " + 1.5/2.numerator.string, "1 3 3 1.5")
-        check(show, "fraction compares with a whole number by its worth", (4/2 == 2).string + " " + (1/2 == 1).string, "true false")
-        check(show, "fraction compares exactly past 128 places, by cross-multiplying", (1/10000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000 < 2/10000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000).string, "true")
+        check(show, "fraction 1/3 shows 1/3, and .satellite.string is that; it stays as written, 2/4 shows 2/4", third.satellite.string + " " + half.satellite.string, "1/3 2/4")
+        check(show, "fraction compares by its worth, 2/4 == 1/2", (half == 1/2).satellite.string + " " + (-1/2 == -2/4).satellite.string, "true true")
+        check(show, "fraction orders by its worth, and != <= >= too", (third < half).satellite.string + " " + (third > half).satellite.string + " " + (2/4 != 1/2).satellite.string + " " + (1/3 <= 1/3).satellite.string + " " + (2/3 >= 3/4).satellite.string, "true false false true false")
+        check(show, "fraction each part shows as the number it is: 1.5/2, and 1.0/3 shows 1/3", 1.5/2.satellite.string + " " + 1.0/3.satellite.string, "1.5/2 1/3")
+        check(show, "fraction the sign goes on top, -1/3", (-1/3).satellite.string, "-1/3")
+        check(show, "fraction 1 / 3 with spaces is whole-number division", (1 / 3).satellite.string, "0")
+        check(show, "fraction .satellite.numerator and .satellite.denominator are its parts, a whole number or a float", third.satellite.numerator.satellite.string + " " + third.satellite.denominator.satellite.string + " " + (half.satellite.numerator + 1).satellite.string + " " + 1.5/2.satellite.numerator.satellite.string, "1 3 3 1.5")
+        check(show, "fraction compares with a whole number by its worth", (4/2 == 2).satellite.string + " " + (1/2 == 1).satellite.string, "true false")
+        check(show, "fraction compares exactly past 128 places, by cross-multiplying", (1/10000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000 < 2/10000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000).satellite.string, "true")
         satellite.variable.fraction g = 3
-        check(show, "fraction a whole number given to a fraction name is over 1", g.string, "3/1")
+        check(show, "fraction a whole number given to a fraction name is over 1", g.satellite.string, "3/1")
         g = 5/7
         g = -g
-        check(show, "fraction a minus turns a fraction name over, on top", g.string + " " + g.numerator.string, "-5/7 -5")
+        check(show, "fraction a minus turns a fraction name over, on top", g.satellite.string + " " + g.satellite.numerator.satellite.string, "-5/7 -5")
         satellite.container.list halves = {2/4, 3/4}
-        check(show, "fraction a list finds a fraction by its worth", halves.satellite.contains(1/2).string, "true")
+        check(show, "fraction a list finds a fraction by its worth", halves.satellite.contains(1/2).satellite.string, "true")
     }
     satellite.return(satellite)
 }

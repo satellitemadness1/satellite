@@ -1,0 +1,24 @@
+--- make_support/045-optimise.mk	2026-10-07 21:47:14.942895932 -0400
++++ /tmp/claude-1000/-home-madness-code-cxx-satellite/f00b04df-01a9-4b0d-bf95-fc75525d865f/scratchpad/pgo-fix/045-optimise.mk	2026-10-07 22:04:47.543263418 -0400
+@@ -157,7 +157,20 @@
+ # (-Wno-profile-instr-out-of-date: a function whose shape changed is unprofiled until the next
+ # training), and the rest stand. ORDER-ONLY ON THE BUILD STAMP, so the inner make's --same reads
+ # the stamp this make has already written, with -j as without.
+-$(PGO_PROFILE): $(TRAINING) | $(BUILD_STAMP)
++# THE PROFILE IS ONE COMPILER'S (2026-10-07, the evening of the day the profile started being kept):
++# a profile written by one LLVM is not read by another -- `sudo make` found /usr/bin's clang 21
++# (root's HOME has no ~/opt) and met the kept clang 24 profile: every object failed with
++# "unsupported instrumentation profile format version". So the profile also depends on a note
++# of the compiler that trained it, $(PGO_DIR)/compiler, holding $(CXX_VERSION); the note is
++# rewritten only when that string changes, so a plain make leaves the profile standing and a
++# different compiler retrains before it compiles anything.
++PGO_COMPILER_NOTE := $(PGO_DIR)/compiler
++ifneq ($(file < $(PGO_COMPILER_NOTE)),$(CXX_VERSION))
++$(shell mkdir -p $(PGO_DIR))
++$(file > $(PGO_COMPILER_NOTE),$(CXX_VERSION))
++endif
++
++$(PGO_PROFILE): $(TRAINING) $(PGO_COMPILER_NOTE) | $(BUILD_STAMP)
+ 	@mkdir -p $(TRAIN_BUILD)
+ 	@$(MAKE) --no-print-directory PGO_STAGE=pgo-train INSTALL_AFTER_BUILD=no $(TRAIN_BUILD)/satl
+ 	@echo "PGO: $(TRAIN_BUILD)/satl runs $(words $(TRAINING)) training programs (make_support/training/)"

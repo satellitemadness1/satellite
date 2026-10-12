@@ -29,18 +29,18 @@ satellite.capsule satellite.main()
     a.call_put(3)
     box b
     b.call_put(4)
-    satellite.container.list<box> l = {a.pointer(), b}
-    l.satellite.append(b.pointer())
+    satellite.container.list<box> l = {a.satellite.pointer(), b}
+    l.satellite.append(b.satellite.pointer())
     satellite.console.display(l.satellite.size)
     box first = l[1]
     satellite.console.display(first.call_take())
     box third = l[3]
     third.call_put(9)
     satellite.console.display(b.call_take())
-    satellite.console.display(l.satellite.contains(a.pointer()))
+    satellite.console.display(l.satellite.contains(a.satellite.pointer()))
     satellite.container.list<box> copied = l
     box spare
     a = spare
-    satellite.console.display(first.ok())
+    satellite.console.display(first.satellite.ok())
     satellite.return(satellite)
 }

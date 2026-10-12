@@ -239,6 +239,8 @@ Code one_character_token(char c)
 static bool an_option_starts(std::string_view text, std::size_t k)
 {
     while (k < text.size() && (text[k] == ' ' || text[k] == '\t')) ++k;
+    // WRITTEN UNDER SATELLITE, satellite.end= (the author's B of 2026-10-11): an option as end= was.
+    if (text.substr(k, 10) == "satellite.") k += 10;
     if (k >= text.size() || !(std::isalpha(static_cast<unsigned char>(text[k])) || text[k] == '_'))
         return false;
     while (k < text.size() && (std::isalnum(static_cast<unsigned char>(text[k])) || text[k] == '_')) ++k;
@@ -525,20 +527,40 @@ void tokenise_one_line(std::string_view text, std::vector<std::bitset<16>> &row,
         // take `satellite` alone. `satellite.` before anything that is not a method's name is left
         // to be read as it always was. The method's code is placed at its own name, so a caret and
         // a method read back as written stand under `find` and not under `satellite`.
+        //
+        // A WORD OF PARTS IS ONE CODE TOO (the author's final window syntax, 2026-10-10 ~21:15:
+        // main_window.files_display.satellite.widgets.display.file("list_of_files", 100%, 100%) -- `.satellite.`
+        // once, straight before the word, and plain periods inside it). So the name after `satellite.` is read
+        // LONGEST FIRST through its periods, the way a word of the language is read below, and shortened a part
+        // at a time down to the one name it always read: widgets.display.file, widgets.display.input,
+        // scroll.vertical and scroll.horizontal are each a method's own spelling (REGISTRY.satellite), and
+        // `.find` is still `.find`. ONLY AFTER `.satellite.`: written with a plain period the parts stay parts,
+        // so an object's own capsules keep every name they had, and the old spelling is refused by name
+        // (window_calls.hpp, word_in_parts_written_wrong).
         if (c == 's' && line.last_token == token::method_token) {
             static constexpr std::string_view kUnderSatellite = "satellite.";
             if (text.substr(line.i, kUnderSatellite.size()) == kUnderSatellite) {
                 const std::size_t from = line.i + kUnderSatellite.size();
                 std::size_t k = from;
                 while (k < n && identifier_body(text[k])) ++k;
-                const Code method = k > from && identifier_start(text[from])
-                                        ? token::method_code_of(text.substr(from, k - from))
-                                        : 0;
+                std::size_t stop = k;
+                while (stop + 1 < n && text[stop] == '.' && identifier_start(text[stop + 1])) {
+                    ++stop;
+                    while (stop < n && identifier_body(text[stop])) ++stop;
+                }
+                Code method = 0;
+                if (k > from && identifier_start(text[from])) {
+                    for (;;) {
+                        method = token::method_code_of(text.substr(from, stop - from));
+                        if (method != 0 || stop == k) break;
+                        stop = from + text.substr(from, stop - from).rfind('.');
+                    }
+                }
                 if (method != 0) {
                     row.back() = std::bitset<16>(token::satellite_method_token);
                     line.put(method);
                     token_began = from;
-                    line.i = k;
+                    line.i = stop;
                     continue;
                 }
             }

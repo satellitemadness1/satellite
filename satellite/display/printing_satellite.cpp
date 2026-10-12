@@ -829,7 +829,7 @@ std::string display_overrun_sentence()
     return "more than " + most + " displays were waiting for the console. It is satellite's philosophy that "
            "programming is not meant to overrun the console with messages faster than it can print, and this "
            "program has overrun the " + most + " item buffer -- rework it so that it displays less, or raise "
-           "arguments.display.buffer (display.buffer = ... in ~/.satl/config.ini)";
+           "satellite.arguments.display.buffer (display.buffer = ... in ~/.satl/config.ini)";
 }
 
 void display_overrun_let_go()

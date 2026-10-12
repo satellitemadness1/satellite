@@ -6,18 +6,18 @@ satellite.capsule satellite.main()
 {
     satellite.variable.fraction f = 2/4
     satellite.console.display(f)
-    satellite.console.display(f.numerator)
-    satellite.console.display(f.denominator)
-    satellite.console.display(f.numerator + 1)
+    satellite.console.display(f.satellite.numerator)
+    satellite.console.display(f.satellite.denominator)
+    satellite.console.display(f.satellite.numerator + 1)
     satellite.console.display(f == 1/2)
-    satellite.console.display(1.5/2.numerator)
+    satellite.console.display(1.5/2.satellite.numerator)
     satellite.variable.fraction g = 3
     satellite.console.display(g)
     g = 5/7
     satellite.console.display(g)
     g = -g
     satellite.console.display(g)
-    satellite.console.display(g.numerator)
+    satellite.console.display(g.satellite.numerator)
     satellite.container.list halves = {2/4, 3/4}
     satellite.console.display(halves.satellite.contains(1/2))
     satellite.return(satellite)

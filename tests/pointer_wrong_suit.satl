@@ -30,7 +30,7 @@ satellite.capsule satellite.main()
 {
     box a
     satellite.console.display("before")
-    crate c = a.pointer()
+    crate c = a.satellite.pointer()
     satellite.console.display("THIS LINE MUST NOT RUN")
     satellite.return(satellite)
 }

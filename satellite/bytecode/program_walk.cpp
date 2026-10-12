@@ -754,7 +754,10 @@ LockUse what_the_line_does(const std::vector<std::bitset<16>> &row, std::size_t 
         // review: `x = total + me.add()` was taken as a read and lost adds). So a call with
         // brackets after a dot is writing WHEN SOME SPACESUIT HAS A CAPSULE OF THAT NAME -- and
         // `workers[1].join()` or `.upper()` is not, which held the object while joining and
-        // stopped with S728 (the third review, 2026-09-24).
+        // stopped with S728 (the third review, 2026-09-24). ONLY A BARE `.` IS ASKED: a call written
+        // `.satellite.` is the language's own word and never a capsule of his (NM-8, 2026-10-11), so
+        // `workers[1].satellite.join()` on a name of the capsule's own holds nothing while it waits -- a
+        // FIELD's item, `jobs[1].satellite.join()`, is still writing, by the field's branch above.
         if (code == token::method_token && token::is_method_code(code_at(row, k + 1)) &&
             code_at(row, k + 2) == token::left_parenthesis_token &&
             a_capsule_could_be(capsules, token::method_name_of(code_at(row, k + 1))))
@@ -1340,19 +1343,6 @@ bool assign_after_the_brackets(const std::vector<std::bitset<16>> &row, std::siz
     return code_at(row, at) == token::assign_token;
 }
 
-// A BARE true OR false THE ARGUMENTS TAKE (MS-2's D22, main_arguments.hpp), at `at`: true, with
-// `value` its true or false and `at` past it, when it is one. Read off the codes alone, as the
-// checker reads it (program_check.cpp), so the two cannot disagree.
-bool a_bare_flag_the_arguments_take(const std::vector<std::bitset<16>> &row, std::size_t &at, Value &value)
-{
-    const char *bare = a_bare_true_or_false(row, at);
-    if (bare == nullptr)
-        return false;
-    value = Value::of_bool(bare[0] == 't');
-    skip_payload(row, at);
-    return true;
-}
-
 signed long long int run_indexed_assignment(const std::vector<std::bitset<16>> &row,
                                             std::size_t &at,
                                             const std::string &name,
@@ -1410,11 +1400,7 @@ signed long long int run_indexed_assignment(const std::vector<std::bitset<16>> &
 
     if (context.code == success) {
         ++at;
-        // `args["access"] = false` -- ONE KEY OF THE ARGUMENTS TAKES A BARE true OR false (D22).
-        Value value;
-        if (!(found.declared == word::code_of(1, 6, 21) && indices.size() == 1 &&
-              a_bare_flag_the_arguments_take(row, at, value)))
-            value = evaluate_expression(row, at, context);
+        Value value = evaluate_expression(row, at, context);
         if (context.code == success && !read_to_the_end(row, at))
             context.refuse(satl_line_not_understood, name + "[...] = ... " + kNotReadToTheEnd, opened_at);
         if (context.code == success && !row_key.empty() && indices.size() == 1)
@@ -1475,10 +1461,7 @@ signed long long int run_argument_assignment(const std::vector<std::bitset<16>> 
         slot = an_argument_to_change(key, name, arguments, context, the_runs);
     if (context.code == success) {
         blame = ++at;                                // `a.access = 2` is refused under the 2
-        // `a.access = false` -- A ROW TAKES A BARE true OR false (D22); an item of a row's list does not.
-        Value value;
-        if (!(indices.empty() && a_bare_flag_the_arguments_take(row, at, value)))
-            value = evaluate_expression(row, at, context);
+        Value value = evaluate_expression(row, at, context);
         if (context.code == success && !read_to_the_end(row, at))
             context.refuse(satl_line_not_understood, name + "." + key + " = ... " + kNotReadToTheEnd, opened_at);
         if (context.code == success && slot != nullptr)
@@ -1497,8 +1480,8 @@ signed long long int run_argument_assignment(const std::vector<std::bitset<16>> 
 // "arguments.item(value_to_change_to)", and "the alias syntax using = ... does the same thing, and
 // has the same rules". `at` on the `.` after `name`, where an_argument_call found the row and its
 // `(`. ONE value in the brackets, and run_setting_assignment's order again: the row is judged before
-// the value is worked out, so a refused row never asks anybody for input. A bare true or false is
-// the value there too (D22).
+// the value is worked out, so a refused row never asks anybody for input. A bare true or false is no
+// value there, as it is none anywhere (the author, 2026-10-11, which ends MS-2's D22).
 signed long long int run_argument_call(const std::vector<std::bitset<16>> &row,
                                        std::size_t &at,
                                        const std::string &name,
@@ -1525,18 +1508,12 @@ signed long long int run_argument_call(const std::vector<std::bitset<16>> &row,
     at = open + 1;
     if (context.code == success && code_at(row, at) == token::right_parenthesis_token)
         context.refuse(satl_line_not_understood,
-                       written + "() is given its value inside the brackets -- " + written + "(false), " + written +
+                       written + "() is given its value inside the brackets -- " + written + "(satellite.bool.false), " + written +
                            "(5) or " + written + "(\"words\")",
                        opened_at);
     if (context.code == success) {
         blame = at;
-        Value value;
-        if (const char *bare = a_bare_true_or_false_in_brackets(row, at)) {
-            value = Value::of_bool(bare[0] == 't');
-            skip_payload(row, at);                       // past the name, onto its `)`
-        } else {
-            value = evaluate_expression(row, at, context);
-        }
+        Value value = evaluate_expression(row, at, context);
         if (context.code == success && code_at(row, at) != token::right_parenthesis_token)
             context.refuse(satl_line_not_understood,
                            written + "(...) is given one value, and that is all its brackets hold -- " + written +
@@ -1585,11 +1562,7 @@ signed long long int run_setting_assignment(const std::vector<std::bitset<16>> &
     ++at;                                   // past the `=`
 
     ExpressionContext context{variables, functions, state};
-    // satellite.library.arguments.access = false -- ONE OF THE ARGUMENTS TAKES A BARE true OR false
-    // (MS-2's D22), as the checker let through.
-    Value value;
-    if (!(a_word_of_the_arguments(code) && a_bare_flag_the_arguments_take(row, at, value)))
-        value = evaluate_expression(row, at, context);
+    Value value = evaluate_expression(row, at, context);
     if (context.code != success)
         return raise_context(context, spelling + " = ...",
                         state, row,
@@ -2100,7 +2073,9 @@ signed long long int run_statements(const BytecodeRegistry &registry,
         // the append without a word, and anything after a word's `)` was never
         // looked at. A refusal is placed on the statement's own start when it did
         // not say where -- `at` had already moved to the NEXT line.
-        if (word::is_word_code(code)) {
+        // satellite.arguments IS THE ONE WORD THAT IS NOT THIS: the run's own arguments, read and written below
+        // as the bare name `arguments` was until 2026-10-11 (main_arguments.hpp).
+        if (word::is_word_code(code) && code != kTheRunsArgumentsWord) {
             // satellite.delete(name), A LINE OF ITS OWN: the name, and everything this body holds about it,
             // gone (run_delete) -- asked here, where only a line that begins with a word pays for asking,
             // and not above the if, while and for (the fresh reader, 2026-10-06).
@@ -2126,10 +2101,12 @@ signed long long int run_statements(const BytecodeRegistry &registry,
             continue;
         }
 
-        if (code == token::name_token) {
+        // A NAME -- AND satellite.arguments, CARRIED AS THE NAME kTheRunsArguments, which no variable can have.
+        const bool the_runs_word = code == kTheRunsArgumentsWord;
+        if (code == token::name_token || the_runs_word) {
             // AN OBJECT BEING DECLARED -- `run_log log(path)`, `tagged_report.run_signal
             // signal` -- a name and then a name, which no other statement starts with.
-            if (an_object_declaration_at(row, at)) {
+            if (!the_runs_word && an_object_declaration_at(row, at)) {
                 const signed long long int stopped =
                     run_object_declaration(registry, capsules, functions, which_row, at, variables, state, false);
                 if (stops_the_program(stopped))
@@ -2138,7 +2115,9 @@ signed long long int run_statements(const BytecodeRegistry &registry,
             }
 
             std::size_t k = at;
-            const std::string name = text_at(row, k);
+            const std::string name = the_runs_word ? std::string(kTheRunsArguments) : text_at(row, k);
+            if (the_runs_word)
+                ++k;                     // one code, and no letters behind it
 
             // A METHOD CALL STANDING ALONE (FO-1): worked out as an expression and
             // its answer let go. The expression must reach the line's end, for the
@@ -2165,7 +2144,7 @@ signed long long int run_statements(const BytecodeRegistry &registry,
             // by what the first name IS -- a variable is a method's receiver, and a
             // name no variable has that reaches a capsule is the capsule. The checker
             // refuses a variable named like a file or a space, so the two cannot meet.
-            const Reached dotted = code_at(row, k) == token::method_token && !variables.seen(name)
+            const Reached dotted = !the_runs_word && code_at(row, k) == token::method_token && !variables.seen(name)
                                        ? reached_from(capsules, which_row, at, row)
                                        : Reached();
             if (dotted.site != nullptr) {
@@ -2182,13 +2161,12 @@ signed long long int run_statements(const BytecodeRegistry &registry,
             // does, and is told apart by the `=` after the run of row names -- looked for
             // first, so a method call pays for the look and not for a second lookup.
             //
-            // AND THE RUN'S OWN ARGUMENTS BY THEIR BARE NAME (2026-10-06), where this body has no
-            // name called `arguments` -- any capsule, and the prompt -- with no copy of main's; and
-            // `argz.row(value)`, the call that writes a row (run_argument_call), told apart from the
-            // variable's own methods by an_argument_call.
+            // AND THE RUN'S OWN ARGUMENTS (2026-10-06), satellite.arguments since 2026-10-11 -- any capsule,
+            // and the prompt -- with no copy of main's; and `argz.row(value)`, the call that writes a row
+            // (run_argument_call), told apart from the variable's own methods by an_argument_call.
             if (code_at(row, k) == token::method_token) {
-                const Seen arguments = variables.seen(name);
-                const bool the_runs = !arguments && name == kTheRunsArguments;
+                const Seen arguments = the_runs_word ? Seen{} : variables.seen(name);
+                const bool the_runs = the_runs_word;
                 if (the_runs || (arguments && arguments.declared == word::code_of(1, 6, 21))) {
                     Value none;
                     Value &rows = the_runs ? none : *arguments.value;

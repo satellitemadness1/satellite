@@ -290,6 +290,16 @@ struct CapsuleTable {
     // outside, satl_line_not_understood for a name the spacesuit does not have.
     const CapsuleSite *member(std::size_t suit, const std::string &name, std::size_t from, signed long long int &code,
                               std::string &why) const;
+
+    // WHETHER `suit` OR A SPACESUIT IT EXTENDS DECLARES A CAPSULE CALLED `name`; a field is not one. After a
+    // bare `.`, such a name is HIS capsule, even when it is one of the five words every object has
+    // (pointer_calls.hpp; the author's C of 2026-10-10: his own spacesuit's methods stay as he writes them).
+    // WITH `from`, the scope the line stands in, ONLY A CAPSULE THAT LINE REACHES COUNTS -- member()'s own rule,
+    // asked of the capsule member() would run. A protected lock() is no capsule of his from outside, so
+    // `b.lock()` there is the language's word written the old way, told to write b.satellite.lock(), never
+    // S230 to move his capsule (the author, 2026-10-11: "x.pointer() has to return an error unless the user
+    // has defined a function named pointer"). kNoScope asks about every capsule, reached or not.
+    bool declares(std::size_t suit, const std::string &name, std::size_t from = kNoScope) const;
 };
 
 // EVERY SPACESUIT NAME IN A SHAPE -- itself, or between its < and > -- made into the

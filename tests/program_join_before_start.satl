@@ -4,6 +4,6 @@ satellite.include(satellite)
 satellite.capsule satellite.main(satellite.variable.arguments args)
 {
     satellite.variable.program never = {"echo", "never shown"}
-    satellite.console.display(never.join())
+    satellite.console.display(never.satellite.join())
     satellite.return(satellite)
 }

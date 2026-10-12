@@ -48,13 +48,13 @@ satellite.capsule satellite.main()
     // the colours' own codes, taken from satl itself: the text before Q, and after it
     satellite.variable.color red_colour = xFF0000
     satellite.variable.string green = "Q".satellite.foreground(x00FF00)
-    satellite.variable.string fg_open = green.satellite.substring(1, green.satellite.find("Q"))
-    satellite.variable.string fg_close = green.satellite.substring(green.satellite.find("Q") + 2, green.satellite.size)
+    satellite.variable.string fg_open = green.satellite.substring(1, green.satellite.find("Q") - 1)
+    satellite.variable.string fg_close = green.satellite.substring(green.satellite.find("Q") + 1, green.satellite.size)
     satellite.variable.string red = "Q".satellite.foreground(red_colour)
-    satellite.variable.string red_open = red.satellite.substring(1, red.satellite.find("Q"))
+    satellite.variable.string red_open = red.satellite.substring(1, red.satellite.find("Q") - 1)
     satellite.variable.string blue = "Q".satellite.background(x0000FF)
-    satellite.variable.string bg_open = blue.satellite.substring(1, blue.satellite.find("Q"))
-    satellite.variable.string bg_close = blue.satellite.substring(blue.satellite.find("Q") + 2, blue.satellite.size)
+    satellite.variable.string bg_open = blue.satellite.substring(1, blue.satellite.find("Q") - 1)
+    satellite.variable.string bg_close = blue.satellite.substring(blue.satellite.find("Q") + 1, blue.satellite.size)
     // the string after F14 and after F31, known in advance: worked out by hand from 547311173, never read back
     // from satl. After the last a, and the A, comes U+F600, which does not show.
     satellite.variable.string after_f14 = "547311173547311173⟨209f4e45⟩⟨100000100111110100111001000101⟩éωж😀鱀𙱀𐐨ǆ\"\\\'日本語\ta"
@@ -123,7 +123,7 @@ satellite.capsule satellite.main()
         s = s + "【" + s.satellite.find("鱀") + "】"  // F39
         s.satellite.append("😀")  // F40
         s = s + "〔" + s.satellite.ends_with("a") + s.satellite.ends_with("😀") + "〕"  // F41 -- a, then U+F600: the tail of 😀, so false
-        s = s + "〖" + (s > (s.satellite.substring(1, s.satellite.find("😀")) + "한")) + "〗"  // F42
+        s = s + "〖" + (s > (s.satellite.substring(1, s.satellite.find("😀") - 1) + "한")) + "〗"  // F42
         s = s + "〘" + (s == s.satellite.resolved) + (s != s.satellite.to_string) + (s < s.satellite.upper()) + "〙"  // F43
         s = s + "⟪" + s.satellite.empty + s.satellite.contains("𙱀") + s.satellite.starts_with(s.satellite.substring(1, 5)) + "⟫"  // F44
         s = s.satellite.foreground(x00FF00)  // F45
@@ -166,7 +166,7 @@ satellite.capsule satellite.main()
         s = s - "〖 true〗"  // undoes F42
         s = s - "〔 false true〕"  // undoes F41
         s = s.satellite.replace("】😀", "】")  // undoes F40
-        s = s - "【46】"  // undoes F39
+        s = s - "【47】"  // undoes F39
         s = s - "‹521›"  // undoes F38
         s = s - "ñ"  // undoes F37
         s = s.satellite.substring(4, s.satellite.size) + s.satellite.at(1) + s.satellite.at(2) + s.satellite.at(3)  // undoes F36
@@ -190,26 +190,26 @@ satellite.capsule satellite.main()
         s = s - "7"  // undoes F23
         s = s - " true"  // undoes F22
         // CHECK: the undo below cuts the string at "1/3", so it must stand once, as the very end
-        satellite.statement.if (s.satellite.find("1/3") + 3 != s.satellite.size)
+        satellite.statement.if (s.satellite.find("1/3") + 2 != s.satellite.size)
         {
             wrong = wrong + " F21"
         }
-        s = s.satellite.substring(1, s.satellite.find("1/3"))  // undoes F21
+        s = s.satellite.substring(1, s.satellite.find("1/3") - 1)  // undoes F21
         // CHECK: the undo below takes every copy of "x1F", so it must stand once, as the very end
-        satellite.statement.if (s.satellite.find("x1F") + 3 != s.satellite.size)
+        satellite.statement.if (s.satellite.find("x1F") + 2 != s.satellite.size)
         {
             wrong = wrong + " F20"
         }
         s = s.satellite.replace("x1F", "")  // undoes F20
         // CHECK: the undo below cuts the string at "b1010", so it must stand once, as the very end
-        satellite.statement.if (s.satellite.find("b1010") + 5 != s.satellite.size)
+        satellite.statement.if (s.satellite.find("b1010") + 4 != s.satellite.size)
         {
             wrong = wrong + " F19"
         }
-        s = s.satellite.substring(1, s.satellite.find("b1010"))  // undoes F19
+        s = s.satellite.substring(1, s.satellite.find("b1010") - 1)  // undoes F19
         s = s - "50%"  // undoes F18
         // CHECK: the undo below takes every copy of "1.5", so it must stand once, as the very end
-        satellite.statement.if (s.satellite.find("1.5") + 3 != s.satellite.size)
+        satellite.statement.if (s.satellite.find("1.5") + 2 != s.satellite.size)
         {
             wrong = wrong + " F17"
         }
@@ -223,18 +223,18 @@ satellite.capsule satellite.main()
         s = s.satellite.replace("𙱀", "")  // undoes F10
         s = s - "鱀"  // undoes F09
         // CHECK: the undo below cuts the string at "😀", so it must stand once, as the very end
-        satellite.statement.if (s.satellite.find("😀") + 1 != s.satellite.size)
+        satellite.statement.if (s.satellite.find("😀") != s.satellite.size)
         {
             wrong = wrong + " F08"
         }
-        s = s.satellite.substring(1, s.satellite.find("😀"))  // undoes F08
+        s = s.satellite.substring(1, s.satellite.find("😀") - 1)  // undoes F08
         s = s - "ж"  // undoes F07
         // CHECK: the undo below cuts the string at "ω", so it must stand once, as the very end
-        satellite.statement.if (s.satellite.find("ω") + 1 != s.satellite.size)
+        satellite.statement.if (s.satellite.find("ω") != s.satellite.size)
         {
             wrong = wrong + " F06"
         }
-        s = s.satellite.substring(1, s.satellite.find("ω"))  // undoes F06
+        s = s.satellite.substring(1, s.satellite.find("ω") - 1)  // undoes F06
         s = s.satellite.replace("é", "")  // undoes F05
         s = s.satellite.uppercase()  // undoes F04
         s = s - "547311173"  // undoes F03

@@ -175,7 +175,7 @@ bool window_set_scrolling(satellite_window &which, bool vertical, bool on, std::
     }
     if (!which.is_a_window()) {
         why = std::string(which.piece_name()) + " does not scroll -- a window or a console does: " +
-              "my_window.scroll." + (vertical ? "vertical" : "horizontal") + "(" + (on ? "1" : "0") + ")";
+              "my_window.satellite.scroll." + (vertical ? "vertical" : "horizontal") + "(" + (on ? "1" : "0") + ")";
         return false;
     }
     (vertical ? which.scroll_vertical : which.scroll_horizontal) = on ? 1 : 0;
@@ -273,7 +273,8 @@ bool window_append(satellite_window &into, const WindowHandle &piece, bool by_pl
     // A CONSOLE HOLDS NOTHING BUT ITS TERMINAL (GTK-17): what goes into one is
     // written, not appended. Refused by name, with the line to write instead.
     if (into.piece == satellite_window::console) {
-        why = "a console holds nothing but its terminal -- .display(\"words\") is how something goes into one";
+        why = "a console holds nothing but its terminal -- .satellite.display(\"words\") is how something goes "
+              "into one";
         return false;
     }
     const bool a_window = into.piece == satellite_window::window;
@@ -281,7 +282,7 @@ bool window_append(satellite_window &into, const WindowHandle &piece, bool by_pl
     // nothing is placed in one by .append.
     if (into.piece == satellite_window::a_section) {
         why = "a section holds the widgets and sections made in it, laid out left to right, and nothing "
-              ".append'ed -- my_section.widgets.displays.file(\"files\", 100%, 100%)";
+              ".satellite.append'ed -- my_section.satellite.widgets.display.file(\"files\", 100%, 100%)";
         return false;
     }
     if (!a_window && !into.holds_pieces()) {
@@ -307,10 +308,10 @@ bool window_append(satellite_window &into, const WindowHandle &piece, bool by_pl
     const bool wants_a_place = a_window || into.piece == satellite_window::grid;
     if (wants_a_place != by_place) {
         why = wants_a_place
-                  ? std::string(into.piece_name()) + " places what is put in it, so .append takes the "
-                    "piece and where it goes: .append(the_piece, across, down)"
-                  : std::string(into.piece_name()) + " puts its pieces one after another, so .append "
-                    "takes just the piece: .append(the_piece)";
+                  ? std::string(into.piece_name()) + " places what is put in it, so .satellite.append takes the "
+                    "piece and where it goes: .satellite.append(the_piece, across, down)"
+                  : std::string(into.piece_name()) + " puts its pieces one after another, so .satellite.append "
+                    "takes just the piece: .satellite.append(the_piece)";
         return false;
     }
     // A WINDOW MUST BE ON A SCREEN; A ROW NEED NOT BE. A row is built and filled
@@ -342,7 +343,7 @@ bool window_append(satellite_window &into, const WindowHandle &piece, bool by_pl
     // handing GTK a GMenu where it wants a GtkWidget is a crash, not a refusal.
     if (!piece->is_drawn()) {
         why = "a menu is not appended -- it goes across the top of a window: "
-              "my_window.menu(the_menu)";
+              "my_window.satellite.menu(the_menu)";
         return false;
     }
     // A PIECE WHOSE WINDOW CLOSED CLOSED WITH IT, and `.open()` puts the window
@@ -367,7 +368,7 @@ bool window_append(satellite_window &into, const WindowHandle &piece, bool by_pl
     // menu with no heading gets.
     if (into.piece == satellite_window::tabs && piece->title.empty()) {
         why = "a tab is named by its piece's title, and " + std::string(piece->piece_name()) +
-              " has none yet -- give it one first: the_piece.title(\"Open files\")";
+              " has none yet -- give it one first: the_piece.satellite.title(\"Open files\")";
         return false;
     }
     // ALREADY SOMEWHERE. GTK refuses to give a widget a second parent and prints
@@ -401,7 +402,7 @@ bool window_append(satellite_window &into, const WindowHandle &piece, bool by_pl
     // went into a strip under the sections, and 400, 300 was no longer the window's middle. One or
     // the other, for now -- window_widgets.cpp.
     if (a_window && window_lays_out_in_sections(into)) {
-        why = std::string(into.piece_name()) + " is laid out in sections, and .append places a piece by the "
+        why = std::string(into.piece_name()) + " is laid out in sections, and .satellite.append places a piece by the "
               "window's own corner -- a window does one or the other, for now: append into a window that has "
               "no sections";
         return false;
@@ -573,7 +574,7 @@ bool window_set_title(satellite_window &which, const std::string &title, std::st
     // Two names for one thing is what this language spends its refusals
     // avoiding, so a menu is sent to the one it has.
     if (which.piece == satellite_window::menu) {
-        why = "a menu's words are its heading -- write .text(\"File\") instead";
+        why = "a menu's words are its heading -- write .satellite.text(\"File\") instead";
         return false;
     }
     if (which.is_a_window()) {

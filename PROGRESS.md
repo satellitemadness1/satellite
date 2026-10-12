@@ -33,6 +33,25 @@ machine; satl-term is gone since 2026-09-22, and satl opens its own console.]
 
 ## 1. What is built and checked
 
+**2026-10-11 (afternoon) -- NM-8 FOR EVERY TYPE LEFT: THE FOUNDATION (BUILD 0032, commit 09c2defa, installed, uploaded
+repo-11); EVERY TYPE'S NUMBERING IN PROGRESS.** The author, ~13:50: *"we still need to get the word satellite onto
+everything, before we do anything... .pointer, numbers floats, everything builtin needs the word satellite still"*, and
+after a /clear his *"A. yes B. yes C. yes"* (NM-8 before the install questions). BUILD 0032 changes no behaviour: it is
+what every type numbered next plugs into -- method_periods.hpp's `number_a_method_runs` is a switch with one case a
+type (string, list so far), asked by the walker's period check and now also by the checker's literal rule;
+`period_written_wrong(receiver, word, Kind, under)` says "X has no Y" for any kind whose words are numbered and names
+the numbered kinds itself ("-- a string's and a list's are"); `kind_a_method_answers` has one case a kind;
+satellite-numbers/number_row.hpp's `MethodCall method_call` (the list's shape) is the scenario every type numbered
+from now fills, and function_table.cpp hides its rows from a call by the word's name as it hides a list's;
+utility/satellite_spelling.py reads a table, `NUMBER_SWITCHES`, so a numbered type is one row there. check.sh green
+(1348 in a copy, whose long path alone fails the pty row). IN PROGRESS: seven agents number the other families at once,
+each in its own copy-on-write copy /home/madness/.nm8/<family> (numbers and the infinity; float, hex, binary, color,
+fraction, percentage, bool, time; maps and the arguments variable, the bare `arguments` becoming `satellite.arguments`;
+files; threads, programs and bash; the window in his final syntax; objects and `.center()`); each is merged into the
+tree one at a time, checked, timed (at most 5% slower) and reviewed before it is installed --
+SCRATCH.md/OPEN_ITEMS_2026-10-11.md section 0a. Backup: ~/.claude/projects/-home-madness-code-cxx-satellite/backups/
+2026-10-11-before-nm8-every-type/.
+
 **2026-10-11 -- A CLONE FROM GITHUB BUILDS WITH PLAIN make; ONLY THE AUTHOR IS ASKED ABOUT THE COMMIT AND THE
 UPLOAD; GITHUB'S MAIN IS THE NEWEST BUILD; HIS OWN PROGRAMS WRITTEN `.satellite.`; TWO HELP FACTS FIXED** (BUILD 0030,
 commit 20119d5f; the review's fixes BUILD 0031, commit c57f59b2). The author, answering the four questions of 10-10

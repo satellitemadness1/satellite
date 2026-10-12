@@ -319,27 +319,27 @@ WindowHandle window_widget_made(satellite_window &owner, satellite_window::Piece
     if (!owner.is_a_window() && owner.piece != satellite_window::file_display &&
         owner.piece != satellite_window::a_section) {
         why = std::string(owner.piece_name()) + " holds no widgets -- a window does, a section does, and a file "
-                                                "display does: my_window.widgets.displays.file(\"files\")";
+                                                "display does: my_window.satellite.widgets.display.file(\"files\")";
         return nullptr;
     }
     // A FILE DISPLAY'S WIDGETS SIT ACROSS ITS TOP, one under another, as the author asked on 2026-10-09
     // -- so a section, or a size, is given where there is an area to lay it out in.
     if (owner.piece == satellite_window::file_display && kind == satellite_window::a_section) {
         why = "a file display holds widgets across its top, and no sections -- make the section in the window "
-              "or in a section: my_window.section(\"" + name + "\", 100%, 50%)";
+              "or in a section: my_window.satellite.section(\"" + name + "\", 100%, 50%)";
         return nullptr;
     }
     if (owner.piece == satellite_window::file_display && size != nullptr) {
         why = "a widget made in a file display sits across its top and takes no size -- give the size to a "
-              "section, and make the widget in it: my_window.section(\"top\", 100%, 10%)";
+              "section, and make the widget in it: my_window.satellite.section(\"top\", 100%, 10%)";
         return nullptr;
     }
     // ONE OR THE OTHER, FOR NOW (satellite_window.hpp): a window that places pieces with `.append` gets
     // no sections, and window_append refuses the other way round.
     const bool in_an_area = owner.piece == satellite_window::a_section || size != nullptr;
     if (owner.is_a_window() && in_an_area && window_holds_appended_pieces(owner)) {
-        why = std::string(owner.piece_name()) + " places pieces with .append, by its own corner, and sections lay "
-              "a window out left to right -- a window does one or the other, for now: make the " +
+        why = std::string(owner.piece_name()) + " places pieces with .satellite.append, by its own corner, and "
+              "sections lay a window out left to right -- a window does one or the other, for now: make the " +
               (kind == satellite_window::a_section ? std::string("section") : std::string("widget with a size")) +
               " in a window with nothing appended";
         return nullptr;
@@ -456,10 +456,11 @@ WindowHandle window_widget_named(const satellite_window &owner, const std::strin
             return widget;
     why = std::string(owner.piece_name()) + " has no widget named " + name + " -- " +
           (owner.is_a_window() || owner.piece == satellite_window::a_section
-               ? ".widgets.displays.file(\"" + name + "\") or .section(\"" + name + "\", 100%, 50%) makes one"
+               ? ".satellite.widgets.display.file(\"" + name + "\") or .satellite.section(\"" + name +
+                     "\", 100%, 50%) makes one"
            : owner.piece == satellite_window::file_display
-               ? ".widgets.displays.file(\"" + name + "\") makes one"
-               : "a window's widgets are made with my_window.widgets.displays.file(\"" + name + "\")");
+               ? ".satellite.widgets.display.file(\"" + name + "\") makes one"
+               : "a window's widgets are made with my_window.satellite.widgets.display.file(\"" + name + "\")");
     return nullptr;
 }
 
@@ -467,7 +468,7 @@ bool window_set_directory(satellite_window &which, const std::string &path, bool
 {
     if (which.piece != satellite_window::file_display) {
         why = std::string(which.piece_name()) + " shows no directory -- a file display does: "
-                                                "my_window.widgets.displays.file(\"files\")";
+                                                "my_window.satellite.widgets.display.file(\"files\")";
         return false;
     }
     if (which.widget == nullptr) {

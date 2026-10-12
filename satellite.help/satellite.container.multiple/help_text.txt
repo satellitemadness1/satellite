@@ -23,8 +23,9 @@ a multiple<satellite.variable.string, satellite.variable.number> shows b101,
 where a name declared satellite.variable.number would make it 5.
 
 Not built yet in satellite 004: a way to ask which type the name holds right
-now. satellite.variable.variant (word 1 6 14) numbers .holding, .holds(x),
-.held and .clear, and a line that declares one is refused (S110).
+now. satellite.variable.variant (word 1 6 14) numbers .satellite.holding,
+.satellite.holds(x), .satellite.held and .satellite.clear, and a line that
+declares one is refused (S110).
 
 example:
 

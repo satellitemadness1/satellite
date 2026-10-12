@@ -50,7 +50,7 @@ std::string infinity_method_not_built(token::Code method)
         return "is not built yet -- SATELLITE_INFINITY.md INF-4 builds a whole power, and INF-5 an infinite one";
     case token::resize_token:
     case token::nines_token:
-        return "is not built yet -- SATELLITE_INFINITY.md INF-7 builds .resize and .nines";
+        return "is not built yet -- SATELLITE_INFINITY.md INF-7 builds .satellite.resize and .satellite.nines";
     default:
         return "";
     }

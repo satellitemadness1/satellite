@@ -71,7 +71,7 @@ satellite.capsule satellite.main()
         x[3] = x[3] ^ 41                                       // 5: 3 -> 36472996377170786403, past one 64-bit word
         x[4] = x[4] + 547311172000                             // 6: 1 -> 547311172001
         x[5] = x[5] * 1.0                                      // 7: 1 -> 1.0, a float
-        x[6] = x[6].string                                     // 8: 1 -> "1", a string
+        x[6] = x[6].satellite.string                                     // 8: 1 -> "1", a string
         x[7] = 0 - x[7]                                        // 9: 7 -> -7
         x[8] = x[8] * 1000000000000000000000000000000          // 10: 3 -> 3 and 30 zeros
         wrong = wrong + lost(x[9], 5)                          // check: ^ 2 cannot see a sign, -5 squared is 25 too
@@ -88,9 +88,9 @@ satellite.capsule satellite.main()
         x[1].satellite.append("satellite")                               // 20: and that list grows
         x[12] = x[12] * 547311173                              // 21: 547311173 -> 547311173 squared
         wrong = wrong + lost(x[12], 299549520090635929)        // check: a number's .reverse() drops the zeros it ends with, so x * 10 would come back
-        x[12] = x[12].reverse()                                // 22: its digits turned round
+        x[12] = x[12].satellite.reverse()                                // 22: its digits turned round
         x[12] = x[12] - 1000000000000000000000000000000000000  // 23: ten to the 36th taken off: far below zero
-        x[12] = x[12].string                                   // 24: and that number as text
+        x[12] = x[12].satellite.string                                   // 24: and that number as text
         wrong = wrong + lost(x[6], 547311173.0)                // check: / 8 rounds a loss in the 128th place away
         x[6] = x[6] / 8                                        // 25: 547311173.0 -> 68413896.625
         x[6] = x[6] - 68413896.5                               // 26: -> 0.125
@@ -113,7 +113,7 @@ satellite.capsule satellite.main()
         x.satellite.append(x[13].satellite.min)                                    // 41: the sorted list's smallest, 0
         x.satellite.append(x[13].satellite.join("-"))                              // 42: "0-1-1-1-10-3-3-4-5-7"
         x.satellite.append(x.satellite.contains(-7))                               // 43: true
-        x.satellite.append(x[15].empty)                                  // 44: false: the map is not empty
+        x.satellite.append(x[15].satellite.empty)                                  // 44: false: the map is not empty
         x.satellite.insert(2, x.satellite.size)                                    // 45: how many items there are, 20, as item 2
         x.satellite.reserve(1000)                                        // 46: room for 1000 items: no item may change
         x.satellite.insert(1, x[x.satellite.size])                                 // 47: the last item copied to the front ...
@@ -137,7 +137,7 @@ satellite.capsule satellite.main()
         x.satellite.remove(35)                                           // 62: undoes 39
         x[14]["satellite"] = x[14]["satellite"] - 1            // 63: undoes 38
         x.satellite.insert(2, x[14]["moved"])                            // 64: undoes 37, 547311172 back into the list, from the map
-        x[15].remove("moved")                                  // 65: undoes 36
+        x[15].satellite.remove("moved")                                  // 65: undoes 36
         x.satellite.remove({"satellite": 547311173})                     // 66: undoes 35
         wrong = wrong + lost(x[14], {547311173, 1, 1, 1, 10, 3, 3, 4, 5, 7}) // check: the copy 33 made, before 67 writes over it and 68 drops it
         x[14][1] = x[13][1]                                    // 67: undoes 34, from the list the copy was made from
@@ -157,7 +157,7 @@ satellite.capsule satellite.main()
         x[12] = x[12].satellite.number                                   // 77: undoes 24
         x[12] = x[12] + 1000000000000000000000000000000000000  // 78: undoes 23
         wrong = wrong + lost(x[12], 929536090025945992)        // check: 79's .reverse() drops a number's end zeros too
-        x[12] = x[12].string.satellite.reverse().satellite.number                  // 79: undoes 22
+        x[12] = x[12].satellite.string.satellite.reverse().satellite.number                  // 79: undoes 22
         x[12] = x[12] / 547311173 + x[12] % 547311173 * far    // 80: undoes 21, its remainder kept
         x[1].satellite.remove("satellite")                               // 81: undoes 20
         x[1] = x[1].satellite.join("one")                                // 82: undoes 19
@@ -177,7 +177,7 @@ satellite.capsule satellite.main()
         wrong = wrong + lost(x[6], "1")                        // check: 93's .number cannot see that 8 never made it text
         x[6] = x[6].satellite.number                                     // 93: undoes 8
         wrong = wrong + lost(x[5], 1.0)                        // check: 94's .number cannot see that 7 never made it a float
-        x[5] = x[5].number                                     // 94: undoes 7
+        x[5] = x[5].satellite.number                                     // 94: undoes 7
         x[4] = x[4] - 547311172000                             // 95: undoes 6
         x[3] = x[3] / 12157665459056928801 + x[3] % 12157665459056928801 * far // 96: undoes 5, 3 ^ 41 / 3 ^ 40, its remainder kept
         x[2] = x[2] + 547311180                                // 97: undoes 4

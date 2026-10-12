@@ -31,6 +31,6 @@ satellite.capsule satellite.main()
         }
         parts = parts + rate * 50% / 4
     }
-    satellite.console.display(total.string + " " + rate.string + " " + parts.string)
+    satellite.console.display(total.satellite.string + " " + rate.satellite.string + " " + parts.satellite.string)
     satellite.return(satellite)
 }

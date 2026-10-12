@@ -9,10 +9,10 @@ satellite.capsule nap()
 satellite.capsule satellite.main()
 {
     satellite.variable.thread t = satellite.thread.new(nap())
-    t.start()
+    t.satellite.start()
     satellite.time.sleep(50ms)
-    t.stop()
-    t.join()
+    t.satellite.stop()
+    t.satellite.join()
     satellite.console.display(t)
     satellite.return(satellite)
 }

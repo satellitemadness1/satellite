@@ -269,10 +269,12 @@ signed long long int close_every_program(signed long long int run_ended_with)
             if (name.empty()) {
                 report.notes.push_back("a program was started here, and nothing waited for it: " + ended);
                 report.notes.push_back("the name it was started under was deleted with satellite.delete -- join it, "
-                                       "or read its .code() or .return(), before the last name that holds it goes");
+                                       "or read its .satellite.code() or .satellite.return(), before the last name "
+                                       "that holds it goes");
             } else {
                 report.notes.push_back(name + " was started here, and nothing waited for it: " + ended);
-                report.notes.push_back("write " + name + ".join() -- or .code() or .return() -- after its start()");
+                report.notes.push_back("write " + name + ".satellite.join() -- or .satellite.code() or "
+                                       ".satellite.return() -- after its .satellite.start()");
             }
             print_critical(report);
             answer = program_never_joined;

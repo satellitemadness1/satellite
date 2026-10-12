@@ -8,6 +8,6 @@ satellite.include(satellite)
 satellite.capsule satellite.main()
 {
     satellite.variable.number passes = 1
-    satellite.console.display(12.5.number)
+    satellite.console.display(12.5.satellite.number)
     satellite.return(satellite)
 }

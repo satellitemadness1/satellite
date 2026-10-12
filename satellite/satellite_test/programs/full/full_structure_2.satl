@@ -1,10 +1,10 @@
 satellite.include(satellite)
-arguments.access = true
+satellite.arguments.access = satellite.bool.true
 
 // full_structure_2 -- satellite.test.full(): satellite.legal, satellite.delete, satellite.access and
 // satellite.library. It prints one line a check, and nothing else: "ok <capability>" when the answer
 // is right, or "WRONG <capability>: <what it answered> (expected <the right answer>)".
-// arguments.access = true above is satellite.legal's rule for this run, whatever config.ini says: a
+// arguments.access = satellite.bool.true above is satellite.legal's rule for this run, whatever config.ini says: a
 // name declared inside a block ends at that block's }.
 
 // satellite.library: one literal a line, at the top of the file, read by every capsule of the file.
@@ -106,12 +106,12 @@ satellite.capsule legal_checks()
     }
     lines.satellite.append(check("satellite.legal: an if and its else each declare x", seen, "in the if"))
     satellite.variable.number x = 5
-    lines.satellite.append(check("satellite.legal: a line after the block declares x again, as another type", (x + 1).string(), "6"))
+    lines.satellite.append(check("satellite.legal: a line after the block declares x again, as another type", (x + 1).satellite.string(), "6"))
     satellite.variable.string both = ""
     satellite.statement.if (n == 1)
     {
         satellite.variable.number y = 10
-        both = both + y.string()
+        both = both + y.satellite.string()
     }
     satellite.statement.if (n == 1)
     {
@@ -129,13 +129,13 @@ satellite.capsule legal_checks()
             reach = deeper + outer + n
         }
     }
-    lines.satellite.append(check("satellite.legal: a block inside a block reads the names around it", reach.string(), "45"))
+    lines.satellite.append(check("satellite.legal: a block inside a block reads the names around it", reach.satellite.string(), "45"))
     lines.satellite.append(check("satellite.legal: satellite.access names the place a name is legal in", satellite.access(x), "x is a number\n  value  5\n  legal  satellite.legal.legal_checks"))
     lines.satellite.append(check("satellite.legal: a capsule is a place of its own, satellite.legal.greet", greet(), "here is a number\n  value  1\n  legal  satellite.legal.greet"))
     lines.satellite.append(check("satellite.legal: a space's capsule, satellite.legal.tools.where", tools.where(), "here is a number\n  value  1\n  legal  satellite.legal.tools.where"))
     box b
     lines.satellite.append(check("satellite.legal: an object's capsule, satellite.legal.box.call_where", b.call_where(), "here is a number\n  value  1\n  legal  satellite.legal.box.call_where"))
-    lines.satellite.append(check("satellite.legal's switch: arguments.access reads true, as this file wrote it", arguments.access.string() + " " + satellite.library.arguments.access, "true true"))
+    lines.satellite.append(check("satellite.legal's switch: satellite.arguments.access reads true, as this file wrote it", satellite.arguments.access.satellite.string() + " " + satellite.library.arguments.access, "true true"))
     satellite.return(lines.satellite.join("\n"))
 }
 
@@ -145,8 +145,8 @@ satellite.capsule delete_checks()
     satellite.variable.string big = "a long text"
     satellite.delete(big)
     satellite.variable.number big = 5
-    lines.satellite.append(check("satellite.delete: the name is declared again, as anything", (big + 1).string(), "6"))
-    lines.satellite.append(check("satellite.delete: a parameter is its capsule's to delete", doubled(21).string(), "42"))
+    lines.satellite.append(check("satellite.delete: the name is declared again, as anything", (big + 1).satellite.string(), "6"))
+    lines.satellite.append(check("satellite.delete: a parameter is its capsule's to delete", doubled(21).satellite.string(), "42"))
     satellite.variable.number each_total = 0
     satellite.statement.for (satellite.variable.number i = 0; i < 3; i + 1)
     {
@@ -154,7 +154,7 @@ satellite.capsule delete_checks()
         each_total = each_total + each
         satellite.delete(each)
     }
-    lines.satellite.append(check("satellite.delete: a name a loop declares is deleted and declared every pass", each_total.string(), "30"))
+    lines.satellite.append(check("satellite.delete: a name a loop declares is deleted and declared every pass", each_total.satellite.string(), "30"))
     satellite.container.list<satellite.variable.number> numbers = {1, 2, 3}
     satellite.delete(numbers)
     satellite.container.list<satellite.variable.string> numbers = {"one"}
@@ -174,16 +174,16 @@ satellite.capsule delete_checks()
         after = z
     }
     satellite.variable.number z = 9
-    lines.satellite.append(check("satellite.delete in the block that declared it; its else and the lines after may declare it", after + " " + z.string(), "again in the block 9"))
+    lines.satellite.append(check("satellite.delete in the block that declared it; its else and the lines after may declare it", after + " " + z.satellite.string(), "again in the block 9"))
     box a
     a.call_put(7)
-    box p = a.pointer()
+    box p = a.satellite.pointer()
     box shared = a
     satellite.delete(a)
-    satellite.variable.string first_ok = p.ok().string()
+    satellite.variable.string first_ok = p.satellite.ok().satellite.string()
     satellite.variable.number kept = shared.call_take()
     satellite.delete(shared)
-    lines.satellite.append(check("satellite.delete: an object goes with the last name that held it", first_ok + " " + kept.string() + " " + p.ok().string(), "true 7 false"))
+    lines.satellite.append(check("satellite.delete: an object goes with the last name that held it", first_ok + " " + kept.satellite.string() + " " + p.satellite.ok().satellite.string(), "true 7 false"))
     satellite.return(lines.satellite.join("\n"))
 }
 
@@ -200,10 +200,10 @@ satellite.capsule access_checks()
     lines.satellite.append(check("satellite.access: a number, a string and a bool -- what each is, holds, and its place", three, want3))
     satellite.container.list<satellite.variable.number> nums = {1, 2, 3}
     satellite.variable.string about_nums = satellite.access(nums)
-    lines.satellite.append(check("satellite.access: a list, counted from 1", about_nums.satellite.contains("nums is a list of numbers, 3 items").string() + " " + about_nums.satellite.contains("n counting from 1 (1 to 3)").string(), "true true"))
+    lines.satellite.append(check("satellite.access: a list, counted from 1", about_nums.satellite.contains("nums is a list of numbers, 3 items").satellite.string() + " " + about_nums.satellite.contains("n counting from 1 (1 to 3)").satellite.string(), "true true"))
     satellite.container.map<satellite.variable.string, satellite.container.list<satellite.variable.number>> teams = {"red": {1, 2}}
     satellite.variable.string about = satellite.access(teams)
-    lines.satellite.append(check("satellite.access: a string keeps it, and it answers the same text again", (about == satellite.access(teams)).string(), "true"))
+    lines.satellite.append(check("satellite.access: a string keeps it, and it answers the same text again", (about == satellite.access(teams)).satellite.string(), "true"))
     satellite.container.list<satellite.container.map<satellite.variable.string, satellite.container.list<satellite.variable.number>>> rows = {{"a": {1, 2}}, {"b": {3}}}
     satellite.variable.string want = "rows is a list of maps (string -> list of numbers), 2 items\n"
     want = want + "  value                                {{\"a\": {1, 2}}, {\"b\": {3}}}\n"
@@ -215,16 +215,16 @@ satellite.capsule access_checks()
     want = want + "  rows[n][\"key\"] = {1}                 puts a list of numbers under \"key\"\n"
     want = want + "  rows[n][\"key\"].satellite.append(1)   adds a number\n"
     want = want + "  rows.satellite.size                  how many maps it holds\n"
-    want = want + "  rows[n].keys                         the keys of a map, as a list"
+    want = want + "  rows[n].satellite.keys               the keys of a map, as a list"
     lines.satellite.append(check("satellite.access: a list of maps of lists, every level, in its help page's layout", satellite.access(rows), want))
     satellite.container.multiple<satellite.variable.number, satellite.container.list<satellite.variable.string>> either = 5
     satellite.variable.string about_either = satellite.access(either)
-    lines.satellite.append(check("satellite.access: a multiple, each way in marked with the type it needs", about_either.satellite.contains("either is a multiple (number or list of strings), holding a number").string() + " " + about_either.satellite.contains("  either[n]                        a string, n counting from 1 -- when either holds a list of strings").string(), "true true"))
+    lines.satellite.append(check("satellite.access: a multiple, each way in marked with the type it needs", about_either.satellite.contains("either is a multiple (number or list of strings), holding a number").satellite.string() + " " + about_either.satellite.contains("  either[n]                        a string, n counting from 1 -- when either holds a list of strings").satellite.string(), "true true"))
     box b
     b.call_put(3)
     satellite.variable.string about_b = satellite.access(b)
-    satellite.variable.string object_parts = about_b.satellite.contains("b is a box object").string() + " " + about_b.satellite.contains("reached only from inside its own capsules").string()
-    object_parts = object_parts + " " + about_b.satellite.contains("a number, 3").string() + " " + about_b.satellite.contains("a number, 25").string() + " " + about_b.satellite.contains("b.call_put(n)").string()
+    satellite.variable.string object_parts = about_b.satellite.contains("b is a box object").satellite.string() + " " + about_b.satellite.contains("reached only from inside its own capsules").satellite.string()
+    object_parts = object_parts + " " + about_b.satellite.contains("a number, 3").satellite.string() + " " + about_b.satellite.contains("a number, 25").satellite.string() + " " + about_b.satellite.contains("b.call_put(n)").satellite.string()
     lines.satellite.append(check("satellite.access: an object, its fields with their values, and its capsules", object_parts, "true true true true true"))
     satellite.return(lines.satellite.join("\n"))
 }
@@ -232,10 +232,10 @@ satellite.capsule access_checks()
 satellite.capsule library_checks()
 {
     satellite.container.list<satellite.variable.string> lines
-    satellite.variable.string every = satellite.library.span.string() + " " + satellite.library.below.string() + " " + satellite.library.ratio.string() + " " + satellite.library.name
-    every = every + " " + satellite.library.bits.string() + " " + satellite.library.shade.string() + " " + satellite.library.half.string() + " " + satellite.library.third.string() + " " + satellite.library.on.string()
+    satellite.variable.string every = satellite.library.span.satellite.string() + " " + satellite.library.below.satellite.string() + " " + satellite.library.ratio.satellite.string() + " " + satellite.library.name
+    every = every + " " + satellite.library.bits.satellite.string() + " " + satellite.library.shade.satellite.string() + " " + satellite.library.half.satellite.string() + " " + satellite.library.third.satellite.string() + " " + satellite.library.on.satellite.string()
     lines.satellite.append(check("satellite.library: every kind of literal reads back as written", every, "25 -3 1.25 blue b1010 x1E2A3A 50% 1/3 true"))
-    lines.satellite.append(check("satellite.library: a minus sign in front of a float, a fraction and a percentage", satellite.library.minus_ratio.string() + " " + satellite.library.minus_third.string() + " " + satellite.library.minus_half.string(), "-1.25 -1/3 -50%"))
+    lines.satellite.append(check("satellite.library: a minus sign in front of a float, a fraction and a percentage", satellite.library.minus_ratio.satellite.string() + " " + satellite.library.minus_third.satellite.string() + " " + satellite.library.minus_half.satellite.string(), "-1.25 -1/3 -50%"))
     satellite.variable.string used = ""
     satellite.statement.if (satellite.library.span == 25)
     {
@@ -246,12 +246,12 @@ satellite.capsule library_checks()
     {
         count = count + 1
     }
-    lines.satellite.append(check("satellite.library: read in a condition and a loop", used + " " + count.string(), "if 3"))
+    lines.satellite.append(check("satellite.library: read in a condition and a loop", used + " " + count.satellite.string(), "if 3"))
     box w
-    lines.satellite.append(check("satellite.library: read in a spacesuit's field and capsule, and a space's capsule", w.call_width().string() + " " + tools.twice_span().string(), "28 50"))
+    lines.satellite.append(check("satellite.library: read in a spacesuit's field and capsule, and a space's capsule", w.call_width().satellite.string() + " " + tools.twice_span().satellite.string(), "28 50"))
     satellite.variable.number copy = satellite.library.span
     copy = copy + 1
-    lines.satellite.append(check("satellite.library: a copy in a variable changes, the value does not", copy.string() + " " + satellite.library.span.string(), "26 25"))
+    lines.satellite.append(check("satellite.library: a copy in a variable changes, the value does not", copy.satellite.string() + " " + satellite.library.span.satellite.string(), "26 25"))
     lines.satellite.append(check("satellite.library: a method on a value", satellite.library.name.satellite.reverse(), "eulb"))
     satellite.return(lines.satellite.join("\n"))
 }
@@ -285,6 +285,6 @@ satellite.capsule satellite.main()
         }
     }
     satellite.console.display(first)
-    satellite.console.display(check("every pass answered alike", differ.string() + " passes differed", "0 passes differed"))
+    satellite.console.display(check("every pass answered alike", differ.satellite.string() + " passes differed", "0 passes differed"))
     satellite.return(satellite)
 }

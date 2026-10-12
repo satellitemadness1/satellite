@@ -29,11 +29,12 @@
 //     opens in and the display buffer are read before any file is, so a file's line is too late for
 //     them (S220) and is told the way that lasts -- typed at the prompt.
 //
-//   - ITS VALUE IS WRITTEN, NOT WORKED OUT: true or false -- bare or satellite.bool's (D22, the author
-//     2026-10-03: "let's allow bare false/true on the special arguments variable as it breaks all of
-//     the rules") -- for a switch, a whole number's digits for a count, words in quotes for a folder or
-//     a path; nothing after it but the line's end (or its `)` and then the line's end). Nothing else:
-//     0, "false" and `false || x` are refused for a switch (S310), as `args.access = 2` is.
+//   - ITS VALUE IS WRITTEN, NOT WORKED OUT: satellite.bool.true or satellite.bool.false for a switch, a
+//     whole number's digits for a count, words in quotes for a folder or a path; nothing after it but
+//     the line's end (or its `)` and then the line's end). Nothing else: 0, "false" and `false || x`
+//     are refused for a switch (S310), as `args.access = 2` is, and a BARE true or false is refused as
+//     an undeclared name (S201), naming satellite.bool.<it> (the author, 2026-10-11: "So there should
+//     be no true then only an error message, and satellite.bool.true" -- which ends MS-2's D22).
 //
 //   - WRITTEN ONCE IN A FILE (S202), under either spelling, as a satellite.library value is.
 //

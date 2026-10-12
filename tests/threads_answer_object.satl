@@ -25,10 +25,10 @@ satellite.capsule make()
 satellite.capsule satellite.main()
 {
     satellite.variable.thread m = satellite.thread.new(make())
-    m.start()
-    box first = m.join()
+    m.satellite.start()
+    box first = m.satellite.join()
     satellite.console.display(first.call_held())
-    box second = m.join()
+    box second = m.satellite.join()
     satellite.console.display(second.call_held())
     satellite.return(satellite)
 }

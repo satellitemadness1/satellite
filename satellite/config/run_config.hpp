@@ -157,7 +157,7 @@ inline signed long long int run_config(unsigned long long int cap = 0)
 
     std::cout << "\n    measured " << grouped(result.measured) << " threads at once\n";
     std::cout << "    written to " << machine_conf_path() << "\n";
-    std::cout << "    arguments.machine.threads answers from that file from now on.\n";
+    std::cout << "    satellite.arguments.machine.threads answers from that file from now on.\n";
     if (cap != 0) {
         // SAID HERE AND SAID IN THE FILE. A capped run's number becomes what
         // arguments.machine.threads answers, and a cap asked for once while

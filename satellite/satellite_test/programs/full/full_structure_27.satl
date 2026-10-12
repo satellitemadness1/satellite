@@ -6,6 +6,6 @@ satellite.include(satellite)
 satellite.capsule satellite.main(satellite.variable.arguments args)
 {
     satellite.variable.number passes = 1
-    args.missing = false
+    args.missing = satellite.bool.false
     satellite.return(satellite)
 }

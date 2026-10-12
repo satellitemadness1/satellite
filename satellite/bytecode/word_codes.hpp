@@ -31,7 +31,7 @@ namespace word {
 inline constexpr token::Code kBase = 4096;       // reserved: no word has it
 inline constexpr token::Code kFirst = 4097;      // satellite
 inline constexpr token::Code kLast = 8191;       // the end of the range
-inline constexpr unsigned int kWordsInTable = 558;
+inline constexpr unsigned int kWordsInTable = 675;
 inline constexpr unsigned int kMaxDepth = 7;
 
 inline constexpr bool is_word_code(token::Code code) { return code >= kBase && code <= kLast; }
@@ -86,6 +86,7 @@ inline constexpr KeyedWord kKeyedWords[] = {
     {0x02011F0000000000ULL, 4539},  // 1 31 -- satellite.access
     {0x0201200000000000ULL, 4633},  // 1 32 -- satellite.delete
     {0x0201210000000000ULL, 4635},  // 1 33 -- satellite.test
+    {0x0201220000000000ULL, 4768},  // 1 34 -- satellite.arguments
     {0x0301010000000000ULL, 4099},  // 1 1 0 -- satellite.include()
     {0x0301010100000000ULL, 4100},  // 1 1 1 -- satellite.include(satellite)
     {0x0301010200000000ULL, 4101},  // 1 1 2 -- satellite.include(spaceship)
@@ -171,6 +172,11 @@ inline constexpr KeyedWord kKeyedWords[] = {
     {0x0301090600000000ULL, 4647},  // 1 9 6 -- satellite.time.millisecond(n)
     {0x0301090700000000ULL, 4648},  // 1 9 7 -- satellite.time.nanosecond(n)
     {0x03010A0000000000ULL, 4316},  // 1 10 0 -- satellite.spacesuit()
+    {0x03010A0100000000ULL, 4674},  // 1 10 1 -- satellite.spacesuit.pointer()
+    {0x03010A0200000000ULL, 4675},  // 1 10 2 -- satellite.spacesuit.reference()
+    {0x03010A0300000000ULL, 4676},  // 1 10 3 -- satellite.spacesuit.ok()
+    {0x03010A0400000000ULL, 4677},  // 1 10 4 -- satellite.spacesuit.lock()
+    {0x03010A0500000000ULL, 4678},  // 1 10 5 -- satellite.spacesuit.unlock()
     {0x03010B0000000000ULL, 4318},  // 1 11 0 -- satellite.protected()
     {0x03010C0000000000ULL, 4320},  // 1 12 0 -- satellite.public()
     {0x03010D0000000000ULL, 4322},  // 1 13 0 -- satellite.statement()
@@ -269,6 +275,12 @@ inline constexpr KeyedWord kKeyedWords[] = {
     {0x0401040108000000ULL, 4118},  // 1 4 1 8 -- satellite.container.map.keys
     {0x0401040109000000ULL, 4119},  // 1 4 1 9 -- satellite.container.map.values
     {0x040104010A000000ULL, 4120},  // 1 4 1 10 -- satellite.container.map.search(pattern)
+    {0x040104010B000000ULL, 4762},  // 1 4 1 11 -- satellite.container.map.first
+    {0x040104010C000000ULL, 4763},  // 1 4 1 12 -- satellite.container.map.last
+    {0x040104010D000000ULL, 4764},  // 1 4 1 13 -- satellite.container.map.sort(by)
+    {0x040104010E000000ULL, 4765},  // 1 4 1 14 -- satellite.container.map.reverse
+    {0x040104010F000000ULL, 4766},  // 1 4 1 15 -- satellite.container.map.remove_first()
+    {0x0401040110000000ULL, 4767},  // 1 4 1 16 -- satellite.container.map.remove_last()
     {0x0401040200000000ULL, 4122},  // 1 4 2 0 -- satellite.container.list()
     {0x0401040201000000ULL, 4123},  // 1 4 2 1 -- satellite.container.list.append
     {0x0401040202000000ULL, 4124},  // 1 4 2 2 -- satellite.container.list.size
@@ -308,6 +320,8 @@ inline constexpr KeyedWord kKeyedWords[] = {
     {0x0401040308000000ULL, 4157},  // 1 4 3 8 -- satellite.container.arguments.first
     {0x0401040309000000ULL, 4158},  // 1 4 3 9 -- satellite.container.arguments.last
     {0x040104030A000000ULL, 4159},  // 1 4 3 10 -- satellite.container.arguments.contains(x)
+    {0x0401050101000000ULL, 4679},  // 1 5 1 1 -- satellite.console.display.center
+    {0x0401050102000000ULL, 4680},  // 1 5 1 2 -- satellite.console.display.centre
     {0x0401050B00000000ULL, 4519},  // 1 5 11 0 -- satellite.console.foreground()
     {0x0401050B01000000ULL, 4520},  // 1 5 11 1 -- satellite.console.foreground(color)
     {0x0401050C00000000ULL, 4522},  // 1 5 12 0 -- satellite.console.background()
@@ -351,7 +365,27 @@ inline constexpr KeyedWord kKeyedWords[] = {
     {0x0401060209000000ULL, 4208},  // 1 6 2 9 -- satellite.variable.file.path
     {0x040106020A000000ULL, 4209},  // 1 6 2 10 -- satellite.variable.file.error
     {0x040106020B000000ULL, 4210},  // 1 6 2 11 -- satellite.variable.file.write(x)
+    {0x040106020C000000ULL, 4655},  // 1 6 2 12 -- satellite.variable.file.append(x)
+    {0x040106020D000000ULL, 4656},  // 1 6 2 13 -- satellite.variable.file.insert(n, x)
+    {0x040106020E000000ULL, 4657},  // 1 6 2 14 -- satellite.variable.file.replace(a, b)
+    {0x040106020F000000ULL, 4658},  // 1 6 2 15 -- satellite.variable.file.index_of(x)
+    {0x0401060210000000ULL, 4659},  // 1 6 2 16 -- satellite.variable.file.search(x)
+    {0x0401060211000000ULL, 4660},  // 1 6 2 17 -- satellite.variable.file.contains(x)
+    {0x0401060212000000ULL, 4661},  // 1 6 2 18 -- satellite.variable.file.remove_at(n)
+    {0x0401060213000000ULL, 4662},  // 1 6 2 19 -- satellite.variable.file.remove(x)
+    {0x0401060214000000ULL, 4663},  // 1 6 2 20 -- satellite.variable.file.remove_first
+    {0x0401060215000000ULL, 4664},  // 1 6 2 21 -- satellite.variable.file.remove_last
+    {0x0401060216000000ULL, 4665},  // 1 6 2 22 -- satellite.variable.file.truncate(n)
+    {0x0401060217000000ULL, 4666},  // 1 6 2 23 -- satellite.variable.file.clear
+    {0x0401060218000000ULL, 4667},  // 1 6 2 24 -- satellite.variable.file.size
+    {0x0401060219000000ULL, 4668},  // 1 6 2 25 -- satellite.variable.file.empty
+    {0x040106021A000000ULL, 4669},  // 1 6 2 26 -- satellite.variable.file.first
+    {0x040106021B000000ULL, 4670},  // 1 6 2 27 -- satellite.variable.file.last
+    {0x040106021C000000ULL, 4671},  // 1 6 2 28 -- satellite.variable.file.save
+    {0x040106021D000000ULL, 4672},  // 1 6 2 29 -- satellite.variable.file.lock
+    {0x040106021E000000ULL, 4673},  // 1 6 2 30 -- satellite.variable.file.unlock
     {0x0401060300000000ULL, 4212},  // 1 6 3 0 -- satellite.variable.time()
+    {0x0401060301000000ULL, 4754},  // 1 6 3 1 -- satellite.variable.time.string
     {0x0401060400000000ULL, 4214},  // 1 6 4 0 -- satellite.variable.number()
     {0x0401060401000000ULL, 4215},  // 1 6 4 1 -- satellite.variable.number.shift_left(n)
     {0x0401060402000000ULL, 4216},  // 1 6 4 2 -- satellite.variable.number.max(a, b)
@@ -373,6 +407,9 @@ inline constexpr KeyedWord kKeyedWords[] = {
     {0x0401060412000000ULL, 4232},  // 1 6 4 18 -- satellite.variable.number.number
     {0x0401060413000000ULL, 4233},  // 1 6 4 19 -- satellite.variable.number.binary
     {0x0401060414000000ULL, 4234},  // 1 6 4 20 -- satellite.variable.number.hex
+    {0x0401060415000000ULL, 4755},  // 1 6 4 21 -- satellite.variable.number.add(x)
+    {0x0401060416000000ULL, 4756},  // 1 6 4 22 -- satellite.variable.number.reverse
+    {0x0401060417000000ULL, 4757},  // 1 6 4 23 -- satellite.variable.number.bytes
     {0x0401060500000000ULL, 4236},  // 1 6 5 0 -- satellite.variable.binary()
     {0x0401060501000000ULL, 4237},  // 1 6 5 1 -- satellite.variable.binary.to_number
     {0x0401060502000000ULL, 4238},  // 1 6 5 2 -- satellite.variable.binary.width
@@ -386,12 +423,17 @@ inline constexpr KeyedWord kKeyedWords[] = {
     {0x040106050A000000ULL, 4246},  // 1 6 5 10 -- satellite.variable.binary.binary
     {0x040106050B000000ULL, 4247},  // 1 6 5 11 -- satellite.variable.binary.hex
     {0x040106050C000000ULL, 4248},  // 1 6 5 12 -- satellite.variable.binary.clear
+    {0x040106050D000000ULL, 4741},  // 1 6 5 13 -- satellite.variable.binary.add(x)
+    {0x040106050E000000ULL, 4742},  // 1 6 5 14 -- satellite.variable.binary.reverse
+    {0x0401060601000000ULL, 4753},  // 1 6 6 1 -- satellite.variable.bool.string
+    {0x0401060602000000ULL, 4769},  // 1 6 6 2 -- satellite.variable.bool.add(x)
     {0x0401060A00000000ULL, 4254},  // 1 6 10 0 -- satellite.variable.float()
     {0x0401060A01000000ULL, 4255},  // 1 6 10 1 -- satellite.variable.float.to_string
     {0x0401060A02000000ULL, 4256},  // 1 6 10 2 -- satellite.variable.float.string
     {0x0401060A03000000ULL, 4257},  // 1 6 10 3 -- satellite.variable.float.number
     {0x0401060A04000000ULL, 4258},  // 1 6 10 4 -- satellite.variable.float.binary
     {0x0401060A05000000ULL, 4259},  // 1 6 10 5 -- satellite.variable.float.hex
+    {0x0401060A06000000ULL, 4770},  // 1 6 10 6 -- satellite.variable.float.reverse
     {0x0401060B00000000ULL, 4261},  // 1 6 11 0 -- satellite.variable.hex()
     {0x0401060B01000000ULL, 4262},  // 1 6 11 1 -- satellite.variable.hex.to_number
     {0x0401060B02000000ULL, 4263},  // 1 6 11 2 -- satellite.variable.hex.width
@@ -403,6 +445,8 @@ inline constexpr KeyedWord kKeyedWords[] = {
     {0x0401060B08000000ULL, 4269},  // 1 6 11 8 -- satellite.variable.hex.number
     {0x0401060B09000000ULL, 4270},  // 1 6 11 9 -- satellite.variable.hex.binary
     {0x0401060B0A000000ULL, 4271},  // 1 6 11 10 -- satellite.variable.hex.hex
+    {0x0401060B0B000000ULL, 4739},  // 1 6 11 11 -- satellite.variable.hex.add(x)
+    {0x0401060B0C000000ULL, 4740},  // 1 6 11 12 -- satellite.variable.hex.reverse
     {0x0401060D00000000ULL, 4274},  // 1 6 13 0 -- satellite.variable.thread()
     {0x0401060D01000000ULL, 4275},  // 1 6 13 1 -- satellite.variable.thread.start()
     {0x0401060D02000000ULL, 4276},  // 1 6 13 2 -- satellite.variable.thread.join()
@@ -413,6 +457,74 @@ inline constexpr KeyedWord kKeyedWords[] = {
     {0x0401060E02000000ULL, 4280},  // 1 6 14 2 -- satellite.variable.variant.holds(x)
     {0x0401060E03000000ULL, 4281},  // 1 6 14 3 -- satellite.variable.variant.held
     {0x0401060E04000000ULL, 4282},  // 1 6 14 4 -- satellite.variable.variant.clear
+    {0x0401061001000000ULL, 4751},  // 1 6 16 1 -- satellite.variable.percentage.string
+    {0x0401061002000000ULL, 4752},  // 1 6 16 2 -- satellite.variable.percentage.add(x)
+    {0x0401061101000000ULL, 4758},  // 1 6 17 1 -- satellite.variable.infinity.string
+    {0x0401061102000000ULL, 4759},  // 1 6 17 2 -- satellite.variable.infinity.power_of(x)
+    {0x0401061103000000ULL, 4760},  // 1 6 17 3 -- satellite.variable.infinity.resize(n)
+    {0x0401061104000000ULL, 4761},  // 1 6 17 4 -- satellite.variable.infinity.nines
+    {0x0401061201000000ULL, 4681},  // 1 6 18 1 -- satellite.variable.window.append(piece, across, down)
+    {0x0401061202000000ULL, 4682},  // 1 6 18 2 -- satellite.variable.window.open()
+    {0x0401061203000000ULL, 4683},  // 1 6 18 3 -- satellite.variable.window.close()
+    {0x0401061204000000ULL, 4684},  // 1 6 18 4 -- satellite.variable.window.focus()
+    {0x0401061205000000ULL, 4685},  // 1 6 18 5 -- satellite.variable.window.title(text)
+    {0x0401061206000000ULL, 4686},  // 1 6 18 6 -- satellite.variable.window.pressed(capsule)
+    {0x0401061207000000ULL, 4687},  // 1 6 18 7 -- satellite.variable.window.press()
+    {0x0401061208000000ULL, 4688},  // 1 6 18 8 -- satellite.variable.window.text(words)
+    {0x0401061209000000ULL, 4689},  // 1 6 18 9 -- satellite.variable.window.on(on)
+    {0x040106120A000000ULL, 4690},  // 1 6 18 10 -- satellite.variable.window.value(x)
+    {0x040106120B000000ULL, 4691},  // 1 6 18 11 -- satellite.variable.window.chosen(item)
+    {0x040106120C000000ULL, 4692},  // 1 6 18 12 -- satellite.variable.window.path(file)
+    {0x040106120D000000ULL, 4693},  // 1 6 18 13 -- satellite.variable.window.changed(capsule)
+    {0x040106120E000000ULL, 4694},  // 1 6 18 14 -- satellite.variable.window.closed(capsule)
+    {0x040106120F000000ULL, 4695},  // 1 6 18 15 -- satellite.variable.window.resize(wide, tall)
+    {0x0401061210000000ULL, 4696},  // 1 6 18 16 -- satellite.variable.window.width
+    {0x0401061211000000ULL, 4697},  // 1 6 18 17 -- satellite.variable.window.height
+    {0x0401061212000000ULL, 4698},  // 1 6 18 18 -- satellite.variable.window.fullscreen(on)
+    {0x0401061213000000ULL, 4699},  // 1 6 18 19 -- satellite.variable.window.colour(colour)
+    {0x0401061214000000ULL, 4700},  // 1 6 18 20 -- satellite.variable.window.background(colour)
+    {0x0401061215000000ULL, 4701},  // 1 6 18 21 -- satellite.variable.window.font(face, size)
+    {0x0401061216000000ULL, 4702},  // 1 6 18 22 -- satellite.variable.window.every(capsule, milliseconds)
+    {0x0401061217000000ULL, 4703},  // 1 6 18 23 -- satellite.variable.window.key(capsule)
+    {0x0401061218000000ULL, 4704},  // 1 6 18 24 -- satellite.variable.window.clicked(capsule)
+    {0x0401061219000000ULL, 4705},  // 1 6 18 25 -- satellite.variable.window.message(saying)
+    {0x040106121A000000ULL, 4706},  // 1 6 18 26 -- satellite.variable.window.ask(capsule, question)
+    {0x040106121B000000ULL, 4707},  // 1 6 18 27 -- satellite.variable.window.choose_a_file(capsule)
+    {0x040106121C000000ULL, 4708},  // 1 6 18 28 -- satellite.variable.window.answer
+    {0x040106121D000000ULL, 4709},  // 1 6 18 29 -- satellite.variable.window.menu(a_menu)
+    {0x040106121E000000ULL, 4710},  // 1 6 18 30 -- satellite.variable.window.item(capsule, words)
+    {0x040106121F000000ULL, 4711},  // 1 6 18 31 -- satellite.variable.window.separator()
+    {0x0401061220000000ULL, 4712},  // 1 6 18 32 -- satellite.variable.window.line(from_across, from_down, to_across, to_down)
+    {0x0401061221000000ULL, 4713},  // 1 6 18 33 -- satellite.variable.window.box(across, down, wide, tall)
+    {0x0401061222000000ULL, 4714},  // 1 6 18 34 -- satellite.variable.window.circle(across, down, radius)
+    {0x0401061223000000ULL, 4715},  // 1 6 18 35 -- satellite.variable.window.write(across, down, words)
+    {0x0401061224000000ULL, 4716},  // 1 6 18 36 -- satellite.variable.window.arc(across, down, radius, from_degrees, to_degrees)
+    {0x0401061225000000ULL, 4717},  // 1 6 18 37 -- satellite.variable.window.thickness(pixels)
+    {0x0401061226000000ULL, 4718},  // 1 6 18 38 -- satellite.variable.window.outline(on)
+    {0x0401061227000000ULL, 4719},  // 1 6 18 39 -- satellite.variable.window.across
+    {0x0401061228000000ULL, 4720},  // 1 6 18 40 -- satellite.variable.window.down
+    {0x0401061229000000ULL, 4721},  // 1 6 18 41 -- satellite.variable.window.clear()
+    {0x040106122A000000ULL, 4722},  // 1 6 18 42 -- satellite.variable.window.save(path)
+    {0x040106122B000000ULL, 4723},  // 1 6 18 43 -- satellite.variable.window.display(words)
+    {0x040106122C000000ULL, 4724},  // 1 6 18 44 -- satellite.variable.window.typed(capsule)
+    {0x040106122D000000ULL, 4725},  // 1 6 18 45 -- satellite.variable.window.home()
+    {0x040106122E000000ULL, 4726},  // 1 6 18 46 -- satellite.variable.window.columns
+    {0x040106122F000000ULL, 4727},  // 1 6 18 47 -- satellite.variable.window.rows
+    {0x0401061230000000ULL, 4728},  // 1 6 18 48 -- satellite.variable.window.scroll
+    {0x0401061231000000ULL, 4731},  // 1 6 18 49 -- satellite.variable.window.widgets
+    {0x0401061232000000ULL, 4735},  // 1 6 18 50 -- satellite.variable.window.directory(path)
+    {0x0401061233000000ULL, 4736},  // 1 6 18 51 -- satellite.variable.window.listen(capsule)
+    {0x0401061234000000ULL, 4737},  // 1 6 18 52 -- satellite.variable.window.section(name, width, height)
+    {0x0401061235000000ULL, 4738},  // 1 6 18 53 -- satellite.variable.window.ok
+    {0x0401061301000000ULL, 4743},  // 1 6 19 1 -- satellite.variable.color.transparency
+    {0x0401061302000000ULL, 4744},  // 1 6 19 2 -- satellite.variable.color.string
+    {0x0401061303000000ULL, 4745},  // 1 6 19 3 -- satellite.variable.color.number
+    {0x0401061304000000ULL, 4746},  // 1 6 19 4 -- satellite.variable.color.binary
+    {0x0401061305000000ULL, 4747},  // 1 6 19 5 -- satellite.variable.color.hex
+    {0x0401061401000000ULL, 4748},  // 1 6 20 1 -- satellite.variable.fraction.numerator
+    {0x0401061402000000ULL, 4749},  // 1 6 20 2 -- satellite.variable.fraction.denominator
+    {0x0401061403000000ULL, 4750},  // 1 6 20 3 -- satellite.variable.fraction.string
+    {0x0401061404000000ULL, 4771},  // 1 6 20 4 -- satellite.variable.fraction.reverse
     {0x0401061700000000ULL, 4544},  // 1 6 23 0 -- satellite.variable.program()
     {0x0401061701000000ULL, 4545},  // 1 6 23 1 -- satellite.variable.program.start()
     {0x0401061702000000ULL, 4546},  // 1 6 23 2 -- satellite.variable.program.ok()
@@ -493,6 +605,9 @@ inline constexpr KeyedWord kKeyedWords[] = {
     {0x0401210200000000ULL, 4639},  // 1 33 2 0 -- satellite.test.speed()
     {0x0401210300000000ULL, 4641},  // 1 33 3 0 -- satellite.test.loss()
     {0x0401210400000000ULL, 4643},  // 1 33 4 0 -- satellite.test.all()
+    {0x0501061230010000ULL, 4729},  // 1 6 18 48 1 -- satellite.variable.window.scroll.vertical(on)
+    {0x0501061230020000ULL, 4730},  // 1 6 18 48 2 -- satellite.variable.window.scroll.horizontal(on)
+    {0x0501061231010000ULL, 4732},  // 1 6 18 49 1 -- satellite.variable.window.widgets.display
     {0x05010E0101000000ULL, 4332},  // 1 14 1 1 0 -- satellite.library.main.arguments()
     {0x05010E0101010000ULL, 4333},  // 1 14 1 1 1 -- satellite.library.main.arguments.machine
     {0x05010E0101020000ULL, 4342},  // 1 14 1 1 2 -- satellite.library.main.arguments.memory
@@ -568,6 +683,8 @@ inline constexpr KeyedWord kKeyedWords[] = {
     {0x0501160405040000ULL, 4441},  // 1 22 4 5 4 -- satellite.system.memory.this.available(unit)
     {0x0501160405050000ULL, 4442},  // 1 22 4 5 5 -- satellite.system.memory.this.free(unit)
     {0x0501160405060000ULL, 4443},  // 1 22 4 5 6 -- satellite.system.memory.this.used(unit)
+    {0x0601061231010100ULL, 4733},  // 1 6 18 49 1 1 -- satellite.variable.window.widgets.display.file(name)
+    {0x0601061231010200ULL, 4734},  // 1 6 18 49 1 2 -- satellite.variable.window.widgets.display.input(name)
     {0x06010E0101010000ULL, 4334},  // 1 14 1 1 1 0 -- satellite.library.main.arguments.machine()
     {0x06010E0101010100ULL, 4335},  // 1 14 1 1 1 1 -- satellite.library.main.arguments.machine.cores
     {0x06010E0101010200ULL, 4336},  // 1 14 1 1 1 2 -- satellite.library.main.arguments.machine.cpu
@@ -1176,6 +1293,123 @@ inline constexpr WordFacts kWordFacts[] = {
     {"satellite.variable.string.add(x)", {1, 6, 1, 26, 0, 0, 0}, 4},
     {"satellite.container.list.by_name", {1, 4, 2, 27, 0, 0, 0}, 4},
     {"satellite.container.list.by_value", {1, 4, 2, 28, 0, 0, 0}, 4},
+    {"satellite.variable.file.append(x)", {1, 6, 2, 12, 0, 0, 0}, 4},
+    {"satellite.variable.file.insert(n, x)", {1, 6, 2, 13, 0, 0, 0}, 4},
+    {"satellite.variable.file.replace(a, b)", {1, 6, 2, 14, 0, 0, 0}, 4},
+    {"satellite.variable.file.index_of(x)", {1, 6, 2, 15, 0, 0, 0}, 4},
+    {"satellite.variable.file.search(x)", {1, 6, 2, 16, 0, 0, 0}, 4},
+    {"satellite.variable.file.contains(x)", {1, 6, 2, 17, 0, 0, 0}, 4},
+    {"satellite.variable.file.remove_at(n)", {1, 6, 2, 18, 0, 0, 0}, 4},
+    {"satellite.variable.file.remove(x)", {1, 6, 2, 19, 0, 0, 0}, 4},
+    {"satellite.variable.file.remove_first", {1, 6, 2, 20, 0, 0, 0}, 4},
+    {"satellite.variable.file.remove_last", {1, 6, 2, 21, 0, 0, 0}, 4},
+    {"satellite.variable.file.truncate(n)", {1, 6, 2, 22, 0, 0, 0}, 4},
+    {"satellite.variable.file.clear", {1, 6, 2, 23, 0, 0, 0}, 4},
+    {"satellite.variable.file.size", {1, 6, 2, 24, 0, 0, 0}, 4},
+    {"satellite.variable.file.empty", {1, 6, 2, 25, 0, 0, 0}, 4},
+    {"satellite.variable.file.first", {1, 6, 2, 26, 0, 0, 0}, 4},
+    {"satellite.variable.file.last", {1, 6, 2, 27, 0, 0, 0}, 4},
+    {"satellite.variable.file.save", {1, 6, 2, 28, 0, 0, 0}, 4},
+    {"satellite.variable.file.lock", {1, 6, 2, 29, 0, 0, 0}, 4},
+    {"satellite.variable.file.unlock", {1, 6, 2, 30, 0, 0, 0}, 4},
+    {"satellite.spacesuit.pointer()", {1, 10, 1, 0, 0, 0, 0}, 3},
+    {"satellite.spacesuit.reference()", {1, 10, 2, 0, 0, 0, 0}, 3},
+    {"satellite.spacesuit.ok()", {1, 10, 3, 0, 0, 0, 0}, 3},
+    {"satellite.spacesuit.lock()", {1, 10, 4, 0, 0, 0, 0}, 3},
+    {"satellite.spacesuit.unlock()", {1, 10, 5, 0, 0, 0, 0}, 3},
+    {"satellite.console.display.center", {1, 5, 1, 1, 0, 0, 0}, 4},
+    {"satellite.console.display.centre", {1, 5, 1, 2, 0, 0, 0}, 4},
+    {"satellite.variable.window.append(piece, across, down)", {1, 6, 18, 1, 0, 0, 0}, 4},
+    {"satellite.variable.window.open()", {1, 6, 18, 2, 0, 0, 0}, 4},
+    {"satellite.variable.window.close()", {1, 6, 18, 3, 0, 0, 0}, 4},
+    {"satellite.variable.window.focus()", {1, 6, 18, 4, 0, 0, 0}, 4},
+    {"satellite.variable.window.title(text)", {1, 6, 18, 5, 0, 0, 0}, 4},
+    {"satellite.variable.window.pressed(capsule)", {1, 6, 18, 6, 0, 0, 0}, 4},
+    {"satellite.variable.window.press()", {1, 6, 18, 7, 0, 0, 0}, 4},
+    {"satellite.variable.window.text(words)", {1, 6, 18, 8, 0, 0, 0}, 4},
+    {"satellite.variable.window.on(on)", {1, 6, 18, 9, 0, 0, 0}, 4},
+    {"satellite.variable.window.value(x)", {1, 6, 18, 10, 0, 0, 0}, 4},
+    {"satellite.variable.window.chosen(item)", {1, 6, 18, 11, 0, 0, 0}, 4},
+    {"satellite.variable.window.path(file)", {1, 6, 18, 12, 0, 0, 0}, 4},
+    {"satellite.variable.window.changed(capsule)", {1, 6, 18, 13, 0, 0, 0}, 4},
+    {"satellite.variable.window.closed(capsule)", {1, 6, 18, 14, 0, 0, 0}, 4},
+    {"satellite.variable.window.resize(wide, tall)", {1, 6, 18, 15, 0, 0, 0}, 4},
+    {"satellite.variable.window.width", {1, 6, 18, 16, 0, 0, 0}, 4},
+    {"satellite.variable.window.height", {1, 6, 18, 17, 0, 0, 0}, 4},
+    {"satellite.variable.window.fullscreen(on)", {1, 6, 18, 18, 0, 0, 0}, 4},
+    {"satellite.variable.window.colour(colour)", {1, 6, 18, 19, 0, 0, 0}, 4},
+    {"satellite.variable.window.background(colour)", {1, 6, 18, 20, 0, 0, 0}, 4},
+    {"satellite.variable.window.font(face, size)", {1, 6, 18, 21, 0, 0, 0}, 4},
+    {"satellite.variable.window.every(capsule, milliseconds)", {1, 6, 18, 22, 0, 0, 0}, 4},
+    {"satellite.variable.window.key(capsule)", {1, 6, 18, 23, 0, 0, 0}, 4},
+    {"satellite.variable.window.clicked(capsule)", {1, 6, 18, 24, 0, 0, 0}, 4},
+    {"satellite.variable.window.message(saying)", {1, 6, 18, 25, 0, 0, 0}, 4},
+    {"satellite.variable.window.ask(capsule, question)", {1, 6, 18, 26, 0, 0, 0}, 4},
+    {"satellite.variable.window.choose_a_file(capsule)", {1, 6, 18, 27, 0, 0, 0}, 4},
+    {"satellite.variable.window.answer", {1, 6, 18, 28, 0, 0, 0}, 4},
+    {"satellite.variable.window.menu(a_menu)", {1, 6, 18, 29, 0, 0, 0}, 4},
+    {"satellite.variable.window.item(capsule, words)", {1, 6, 18, 30, 0, 0, 0}, 4},
+    {"satellite.variable.window.separator()", {1, 6, 18, 31, 0, 0, 0}, 4},
+    {"satellite.variable.window.line(from_across, from_down, to_across, to_down)", {1, 6, 18, 32, 0, 0, 0}, 4},
+    {"satellite.variable.window.box(across, down, wide, tall)", {1, 6, 18, 33, 0, 0, 0}, 4},
+    {"satellite.variable.window.circle(across, down, radius)", {1, 6, 18, 34, 0, 0, 0}, 4},
+    {"satellite.variable.window.write(across, down, words)", {1, 6, 18, 35, 0, 0, 0}, 4},
+    {"satellite.variable.window.arc(across, down, radius, from_degrees, to_degrees)", {1, 6, 18, 36, 0, 0, 0}, 4},
+    {"satellite.variable.window.thickness(pixels)", {1, 6, 18, 37, 0, 0, 0}, 4},
+    {"satellite.variable.window.outline(on)", {1, 6, 18, 38, 0, 0, 0}, 4},
+    {"satellite.variable.window.across", {1, 6, 18, 39, 0, 0, 0}, 4},
+    {"satellite.variable.window.down", {1, 6, 18, 40, 0, 0, 0}, 4},
+    {"satellite.variable.window.clear()", {1, 6, 18, 41, 0, 0, 0}, 4},
+    {"satellite.variable.window.save(path)", {1, 6, 18, 42, 0, 0, 0}, 4},
+    {"satellite.variable.window.display(words)", {1, 6, 18, 43, 0, 0, 0}, 4},
+    {"satellite.variable.window.typed(capsule)", {1, 6, 18, 44, 0, 0, 0}, 4},
+    {"satellite.variable.window.home()", {1, 6, 18, 45, 0, 0, 0}, 4},
+    {"satellite.variable.window.columns", {1, 6, 18, 46, 0, 0, 0}, 4},
+    {"satellite.variable.window.rows", {1, 6, 18, 47, 0, 0, 0}, 4},
+    {"satellite.variable.window.scroll", {1, 6, 18, 48, 0, 0, 0}, 4},
+    {"satellite.variable.window.scroll.vertical(on)", {1, 6, 18, 48, 1, 0, 0}, 5},
+    {"satellite.variable.window.scroll.horizontal(on)", {1, 6, 18, 48, 2, 0, 0}, 5},
+    {"satellite.variable.window.widgets", {1, 6, 18, 49, 0, 0, 0}, 4},
+    {"satellite.variable.window.widgets.display", {1, 6, 18, 49, 1, 0, 0}, 5},
+    {"satellite.variable.window.widgets.display.file(name)", {1, 6, 18, 49, 1, 1, 0}, 6},
+    {"satellite.variable.window.widgets.display.input(name)", {1, 6, 18, 49, 1, 2, 0}, 6},
+    {"satellite.variable.window.directory(path)", {1, 6, 18, 50, 0, 0, 0}, 4},
+    {"satellite.variable.window.listen(capsule)", {1, 6, 18, 51, 0, 0, 0}, 4},
+    {"satellite.variable.window.section(name, width, height)", {1, 6, 18, 52, 0, 0, 0}, 4},
+    {"satellite.variable.window.ok", {1, 6, 18, 53, 0, 0, 0}, 4},
+    {"satellite.variable.hex.add(x)", {1, 6, 11, 11, 0, 0, 0}, 4},
+    {"satellite.variable.hex.reverse", {1, 6, 11, 12, 0, 0, 0}, 4},
+    {"satellite.variable.binary.add(x)", {1, 6, 5, 13, 0, 0, 0}, 4},
+    {"satellite.variable.binary.reverse", {1, 6, 5, 14, 0, 0, 0}, 4},
+    {"satellite.variable.color.transparency", {1, 6, 19, 1, 0, 0, 0}, 4},
+    {"satellite.variable.color.string", {1, 6, 19, 2, 0, 0, 0}, 4},
+    {"satellite.variable.color.number", {1, 6, 19, 3, 0, 0, 0}, 4},
+    {"satellite.variable.color.binary", {1, 6, 19, 4, 0, 0, 0}, 4},
+    {"satellite.variable.color.hex", {1, 6, 19, 5, 0, 0, 0}, 4},
+    {"satellite.variable.fraction.numerator", {1, 6, 20, 1, 0, 0, 0}, 4},
+    {"satellite.variable.fraction.denominator", {1, 6, 20, 2, 0, 0, 0}, 4},
+    {"satellite.variable.fraction.string", {1, 6, 20, 3, 0, 0, 0}, 4},
+    {"satellite.variable.percentage.string", {1, 6, 16, 1, 0, 0, 0}, 4},
+    {"satellite.variable.percentage.add(x)", {1, 6, 16, 2, 0, 0, 0}, 4},
+    {"satellite.variable.bool.string", {1, 6, 6, 1, 0, 0, 0}, 4},
+    {"satellite.variable.time.string", {1, 6, 3, 1, 0, 0, 0}, 4},
+    {"satellite.variable.number.add(x)", {1, 6, 4, 21, 0, 0, 0}, 4},
+    {"satellite.variable.number.reverse", {1, 6, 4, 22, 0, 0, 0}, 4},
+    {"satellite.variable.number.bytes", {1, 6, 4, 23, 0, 0, 0}, 4},
+    {"satellite.variable.infinity.string", {1, 6, 17, 1, 0, 0, 0}, 4},
+    {"satellite.variable.infinity.power_of(x)", {1, 6, 17, 2, 0, 0, 0}, 4},
+    {"satellite.variable.infinity.resize(n)", {1, 6, 17, 3, 0, 0, 0}, 4},
+    {"satellite.variable.infinity.nines", {1, 6, 17, 4, 0, 0, 0}, 4},
+    {"satellite.container.map.first", {1, 4, 1, 11, 0, 0, 0}, 4},
+    {"satellite.container.map.last", {1, 4, 1, 12, 0, 0, 0}, 4},
+    {"satellite.container.map.sort(by)", {1, 4, 1, 13, 0, 0, 0}, 4},
+    {"satellite.container.map.reverse", {1, 4, 1, 14, 0, 0, 0}, 4},
+    {"satellite.container.map.remove_first()", {1, 4, 1, 15, 0, 0, 0}, 4},
+    {"satellite.container.map.remove_last()", {1, 4, 1, 16, 0, 0, 0}, 4},
+    {"satellite.arguments", {1, 34, 0, 0, 0, 0, 0}, 2},
+    {"satellite.variable.bool.add(x)", {1, 6, 6, 2, 0, 0, 0}, 4},
+    {"satellite.variable.float.reverse", {1, 6, 10, 6, 0, 0, 0}, 4},
+    {"satellite.variable.fraction.reverse", {1, 6, 20, 4, 0, 0, 0}, 4},
 };
 
 inline constexpr std::size_t kWordFactsCount = sizeof kWordFacts / sizeof kWordFacts[0];
@@ -1191,6 +1425,7 @@ inline constexpr SpelledWord kSpelledWords[] = {
     {"satellite.access", 4539},
     {"satellite.access(name)", 4540},
     {"satellite.analyze", 4392},
+    {"satellite.arguments", 4768},
     {"satellite.bool", 4393},
     {"satellite.bool()", 4394},
     {"satellite.bool.false", 4395},
@@ -1206,6 +1441,8 @@ inline constexpr SpelledWord kSpelledWords[] = {
     {"satellite.console.background(color)", 4523},
     {"satellite.console.clear()", 4170},
     {"satellite.console.display", 4163},
+    {"satellite.console.display.center", 4679},
+    {"satellite.console.display.centre", 4680},
     {"satellite.console.foreground", 4518},
     {"satellite.console.foreground()", 4519},
     {"satellite.console.foreground(color)", 4520},
@@ -1267,13 +1504,19 @@ inline constexpr SpelledWord kSpelledWords[] = {
     {"satellite.container.map()", 4110},
     {"satellite.container.map.clear", 4116},
     {"satellite.container.map.empty", 4115},
+    {"satellite.container.map.first", 4762},
     {"satellite.container.map.get(k)", 4112},
     {"satellite.container.map.has(k)", 4113},
     {"satellite.container.map.keys", 4118},
+    {"satellite.container.map.last", 4763},
     {"satellite.container.map.remove(k)", 4117},
+    {"satellite.container.map.remove_first()", 4766},
+    {"satellite.container.map.remove_last()", 4767},
+    {"satellite.container.map.reverse", 4765},
     {"satellite.container.map.search(pattern)", 4120},
     {"satellite.container.map.set(k, v)", 4111},
     {"satellite.container.map.size", 4114},
+    {"satellite.container.map.sort(by)", 4764},
     {"satellite.container.map.values", 4119},
     {"satellite.container.multiple", 4477},
     {"satellite.container.result", 4160},
@@ -1491,6 +1734,11 @@ inline constexpr SpelledWord kSpelledWords[] = {
     {"satellite.space", 4514},
     {"satellite.spacesuit", 4315},
     {"satellite.spacesuit()", 4316},
+    {"satellite.spacesuit.lock()", 4677},
+    {"satellite.spacesuit.ok()", 4676},
+    {"satellite.spacesuit.pointer()", 4674},
+    {"satellite.spacesuit.reference()", 4675},
+    {"satellite.spacesuit.unlock()", 4678},
     {"satellite.statement", 4321},
     {"satellite.statement()", 4322},
     {"satellite.statement.break", 4541},
@@ -1590,20 +1838,29 @@ inline constexpr SpelledWord kSpelledWords[] = {
     {"satellite.variable.binary", 4235},
     {"satellite.variable.binary()", 4236},
     {"satellite.variable.binary(x)", 4243},
+    {"satellite.variable.binary.add(x)", 4741},
     {"satellite.variable.binary.as_number", 4240},
     {"satellite.variable.binary.binary", 4246},
     {"satellite.variable.binary.clear", 4248},
     {"satellite.variable.binary.digits", 4241},
     {"satellite.variable.binary.hex", 4247},
     {"satellite.variable.binary.number", 4245},
+    {"satellite.variable.binary.reverse", 4742},
     {"satellite.variable.binary.string", 4244},
     {"satellite.variable.binary.to_hex", 4242},
     {"satellite.variable.binary.to_number", 4237},
     {"satellite.variable.binary.to_string", 4239},
     {"satellite.variable.binary.width", 4238},
     {"satellite.variable.bool", 4249},
+    {"satellite.variable.bool.add(x)", 4769},
+    {"satellite.variable.bool.string", 4753},
     {"satellite.variable.capsule", 4283},
     {"satellite.variable.color", 4515},
+    {"satellite.variable.color.binary", 4746},
+    {"satellite.variable.color.hex", 4747},
+    {"satellite.variable.color.number", 4745},
+    {"satellite.variable.color.string", 4744},
+    {"satellite.variable.color.transparency", 4743},
     {"satellite.variable.colour", 4515},
     {"satellite.variable.date", 4250},
     {"satellite.variable.double", 4253},
@@ -1611,15 +1868,34 @@ inline constexpr SpelledWord kSpelledWords[] = {
     {"satellite.variable.expression", 4252},
     {"satellite.variable.file", 4198},
     {"satellite.variable.file()", 4199},
+    {"satellite.variable.file.append(x)", 4655},
+    {"satellite.variable.file.clear", 4666},
     {"satellite.variable.file.close", 4205},
+    {"satellite.variable.file.contains(x)", 4660},
+    {"satellite.variable.file.empty", 4668},
     {"satellite.variable.file.error", 4209},
     {"satellite.variable.file.exists", 4206},
+    {"satellite.variable.file.first", 4669},
+    {"satellite.variable.file.index_of(x)", 4658},
+    {"satellite.variable.file.insert(n, x)", 4656},
+    {"satellite.variable.file.last", 4670},
+    {"satellite.variable.file.lock", 4672},
     {"satellite.variable.file.new", 4200},
     {"satellite.variable.file.ok", 4207},
     {"satellite.variable.file.open", 4201},
     {"satellite.variable.file.path", 4208},
     {"satellite.variable.file.read_all", 4204},
     {"satellite.variable.file.read_line", 4202},
+    {"satellite.variable.file.remove(x)", 4662},
+    {"satellite.variable.file.remove_at(n)", 4661},
+    {"satellite.variable.file.remove_first", 4663},
+    {"satellite.variable.file.remove_last", 4664},
+    {"satellite.variable.file.replace(a, b)", 4657},
+    {"satellite.variable.file.save", 4671},
+    {"satellite.variable.file.search(x)", 4659},
+    {"satellite.variable.file.size", 4667},
+    {"satellite.variable.file.truncate(n)", 4665},
+    {"satellite.variable.file.unlock", 4673},
     {"satellite.variable.file.write(x)", 4210},
     {"satellite.variable.file.write_line(s)", 4203},
     {"satellite.variable.float", 4253},
@@ -1627,16 +1903,23 @@ inline constexpr SpelledWord kSpelledWords[] = {
     {"satellite.variable.float.binary", 4258},
     {"satellite.variable.float.hex", 4259},
     {"satellite.variable.float.number", 4257},
+    {"satellite.variable.float.reverse", 4770},
     {"satellite.variable.float.string", 4256},
     {"satellite.variable.float.to_string", 4255},
     {"satellite.variable.fraction", 4516},
+    {"satellite.variable.fraction.denominator", 4749},
+    {"satellite.variable.fraction.numerator", 4748},
+    {"satellite.variable.fraction.reverse", 4771},
+    {"satellite.variable.fraction.string", 4750},
     {"satellite.variable.hex", 4260},
     {"satellite.variable.hex()", 4261},
     {"satellite.variable.hex(x)", 4267},
+    {"satellite.variable.hex.add(x)", 4739},
     {"satellite.variable.hex.binary", 4270},
     {"satellite.variable.hex.digits", 4265},
     {"satellite.variable.hex.hex", 4271},
     {"satellite.variable.hex.number", 4269},
+    {"satellite.variable.hex.reverse", 4740},
     {"satellite.variable.hex.string", 4268},
     {"satellite.variable.hex.to_binary", 4266},
     {"satellite.variable.hex.to_number", 4262},
@@ -1644,13 +1927,19 @@ inline constexpr SpelledWord kSpelledWords[] = {
     {"satellite.variable.hex.width", 4263},
     {"satellite.variable.hexadecimal", 4260},
     {"satellite.variable.infinity", 4478},
+    {"satellite.variable.infinity.nines", 4761},
+    {"satellite.variable.infinity.power_of(x)", 4759},
+    {"satellite.variable.infinity.resize(n)", 4760},
+    {"satellite.variable.infinity.string", 4758},
     {"satellite.variable.info", 4534},
     {"satellite.variable.network", 4272},
     {"satellite.variable.number", 4213},
     {"satellite.variable.number()", 4214},
     {"satellite.variable.number(x)", 4230},
     {"satellite.variable.number.abs(a)", 4218},
+    {"satellite.variable.number.add(x)", 4755},
     {"satellite.variable.number.binary", 4233},
+    {"satellite.variable.number.bytes", 4757},
     {"satellite.variable.number.ceil", 4222},
     {"satellite.variable.number.clamp(a, low, high)", 4219},
     {"satellite.variable.number.digits", 4229},
@@ -1661,6 +1950,7 @@ inline constexpr SpelledWord kSpelledWords[] = {
     {"satellite.variable.number.modulus(a, b)", 4226},
     {"satellite.variable.number.number", 4232},
     {"satellite.variable.number.power(a, b)", 4224},
+    {"satellite.variable.number.reverse", 4756},
     {"satellite.variable.number.round", 4223},
     {"satellite.variable.number.shift_left(n)", 4215},
     {"satellite.variable.number.shift_right(n)", 4225},
@@ -1670,6 +1960,8 @@ inline constexpr SpelledWord kSpelledWords[] = {
     {"satellite.variable.number.truncate(a)", 4227},
     {"satellite.variable.percent", 4461},
     {"satellite.variable.percentage", 4461},
+    {"satellite.variable.percentage.add(x)", 4752},
+    {"satellite.variable.percentage.string", 4751},
     {"satellite.variable.program", 4543},
     {"satellite.variable.program()", 4544},
     {"satellite.variable.program.code()", 4549},
@@ -1720,6 +2012,7 @@ inline constexpr SpelledWord kSpelledWords[] = {
     {"satellite.variable.thread.wait()", 4532},
     {"satellite.variable.time", 4211},
     {"satellite.variable.time()", 4212},
+    {"satellite.variable.time.string", 4754},
     {"satellite.variable.variant", 4277},
     {"satellite.variable.variant()", 4278},
     {"satellite.variable.variant.clear", 4282},
@@ -1727,6 +2020,64 @@ inline constexpr SpelledWord kSpelledWords[] = {
     {"satellite.variable.variant.holding", 4279},
     {"satellite.variable.variant.holds(x)", 4280},
     {"satellite.variable.window", 4481},
+    {"satellite.variable.window.across", 4719},
+    {"satellite.variable.window.answer", 4708},
+    {"satellite.variable.window.append(piece, across, down)", 4681},
+    {"satellite.variable.window.arc(across, down, radius, from_degrees, to_degrees)", 4716},
+    {"satellite.variable.window.ask(capsule, question)", 4706},
+    {"satellite.variable.window.background(colour)", 4700},
+    {"satellite.variable.window.box(across, down, wide, tall)", 4713},
+    {"satellite.variable.window.changed(capsule)", 4693},
+    {"satellite.variable.window.choose_a_file(capsule)", 4707},
+    {"satellite.variable.window.chosen(item)", 4691},
+    {"satellite.variable.window.circle(across, down, radius)", 4714},
+    {"satellite.variable.window.clear()", 4721},
+    {"satellite.variable.window.clicked(capsule)", 4704},
+    {"satellite.variable.window.close()", 4683},
+    {"satellite.variable.window.closed(capsule)", 4694},
+    {"satellite.variable.window.colour(colour)", 4699},
+    {"satellite.variable.window.columns", 4726},
+    {"satellite.variable.window.directory(path)", 4735},
+    {"satellite.variable.window.display(words)", 4723},
+    {"satellite.variable.window.down", 4720},
+    {"satellite.variable.window.every(capsule, milliseconds)", 4702},
+    {"satellite.variable.window.focus()", 4684},
+    {"satellite.variable.window.font(face, size)", 4701},
+    {"satellite.variable.window.fullscreen(on)", 4698},
+    {"satellite.variable.window.height", 4697},
+    {"satellite.variable.window.home()", 4725},
+    {"satellite.variable.window.item(capsule, words)", 4710},
+    {"satellite.variable.window.key(capsule)", 4703},
+    {"satellite.variable.window.line(from_across, from_down, to_across, to_down)", 4712},
+    {"satellite.variable.window.listen(capsule)", 4736},
+    {"satellite.variable.window.menu(a_menu)", 4709},
+    {"satellite.variable.window.message(saying)", 4705},
+    {"satellite.variable.window.ok", 4738},
+    {"satellite.variable.window.on(on)", 4689},
+    {"satellite.variable.window.open()", 4682},
+    {"satellite.variable.window.outline(on)", 4718},
+    {"satellite.variable.window.path(file)", 4692},
+    {"satellite.variable.window.press()", 4687},
+    {"satellite.variable.window.pressed(capsule)", 4686},
+    {"satellite.variable.window.resize(wide, tall)", 4695},
+    {"satellite.variable.window.rows", 4727},
+    {"satellite.variable.window.save(path)", 4722},
+    {"satellite.variable.window.scroll", 4728},
+    {"satellite.variable.window.scroll.horizontal(on)", 4730},
+    {"satellite.variable.window.scroll.vertical(on)", 4729},
+    {"satellite.variable.window.section(name, width, height)", 4737},
+    {"satellite.variable.window.separator()", 4711},
+    {"satellite.variable.window.text(words)", 4688},
+    {"satellite.variable.window.thickness(pixels)", 4717},
+    {"satellite.variable.window.title(text)", 4685},
+    {"satellite.variable.window.typed(capsule)", 4724},
+    {"satellite.variable.window.value(x)", 4690},
+    {"satellite.variable.window.widgets", 4731},
+    {"satellite.variable.window.widgets.display", 4732},
+    {"satellite.variable.window.widgets.display.file(name)", 4733},
+    {"satellite.variable.window.widgets.display.input(name)", 4734},
+    {"satellite.variable.window.width", 4696},
+    {"satellite.variable.window.write(across, down, words)", 4715},
     {"satellite.window", 4482},
     {"satellite.window.button(text)", 4484},
     {"satellite.window.canvas(width, height)", 4509},

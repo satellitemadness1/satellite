@@ -17,18 +17,18 @@ satellite.capsule satellite.main()
     satellite.statement.for(satellite.variable.number i = 0; i < passes; i + 1)
     {
         seen[i % 1000] = i
-        satellite.statement.if (seen.contains((i * 7) % 1000))
+        satellite.statement.if (seen.satellite.contains((i * 7) % 1000))
         {
             total = total + seen[(i * 7) % 1000]
         }
-        seen.set((i * 3) % 1000, seen.get(i % 1000) + 1)
-        satellite.statement.if (seen.has((i * 11) % 1000))
+        seen.satellite.set((i * 3) % 1000, seen.satellite.get(i % 1000) + 1)
+        satellite.statement.if (seen.satellite.has((i * 11) % 1000))
         {
-            seen.remove((i * 11) % 1000)
+            seen.satellite.remove((i * 11) % 1000)
         }
-        total = total + seen.size
+        total = total + seen.satellite.size
     }
 
-    satellite.console.display("map_ops: passes " + passes + ", total " + total + ", map " + seen.size + " keys, keys summing " + seen.keys.satellite.sum + ", values summing " + seen.values.satellite.sum)
+    satellite.console.display("map_ops: passes " + passes + ", total " + total + ", map " + seen.satellite.size + " keys, keys summing " + seen.satellite.keys.satellite.sum + ", values summing " + seen.satellite.values.satellite.sum)
     satellite.return(satellite)
 }

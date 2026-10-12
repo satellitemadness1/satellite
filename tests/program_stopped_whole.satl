@@ -5,7 +5,7 @@ satellite.include(satellite)
 satellite.capsule satellite.main(satellite.variable.arguments args)
 {
     satellite.variable.program tree = {"sh", "-c", "sleep 7.31; echo never"}
-    tree.start()
+    tree.satellite.start()
     satellite.console.display("main ends")
     satellite.return(satellite)
 }

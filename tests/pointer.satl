@@ -31,7 +31,7 @@ satellite.capsule pointer_at_a_local()
 {
     box local
     local.call_put(5)
-    satellite.return(local.pointer())
+    satellite.return(local.satellite.pointer())
 }
 
 satellite.capsule satellite.main()
@@ -40,14 +40,14 @@ satellite.capsule satellite.main()
     a.call_put(7)
 
     // THE POINTER REACHES THE OBJECT: a change through it is a change to a.
-    box p = a.pointer()
-    satellite.console.display(p.ok())
+    box p = a.satellite.pointer()
+    satellite.console.display(p.satellite.ok())
     satellite.console.display(p.call_take())
     p.call_put(8)
     satellite.console.display(a.call_take())
 
     // THE REFERENCE IS AN EXACT COPY: a change to a does not reach it, nor the other way round.
-    box r = a.reference()
+    box r = a.satellite.reference()
     satellite.console.display(r.call_take())
     a.call_put(9)
     satellite.console.display(r.call_take())
@@ -58,19 +58,19 @@ satellite.capsule satellite.main()
     // pointer does not keep it living -- and the reference is still there.
     box other
     a = other
-    satellite.console.display(p.ok())
+    satellite.console.display(p.satellite.ok())
     satellite.console.display(r.call_take())
 
     // A POINTER HANDED BACK FROM A CAPSULE, AT THE CAPSULE'S OWN OBJECT: gone with the capsule.
     box q = pointer_at_a_local()
-    satellite.console.display(q.ok())
+    satellite.console.display(q.satellite.ok())
 
     // A POINTER'S pointer() IS THE POINTER, and an object's ok() is true.
-    box p2 = r.pointer()
-    box p3 = p2.pointer()
+    box p2 = r.satellite.pointer()
+    box p3 = p2.satellite.pointer()
     p3.call_put(11)
     satellite.console.display(r.call_take())
-    satellite.console.display(r.ok())
+    satellite.console.display(r.satellite.ok())
 
     satellite.return(satellite)
 }

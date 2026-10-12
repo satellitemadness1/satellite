@@ -19,6 +19,6 @@ satellite.capsule satellite.main()
         s = s + f / 4 - 0.5
         t = t + f * 0.5
     }
-    satellite.console.display(f.string + " " + s.string + " " + t.string)
+    satellite.console.display(f.satellite.string + " " + s.satellite.string + " " + t.satellite.string)
     satellite.return(satellite)
 }

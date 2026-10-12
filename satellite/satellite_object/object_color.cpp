@@ -64,10 +64,10 @@ signed long long int color_operation(char sign, const satelliteObject &left, con
     // `"my colour is " + c` IS JOINING, NOT ARITHMETIC, and is told so: the colour's
     // text is one method away.
     if (sign == '+' && (left.is_string() || right.is_string()))
-        return refuse("+", left, right, " -- a color is not text; .string on it is its text, to join", why);
+        return refuse("+", left, right, " -- a color is not text; .satellite.string on it is its text, to join", why);
     return refuse(std::string(1, sign), left, right,
                   " -- a color has no arithmetic: it is six hex digits and a transparency. "
-                  "Its .number is what the digits are worth, to do sums on",
+                  "Its .satellite.number is what the digits are worth, to do sums on",
                   why);
 }
 

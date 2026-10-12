@@ -19,6 +19,7 @@
 #include "color_values.hpp"
 #include "container_calls.hpp"
 #include "string_calls.hpp"
+#include "number_calls.hpp"
 #include "method_periods.hpp"
 #include "console_calls.hpp"
 #include "thread_calls.hpp"
@@ -68,18 +69,22 @@ Code code_at(const std::vector<std::bitset<16>> &row, std::size_t at)
 int precedence_of(Code op)
 {
     switch (op) {
-    case token::power_token: return 5;              // `^`, ruled power by the author 2026-09-16
+    case token::power_token: return 7;              // `^`, ruled power by the author 2026-09-16
     case token::times_token:
     case token::divide_token:
-    case token::modulus_token: return 4;
+    case token::modulus_token: return 6;
     case token::plus_token:
-    case token::minus_token: return 3;
+    case token::minus_token: return 5;
     case token::less_than_token:
     case token::greater_than_token:
     case token::less_or_equal_token:
-    case token::greater_or_equal_token: return 2;
+    case token::greater_or_equal_token: return 4;
     case token::equals_token:
-    case token::not_equals_token: return 1;
+    case token::not_equals_token: return 3;
+    // && AND || (the author's 10 of 2026-10-11; his C symbols of 2026-09-22), below every comparison as in C:
+    // a < b && c < d is (a < b) && (c < d), and a || b && c is a || (b && c).
+    case token::and_token: return 2;
+    case token::or_token: return 1;
     default: return 0;
     }
 }
@@ -160,7 +165,7 @@ Value apply(Code op, std::size_t op_at, const Value &left, const Value &right, E
     // bools ORDER (false before true) and this file's job is to say which
     // spellings may ask. `a < b` on two bools means nothing in this language;
     // `a == b` does.
-    if (precedence_of(op) >= 1 && precedence_of(op) <= 2) {
+    if (precedence_of(op) >= 3 && precedence_of(op) <= 4) {   // == != and < > <= >= (&& and || are 2 and 1)
         if (an_ordering(op) && left.is_bool() && right.is_bool()) {
             context.refuse(types_do_not_meet,
                            std::string(spelling_of(op)) + " was given two bools, and only == and != order those",
@@ -416,10 +421,6 @@ Value call_method(const std::vector<std::bitset<16>> &row, std::size_t &at, cons
     const std::string *shown = &root;
     std::size_t link_at = 0;
     bool after_a_link = false;
-    // THE WINDOW METHOD JUST BEFORE THIS ONE, ON THE SAME WINDOW -- the author's widget chain is
-    // judged by it (window_calls.hpp, widgets_spelled_wrong): .displays after .widgets, and .file
-    // and .input after .displays. 0 when the last turn was anything else.
-    Code before_on_a_window = 0;
     // EITHER PERIOD STARTS A TURN (method_periods.hpp): `.` before a method or a member, and
     // `.satellite.`, which the lexer makes only straight before a method's own code.
     while ((code_at(row, at) == token::method_token &&
@@ -435,16 +436,12 @@ Value call_method(const std::vector<std::bitset<16>> &row, std::size_t &at, cons
         // AN OBJECT'S MEMBER (2026-09-22, capsule_calls.hpp): its spacesuit says what the
         // name is, whether or not the lexer made it a method code -- an object's capsule
         // may be called `size` as well as `call_name`. What it answers goes on down the chain.
-        // A pointer's are its object's (pointer_calls.hpp). AND THEY ARE WRITTEN WITH A `.` (the
-        // author's C of 2026-10-10: his own spacesuit's methods stay as he writes them).
+        // A pointer's are its object's (pointer_calls.hpp). HIS CAPSULES ARE WRITTEN WITH A `.` (the
+        // author's C of 2026-10-10: his own spacesuit's methods stay as he writes them), and the five
+        // words every object has with `.satellite.` (his A of 2026-10-11) -- call_member judges which,
+        // because only the spacesuit says whether a name is his.
         const bool under_satellite = code_at(row, at) == token::satellite_method_token;
         if ((*live).answers_as_an_object()) {
-            if (under_satellite) {
-                context.refuse(satl_line_not_understood,
-                               period_written_wrong(name, spelling_of_method(code_at(row, at + 1)),
-                                                    (*live).kind_name(), true));
-                return Value();
-            }
             Value answer = call_member(row, at, *live, name, context);
             if (context.code != success)
                 return Value();
@@ -454,7 +451,8 @@ Value call_method(const std::vector<std::bitset<16>> &row, std::size_t &at, cons
             continue;
         }
         // A WIDGET BY ITS NAME (the author, 2026-10-09): `main_window.file_display` is the widget made in
-        // main_window with `.widgets.displays.file("file_display")`, and what follows is that widget's.
+        // main_window with `.satellite.widgets.display.file("file_display")`, and what follows is that widget's.
+        // HIS OWN NAMES KEEP THEIR PERIOD (2026-10-10 ~21:15): main_window.files_display.satellite.widgets...
         if (code_at(row, at + 1) == token::name_token) {
             if (const WindowHandle *window = (*live).window_handle()) {
                 std::size_t k = at + 1;
@@ -465,24 +463,49 @@ Value call_method(const std::vector<std::bitset<16>> &row, std::size_t &at, cons
                 held = std::move(answer);
                 live = &held;
                 on_the_name = false;
-                before_on_a_window = 0;
                 at = k;
                 continue;
             }
         }
+        // A WORD OF PARTS WRITTEN AS ITS PARTS, ON A WINDOW (window_calls.hpp): widgets.display.file and
+        // scroll.vertical are each one word, `.satellite.` once before it, and the lexer reads them so -- so
+        // `main_window.widgets.display.file(...)`, `.satellite.widgets.displays.file(...)` and a scroll alone
+        // reach here as parts, and are told the whole word. Asked before the period's rule, which would name
+        // only the first part.
+        if ((*live).is_window() && a_word_in_parts(row, at)) {
+            context.refuse(satl_line_not_understood, word_in_parts_written_wrong(row, at, name));
+            return Value();
+        }
         const Code method = code_at(row, at + 1);
         const char *spelling = spelling_of_method(method);
+        // object.satellite.pointer() AND .satellite.reference() ARE AN OBJECT'S (pointer_calls.hpp), and this
+        // is not one -- said as that whichever period was written, before the period is judged, and not
+        // as a method not built yet: `n.satellite.pointer()` was told to write n.pointer(), to be refused
+        // again. A name with no value yet is told that, below.
+        if ((method == token::pointer_token || method == token::reference_token) && !(*live).is_nothing()) {
+            context.refuse(satl_line_not_understood, name + ".satellite." + spelling + "() is an object's -- an object "
+                                                         "of a satellite.spacesuit -- and this is " +
+                                                         std::string((*live).kind_name()));
+            return Value();
+        }
+        // .get AND .set ON THE ARGUMENTS VARIABLE ITSELF ARE REFUSED, whichever period they are written with --
+        // as they were while the two were matched by name (main_arguments.hpp, get_or_set_on_the_arguments).
+        if (on_the_name && shape != nullptr && shape->word == word::fixed_code<1, 6, 21>) {
+            const std::string refused = get_or_set_on_the_arguments(method, name);
+            if (!refused.empty()) {
+                context.refuse(satl_line_not_understood, refused);
+                return Value();
+            }
+        }
         // WHICH PERIOD IT TAKES (method_periods.hpp): `.satellite.` exactly when the method runs a
-        // number on what the receiver holds -- a string's and a list's, since 2026-10-10 -- and `.`
-        // for every other. Judged before the arguments are worked out, so a call written the old
+        // number on what the receiver holds -- each type's own words, from the day they are numbered --
+        // and `.` for every other. Judged before the arguments are worked out, so a call written the old
         // way runs nothing inside its brackets. The number found is the one the branches below run.
         // A NAME WITH NO VALUE YET is told that, below, whichever period it was written with.
-        const Code its_number = (*live).is_string() ? string_number_of(method)
-                              : (*live).is_list()   ? list_number_of(method)
-                                                    : 0;
+        const Code its_number = number_a_method_runs((*live).kind(), method);
         if ((its_number != 0) != under_satellite && !(*live).is_nothing()) {
             context.refuse(satl_line_not_understood,
-                           period_written_wrong(name, spelling, (*live).kind_name(), under_satellite));
+                           period_written_wrong(name, spelling, (*live).kind(), under_satellite));
             return Value();
         }
         at += 2;
@@ -575,6 +598,44 @@ Value call_method(const std::vector<std::bitset<16>> &row, std::size_t &at, cons
             continue;
         }
 
+        // THE OTHER SCALARS' WORDS RUN BY THEIR NUMBERS (the author, 2026-10-11: "we still need to get the word
+        // satellite onto everything ... everything builtin needs the word satellite still"). A float's, a hex's, a
+        // binary's, a colour's, a fraction's, a percentage's, a bool's and a time's every word is
+        // satellite.variable.<type>.<it>, a file under satellite-numbers/words/ that run_scalar_number reaches
+        // through the function table (scalar_calls.hpp). Asked before .reverse() below, which a hex's and a
+        // binary's are now; a word one of them does not have goes on down, as it always went. Every one answers
+        // something new, so the chain moves off the name -- .transparency(50) too, which changed the name
+        // through `home` and answers the colour it made.
+        if (its_number != 0 && an_other_scalar((*live).kind())) {
+            Value answer = run_scalar_number(method, its_number, *live, on_the_name ? live : nullptr, arguments,
+                                             had_parentheses, name, context);
+            if (context.code != success)
+                return Value();
+            held = std::move(answer);
+            live = &held;
+            on_the_name = false;
+            continue;
+        }
+
+        // A NUMBER'S METHODS RUN BY THEIR NUMBERS TOO (NM-8, 2026-10-11; the author: "everything builtin needs
+        // the word satellite still"): each is satellite.variable.number.<it>, 1 6 4 n, a file under
+        // satellite-numbers/words/ that run_number_number reaches through the function table -- the four
+        // conversions, .add(x), .reverse(), .floor() .ceil() .round() .truncate() .abs() .max(x) .min(x)
+        // .clamp(low, high) .power(x) .modulus(x) .shift_left(n) .shift_right(n) .digits() .bytes(), and .sqrt(),
+        // refused. AND AN INFINITY'S: its own, 1 6 17 n, and the number's (method_periods.hpp says why), which
+        // refuse an infinity in the words they refused it in before they had numbers. None of them changes the
+        // number it is called on, so each takes the chain off the name.
+        const Code number_number = (*live).is_number() || (*live).is_infinity() ? its_number : 0;
+        if (number_number != 0) {
+            Value answer = run_number_number(method, number_number, *live, arguments, had_parentheses, name, context);
+            if (context.code != success)
+                return Value();
+            held = std::move(answer);
+            live = &held;
+            on_the_name = false;
+            continue;
+        }
+
         // `.reverse()` ON A NUMBER OR A BINARY -- one command on every type that has an
         // order (the author, 2026-09-18); a string's is its number, 1 6 1 23, above. Asked
         // before the container branch because none of these is a container, and before the
@@ -597,11 +658,12 @@ Value call_method(const std::vector<std::bitset<16>> &row, std::size_t &at, cons
             continue;
         }
 
-        // A LIST'S AND AN INDEX'S OWN METHODS (container_calls.cpp) -- A LIST'S BY THEIR NUMBERS
-        // (the author, 2026-10-10: "so .list.satellite.append() has it's own number, and it actually
-        // runs that number when we do it"). Every method a list has is satellite.container.list.<it>,
-        // 1 4 2 n, a file under satellite-numbers/words/ that run_list_number reaches through the
-        // function table; an index's, and a list's refusals, are still call_container_method's.
+        // A LIST'S AND AN INDEX'S OWN METHODS (container_calls.cpp), BY THEIR NUMBERS (the author,
+        // 2026-10-10: "so .list.satellite.append() has it's own number, and it actually runs that number
+        // when we do it"). Every method a list has is satellite.container.list.<it>, 1 4 2 n, and every
+        // method a map has -- an index, the arguments variable, an info's item -- satellite.container.map.<it>,
+        // 1 4 1 n (2026-10-11): a file under satellite-numbers/words/ that run_list_number or run_map_number
+        // reaches through the function table. What either does not have is call_container_method's to refuse.
         if ((*live).is_list() || (*live).is_index()) {
             // ON THE ARGUMENTS VARIABLE ITSELF, a key asked about or taken out is the row of
             // every spelling (MS-1): `args.contains("arg3")` asks about argument3, and
@@ -612,10 +674,15 @@ Value call_method(const std::vector<std::bitset<16>> &row, std::size_t &at, cons
                 return Value();
             const bool changes_it = method == token::append_token;
             const Code list_number = (*live).is_list() ? its_number : 0;
+            const Code map_number = (*live).is_index() ? its_number : 0;
             Value answer = list_number != 0
                                ? run_list_number(method, list_number, (*live), on_the_name ? live : nullptr,
                                                  on_the_name ? shape : nullptr, arguments, had_parentheses, name,
                                                  context)
+                           : map_number != 0
+                               ? run_map_number(method, map_number, (*live), on_the_name ? live : nullptr,
+                                                on_the_name ? shape : nullptr, arguments, had_parentheses, name,
+                                                context)
                                : call_container_method(method, (*live), on_the_name ? live : nullptr, arguments,
                                                        had_parentheses, name, context);
             if (context.code != success)
@@ -631,14 +698,21 @@ Value call_method(const std::vector<std::bitset<16>> &row, std::size_t &at, cons
             continue;
         }
 
-        // A FILE ANSWERS ITS OWN METHODS (file_calls.cpp). The (*live) is a
-        // handle, so the method acts on the one open file every name for it shares.
+        // A FILE ANSWERS ITS OWN METHODS -- BY THEIR NUMBERS since 2026-10-11 (NM-8; the author: "we still
+        // need to get the word satellite onto everything ... everything builtin needs the word satellite
+        // still"). Every method a file has is satellite.variable.file.<it>, 1 6 2 n, a file under
+        // satellite-numbers/words/ that run_file_number reaches through the function table; one it does not
+        // have is call_file_method's refusal. The (*live) is a handle, so the method acts on the one open
+        // file every name for it shares.
         if (satellite_file *file = (*live).as_file()) {
             // THE AUTHOR'S LOCK ON A FILE: .lock() turns it on and .unlock() off, and while it
             // is on every method called on the file holds it -- a file is one thing to every
-            // name for it, and to every thread (satellite_object/object_lock.hpp).
+            // name for it, and to every thread (satellite_object/object_lock.hpp). Their numbers,
+            // 1 6 2 29 and 30, run BEFORE the hold and outside it, as the lock always has.
             if (method == token::lock_token || method == token::unlock_token) {
-                file->lock.on.store(method == token::lock_token, std::memory_order_release);
+                run_file_number(method, its_number, *live, arguments, had_parentheses, name, context);
+                if (context.code != success)
+                    return Value();
                 held = Value();
                 live = &held;
                 on_the_name = false;
@@ -649,7 +723,9 @@ Value call_method(const std::vector<std::bitset<16>> &row, std::size_t &at, cons
                 context.refuse(one_call.code(), name + " is a locked file held by a thread that is waiting for this one");
                 return Value();
             }
-            Value answer = call_file_method(method, *file, arguments, had_parentheses, name, context);
+            Value answer = its_number != 0
+                               ? run_file_number(method, its_number, *live, arguments, had_parentheses, name, context)
+                               : call_file_method(method, name, context);
             if (context.code != success)
                 return Value();
             held = std::move(answer);
@@ -658,32 +734,31 @@ Value call_method(const std::vector<std::bitset<16>> &row, std::size_t &at, cons
             continue;
         }
 
-        // THE FOUR TYPES OF 2026-09-22 ANSWER THEIR OWN METHODS, each in
-        // bytecode/<name>_values.cpp. `answered` false leaves the method to the
-        // conversions every type shares, below. `slot` is the variable itself, for
-        // a method that changes the value -- the same rule as a list's `.append`.
+        // A WORD ONE OF THE FOUR TYPES OF 2026-09-22 DOES NOT HAVE. Each answered its own methods in
+        // bytecode/<name>_values.cpp, and every one it has runs its number since 2026-10-11, above -- so a
+        // method that reaches here is none of them, and is refused in the type's own sentence: the one its
+        // checker half says before the run, said here of a receiver the checker could not see (a literal, a
+        // chain, an item). Never left to the conversions every type shares below, which would answer some.
         if ((*live).is_float() || (*live).is_hexadecimal() || (*live).is_color() || (*live).is_fraction()) {
-            bool answered = false;
-            Value *slot = on_the_name ? live : nullptr;
-            Value answer = (*live).is_float()       ? float_method(method, *live, slot, arguments, had_parentheses, name, context, answered)
-                         : (*live).is_hexadecimal() ? hexadecimal_method(method, *live, slot, arguments, had_parentheses, name, context, answered)
-                         : (*live).is_color()       ? color_method(method, *live, slot, arguments, had_parentheses, name, context, answered)
-                                                    : fraction_method(method, *live, slot, arguments, had_parentheses, name, context, answered);
-            if (context.code != success)
-                return Value();
-            if (answered) {
-                held = std::move(answer);
-                live = &held;
-                on_the_name = false;
-                continue;
-            }
+            const std::string spelled = name + "." + spelling;
+            std::string why;
+            const signed long long int code =
+                (*live).is_float()         ? float_method_check(method, spelled, why)
+                : (*live).is_hexadecimal() ? hexadecimal_method_check(method, spelled, why)
+                : (*live).is_color()       ? color_method_check(method, spelled, why)
+                                           : fraction_method_check(method, spelled, why);
+            context.refuse(code, why);
+            return Value();
         }
 
-        // A THREAD ANSWERS ITS OWN (thread_calls.cpp): start and stop answer the thread,
-        // so `t.start()` can go on to another method; join and wait answer what its
-        // capsule handed back. Before the containers ever see it: a list has a .join too.
-        if (const ThreadHandle *thread = (*live).thread_handle()) {
-            Value answer = call_thread_method(method, *thread, arguments, had_parentheses, name, context);
+        // A THREAD'S METHODS RUN BY THEIR NUMBERS (the author, 2026-10-11: "we still need to get the word
+        // satellite onto everything ... everything builtin needs the word satellite still"): start, join,
+        // stop and wait are satellite.variable.thread.<it>, 1 6 13 n, files under satellite-numbers/words/
+        // that run_thread_number reaches through the function table (thread_calls.cpp). start and stop
+        // answer the thread, so `t.satellite.start()` can go on to another method; join and wait answer
+        // what its capsule handed back. Before the containers ever see it: a list has a .join too.
+        if ((*live).is_thread()) {
+            Value answer = run_thread_number(method, its_number, (*live), arguments, had_parentheses, name, context);
             if (context.code != success)
                 return Value();
             held = std::move(answer);
@@ -692,11 +767,12 @@ Value call_method(const std::vector<std::bitset<16>> &row, std::size_t &at, cons
             continue;
         }
 
-        // A PROGRAM ANSWERS ITS OWN (program_calls.cpp): start answers the program, so
-        // `p.start().join()` goes on; join, code and return answer its exit code. Before the
-        // containers, as a thread's are: a list has a .join too.
-        if (const ProgramHandle *program = (*live).program_handle()) {
-            Value answer = call_program_method(method, *program, arguments, had_parentheses, name, context);
+        // A PROGRAM'S -- AND A BASH LINE'S -- BY THEIRS (program_calls.cpp): satellite.variable.program.<it>,
+        // 1 6 23 n, or satellite.variable.bash.<it>, 1 6 24 n, whichever the value is. start answers the
+        // program, so `p.satellite.start().satellite.join()` goes on; join, code and return answer its exit
+        // code. Before the containers, as a thread's are: a list has a .join too.
+        if ((*live).is_program()) {
+            Value answer = run_program_number(method, its_number, (*live), arguments, had_parentheses, name, context);
             if (context.code != success)
                 return Value();
             held = std::move(answer);
@@ -705,23 +781,19 @@ Value call_method(const std::vector<std::bitset<16>> &row, std::size_t &at, cons
             continue;
         }
 
-        // A WINDOW ANSWERS ITS OWN (window_calls.cpp), the same way and for the
-        // same reason: the handle is what a method acts through, so two names for
-        // one window move one window. What comes back IS the window, so
-        // `w.title("x").focus()` strings together with no case of its own here.
-        if (const WindowHandle *window = (*live).window_handle()) {
-            const std::string wrong = widgets_spelled_wrong(method, before_on_a_window);
-            if (!wrong.empty()) {
-                context.refuse(satl_line_not_understood, name + "." + spelling + " -- " + wrong);
-                return Value();
-            }
-            Value answer = call_window_method(method, *window, arguments, had_parentheses, name, context);
+        // A WINDOW ANSWERS ITS OWN, BY ITS NUMBERS (window_methods.cpp; NM-8, 2026-10-11): every method a
+        // window and the pieces in one have is satellite.variable.window.<it>, 1 6 18 n, a file under
+        // satellite-numbers/words/ that run_window_number reaches through the function table -- the same way
+        // and for the same reason as a thread's: the handle is what a method acts through, so two names for one
+        // window move one window. What a doing answers IS the window, so
+        // `w.satellite.title("x").satellite.focus()` strings together with no case of its own here.
+        if ((*live).is_window()) {
+            Value answer = run_window_number(method, its_number, *live, arguments, had_parentheses, name, context);
             if (context.code != success)
                 return Value();
             held = std::move(answer);
             live = &held;
             on_the_name = false;
-            before_on_a_window = method;
             continue;
         }
 
@@ -1428,9 +1500,12 @@ Value one_operand(const std::vector<std::bitset<16>> &row, std::size_t &at, Expr
         return maybe_a_method(row, at, Value::of_number(std::move(value)), "that number", context);
     }
 
+    // satellite.bool.true AND satellite.bool.false -- AND THE WORDS AFTER THEM: `satellite.bool.true.satellite.string`
+    // (the author's G of 2026-10-11: "yes"), as a literal's, through maybe_a_method. No spelling after them could be
+    // read before that day, and the bare one was told to mind its math signs.
     if (code == word::code_of(1, 17, 1) || code == word::code_of(1, 17, 2)) {
         ++at;
-        return Value::of_bool(code == word::code_of(1, 17, 2));
+        return maybe_a_method(row, at, Value::of_bool(code == word::code_of(1, 17, 2)), word::spelling_of(code), context);
     }
 
     // A WORD'S ANSWER CAN BE CALLED ON, as a name's can (the review, 2026-09-18):
@@ -1481,7 +1556,7 @@ Value one_operand(const std::vector<std::bitset<16>> &row, std::size_t &at, Expr
                 Argument now;
                 if (context.state.arguments->copy_of("arguments." + key, now) && now.kind == ArgumentKind::flag) {
                     ++at;
-                    return Value::of_bool(now.flag);
+                    return maybe_a_method(row, at, Value::of_bool(now.flag), word::spelling_of(code), context);
                 }
             }
             const SettingReply said = library->scenarios.flag_setting(false, false);
@@ -1492,14 +1567,15 @@ Value one_operand(const std::vector<std::bitset<16>> &row, std::size_t &at, Expr
                                               (said.reason.empty() ? "" : " -- " + said.reason));
                 return Value();
             }
-            return Value::of_bool(said.flag);
+            // A WORD MAY FOLLOW A SETTING, A CONSOLE FACT AND A MACHINE FACT, as one follows a literal (his G).
+            return maybe_a_method(row, at, Value::of_bool(said.flag), word::spelling_of(code), context);
         }
 
         // THE TERMINAL'S SIZE, satellite.console.width and .height (console_calls.hpp):
         // asked fresh every time, because a terminal is resized while a program runs.
         if (is_console_fact(code)) {
             ++at;
-            return console_fact(code);
+            return maybe_a_method(row, at, console_fact(code), word::spelling_of(code), context);
         }
 
         // A FACT ABOUT THE MACHINE, read the same way and for the same reason:
@@ -1530,18 +1606,25 @@ Value one_operand(const std::vector<std::bitset<16>> &row, std::size_t &at, Expr
                                    at - 1);
                     return Value();
                 }
-                return answer;
+                return maybe_a_method(row, at, std::move(answer), word::spelling_of(code), context);
             }
-            return Value::of_number(satellite_number(said.count));
+            return maybe_a_method(row, at, Value::of_number(satellite_number(said.count)), word::spelling_of(code), context);
         }
     }
 
     // A NAME IS A VARIABLE, and a name with no declaration is name_not_declared
     // (25) rather than a silent nothing -- which is what 003 does and what a
     // person can act on.
-    if (code == token::name_token) {
+    //
+    // AND satellite.arguments, THE RUN'S OWN ARGUMENTS (main_arguments.hpp, 2026-10-11), IS READ HERE AS THE
+    // BARE NAME `arguments` WAS until that day -- one word, carried as the name kTheRunsArguments, which no
+    // variable can have: a name has no dots in it.
+    const bool the_runs_word = code == kTheRunsArgumentsWord;
+    if (code == token::name_token || the_runs_word) {
         std::size_t k = at;
-        const std::string name = text_at(row, k);
+        const std::string name = the_runs_word ? std::string(kTheRunsArguments) : text_at(row, k);
+        if (the_runs_word)
+            ++k;                          // one code, and no letters behind it
         const std::size_t name_at = at;   // text_at walked past it; the caret wants the name
         at = k;
 
@@ -1556,13 +1639,12 @@ Value one_operand(const std::vector<std::bitset<16>> &row, std::size_t &at, Expr
                 return Value();
             return maybe_a_method(row, at, std::move(answer), "that answer", context);
         }
-        Seen found = context.variables.seen(name);
-        // THE RUN'S OWN ARGUMENTS BY THEIR BARE NAME (the author, 2026-10-04: "arguments.missing or
-        // arguments.anything needs to be able to be read anywhere"), where no name of this body is
-        // called arguments -- any capsule, and the prompt. A row is read where satl holds it, as it is
-        // now; the whole of it -- shown, or asked with a method or a key -- is every row as it is now,
-        // made when it is asked for and kept for this expression alone.
-        if (!found && name == kTheRunsArguments) {
+        Seen found = the_runs_word ? Seen{} : context.variables.seen(name);
+        // THE RUN'S OWN ARGUMENTS, satellite.arguments (the author, 2026-10-04: "arguments.missing or
+        // arguments.anything needs to be able to be read anywhere"), in any capsule, and at the prompt. A
+        // row is read where satl holds it, as it is now; the whole of it -- shown, or asked with a method or
+        // a key -- is every row as it is now, made when it is asked for and kept for this expression alone.
+        if (the_runs_word) {
             if (code_at(row, at) == token::method_token) {
                 bool read = false;
                 std::string key;
@@ -1609,45 +1691,9 @@ Value one_operand(const std::vector<std::bitset<16>> &row, std::size_t &at, Expr
             if (read)
                 return after_an_argument(row, at, std::move(answer), name, key, *found.value, context);
         }
-        // A MAP'S OWN NUMBERED WORDS, 003'S SPELLING (1 4 1 2 and 1 4 1 1): `m.get(k)` IS m[k]
-        // AND `m.set(k, v)` IS m[k] = v, through the same two functions, so a missing key and a
-        // value that does not fit are refused in the same words. The author found them refused
-        // on 2026-09-26 (ERRORS2 1b A/D) and his programs call them seventy times. `.has(k)` is
-        // contains's third spelling, in REGISTRY.satellite.
-        if (found.value->is_index() && code_at(row, at) == token::method_token &&
-            code_at(row, at + 1) == token::name_token) {
-            std::size_t k = at + 1;
-            const std::string member = text_at(row, k);
-            if ((member == "get" || member == "set") && code_at(row, k) == token::left_parenthesis_token) {
-                const std::size_t open = k;
-                std::vector<Value> arguments;
-                ++k;
-                while (code_at(row, k) != token::right_parenthesis_token) {
-                    arguments.push_back(evaluate_at(row, k, 1, context));
-                    if (context.code != success) return Value();
-                    if (code_at(row, k) != token::comma_token) break;
-                    ++k;
-                }
-                const std::size_t wanted = member == "get" ? 1 : 2;
-                if (code_at(row, k) != token::right_parenthesis_token || arguments.size() != wanted) {
-                    context.refuse(satl_line_not_understood,
-                                   name + (member == "get" ? ".get(key) takes one key, and reads the value under it"
-                                                           : ".set(key, value) takes a key and a value, and files one under the other"),
-                                   open);
-                    return Value();
-                }
-                at = k + 1;
-                if (member == "get") {
-                    Value answer = index_into(*found.value, arguments[0], name, name_at, context);
-                    if (context.code != success) return Value();
-                    return maybe_a_method(row, at, std::move(answer), "that value", context);
-                }
-                static const TypeShape kAnything;
-                write_through_index(*found.value, {arguments[0]}, std::move(arguments[1]), name, name_at,
-                                    found.shape != nullptr ? *found.shape : kAnything, context);
-                return Value();
-            }
-        }
+        // A MAP'S .get(k) AND .set(k, v) were matched here by their names from 2026-09-26 until
+        // 2026-10-11, when they were given tokens and run their numbers, 1 4 1 2 and 1 4 1 1, as every
+        // other method of a map runs its own (call_method, below).
         // `f[n]` -- LINE n OF A FILE, and `a[n]` -- ITEM n OF A LIST, both
         // counting from 1 (the author, 2026-09-18: "we'll build it so you can
         // iterate over the lines as if they were objects").
@@ -1770,6 +1816,36 @@ Value one_operand(const std::vector<std::bitset<16>> &row, std::size_t &at, Expr
 
 // One level of §6.6's table. `lowest` is the loosest level this call will take,
 // which is what makes the climb.
+// PAST AN OPERAND THAT IS NOT RUN -- the right side of a && after false, of a || after true: to the next
+// operator at this level or below, or the end of the value (a `)`, a `]`, a `}`, a `,`, the line's end), never
+// into a bracket. Nothing in it is run, so nothing in it is refused.
+static void past_the_operand(const std::vector<std::bitset<16>> &row, std::size_t &at, int level)
+{
+    int depth = 0;
+    while (at < row.size()) {
+        const Code code = code_at(row, at);
+        if (code == token::line_end_token || code == token::comment_token || code == token::end_of_file_token)
+            return;
+        if (code == token::left_parenthesis_token || code == token::left_square_bracket_token ||
+            code == token::left_brace_token) {
+            ++depth;
+        } else if (code == token::right_parenthesis_token || code == token::right_square_bracket_token ||
+                   code == token::right_brace_token) {
+            if (depth == 0)
+                return;
+            --depth;
+        } else if (depth == 0) {
+            const int its = precedence_of(code);
+            if (code == token::comma_token || (its != 0 && its <= level))
+                return;
+        }
+        if (token::carries_a_count(code))
+            skip_payload(row, at);
+        else
+            ++at;
+    }
+}
+
 Value evaluate_at(const std::vector<std::bitset<16>> &row, std::size_t &at, int lowest, ExpressionContext &context)
 {
     Value left = one_operand(row, at, context);
@@ -1786,6 +1862,33 @@ Value evaluate_at(const std::vector<std::bitset<16>> &row, std::size_t &at, int 
             break;
         const std::size_t op_at = at;
         ++at;
+        // && AND || TAKE TWO BOOLS, and the right one is RUN ONLY WHEN IT DECIDES (C's short circuit, so
+        // `i <= n && l[i] == x` never reads past the end): a false before && and a true before || are the
+        // answer, and the right side is stepped over unrun.
+        if (op == token::and_token || op == token::or_token) {
+            const char *spelled = op == token::and_token ? "&&" : "||";
+            if (!left.is_bool()) {
+                context.refuse(types_do_not_meet, std::string(spelled) + " was given " + left.kind_name() +
+                                                      " before it -- it takes satellite.bool.true or satellite.bool.false",
+                               op_at);
+                return Value();
+            }
+            if (*left.as_bool() == (op == token::or_token)) {
+                past_the_operand(row, at, level);
+                continue;
+            }
+            const Value right = evaluate_at(row, at, level + 1, context);
+            if (context.code != success)
+                return Value();
+            if (!right.is_bool()) {
+                context.refuse(types_do_not_meet, std::string(spelled) + " was given " + right.kind_name() +
+                                                      " after it -- it takes satellite.bool.true or satellite.bool.false",
+                               op_at);
+                return Value();
+            }
+            left = right;
+            continue;
+        }
         // LEFT-ASSOCIATIVE at level + 1, so a - b - c is (a - b) - c. Power is
         // the exception and climbs at its OWN level, which is what makes
         // 2 ^ 3 ^ 2 read as 2 ^ (3 ^ 2). The header says why it is the one.
@@ -1973,10 +2076,18 @@ Value call_word(const std::vector<std::bitset<16>> &row, std::size_t &at, Expres
     // display, and it goes straight to its own path below: not one of the file, info,
     // infinity, window, container or console questions is asked of it. callgrind on build
     // 0108 had those questions at ~10,500 of the ~11,600 instructions a display cost.
+    //
+    // UNDER SATELLITE SINCE 2026-10-11 (NM-8; the author: "everything builtin needs the word satellite
+    // still"): `.satellite.center()` is satellite.console.display.center, 1 5 1 1, and runs that number
+    // (display_with_options); `.center()` with a bare `.` is refused, naming it, before the line prints.
     const bool to_the_screen = is_display_word(code);
     bool centred = false;
-    if (to_the_screen && code_at(row, at) == token::method_token &&
-        code_at(row, at + 1) == token::center_token) {
+    if (to_the_screen && a_method_period(code_at(row, at)) && display_number_of(code_at(row, at + 1)) != 0) {
+        if (code_at(row, at) == token::method_token) {
+            context.refuse(satl_line_not_understood,
+                           center_written_bare(word::spelling_of(code), spelling_of_method(code_at(row, at + 1))));
+            return Value();
+        }
         centred = true;
         at += 2;
         if (code_at(row, at) == token::left_parenthesis_token && code_at(row, at + 1) == token::right_parenthesis_token)
@@ -2209,6 +2320,25 @@ Value call_word(const std::vector<std::bitset<16>> &row, std::size_t &at, Expres
     return Value::of_code(answer);
 }
 
+Value read_under_a_key(const Value &map, const Value &key, const std::string &name, ExpressionContext &context)
+{
+    const bool was_right = context.code == success;
+    Value answer = index_into(map, key, name, 0, context);
+    if (was_right && context.code != success)
+        context.placed = false;          // the statement's start, as every numbered method's (expression.hpp)
+    return answer;
+}
+
+signed long long int write_under_a_key(Value &map, const Value &key, Value value, const std::string &name,
+                                       const TypeShape &shape, ExpressionContext &context)
+{
+    const bool was_right = context.code == success;
+    const signed long long int written = write_through_index(map, {key}, std::move(value), name, 0, shape, context);
+    if (was_right && context.code != success)
+        context.placed = false;
+    return written;
+}
+
 // `a[i] = v`, AND `a[i][j] = v`, WITH COPY-ON-WRITE ALONG THE WHOLE PATH.
 //
 // IT LIVES BESIDE index_into ON PURPOSE. Reading `a[i]` and writing `a[i]` must
@@ -2393,6 +2523,10 @@ std::string name_not_declared_why(const std::string &name)
     std::string why = name + " has no satellite.variable line declaring it";
     if (name == "true" || name == "false")
         why += " -- for the value " + name + ", write satellite.bool." + name;
+    // THE BARE NAME THE RUN'S OWN ARGUMENTS HAD UNTIL 2026-10-11 (main_arguments.hpp). The checker says this
+    // before anything runs, naming what followed the name; this is the walker's word for the same.
+    if (name == kTheOldBareArguments)
+        why += " -- the run's own arguments are satellite.arguments now: satellite.arguments.username";
     return why;
 }
 

@@ -300,7 +300,8 @@ bool window_pressed(satellite_window &which, const std::string &capsule, std::st
 bool window_changed(satellite_window &which, const std::string &capsule, std::string &why)
 {
     if (which.piece == satellite_window::button) {
-        why = "a button is not changed, it is pressed -- write .pressed(" + capsule_as_written(capsule) + ") instead";
+        why = "a button is not changed, it is pressed -- write .satellite.pressed(" + capsule_as_written(capsule) +
+              ") instead";
         return false;
     }
     if (!a_person_can_change(which.piece)) {
@@ -333,7 +334,7 @@ bool window_listen(satellite_window &which, const std::string &capsule, std::str
     // the same widget. Anything else is refused by name rather than left listening to nothing.
     if (which.piece != satellite_window::text_box) {
         why = std::string(which.piece_name()) + " has no keys typed in it -- a text input listens: "
-                                                "my_window.widgets.displays.input(\"a_name\")";
+                                                "my_window.satellite.widgets.display.input(\"a_name\")";
         return false;
     }
     if (which.widget == nullptr) {
@@ -467,14 +468,14 @@ bool window_key(satellite_window &which, const std::string &capsule, std::string
 bool window_clicked(satellite_window &which, const std::string &capsule, std::string &why)
 {
     if (which.piece == satellite_window::button) {
-        why = "a button already has a word for being clicked -- write .pressed(" + capsule_as_written(capsule) +
-              ") instead";
+        why = "a button already has a word for being clicked -- write .satellite.pressed(" +
+              capsule_as_written(capsule) + ") instead";
         return false;
     }
     // A MENU IS NOT CLICKED, ITS ITEMS ARE PICKED (GTK-12) -- and it is not a
     // widget a gesture could be added to.
     if (!which.is_drawn()) {
-        why = "a menu is not clicked, its items are picked -- write .item(" + capsule_as_written(capsule) +
+        why = "a menu is not clicked, its items are picked -- write .satellite.item(" + capsule_as_written(capsule) +
               ", \"Open\") to say what runs";
         return false;
     }

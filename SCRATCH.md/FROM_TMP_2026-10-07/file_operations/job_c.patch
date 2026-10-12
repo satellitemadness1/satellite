@@ -1,0 +1,304 @@
+Binary files pristine/gtkcar/satl and job_c/gtkcar/satl differ
+Binary files pristine/gtkcar/satl-link and job_c/gtkcar/satl-link differ
+diff -ruN -x build -x '*.o' -x '*.so' -x '*.d' -x '*.tmp' -x .satellite_build -x satellite_config.hpp -x __pycache__ -x build.log -x check.log -x '*.out' pristine/satellite.help/help.txt job_c/satellite.help/help.txt
+--- pristine/satellite.help/help.txt	2026-10-06 17:58:00.000000000 -0400
++++ job_c/satellite.help/help.txt	2026-10-07 12:49:19.459937338 -0400
+@@ -66,4 +66,8 @@
+ 
+ 30) satellite.legal (where each name is legal, satellite first)
+ 
+-31) satellite.test (satl's own tests: every capability, speed beside C++, and loss)
+\ No newline at end of file
++31) satellite.test (satl's own tests: every capability, speed beside C++, and loss)
++
++32) satellite.file (new, open, exists, clear: a file by its path)
++
++33) satellite.variable.file (a text file as a list of lines, counting from 1)
+\ No newline at end of file
+diff -ruN -x build -x '*.o' -x '*.so' -x '*.d' -x '*.tmp' -x .satellite_build -x satellite_config.hpp -x __pycache__ -x build.log -x check.log -x '*.out' pristine/satellite.help/satellite.file/help_text.txt job_c/satellite.help/satellite.file/help_text.txt
+--- pristine/satellite.help/satellite.file/help_text.txt	1969-12-31 19:00:00.000000000 -0500
++++ job_c/satellite.help/satellite.file/help_text.txt	2026-10-07 12:48:17.304036737 -0400
+@@ -0,0 +1,102 @@
++--------------------------------------------------------------------------------
++SATELLITE 004: satellite.file
++--------------------------------------------------------------------------------
++
++satellite.file is the words that reach a file by its path: two that make or
++open one and answer a handle, and two that answer a question about a path. The
++handle is a satellite.variable.file, a text file held as a list of lines --
++satellite.help(satellite.variable.file) says what you can do with one.
++
++    satellite.file.new(path)            makes a text file that is not there,
++                                        and answers it open and empty
++    satellite.file.new(path, "text")    the same, with the kind named
++    satellite.file.open(path)           opens a text file that is there
++    satellite.file.open(path, "text")   the same, with the kind named
++    satellite.file.exists(path)         true when a file is at the path; a
++                                        directory answers false
++    satellite.file.clear(path)          empties a file that is there, by name,
++                                        and leaves it there; true when it did
++
++new never clobbers: when anything is already at the path -- a file, a folder, a
++link -- nothing is made, what is there is untouched, and the handle is not ok.
++open never creates: a path with no file at it gives a handle that is not ok
++and makes nothing, so a misspelt path cannot quietly become an empty file.
++A folder, a FIFO or a device given as the file is not a file, and the handle
++says so.
++
++A file that would not open is a value, not an error. new and open always answer
++a handle and never stop the program: a file that could not be made or opened is
++a handle whose ok is false and whose error says why, in words -- what is at the
++path, what is missing, or what the system said. The program goes on, so it can
++ask f.ok and choose. What does stop a program is asking such a handle about its
++lines -- f.size, f[1], f.search(x) -- because the only answers it could give
++would be made up (S503, exit 45): ask ok first.
++
++The kinds are "text" and "binary", and new and open take "text" when nothing is
++said. A text file is UTF-8 on the disk and satellite strings in the program; a
++file whose bytes are not UTF-8 opens as a handle that is not ok, and error
++names the line and the byte. The lines end as the file had them, so a file
++written with \r\n keeps \r\n, and a byte-order mark at the top is kept and is
++no part of line 1. A file whose lines end in \r alone is refused by name.
++"binary" is not built yet: satellite.file.new("b.bin", "binary") answers a
++handle that is not ok, and its error says binary files are not built yet.
++
++Where a path points. A path with no leading / is relative to the folder of the
++.satl file the line is written in -- not to where satl was started from, and
++not to the folder a satellite.directory.change moved to -- so a program finds
++its own files wherever it is run from. A path with a leading / is looked for
++under the program's own folder first, and then at the root of the filesystem:
++"/story/one.se" reaches the program's own story/ folder when there is one. For
++new, which makes something, it is the folder that must already be there. At
++the prompt there is no program file, so a path is the working directory's. A
++path holding a NUL is refused. f.path answers the whole path, from /, that the
++handle opened -- not the path as it was written -- and the handle keeps that,
++so a change of directory after the open cannot send a save to another file.
++
++A handle made by new or open stays open until it is closed, or until the
++capsule or block that named it ends, when it is saved and closed for you.
++
++Not built yet: a read-only open, satellite.file.open(path, "text", "read"),
++where every changing word would answer false and the file is never rewritten.
++Today the third argument is refused before anything runs (S110).
++
++example:
++
++satellite.include(satellite)
++
++satellite.capsule satellite.main()
++{
++    satellite.console.display(satellite.file.exists("notes.se")) // false
++    satellite.variable.file notes = satellite.file.new("notes.se")
++    satellite.console.display(notes.ok) // true
++    notes.append("first note")
++    satellite.console.display(satellite.file.exists("notes.se")) // true
++    satellite.variable.file twice = satellite.file.new("notes.se")
++    satellite.console.display(twice.ok) // false -- new never clobbers
++    satellite.console.display(twice.error) // something is already at ...notes.se, and new never replaces it: nothing was made (open opens it)
++    satellite.variable.file missing = satellite.file.open("no_such.se")
++    satellite.console.display(missing.ok) // false -- open never creates
++    satellite.console.display(satellite.file.exists("no_such.se")) // false
++    satellite.variable.file wrong = satellite.file.new("b.bin", "binary")
++    satellite.console.display(wrong.ok) // false
++    satellite.console.display(wrong.error) // binary files are not built yet (SATELLITE_FILE_OPERATIONS FO-8)
++    satellite.console.display(notes.close()) // true
++    satellite.console.display(satellite.file.clear("notes.se")) // true
++    satellite.console.display(satellite.file.clear("no_such.se")) // false
++    satellite.variable.file again = satellite.file.open("notes.se")
++    satellite.console.display(again.size) // 0
++    satellite.console.display(again.path) // the whole path from /, ending in /notes.se
++    satellite.return(satellite)
++}
++
++refused when it runs -- a question put to a handle that is not ok (S503):
++
++satellite.include(satellite)
++
++satellite.capsule satellite.main()
++{
++    satellite.variable.file missing = satellite.file.open("no_such.se")
++    satellite.console.display(missing.ok) // false, and the program goes on
++    satellite.console.display(missing.size) // stops here: S503, exit 45
++    satellite.return(satellite)
++}
+diff -ruN -x build -x '*.o' -x '*.so' -x '*.d' -x '*.tmp' -x .satellite_build -x satellite_config.hpp -x __pycache__ -x build.log -x check.log -x '*.out' pristine/satellite.help/satellite.variable.file/help_text.txt job_c/satellite.help/satellite.variable.file/help_text.txt
+--- pristine/satellite.help/satellite.variable.file/help_text.txt	1969-12-31 19:00:00.000000000 -0500
++++ job_c/satellite.help/satellite.variable.file/help_text.txt	2026-10-07 12:51:31.881598451 -0400
+@@ -0,0 +1,177 @@
++--------------------------------------------------------------------------------
++SATELLITE 004: satellite.variable.file
++--------------------------------------------------------------------------------
++
++satellite.variable.file is a text file held as a list of its lines, counting
++from 1, that lives on the disk. The author: "we'll build it so you can iterate
++over the lines as if they were objects ... As if each line were a list of
++objects". So the words a satellite.container.list has are the words a file
++has, spelled the same and meaning the same thing done to lines: f.append(x)
++puts a line on the end, f[n] reads line n, f.size is how many lines there are.
++Learning the list teaches you the file.
++
++A handle comes from satellite.file.new(path), which makes a file that is not
++there, or satellite.file.open(path), which opens one that is -- see
++satellite.help(satellite.file) for the words, the kinds and where a path
++points. A handle is a reference, as a spacesuit's object is: g = f is a second
++name for ONE open file, not a copy, so a line appended through g is there
++through f, closing through either closes both, and f == g is true only when the
++two names hold the same file. A handle that would not open is a value, not an
++error: its ok is false, its error says why, and the program goes on.
++
++Line n is a satellite.variable.string, without the newline that ends it on the
++disk; that newline is the file's. f[n] reads line n, and n counts from 1: f[1]
++is the first line and f[f.size] the last. The list's words, for lines:
++
++    f.append(x)            x becomes a new last line
++    f.insert(n, x)         x becomes line n, and line n and every line below
++                           it move down one; n may be f.size + 1, the end
++    f.replace(n, x)        line n becomes x
++    f.replace(a, b)        the first a in the file, looking from line 1 down
++                           and inside one line, becomes b -- once, so a b
++                           that holds a is not replaced again
++    f.index_of(x)          the number of the first line that IS x, or 0
++    f.search(x)            the number of the first line that CONTAINS x, or 0;
++                           f[n].find(x) then says where in the line
++    f.contains(x)          whether any line is exactly x
++    f.remove_at(n)         line n out; the lines below move up one
++    f.remove(x)            the first line that is exactly x, out
++    f.remove_first()       line 1 out
++    f.remove_last()        the last line out
++    f.truncate(n)          keeps the first n lines
++    f.clear                no lines; the file stays
++    f.size                 how many lines
++    f.empty                whether there are none
++    f.first   f.last       line 1, and line f.size
++
++replace has two shapes under one name, and the kind of its first argument
++chooses: a number means a line, a string means text. 0 is never a line, so it
++is what index_of and search answer for "no such line", and a program tests it
++with > 0. A string holding a newline becomes that many lines when it is
++appended, inserted, or put in by replace. Where a word takes text and is given
++a number, the number's digits are taken and S020 goes to satellite.log.
++
++The disk's words:
++
++    f.save()               every change is on the disk now
++    f.read_all             the whole file as one string, newlines included,
++                           with every change not yet saved
++    f.close()              saves, then closes; false means the changes did
++                           not land, the handle stays open holding them, and
++                           error says why
++    f.open()               opens a closed handle again, reading the disk
++
++A save is whole or not at all: the new text is written beside the file and
++renamed over it, so a crash or a Ctrl-C leaves the old file or the new one,
++never a mixture. Appending is the fast path -- while nothing but appends has
++happened, the new lines stream to the end of the file as they pass 64 KiB,
++and nothing before them is rewritten. You need not close a file: every file a
++capsule or a block holds is saved and closed when that capsule or block ends,
++satellite.main's included, and at the prompt every open file is saved after
++every line and closed when the session ends. A save that cannot land at the
++end of a run is said, and the run exits 44 (S504) instead of 0.
++
++The handle's own words, which answer whether or not the file is open:
++
++    f.ok                   whether the file is open and usable
++    f.error                why the last thing failed, in words, or ""
++    f.path                 the whole path, from /, that the handle opened
++    f.exists               whether a file is still at that path
++
++And the author's lock, which every object carries, off: f.lock() turns it on,
++and from then every word used on the file through any of its names holds it,
++so threads sharing one file do not write over each other; f.unlock() turns it
++off again. A file nobody locks costs nothing for it.
++
++What stops a program, by design, is reading what is not there: f[n], f.first
++or f.last past the end (S501, exit 47), and any question about the lines of a
++file that is not open -- size, empty, first, last, index_of, search, contains,
++read_all -- because the only answer would be a made-up one (S503, exit 45). A
++line number below zero, given to any word, is S410 (exit 19), and f[0] is
++S413 (exit 66), since satellite counts from 1. What never stops a program is a
++word that changes the file: append, insert, replace, remove, truncate, clear,
++save and close answer true when they did it and false when they did not, and
++f.error says why -- line 0, a line past the end, text that is not in the file,
++a file that is closed. Nor do ok, error, path and exists, which answer for a
++handle in any state.
++
++A program may rewrite its own .satl while it runs. satl reads every file of a
++program once, before anything runs, and runs that copy, so the file on the disk
++is free: the author's build counter opens its own source, raises the number in
++it, and the copy that is running still says the old one. A report quotes the
++loaded copy, never the rewritten line. arguments.program is the program's own
++file, as it was given to satl.
++
++Not built yet, in today's words: a read-only open (satellite.file.open(path,
++"text", "read"), refused before anything runs today); binary files (the handle
++is not ok, and its error says so); and the author's .write, .position and
++.read, his file model of 2026-09-24, which no handle has today. Two handles on
++one path do not know of each other: each saves what it holds, and the later
++save is what the disk ends with.
++
++example:
++
++satellite.include(satellite)
++
++satellite.capsule satellite.main()
++{
++    satellite.variable.file my_file = satellite.file.new("demo.se", "text")
++    my_file.append("line_1")
++    my_file.append("line_2")
++    my_file.insert(2, "line_2")
++    my_file.replace(2, "line_3")
++    my_file.replace("line_2", "line_4")
++    satellite.statement.for(satellite.variable.number i = 1; i <= my_file.size; i++)
++    {
++        satellite.console.display(my_file[i]) // line_1, then line_3, then line_4
++    }
++    satellite.console.display(my_file.size) // 3
++    satellite.console.display(my_file.first + " " + my_file.last) // line_1 line_4
++    satellite.console.display(my_file.index_of("line_3")) // 2
++    satellite.console.display(my_file.search("4")) // 3
++    satellite.console.display(my_file.index_of("nowhere")) // 0
++    satellite.console.display(my_file.contains("line_1")) // true
++    satellite.console.display(my_file.remove_at(9)) // false
++    satellite.console.display(my_file.error) // line 9 is past the end of ...demo.se, which has 3 lines
++    satellite.variable.file same = my_file
++    same.append("line_5")
++    satellite.console.display(my_file.size) // 4
++    satellite.console.display(my_file == same) // true
++    satellite.console.display(my_file.close()) // true
++    satellite.console.display(my_file.ok) // false
++    satellite.variable.file again = satellite.file.open("demo.se")
++    satellite.console.display(again == my_file) // false
++    satellite.console.display(again.read_all) // line_1, line_3, line_4 and line_5, each on its own line
++    again.remove_first()
++    again.truncate(2)
++    satellite.console.display(again.size) // 2
++    satellite.console.display(again.last) // line_4
++    satellite.return(satellite)
++}
++
++a program that raises the build number in its own source, each time it runs:
++
++satellite.include(satellite)
++
++satellite.capsule satellite.main()
++{
++    satellite.variable.number build = 1
++    satellite.variable.file me = satellite.file.open(arguments.program)
++    satellite.variable.number at = me.search("satellite.variable.number build = ")
++    me.replace(at, "    satellite.variable.number build = " + (build + 1).string)
++    satellite.console.display("build " + build) // build 1 -- and the file now says 2, so the next run says build 2
++    satellite.return(satellite)
++}
++
++refused when it runs -- a line that is not there (S501, exit 47):
++
++satellite.include(satellite)
++
++satellite.capsule satellite.main()
++{
++    satellite.variable.file f = satellite.file.new("one.se")
++    f.append("the only line")
++    satellite.console.display(f[1]) // the only line
++    satellite.console.display(f[2]) // stops here: S501 LINE_PAST_THE_END, exit 47
++    satellite.return(satellite)
++}

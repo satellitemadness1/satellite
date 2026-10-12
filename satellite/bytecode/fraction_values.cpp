@@ -10,6 +10,7 @@
 #include "fraction_values.hpp"
 
 #include "float_values.hpp"
+#include "scalar_calls.hpp"
 #include "word_codes.hpp"
 #include "../satellite_object/object_fraction.hpp"
 
@@ -21,20 +22,6 @@ namespace {
 token::Code code_in(const std::vector<std::bitset<16>> &row, std::size_t at)
 {
     return at < row.size() ? static_cast<token::Code>(row[at].to_ulong()) : 0;
-}
-
-// ONE OF A FRACTION'S NUMBERS AS A PROGRAM GETS IT BACK -- .numerator and
-// .denominator. A part with nothing after its point is the whole NUMBER it is, as
-// display shows it ("display them as just the whole number"): 1/3's numerator is
-// 1, and `f.numerator + 1` is 2, not 2.0. A part that has digits after its point
-// is the float: 1.5/2's numerator is 1.5. If the author rules that a part is
-// always the float, this is `return Value::of_float(part)` -- and then
-// `f.numerator / 2` divides as a float does rather than as a whole number.
-Value part_as_value(const satellite_float &part)
-{
-    if (part.fraction.is_zero())
-        return Value::of_number(part.negative ? -part.whole : part.whole);
-    return Value::of_float(part);
 }
 
 } // namespace
@@ -139,15 +126,17 @@ signed long long int fraction_is_written_right(const std::vector<std::bitset<16>
     return success;
 }
 
-// WHAT IS BUILT, AND NOTHING ELSE. This answer is final for a fraction name
-// (program_check.cpp's method_right_for), so .number, .binary, .hex and every
-// other method are refused by name before a line runs.
+// WHAT IS BUILT, AND NOTHING ELSE -- the words a fraction runs a number for
+// (scalar_calls.cpp's fraction_number_of, asked and never copied, since 2026-10-11).
+// This answer is final for a fraction name (program_check.cpp's method_right_for), so
+// .number, .binary, .hex and every other method are refused by name before a line
+// runs, and the walker refuses one it reaches in the same sentence.
 signed long long int fraction_method_check(token::Code method, const std::string &spelling, std::string &why)
 {
-    if (method == token::numerator_token || method == token::denominator_token || method == token::to_string_token)
+    if (fraction_number_of(method) != 0)
         return success;
-    why = spelling + " is not built for satellite.variable.fraction yet -- a fraction has .numerator, "
-                     ".denominator and .string so far";
+    why = spelling + " is not built for satellite.variable.fraction yet -- a fraction has .satellite.numerator, "
+                     ".satellite.denominator and .satellite.string so far";
     return not_built_yet;
 }
 
@@ -163,31 +152,10 @@ signed long long int fraction_on_store(token::Code holds, Value &value, std::str
     return success;
 }
 
-// A FRACTION'S METHODS ARE ITS TWO NUMBERS AND ITS TEXT, answered here, and every
-// other method is refused here in the fraction's own words rather than left to a
-// conversion every type shares.
-Value fraction_method(token::Code method, const Value &receiver, Value *, const std::vector<Value> &arguments,
-                   bool, const std::string &name, ExpressionContext &context, bool &answered)
-{
-    answered = true;
-    const satellite_fraction &value = *receiver.as_fraction();
-    const std::string spelling = name + "." + token::method_name_of(method);
-    std::string why;
-    if (fraction_method_check(method, spelling, why) != success) {
-        context.refuse(not_built_yet, why);
-        return Value();
-    }
-    if (!arguments.empty()) {
-        context.refuse(satl_line_not_understood, spelling + " takes no argument");
-        return Value();
-    }
-    if (method == token::numerator_token)
-        return part_as_value(value.numerator);
-    if (method == token::denominator_token)
-        return part_as_value(value.denominator);
-    satellite_string text;
-    fraction_to_string(value, text, why);
-    return Value::of_string(std::move(text));
-}
+// A FRACTION'S METHODS -- ITS TWO NUMBERS AND ITS TEXT -- are files under
+// satellite-numbers/words/ since 2026-10-11, 1.6.20.1.cpp to 1.6.20.3.cpp, each run by
+// its number (scalar_calls.hpp); every other method is refused in the fraction's own
+// words above, rather than left to a conversion every type shares. They were
+// fraction_method here.
 
 } // namespace satellite004

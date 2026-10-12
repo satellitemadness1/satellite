@@ -1,0 +1,562 @@
+diff -ruN -x build -x '*.o' -x '*.so' -x '*.d' -x '*.tmp' -x .satellite_build -x satellite_config.hpp -x __pycache__ -x build.log -x check.log -x '*.out' pristine/check.sh job_b/check.sh
+--- pristine/check.sh	2026-10-06 20:51:01.000000000 -0400
++++ job_b/check.sh	2026-10-07 12:53:59.959604882 -0400
+@@ -1984,6 +1984,70 @@
+     expect "a save that cannot land at the end of the run is said, and the run exits 44" 44 $?
+     expect "... and the file is as it was" "kept" "$(cat "$file_room/read_only.se")"
+ fi
++# DESIGN.md 9's HOSTILE INPUTS, thrown at every file word and method FROM A PROGRAM (2026-10-07,
++# SATELLITE_FILE_OPERATIONS FO-6). tests/file_hostile.satl prints one labelled line a section and
++# exits 0, because every one of them is data: a file that would not open is a value, not an error.
++# The fixtures are made here, in a room of their own inside the file room. Pinned on true/false/0,
++# exit codes and the bytes read back -- never on an error sentence, which FO-9 may reword.
++hostile="$file_room/hostile"; mkdir -p "$hostile"
++cp tests/file_hostile.satl tests/file_line_zero.satl tests/file_line_negative.satl tests/file_line_fraction.satl "$hostile/"
++mkdir "$hostile/a_dir"; printf 'real\n' > "$hostile/real.se"; ln -s real.se "$hostile/link.se"; ln -s a_dir "$hostile/dir_link"
++ln -s nowhere.se "$hostile/dangling.se"; printf 'secret\n' > "$hostile/unreadable.se"; chmod 000 "$hostile/unreadable.se"
++printf '\377\376\n' > "$hostile/not_text.se"; printf 'a\rb\r' > "$hostile/cr_only.se"
++printf '\357\273\277line one\nline two\n' > "$hostile/bom.se"; mkfifo "$hostile/fifo.se"; printf 'kept bytes\n' > "$hostile/keep.se"
++timeout 60 "$interpreter" "$hostile/file_hostile.satl" > build/file_hostile.out 2>&1
++expect "DESIGN 9's inputs at every file word and method: the program goes on past every one and exits 0" 0 $?
++hostile_line() { grep -m1 "^$1 " build/file_hostile.out; }
++expect "... a path of punctuation only is a name: made, appended, closed, there" "punctuation true true true true" "$(hostile_line punctuation)"
++expect "... the empty path: new, open, exists, clear all false" "empty false false false false" "$(hostile_line empty)"
++expect "... ., .. and / are folders, never a file: all false" "dots false false false false false" "$(hostile_line dots)"
++expect "... a path 5,000 bytes long: new, open, exists, clear all false" "long 5000 false false false false" "$(hostile_line long)"
++expect "... a directory as the file: new, open, clear, exists all false" "directory false false false false" "$(hostile_line directory)"
++expect "... a symlink to a file opens as that file: line 1, size 1, appended, closed, exists" "link true real 1 true true true" "$(hostile_line link)"
++expect "... and the save went through the link to the file it points at" "real|through the link" \
++       "$(tr '\n' '|' < "$hostile/real.se" | sed 's/|$//')"
++expect "... which is still a symlink" link "$(test -L "$hostile/link.se" && echo link)"
++expect "... a symlink to a directory: new, open, exists, clear all false" "directory_link false false false false" "$(hostile_line directory_link)"
++expect "... a dangling symlink: new, open, exists, clear all false" "dangling false false false false" "$(hostile_line dangling)"
++expect "... and new did not make its target" gone "$(test -e "$hostile/nowhere.se" || echo gone)"
++unreadable=false; [ "$(id -u)" = 0 ] && unreadable=true    # root reads a 000 file, so as root it opens
++expect "... a file nobody may read: open $unreadable, exists true" "unreadable $unreadable true" "$(hostile_line unreadable)"
++expect "... bytes that are not UTF-8 opened as text: ok false, and the file is there" "not_text false true" "$(hostile_line not_text)"
++expect "... a file of \\r-only lines: ok false, and the file is there" "cr_only false true" "$(hostile_line cr_only)"
++expect "... a byte-order mark: opens, line 1 is the text without the mark (8 characters), 2 lines" \
++       "bom true line one 2 true 8 true true" "$(hostile_line bom)"
++expect "... and the mark stays at the front of the saved file" same \
++       "$(printf '\357\273\277line one\nline two\nthree\n' | cmp -s - "$hostile/bom.se" && echo same)"
++expect "... a FIFO given to new, open, exists and clear: all false, and no wait" "fifo false false false false" "$(hostile_line fifo)"
++expect "... machine code (satl's own first bytes, UAWAVAUATS) appended as a line is read back equal" \
++       "machine_code_line true true UAWAVAUATS 1 true" "$(hostile_line machine_code_line)"
++expect "... and given as a path is a name: made, appended, closed, there" "machine_code_path true true true true" "$(hostile_line machine_code_path)"
++expect "... empty text: replace false, index_of 0, search 0, contains false, remove false, size kept" \
++       "empty_text false 0 0 false false 1" "$(hostile_line empty_text)"
++expect "... a 4-byte character never matches half of one: search 1 and 0, replace false then true" \
++       "wide 1 0 1 false false true clef 𝄢 here" "$(hostile_line wide)"
++expect "... new over a file that is there is refused" "keep false true" "$(hostile_line keep)"
++expect "... and its bytes are untouched" "kept bytes" "$(cat "$hostile/keep.se")"
++# RAW BYTES IN THE SOURCE: a NUL and machine-code bytes (E8 00 00 00 C3) typed straight into a string
++# literal -- a satellite string has no \x escape, so this is the only way in, and satl takes each byte
++# that is not UTF-8 as its Latin-1 character. The program is made here, since a .satl holding a NUL is
++# not kept in the tree. They are data: one line of 5 characters, and a path refused (path_holds_a_nul).
++printf 'satellite.include(satellite)\n\nsatellite.capsule satellite.main(satellite.container.list<satellite.variable.string> arguments)\n{\n    satellite.variable.file f = satellite.file.new("raw.se")\n    satellite.console.display("raw_line " + f.append("\350\000\000\000\303") + " " + f.size + " " + f[1].size + " " + f.close())\n    satellite.console.display("raw_path " + satellite.file.new("nul\000tail").ok + " " + satellite.file.open("\350\000\000\000\303").ok + " " + satellite.file.exists("nul\000tail") + " " + satellite.file.clear("nul\000tail"))\n    satellite.return(satellite)\n}\n' > "$hostile/file_raw_bytes.satl"
++timeout 60 "$interpreter" "$hostile/file_raw_bytes.satl" > build/file_raw_bytes.out 2>&1
++expect "... raw NUL and machine-code bytes in a literal: one line of 5 characters, and refused as a path" \
++       "raw_line true 1 5 true|raw_path false false false false" "$(grep '^raw_' build/file_raw_bytes.out | tr '\n' '|' | sed 's/|$//')"
++expect "... and the path with a NUL in it made nothing" 0 "$(ls "$hostile" | grep -c '^nul')"
++# WHAT STOPS A PROGRAM BY DESIGN -- a line that cannot be read -- each its own program, as
++# file_past_the_end.satl is: the exit code is the report's, and the line before it printed.
++"$interpreter" "$hostile/file_line_zero.satl" > build/file_line_zero.out 2>&1
++expect "f[0] stops the program: S413 counts_from_one, exit 66" 66 $?
++expect "... after the line before it printed" 1 "$(grep -cx before build/file_line_zero.out)"
++"$interpreter" "$hostile/file_line_negative.satl" > build/file_line_negative.out 2>&1
++expect "f[-1] stops the program: S410 not_a_position, exit 19" 19 $?
++expect "... after the line before it printed" 1 "$(grep -cx before build/file_line_negative.out)"
++"$interpreter" "$hostile/file_line_fraction.satl" > build/file_line_fraction.out 2>&1
++expect "f[1.5] stops the program: S301 types_do_not_meet, exit 27 -- nothing is rounded to a line" 27 $?
++expect "... after the line before it printed" 1 "$(grep -cx before build/file_line_fraction.out)"
+ rm -rf -- "$file_room"
+ SATL="$interpreter" timeout 600 python3 -u satellite/satl/check_session.py > build/check_session.out 2>&1; code=$?
+ expect "satl --repl at a real terminal: $(grep -c '^ok' build/check_session.out) checks (build/check_session.out)" 0 $code
+Binary files pristine/gtkcar/satl and job_b/gtkcar/satl differ
+Binary files pristine/gtkcar/satl-link and job_b/gtkcar/satl-link differ
+diff -ruN -x build -x '*.o' -x '*.so' -x '*.d' -x '*.tmp' -x .satellite_build -x satellite_config.hpp -x __pycache__ -x build.log -x check.log -x '*.out' pristine/make_support/065-tests.mk job_b/make_support/065-tests.mk
+--- pristine/make_support/065-tests.mk	2026-10-04 03:01:55.000000000 -0400
++++ job_b/make_support/065-tests.mk	2026-10-07 12:51:58.344793806 -0400
+@@ -4,6 +4,7 @@
+ #     make test         check.sh, the installer's checks and the string checks, all even when one fails
+ #     make race         satellite.console.display against std::cout, 10,000,000 lines
+ #     make number-race  i = i + 1 against signed long long int
++#     make file-race    satellite_file against plain C++: 1,000,000 lines appended, walked and read whole
+ #
+ # THE HARNESSES ARE NOT THE APPLICATION: they do not depend on the build stamp,
+ # and building one does not raise the build number. Each is one command, as the
+@@ -33,6 +34,9 @@
+ number-race: $(BUILD)/number_race
+ 	./$(NUMBER)/number_race.sh
+ 
++file-race: $(BUILD)/file_race
++	./$(SATELLITE)/race/file_race.sh
++
+ # The exit status of a machine code that does not fit 8 bits (machine/exit_status.hpp):
+ # no program can stop on 256 yet, so the mapping is checked here, and check.sh runs it.
+ $(BUILD)/exit_status_cases: $(MACHINE)/exit_status_cases.cpp $(MACHINE)/exit_status.hpp $(MACHINE)/machine_state.cpp \
+@@ -115,6 +119,15 @@
+ 	@mkdir -p $(BUILD)
+ 	$(LINK_ENV) $(CXX) $(CXXFLAGS) $(LDFLAGS) $(FILE_CASES_SOURCES) -o $@
+ 
++# The file race (SATELLITE_FILE_OPERATIONS FO-6): satellite_file against plain C++ on the
++# same 1,000,000 lines, three legs, run by file_race.sh. Built from the class exactly as
++# file_cases is, and never from satl: it is a harness, not the application.
++FILE_RACE_SOURCES = $(SATELLITE)/race/file_race.cpp \
++                    $(SATELLITE)/satellite_variable_file/satellite_file.cpp $(STRING16)/satellite_string.cpp
++$(BUILD)/file_race: $(FILE_RACE_SOURCES) $(FILE_CASES_HEADERS)
++	@mkdir -p $(BUILD)
++	$(LINK_ENV) $(CXX) $(CXXFLAGS) $(LDFLAGS) $(FILE_RACE_SOURCES) -o $@
++
+ # The build fingerprint's inputs, one a line: check.sh compares them with the
+ # headers the compiler says satl is made from.
+ build-inputs:
+@@ -198,4 +211,4 @@
+ 	$(LINK_ENV) $(CXX) $(CXXFLAGS) $(LDFLAGS) $(STRING16)/string_race.cpp $(STRING16)/satellite_string.cpp \
+ 	    $(STRINGS32)/satellite_string.cpp -o $@
+ 
+-.PHONY: check test race number-race build-inputs
++.PHONY: check test race number-race file-race build-inputs
+diff -ruN -x build -x '*.o' -x '*.so' -x '*.d' -x '*.tmp' -x .satellite_build -x satellite_config.hpp -x __pycache__ -x build.log -x check.log -x '*.out' pristine/satellite/race/file_race.cpp job_b/satellite/race/file_race.cpp
+--- pristine/satellite/race/file_race.cpp	1969-12-31 19:00:00.000000000 -0500
++++ job_b/satellite/race/file_race.cpp	2026-10-07 12:50:35.298922816 -0400
+@@ -0,0 +1,262 @@
++// satellite/race/file_race.cpp -- the file race (SATELLITE_FILE_OPERATIONS FO-6):
++// satellite_file against plain C++ doing the same work on the same bytes,
++// 1,000,000 lines of text. The author's bar is x1.05 of C++ (DESIGN 1.1).
++//
++//     build/file_race <satellite-first|cxx-first> <a folder to work in>
++//
++// prints six numbers on stderr, nanoseconds, "<append satl> <append c++> <walk
++// satl> <walk c++> <read_all satl> <read_all c++>", and exits 0 only when every
++// leg's answers agree. A run whose answers differ exits 2, and file_race.sh stops
++// on it instead of counting it (number_race.sh's rule; the fault race.sh has,
++// ERROR.md 9). It writes only inside one fresh folder, made in the folder it is
++// given and removed at the end, as file_cases does.
++//
++// THE THREE LEGS, each side its own function that is never inlined into main,
++// so neither side sees the other's state:
++//
++//     append    make_new + append x 1,000,000 + close     vs  fopen + fwrite the same lines + fclose
++//     walk      open_existing + line(n), n = 1..size      vs  std::ifstream + std::getline
++//     read_all  open_existing + read_all                  vs  fopen + fread into one std::string
++//
++// Both sides of a leg build each line's text the same way ("line_<n>"), so the
++// making of the text costs the same on both. The walk and the read_all read the
++// file satellite_file wrote, so both sides read the very same bytes. Within a
++// leg the order is the argument's, because going first can cost a few percent.
++//
++// WHAT AGREEING MEANS: after the append, the two files hold the same bytes
++// (compared whole, outside the timing); after the walk, the same line count and
++// the same sum of lengths; after the read_all, the same string.
++
++#include "../satellite_variable_file/satellite_file.hpp"
++
++#include <chrono>
++#include <cstdio>
++#include <cstdlib>
++#include <cstring>
++#include <fstream>
++#include <memory>
++#include <string>
++#include <vector>
++
++#include <ftw.h>
++#include <sys/stat.h>
++#include <unistd.h>
++
++using namespace satellite004;
++
++namespace {
++
++using clock_type = std::chrono::steady_clock;
++using Kind = satellite_file::Kind;
++
++constexpr long long kLines = 1000000;
++
++long long nanoseconds_since(clock_type::time_point start)
++{
++    return (long long)std::chrono::duration_cast<std::chrono::nanoseconds>(clock_type::now() - start).count();
++}
++
++std::string line_text(long long n)
++{
++    return "line_" + std::to_string(n);
++}
++
++// Every leg answers through its arguments: `ok` is false when the work itself
++// failed (a refused append, a line that could not be read), which is a failed run,
++// not a slow one.
++
++// ---------------------------------------------------------------------------
++// APPEND
++// ---------------------------------------------------------------------------
++[[gnu::noinline]] void append_satellite(const std::string &path, bool &ok, long long &ns)
++{
++    const clock_type::time_point start = clock_type::now();
++    std::shared_ptr<satellite_file> f = satellite_file::make_new(path, Kind::text);
++    ok = f && f->ok();
++    for (long long n = 1; ok && n <= kLines; n++)
++        ok = f->append(line_text(n));
++    ok = f && f->close() && ok;
++    ns = nanoseconds_since(start);
++}
++
++[[gnu::noinline]] void append_cxx(const std::string &path, bool &ok, long long &ns)
++{
++    const clock_type::time_point start = clock_type::now();
++    std::FILE *f = std::fopen(path.c_str(), "w");
++    ok = f != nullptr;
++    for (long long n = 1; ok && n <= kLines; n++) {
++        const std::string text = line_text(n);
++        ok = std::fwrite(text.data(), 1, text.size(), f) == text.size() && std::fputc('\n', f) != EOF;
++    }
++    ok = f != nullptr && std::fclose(f) == 0 && ok;
++    ns = nanoseconds_since(start);
++}
++
++// ---------------------------------------------------------------------------
++// WALK: every line in order, the count and the sum of the lengths
++// ---------------------------------------------------------------------------
++[[gnu::noinline]] void walk_satellite(const std::string &path, long long &count, long long &sum, bool &ok, long long &ns)
++{
++    const clock_type::time_point start = clock_type::now();
++    std::shared_ptr<satellite_file> f = satellite_file::open_existing(path, Kind::text);
++    ok = f && f->ok();
++    count = 0;
++    sum = 0;
++    if (ok) {
++        const std::size_t size = f->size();
++        std::string text;
++        for (std::size_t n = 1; ok && n <= size; n++) {
++            ok = f->line(n, text);
++            sum += (long long)text.size();
++            ++count;
++        }
++    }
++    ns = nanoseconds_since(start);
++}
++
++[[gnu::noinline]] void walk_cxx(const std::string &path, long long &count, long long &sum, bool &ok, long long &ns)
++{
++    const clock_type::time_point start = clock_type::now();
++    std::ifstream in(path);
++    ok = in.is_open();
++    count = 0;
++    sum = 0;
++    std::string text;
++    while (ok && std::getline(in, text)) {
++        sum += (long long)text.size();
++        ++count;
++    }
++    ns = nanoseconds_since(start);
++}
++
++// ---------------------------------------------------------------------------
++// READ_ALL: the whole file as one string
++// ---------------------------------------------------------------------------
++[[gnu::noinline]] void read_all_satellite(const std::string &path, std::string &whole, bool &ok, long long &ns)
++{
++    const clock_type::time_point start = clock_type::now();
++    std::shared_ptr<satellite_file> f = satellite_file::open_existing(path, Kind::text);
++    ok = f && f->ok();
++    if (ok)
++        whole = f->read_all();
++    ns = nanoseconds_since(start);
++}
++
++[[gnu::noinline]] void read_all_cxx(const std::string &path, std::string &whole, bool &ok, long long &ns)
++{
++    const clock_type::time_point start = clock_type::now();
++    std::FILE *f = std::fopen(path.c_str(), "rb");
++    ok = f != nullptr;
++    if (ok) {
++        struct stat about {};
++        ok = ::fstat(::fileno(f), &about) == 0;
++        if (ok) {
++            whole.resize((std::size_t)about.st_size);
++            ok = std::fread(&whole[0], 1, whole.size(), f) == whole.size();
++        }
++        std::fclose(f);
++    }
++    ns = nanoseconds_since(start);
++}
++
++// ---------------------------------------------------------------------------
++// THE CHECKS, outside every timing
++// ---------------------------------------------------------------------------
++std::string bytes_of(const std::string &path)
++{
++    std::string whole;
++    bool ok = false;
++    long long ns = 0;
++    read_all_cxx(path, whole, ok, ns);
++    return ok ? whole : std::string();
++}
++
++int remove_one(const char *path, const struct stat *, int, struct FTW *)
++{
++    return ::remove(path);
++}
++
++int failed(const char *what)
++{
++    std::fprintf(stderr, "file_race: %s\n", what);
++    return 2;
++}
++
++} // namespace
++
++int main(int argc, char **argv)
++{
++    if (argc != 3 || (std::strcmp(argv[1], "satellite-first") != 0 && std::strcmp(argv[1], "cxx-first") != 0)) {
++        std::fprintf(stderr, "usage: file_race <satellite-first|cxx-first> <a folder to work in>\n");
++        return 1;
++    }
++    const bool satellite_first = std::strcmp(argv[1], "satellite-first") == 0;
++
++    std::string pattern = std::string(argv[2]) + "/file_race.XXXXXX";
++    std::vector<char> name(pattern.begin(), pattern.end());
++    name.push_back('\0');
++    if (::mkdtemp(name.data()) == nullptr) {
++        std::fprintf(stderr, "file_race: could not make a folder in %s: %s\n", argv[2], std::strerror(errno));
++        return 1;
++    }
++    const std::string room = name.data();
++    const std::string satellite_path = room + "/satellite.txt";
++    const std::string cxx_path = room + "/cxx.txt";
++
++    long long append_s = 0, append_c = 0, walk_s = 0, walk_c = 0, read_s = 0, read_c = 0;
++    bool ok_s = false, ok_c = false;
++    int status = 0;
++
++    // APPEND
++    if (satellite_first) {
++        append_satellite(satellite_path, ok_s, append_s);
++        append_cxx(cxx_path, ok_c, append_c);
++    } else {
++        append_cxx(cxx_path, ok_c, append_c);
++        append_satellite(satellite_path, ok_s, append_s);
++    }
++    const std::string expected_tail = line_text(kLines) + "\n";
++    const std::string written_s = bytes_of(satellite_path);
++    if (!ok_s || !ok_c)
++        status = failed("append: a side failed");
++    else if (written_s.empty() || written_s != bytes_of(cxx_path))
++        status = failed("append: the two files differ");
++    else if (written_s.compare(written_s.size() - expected_tail.size(), expected_tail.size(), expected_tail) != 0)
++        status = failed("append: the last line is not line_1000000");
++
++    // WALK
++    long long count_s = 0, sum_s = 0, count_c = 0, sum_c = 0;
++    if (status == 0) {
++        if (satellite_first) {
++            walk_satellite(satellite_path, count_s, sum_s, ok_s, walk_s);
++            walk_cxx(satellite_path, count_c, sum_c, ok_c, walk_c);
++        } else {
++            walk_cxx(satellite_path, count_c, sum_c, ok_c, walk_c);
++            walk_satellite(satellite_path, count_s, sum_s, ok_s, walk_s);
++        }
++        if (!ok_s || !ok_c)
++            status = failed("walk: a side failed");
++        else if (count_s != kLines || count_c != kLines || sum_s != sum_c)
++            status = failed("walk: the counts or the sums differ");
++    }
++
++    // READ_ALL
++    if (status == 0) {
++        std::string whole_s, whole_c;
++        if (satellite_first) {
++            read_all_satellite(satellite_path, whole_s, ok_s, read_s);
++            read_all_cxx(satellite_path, whole_c, ok_c, read_c);
++        } else {
++            read_all_cxx(satellite_path, whole_c, ok_c, read_c);
++            read_all_satellite(satellite_path, whole_s, ok_s, read_s);
++        }
++        if (!ok_s || !ok_c)
++            status = failed("read_all: a side failed");
++        else if (whole_s != whole_c || whole_s != written_s)
++            status = failed("read_all: the strings differ");
++    }
++
++    ::nftw(room.c_str(), remove_one, 16, FTW_DEPTH | FTW_PHYS);
++    std::fprintf(stderr, "%lld %lld %lld %lld %lld %lld\n", append_s, append_c, walk_s, walk_c, read_s, read_c);
++    return status;
++}
+diff -ruN -x build -x '*.o' -x '*.so' -x '*.d' -x '*.tmp' -x .satellite_build -x satellite_config.hpp -x __pycache__ -x build.log -x check.log -x '*.out' pristine/satellite/race/file_race.sh job_b/satellite/race/file_race.sh
+--- pristine/satellite/race/file_race.sh	1969-12-31 19:00:00.000000000 -0500
++++ job_b/satellite/race/file_race.sh	2026-10-07 12:54:13.748583460 -0400
+@@ -0,0 +1,46 @@
++#!/bin/bash
++# satellite/race/file_race.sh -- the file race (SATELLITE_FILE_OPERATIONS FO-6):
++# satellite_file against plain C++ on the same 1,000,000 lines, three legs
++# (append, walk, read_all -- file_race.cpp says what each is). Seven runs in
++# each order; the fastest time of each side of each leg is compared. A run that
++# fails, or whose answers differ, stops the race with its exit status instead
++# of counting (number_race.sh's rule; the fault race.sh has, ERROR.md 9).
++#
++#     satellite/race/file_race.sh [build/file_race] [a folder to work in]
++#
++# The folder is $TMPDIR, or /tmp, when none is given; the race makes its own
++# folder inside it and removes it.
++cd "$(dirname "$0")/../.."
++race=${1:-build/file_race}
++folder=${2:-${TMPDIR:-/tmp}}
++best=("" "" "" "" "" "")
++for order in satellite-first cxx-first; do
++    for run in 1 2 3 4 5 6 7; do
++        output=$("$race" $order "$folder" 2>&1)
++        status=$?
++        read -a times <<<"$output"
++        if [ $status -ne 0 ] || [ ${#times[@]} -ne 6 ]; then
++            echo "run failed (exit $status): $output"
++            exit 1
++        fi
++        for i in 0 1 2 3 4 5; do
++            if ! [[ "${times[$i]}" =~ ^[0-9]+$ ]]; then
++                echo "run failed (exit $status): $output"
++                exit 1
++            fi
++            if [ -z "${best[$i]}" ] || [ "${times[$i]}" -lt "${best[$i]}" ]; then best[$i]=${times[$i]}; fi
++        done
++    done
++done
++python3 -c "
++n = 1000000
++legs = (('append (make_new + append x n + close)', 'fopen + fwrite + fclose', ${best[0]}, ${best[1]}),
++        ('walk (open + line(n), n = 1..size)', 'ifstream + getline', ${best[2]}, ${best[3]}),
++        ('read_all (open + read_all)', 'fopen + fread', ${best[4]}, ${best[5]}))
++print(f'{n:,} lines, fastest of 14 runs (7 in each order); the bar is x1.05')
++for what, cxx, s, c in legs:
++    print(f'  {what}')
++    print(f'    {\"satellite_file:\":<26}{s:>14,} ns  {s/n:8.2f} ns a line')
++    print(f'    {cxx + \":\":<26}{c:>14,} ns  {c/n:8.2f} ns a line')
++    print(f'    satl is x{s/c:.3f} of C++ (the bar is x1.05)')
++"
+diff -ruN -x build -x '*.o' -x '*.so' -x '*.d' -x '*.tmp' -x .satellite_build -x satellite_config.hpp -x __pycache__ -x build.log -x check.log -x '*.out' pristine/tests/file_hostile.satl job_b/tests/file_hostile.satl
+--- pristine/tests/file_hostile.satl	1969-12-31 19:00:00.000000000 -0500
++++ job_b/tests/file_hostile.satl	2026-10-07 12:51:17.204857717 -0400
+@@ -0,0 +1,74 @@
++satellite.include(satellite)
++
++// DESIGN.md 9's hostile inputs thrown at every file word and method FROM A PROGRAM
++// (SATELLITE_FILE_OPERATIONS FO-6, 2026-10-07): every one is data, the program goes on
++// after each, and exits 0 with one labelled line a section, which check.sh pins. The
++// fixtures (a_dir, link.se, dir_link, dangling.se, unreadable.se, not_text.se, cr_only.se,
++// bom.se, fifo.se, keep.se) are made by check.sh's row in the scratch folder this runs in,
++// so a relative name here is that folder. What STOPS a program by design -- f[0], f[-1],
++// f[1.5], f[f.size + 1] -- is not here: each is its own program (file_line_zero.satl,
++// file_line_negative.satl, file_line_fraction.satl, file_past_the_end.satl) whose exit
++// code the row pins.
++satellite.capsule satellite.main(satellite.container.list<satellite.variable.string> arguments)
++{
++    // 1. names that are not letters: punctuation only (a legal name on Linux, so it is made),
++    //    the empty path, the folder itself, and / (the program's own folder, never a file).
++    satellite.variable.file punctuation = satellite.file.new("!@#$%^&*()")
++    satellite.console.display("punctuation " + punctuation.ok + " " + punctuation.append("made") + " " + punctuation.close() + " " + satellite.file.exists("!@#$%^&*()"))
++    satellite.console.display("empty " + satellite.file.new("").ok + " " + satellite.file.open("").ok + " " + satellite.file.exists("") + " " + satellite.file.clear(""))
++    satellite.console.display("dots " + satellite.file.new(".").ok + " " + satellite.file.open("..").ok + " " + satellite.file.exists(".") + " " + satellite.file.clear(".") + " " + satellite.file.open("/").ok)
++
++    // 2. a path 5,000 bytes long, built by a loop of string +
++    satellite.variable.string long = ""
++    satellite.statement.for(satellite.variable.number i = 1; i < 501; i + 1)
++    {
++        long = long + "0123456789"
++    }
++    satellite.console.display("long " + long.size + " " + satellite.file.new(long).ok + " " + satellite.file.open(long).ok + " " + satellite.file.exists(long) + " " + satellite.file.clear(long))
++
++    // 3. a directory as the file
++    satellite.console.display("directory " + satellite.file.new("a_dir").ok + " " + satellite.file.open("a_dir").ok + " " + satellite.file.clear("a_dir") + " " + satellite.file.exists("a_dir"))
++
++    // 4. a symlink to a file: opens as the file it points at, and a save follows the link
++    satellite.variable.file link = satellite.file.open("link.se")
++    satellite.console.display("link " + link.ok + " " + link[1] + " " + link.size + " " + link.append("through the link") + " " + link.close() + " " + satellite.file.exists("link.se"))
++
++    // 5. a symlink to a directory, and 6. a dangling one (new must not make its target)
++    satellite.console.display("directory_link " + satellite.file.new("dir_link").ok + " " + satellite.file.open("dir_link").ok + " " + satellite.file.exists("dir_link") + " " + satellite.file.clear("dir_link"))
++    satellite.console.display("dangling " + satellite.file.new("dangling.se").ok + " " + satellite.file.open("dangling.se").ok + " " + satellite.file.exists("dangling.se") + " " + satellite.file.clear("dangling.se"))
++
++    // 7. a file nobody may read (chmod 000): a regular file that is there, and will not open
++    satellite.console.display("unreadable " + satellite.file.open("unreadable.se").ok + " " + satellite.file.exists("unreadable.se"))
++
++    // 8. bytes that are not UTF-8, opened as text, and 9. a file whose lines end in \r alone
++    satellite.console.display("not_text " + satellite.file.open("not_text.se").ok + " " + satellite.file.exists("not_text.se"))
++    satellite.console.display("cr_only " + satellite.file.open("cr_only.se").ok + " " + satellite.file.exists("cr_only.se"))
++
++    // 10. a byte-order mark: the file opens, and line 1 has no mark
++    satellite.variable.file bom = satellite.file.open("bom.se")
++    satellite.console.display("bom " + bom.ok + " " + bom[1] + " " + bom.size + " " + (bom[1] == "line one") + " " + bom[1].size + " " + bom.append("three") + " " + bom.close())
++
++    // 11. a FIFO given to new, open, exists and clear: never a file, and never a wait
++    satellite.console.display("fifo " + satellite.file.new("fifo.se").ok + " " + satellite.file.open("fifo.se").ok + " " + satellite.file.exists("fifo.se") + " " + satellite.file.clear("fifo.se"))
++
++    // 12. machine code as a LINE and as a PATH: "UAWAVAUATS" is the first ten bytes of
++    //     build/satl's own text (objdump -d: 55 41 57 41 56 41 55 41 54 53, push %rbp; push
++    //     %r15 ...). It is data: read back equal, and a legal name on the disk.
++    satellite.variable.file code = satellite.file.new("code.se")
++    satellite.console.display("machine_code_line " + code.append("UAWAVAUATS") + " " + (code[1] == "UAWAVAUATS") + " " + code[1] + " " + code.size + " " + code.close())
++    satellite.variable.file named = satellite.file.new("UAWAVAUATS")
++    satellite.console.display("machine_code_path " + named.ok + " " + named.append("data") + " " + named.close() + " " + satellite.file.exists("UAWAVAUATS"))
++
++    // 13. empty text given to the methods that look for text
++    satellite.variable.file again = satellite.file.open("code.se")
++    satellite.console.display("empty_text " + again.replace("", "x") + " " + again.index_of("") + " " + again.search("") + " " + again.contains("") + " " + again.remove("") + " " + again.size)
++
++    // 14. a 4-byte character never matches half of one: 𝄞 is F0 9D 84 9E and 𝄢 is F0 9D 84 A2
++    satellite.variable.file wide = satellite.file.new("wide.se")
++    wide.append("clef 𝄞 here")
++    satellite.console.display("wide " + wide.search("𝄞") + " " + wide.search("𝄢") + " " + wide.index_of("clef 𝄞 here") + " " + wide.contains("𝄞") + " " + wide.replace("𝄢", "x") + " " + wide.replace("𝄞", "𝄢") + " " + wide[1])
++
++    // 15. new over a file that is there: refused, and its bytes are untouched (the row compares)
++    satellite.console.display("keep " + satellite.file.new("keep.se").ok + " " + satellite.file.exists("keep.se"))
++    satellite.return(satellite)
++}
+diff -ruN -x build -x '*.o' -x '*.so' -x '*.d' -x '*.tmp' -x .satellite_build -x satellite_config.hpp -x __pycache__ -x build.log -x check.log -x '*.out' pristine/tests/file_line_fraction.satl job_b/tests/file_line_fraction.satl
+--- pristine/tests/file_line_fraction.satl	1969-12-31 19:00:00.000000000 -0500
++++ job_b/tests/file_line_fraction.satl	2026-10-07 12:51:34.866830279 -0400
+@@ -0,0 +1,13 @@
++satellite.include(satellite)
++
++// f[1.5] stops the program with S301 (types_do_not_meet, exit 27): a line number is a
++// number, and a float is not one -- nothing is rounded to a line that was not asked for.
++// The line before it prints first. (DESIGN 9, FO-6.)
++satellite.capsule satellite.main(satellite.container.list<satellite.variable.string> arguments)
++{
++    satellite.variable.file f = satellite.file.new("fraction.se")
++    f.append("the only line")
++    satellite.console.display("before")
++    satellite.console.display(f[1.5])
++    satellite.return(satellite)
++}
+diff -ruN -x build -x '*.o' -x '*.so' -x '*.d' -x '*.tmp' -x .satellite_build -x satellite_config.hpp -x __pycache__ -x build.log -x check.log -x '*.out' pristine/tests/file_line_negative.satl job_b/tests/file_line_negative.satl
+--- pristine/tests/file_line_negative.satl	1969-12-31 19:00:00.000000000 -0500
++++ job_b/tests/file_line_negative.satl	2026-10-07 12:51:31.024836247 -0400
+@@ -0,0 +1,12 @@
++satellite.include(satellite)
++
++// f[-1] stops the program with S410 (not_a_position, exit 19): nothing counts below
++// zero. The line before it prints first. (DESIGN 9, FO-6.)
++satellite.capsule satellite.main(satellite.container.list<satellite.variable.string> arguments)
++{
++    satellite.variable.file f = satellite.file.new("negative.se")
++    f.append("the only line")
++    satellite.console.display("before")
++    satellite.console.display(f[-1])
++    satellite.return(satellite)
++}
+diff -ruN -x build -x '*.o' -x '*.so' -x '*.d' -x '*.tmp' -x .satellite_build -x satellite_config.hpp -x __pycache__ -x build.log -x check.log -x '*.out' pristine/tests/file_line_zero.satl job_b/tests/file_line_zero.satl
+--- pristine/tests/file_line_zero.satl	1969-12-31 19:00:00.000000000 -0500
++++ job_b/tests/file_line_zero.satl	2026-10-07 12:51:24.177846884 -0400
+@@ -0,0 +1,12 @@
++satellite.include(satellite)
++
++// f[0] stops the program with S413 (counts_from_one, exit 66): satellite counts from 1,
++// and 0 is never a line. The line before it prints first. (DESIGN 9, FO-6.)
++satellite.capsule satellite.main(satellite.container.list<satellite.variable.string> arguments)
++{
++    satellite.variable.file f = satellite.file.new("zero.se")
++    f.append("the only line")
++    satellite.console.display("before")
++    satellite.console.display(f[0])
++    satellite.return(satellite)
++}

@@ -55,7 +55,7 @@ satellite.capsule greet(satellite.variable.string who, satellite.variable.number
     }
 }
 
-satellite.capsule satellite.main(satellite.container.list<satellite.variable.string> arguments)
+satellite.capsule satellite.main(satellite.variable.arguments arguments)
 {
     greet("world", 2)
     satellite.console.display(tools.twice(21))

@@ -4,5 +4,5 @@ ok satellite.legal off: a name declared in a block is legal after its }
 ok satellite.legal off: a name a loop's body declared, after the loop
 ok satellite.legal off: satellite.access still names the capsule's place
 ok satellite.legal off: a name deleted in a block is declared again in that block
-ok arguments.access reads false, as this file wrote it
+ok satellite.arguments.access reads false, as this file wrote it
 ok every pass answered alike

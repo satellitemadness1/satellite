@@ -199,8 +199,8 @@ inline SCode s_code_for(signed long long int machine_code)
         return {"S260", "OBJECT_IS_GONE",
                 "this pointer points at an object that is gone. A pointer does not keep its object living: once "
                 "nothing else holds the object -- no name, no field, no item of a list -- it is gone, and the "
-                "pointer is empty. pointer.ok() says whether it still points at one; object.reference() is an "
-                "exact copy, which never goes empty."};
+                "pointer is empty. pointer.satellite.ok() says whether it still points at one; "
+                "object.satellite.reference() is an exact copy, which never goes empty."};
     case types_do_not_meet:
         return {"S301", "TYPES_DO_NOT_MEET",
                 "two kinds met that have nothing to do with each other: an operator given kinds it "
@@ -258,9 +258,9 @@ inline SCode s_code_for(signed long long int machine_code)
                 "satellite counts from 1, not 0. The first item of a list, the first character of a "
                 "string and the first line of a file are all 1, and the last is the size -- so 0 names "
                 "nothing. (C++, Python and most languages count from 0; satellite counts the way people "
-                "do.) 0 is also what a list's .satellite.index_of and .satellite.search, and a file's .index_of and "
-                ".search, answer when they find nothing: if this 0 came from one of them, what was looked for "
-                "is not there."};
+                "do.) 0 is also what a list's .satellite.index_of and .satellite.search, and a file's "
+                ".satellite.index_of and .satellite.search, answer when they find nothing: if this 0 came from "
+                "one of them, what was looked for is not there."};
     case config_value_not_understood:
         return {"S601", "CONFIG_VALUE_NOT_UNDERSTOOD",
                 "a row in satellite_config.hpp cannot mean what its name asks."};
@@ -345,7 +345,7 @@ inline SCode s_code_for(signed long long int machine_code)
     case display_string_buffer_overrun:
         return {"S840", "DISPLAY_STRING_BUFFER_OVERRUN",
                 "the program displayed faster than the console could print, and the displays waiting "
-                "passed arguments.display.buffer. The ones still waiting are let go, and the program "
+                "passed satellite.arguments.display.buffer. The ones still waiting are let go, and the program "
                 "stops here."};
 
     // S13xx -- THE WINDOW (SATELLITE_WINDOW.md WIN-3, 2026-09-20).
@@ -370,15 +370,15 @@ inline SCode s_code_for(signed long long int machine_code)
         return {"S721", "THREAD_NEEDS_A_CAPSULE_CALL",
                 "satellite.thread.new runs a capsule of your own on a thread, so what goes inside it is a "
                 "CALL -- my_capsule() or my_capsule(x). Its arguments are worked out at new; the capsule "
-                "does not begin until start()."};
+                "does not begin until .satellite.start()."};
     case thread_already_started:
         return {"S722", "THREAD_ALREADY_STARTED",
                 "this thread has already been started, and a thread runs once. satellite.thread.new is "
                 "what makes another one."};
     case thread_not_started:
         return {"S723", "JOIN_BEFORE_START",
-                "join() and wait() wait for a thread that is running, and this one has not been started "
-                "-- start() comes first."};
+                ".satellite.join() and .satellite.wait() wait for a thread that is running, and this one has "
+                "not been started -- .satellite.start() comes first."};
     case thread_already_joined:
         return {"S724", "THREAD_ALREADY_JOINED",
                 "this thread had already been joined, so this join gave back the same answer the first "
@@ -389,8 +389,8 @@ inline SCode s_code_for(signed long long int machine_code)
                 "many a program may start, so this is the operating system's answer and not satellite's."};
     case thread_stopped:
         return {"S726", "THREAD_STOPPED",
-                "this thread was asked to stop, and stopped between two statements -- stop() never ends "
-                "a thread in the middle of one."};
+                "this thread was asked to stop, and stopped between two statements -- .satellite.stop() never "
+                "ends a thread in the middle of one."};
     case wait_never_ends:
         return {"S728", "WAIT_NEVER_ENDS",
                 "this line would wait forever: the object's lock it needs is held by a thread that is itself "
@@ -402,24 +402,25 @@ inline SCode s_code_for(signed long long int machine_code)
         return {"S727", "THREAD_CANNOT_SHARE_YET",
                 "a window belongs to the main thread, which draws it, so a thread the program started may "
                 "not be handed one, open one or build one yet (THREADS.md T3). Objects and files ARE "
-                "shared with a thread; an object's .lock() makes writes to it one at a time."};
+                "shared with a thread; an object's .satellite.lock() makes writes to it one at a time."};
 
     // A PROGRAM THE MACHINE RUNS (2026-10-01, bytecode/program_calls.hpp), the author's
     // `satellite.variable.program` -- "forcing the user to use both .start() and .join() together".
     // The wording is drafted from his words, and is his to reword.
     case program_already_running:
         return {"S740", "PROGRAM_ALREADY_RUNNING",
-                "this program is still running, so it cannot be started again yet. Its .join() waits for "
-                "it to end -- and answers its exit code -- and after that .start() runs it again."};
+                "this program is still running, so it cannot be started again yet. Its .satellite.join() waits "
+                "for it to end -- and answers its exit code -- and after that .satellite.start() runs it again."};
     case program_not_started:
         return {"S741", "PROGRAM_NOT_STARTED",
-                "this program has not been started, so there is nothing to ask it yet: .ok(), .error(), "
-                ".join(), .code() and .return() are all about a run, and .start() is what begins one."};
+                "this program has not been started, so there is nothing to ask it yet: .satellite.ok(), "
+                ".satellite.error(), .satellite.join(), .satellite.code() and .satellite.return() are all about "
+                "a run, and .satellite.start() is what begins one."};
     case program_never_joined:
         return {"S742", "PROGRAM_NEVER_JOINED",
-                "the program finished, and a program it started was never joined. Every .start() is paired "
-                "with a .join() -- or .code() or .return() -- which waits for it to end and answers its exit "
-                "code; one still running when the program finished was stopped."};
+                "the program finished, and a program it started was never joined. Every .satellite.start() is "
+                "paired with a .satellite.join() -- or .satellite.code() or .satellite.return() -- which waits for "
+                "it to end and answers its exit code; one still running when the program finished was stopped."};
     case program_not_stopped:
         return {"S743", "PROGRAM_NOT_STOPPED",
                 "a program satellite was to stop runs as another user -- sudo and pkexec do that -- and "
@@ -488,11 +489,11 @@ inline constexpr SCode kMissingWindow = {
 inline constexpr SCode kMissingObject = {
     "S033", "MISSING_OBJECT",
     "a line the program needs was never written, and this is its object -- the name a capsule is called "
-    "on, as my_window is in my_window.open()."};
+    "on, as my_window is in my_window.satellite.open()."};
 inline constexpr SCode kMissingCapsule = {
     "S034", "MISSING_CAPSULE",
     "a line the program needs was never written, and this is its capsule -- what is called on an object, "
-    "as open() is in my_window.open()."};
+    "as open() is in my_window.satellite.open()."};
 
 // ALL FIVE, IN ORDER, for whatever reads the register whole (machine/missing_cases.cpp).
 inline constexpr SCode kMissingNotices[] = {kMissingProgram, kMissingReturn, kMissingWindow, kMissingObject,
@@ -587,7 +588,7 @@ inline void warn_number_taken_as_text(const MachineState &state, const std::stri
     const std::string said = digits.size() <= 40 ? digits : "of " + std::to_string(digits.size()) + " digits";
     log_warning_here(state, "S020", "NUMBER_TAKEN_AS_TEXT",
                      what + " takes text and was given the number " + said +
-                         ", so it used its digits as the text -- satellite.variable.number.to_string says so "
+                         ", so it used its digits as the text -- the number's .satellite.string says so "
                          "out loud, and then there is nothing to warn about");
 }
 

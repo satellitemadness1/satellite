@@ -11,8 +11,9 @@
 // whether it outlines. `.arc` joined the strokes the same day, and `.across`
 // and `.down` read where a click landed -- those two live in window_answers.cpp
 // (the desk noticing it), bytecode/window_run.cpp (the interpreter copying it
-// onto the piece) and bytecode/window_questions.cpp (answering it), because a
-// click is an event and not a stroke. All four
+// onto the piece) and their numbers' files, satellite-numbers/words/1.6.18.39.cpp
+// and 1.6.18.40.cpp (answering it; bytecode/window_questions.cpp until NM-8,
+// 2026-10-11), because a click is an event and not a stroke. All four
 // were GTK-15's open questions and were built as the recommendation, still
 // reversible; GTK_AND_NO_DEPENDENCIES.md says what changes if the author rules
 // otherwise.

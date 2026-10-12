@@ -2,7 +2,7 @@
 // and was never declared, so the pre-pass refuses it by name before main runs.
 satellite.include(satellite)
 
-satellite.capsule satellite.main(satellite.container.list<satellite.variable.string> arguments)
+satellite.capsule satellite.main(satellite.variable.arguments arguments)
 {
     satellite.variable.string s = "hello world"
     satellite.console.display(s.satellite.find(no_such_object))

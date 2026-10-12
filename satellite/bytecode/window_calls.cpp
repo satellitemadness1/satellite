@@ -108,30 +108,30 @@ constexpr AWord kWords[] = {
      "satellite.window.number_box takes the least and the most it runs between: "
      "satellite.window.number_box(1, 12)"},
     {27, "window", 10, "progress", 0, satellite_window::progress, AWord::numbers,
-     "satellite.window.progress takes nothing -- how far along it is, is .value: "
+     "satellite.window.progress takes nothing -- how far along it is, is .satellite.value: "
      "satellite.window.progress()"},
     {27, "window", 11, "choice", 1, satellite_window::choice, AWord::items,
      "satellite.window.choice takes a list of what a person may pick: "
      "satellite.window.choice({\"red\", \"green\"})"},
     {27, "window", 12, "row", 0, satellite_window::row, AWord::words,
-     "satellite.window.row takes nothing -- what goes in it is .append'ed: satellite.window.row()"},
+     "satellite.window.row takes nothing -- what goes in it is .satellite.append'ed: satellite.window.row()"},
     {27, "window", 13, "column", 0, satellite_window::column, AWord::words,
-     "satellite.window.column takes nothing -- what goes in it is .append'ed: "
+     "satellite.window.column takes nothing -- what goes in it is .satellite.append'ed: "
      "satellite.window.column()"},
     {27, "window", 14, "grid", 0, satellite_window::grid, AWord::words,
-     "satellite.window.grid takes nothing -- what goes in it is .append'ed at a cell: "
+     "satellite.window.grid takes nothing -- what goes in it is .satellite.append'ed at a cell: "
      "satellite.window.grid()"},
     {27, "window", 15, "picture", 1, satellite_window::picture, AWord::a_file,
      "satellite.window.picture takes the name of a file to show: "
      "satellite.window.picture(\"logo.png\")"},
     {27, "window", 16, "scroll", 0, satellite_window::scroll, AWord::words,
-     "satellite.window.scroll takes nothing -- the one piece it shows is .append'ed: "
+     "satellite.window.scroll takes nothing -- the one piece it shows is .satellite.append'ed: "
      "satellite.window.scroll()"},
     {27, "window", 17, "frame", 1, satellite_window::frame, AWord::words,
      "satellite.window.frame takes the words on its edge, and \"\" for none: "
      "satellite.window.frame(\"a title\")"},
     {27, "window", 18, "split", 0, satellite_window::split, AWord::words,
-     "satellite.window.split takes nothing -- the two pieces either side are .append'ed: "
+     "satellite.window.split takes nothing -- the two pieces either side are .satellite.append'ed: "
      "satellite.window.split()"},
     // A MENU TAKES ITS HEADING, and that is GTK's ruling: a menu bar drops a
     // top-level item that has no submenu, silently, so a menu with no word on
@@ -143,8 +143,8 @@ constexpr AWord kWords[] = {
     // A SET OF TABS TAKES NOTHING: each tab is named by its PIECE's own .title
     // (GTK-16), so there is nothing here for the adding to carry.
     {27, "window", 21, "tabs", 0, satellite_window::tabs, AWord::words,
-     "satellite.window.tabs takes nothing -- each piece .append'ed is a tab, named by that "
-     "piece's .title: satellite.window.tabs()"},
+     "satellite.window.tabs takes nothing -- each piece .satellite.append'ed is a tab, named by that "
+     "piece's .satellite.title: satellite.window.tabs()"},
     // THE RADIO (GTK-3, built 2026-09-22 as the recommendation): one word that
     // draws many buttons, made from a list as a choice is, and asked `.chosen`
     // as a choice is. The other spelling -- `.group(other_checkbox)` on a

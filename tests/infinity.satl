@@ -27,16 +27,21 @@ satellite.capsule satellite.main()
     satellite.variable.infinity copied = my_inf
     satellite.console.display(copied == my_inf)
 
-    // A NAME OF THE FAMILY TAKES A PLAIN NUMBER (Q24): what is left when an infinity
-    // goes away keeps the name.
-    satellite.variable.infinity left = 5
+    // A NAME OF THE FAMILY HOLDS A MINIMUM OF INFINITY (the author's H of 2026-10-11, which took
+    // back Q24's plain number): it takes any infinity, and a name that must also hold a number is
+    // declared a multiple of the two.
+    satellite.variable.infinity left = -my_inf
     satellite.console.display(left)
     left = my_inf
     satellite.console.display(left)
+    satellite.container.multiple<satellite.variable.number, satellite.variable.infinity> either = 5
+    satellite.console.display(either)
+    either = my_inf
+    satellite.console.display(either)
 
     // AS TEXT: a list shows each item as display does, and .string is display's text.
     satellite.console.display({my_inf, 5, -my_inf})
-    satellite.console.display(my_inf.string)
+    satellite.console.display(my_inf.satellite.string)
 
     // SORTED BY VALUE, through the one comparison.
     satellite.container.list numbers = {5, my_inf, -my_inf, 0}

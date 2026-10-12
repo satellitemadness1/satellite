@@ -39,6 +39,7 @@
 #include "container_calls.hpp"
 #include "pointer_calls.hpp"
 #include "string_calls.hpp"
+#include "number_calls.hpp"
 #include "method_periods.hpp"
 #include "main_arguments.hpp"
 #include "setting_writes.hpp"
@@ -442,11 +443,8 @@ signed long long int judge_a_delete(Where &where, DeclaredNames &declared, const
                                     const std::vector<std::bitset<16>> &row, const std::string &name,
                                     std::string &why)
 {
-    if (name == kTheRunsArguments) {
-        why = "arguments is the run's own rows and not a variable -- satellite.delete takes a variable this "
-              "capsule declared";
-        return satl_line_not_understood;
-    }
+    // `arguments` IS A NAME LIKE ANY OTHER SINCE 2026-10-11 (main_arguments.hpp): the run's own are
+    // satellite.arguments, which is no name and is not deleted -- satellite.delete takes one name.
     if (declared.find(name) == declared.end()) {
         why = not_declared_why(where, row, name);
         return name_not_declared;
@@ -687,6 +685,37 @@ signed long long int section_written_wrong(const std::vector<std::bitset<16>> &r
     return success;
 }
 
+// THE BRACES THAT OPEN AT `open`, a list or a map written whole where a value goes: `close` on the `}` that closes
+// them, and `a_map` when a `:` follows their first item at their own depth, which is how the walker tells a map
+// (expression.cpp's map_literal). False when they never close on this line. A payload is skipped, never read.
+bool braces_at(const std::vector<std::bitset<16>> &row, std::size_t open, std::size_t &close, bool &a_map)
+{
+    std::size_t depth = 0, brackets = 0;
+    bool past_the_first = false;
+    a_map = false;
+    std::size_t at = open;
+    while (at < row.size()) {
+        const Code code = code_at(row, at);
+        if (token::carries_a_count(code)) { text_at(row, at); continue; }
+        if (code == token::line_end_token || code == token::end_of_file_token) break;
+        if (code == token::left_brace_token) {
+            ++depth;
+        } else if (code == token::right_brace_token) {
+            if (--depth == 0) { close = at; return true; }
+        } else if (code == token::left_parenthesis_token || code == token::left_square_bracket_token) {
+            ++brackets;
+        } else if (code == token::right_parenthesis_token || code == token::right_square_bracket_token) {
+            if (brackets > 0) --brackets;
+        } else if (depth == 1 && brackets == 0) {
+            if (code == token::colon_token && !past_the_first) a_map = true;
+            if (code == token::comma_token) past_the_first = true;
+        }
+        ++at;
+    }
+    close = at;
+    return false;
+}
+
 bool brackets_at(const std::vector<std::bitset<16>> &row, std::size_t open, std::size_t &close, std::size_t &count)
 {
     std::size_t depth = 0, commas = 0;
@@ -808,7 +837,7 @@ std::string literal_refused(Code type, Literal kind)
     else if (type == word::code_of(1, 6, 16)) takes = is({Literal::percentage});                             // percentage
     else if (type == word::code_of(1, 6, 11)) takes = is({Literal::hexadecimal});                            // hex
     else if (type == word::code_of(1, 6, 20)) takes = is({Literal::whole, Literal::fraction});               // fraction
-    else if (type == word::code_of(1, 6, 17)) takes = is({Literal::whole});                                  // infinity
+    else if (type == word::code_of(1, 6, 17)) takes = false;      // infinity: a minimum of infinity, never 5 (his H)
     else if (type == word::code_of(1, 6, 2)) takes = false;                                                  // file
     else if (type == word::code_of(1, 6, 23)) takes = is({Literal::text});                                  // program
     else if (type == word::code_of(1, 6, 24)) takes = is({Literal::text});                                  // bash
@@ -836,6 +865,9 @@ signed long long int literal_fits_the_name(Code type, const std::string &name, c
     const std::string holds = literal_refused(type, lone_literal(row, value_at));
     if (holds.empty()) return success;
     why = name + " was declared " + std::string(word::spelling_of(type)) + ", and it holds " + holds;
+    // AN INFINITY NAME HOLDS AN INFINITY (the author's H of 2026-10-11: "= 5 is an error, the correct syntax should
+    // be a minimum of infinity"), and the sentence says what the least of one is -- in type_shape.cpp's words.
+    if (type == word::code_of(1, 6, 17)) why += kAMinimumOfInfinity;
     return types_do_not_meet;
 }
 
@@ -880,9 +912,10 @@ signed long long int method_judged(const std::vector<std::bitset<16>> &row, std:
 
     if (method == token::reverse_token)
         return success;                  // every type with an order has one
-    // object.pointer() AND object.reference() ARE AN OBJECT'S (pointer_calls.hpp) -- an object of a
-    // satellite.spacesuit, the one kind `b = a` shares -- and a name declared any other type has
-    // neither. Said as that, and not as a method not built yet.
+    // object.satellite.pointer() AND .satellite.reference() ARE AN OBJECT'S (pointer_calls.hpp) -- an object
+    // of a satellite.spacesuit, the one kind `b = a` shares -- and a name declared any other type has
+    // neither. Said as that, and not as a method not built yet; method_on_a_name asks it first, with the
+    // new spelling in `spelling`.
     if (method == token::pointer_token || method == token::reference_token) {
         if (declared_as == word::code_of(1, 4, 6))
             return success;              // a multiple may hold an object: the run knows which it holds
@@ -899,6 +932,27 @@ signed long long int method_judged(const std::vector<std::bitset<16>> &row, std:
         if (!missing.empty()) {
             why = spelling + " " + missing;
             return not_built_yet;
+        }
+    }
+    // A NUMBER'S OWN WORDS (number_calls.hpp, NM-8 2026-10-11): how many each takes, and .sqrt as not built,
+    // judged here in the walker's sentences so nothing above them prints first. A NAME DECLARED AN INFINITY may
+    // hold a plain number (SATELLITE_INFINITY.md Q24), so it has the number's words as well as its own
+    // (method_periods.hpp) -- judged here too; its own three that are not built were refused just above.
+    // .find IS NO NUMBER'S: it looks for text in a string, and on a number or an infinity it was always refused
+    // when its line ran (S301) -- now before anything runs, with the same machine code.
+    if (declared_as == word::code_of(1, 6, 4) || declared_as == word::code_of(1, 6, 17)) {
+        if (number_a_method_runs(kind_of_type_word(declared_as), method) != 0) {
+            std::size_t close = k + 2, given = 0;
+            const bool bracketed = code_at(row, k + 2) == token::left_parenthesis_token;
+            if (bracketed && !brackets_at(row, k + 2, close, given)) {
+                why = spelling + "( is never closed on its line";
+                return satl_line_not_understood;
+            }
+            return number_method_check(bracketed, given, method, spelling, why);
+        }
+        if (method == token::find_token) {
+            why = spelling + " is a string's -- " + word::spelling_of(declared_as) + " has no text to look in";
+            return types_do_not_meet;
         }
     }
     // A THREAD'S OWN METHODS (2026-09-23), asked of thread_calls.hpp: start, stop, join and
@@ -939,8 +993,8 @@ signed long long int method_judged(const std::vector<std::bitset<16>> &row, std:
             std::size_t at = k + 3;
             const std::string written = text_at(row, at);
             if (code_at(row, at) == token::right_parenthesis_token && written != "hide") {
-                why = spelling + "(" + written + ") -- start() takes nothing, or \"hide\" to run it with its output "
-                                                 "thrown away";
+                why = spelling + "(" + written + ") -- .satellite.start() takes nothing, or \"hide\" to run it with "
+                                                 "its output thrown away";
                 return satl_line_not_understood;
             }
         }
@@ -1097,6 +1151,14 @@ signed long long int method_judged(const std::vector<std::bitset<16>> &row, std:
         why = colour_literal_refused(row, k + 3, spelling);
         return why.empty() ? success : types_do_not_meet;
     }
+    // A BINARY'S, A PERCENTAGE'S, A BOOL'S AND A TIME'S OWN WORDS (scalar_calls.hpp, 2026-10-11): each runs its
+    // number, and is let through here as the conversions and .add always were -- a count is judged where it
+    // runs, in the words it was always said in, and a word numbered with nothing built behind it (a binary's
+    // .width and .clear) is told there that it is not built for a binary yet. A float's, a hex's, a colour's and
+    // a fraction's are judged above, by their own checks.
+    if (const satelliteObject::Kind scalar = kind_of_type_word(declared_as);
+        an_other_scalar(scalar) && number_a_method_runs(scalar, method) != 0)
+        return success;
     if (declared_as != word::code_of(1, 6, 2)) {
         if (of_a_string_or_number) return success;
         why = spelling + " is not built for " + word::spelling_of(declared_as) + " yet -- " + so_far_whose(method);
@@ -1121,13 +1183,56 @@ signed long long int method_judged(const std::vector<std::bitset<16>> &row, std:
     return success;
 }
 
+// A BARE WORD THAT MAY BE HIS CAPSULE, where the checker cannot see what the receiver holds (the author's C of
+// 2026-10-10: his own spacesuit's methods stay as he writes them): asked of every spacesuit the program has, as
+// member() would reach it (CapsuleTable::declares) -- under any spelling of the word, so a capsule str() is called by
+// `.string()`; through a spacesuit it extends; and only where this line reaches it, so a protected lock() of his is
+// no capsule from outside. `written` is left as written, for the sentence, read back only when no spacesuit has one.
+// `hidden` is left naming a spacesuit that HAS one this line cannot reach -- one not in its satellite.public part --
+// or empty, so the sentence never says "no spacesuit has" of a capsule his spacesuit does have (the verify of 0040).
+bool a_capsule_could_be_called(const Where &where, const std::vector<std::bitset<16>> &row, std::size_t at,
+                               std::string &written, std::string &hidden)
+{
+    const Code method = code_at(row, at);
+    const std::string name = token::method_name_of(method);
+    for (std::size_t suit = 0; suit < where.capsules.scopes.size(); ++suit)
+        if (where.capsules.scopes[suit].is_a_suit() && where.capsules.declares(suit, name, where.scope))
+            return true;
+    written = method_as_written(row, at, file_of(where), method_spelling(method));
+    hidden.clear();
+    for (std::size_t suit = 0; suit < where.capsules.scopes.size() && hidden.empty(); ++suit)
+        if (where.capsules.scopes[suit].is_a_suit() && where.capsules.declares(suit, name, kNoScope))
+            hidden = where.capsules.scopes[suit].name;
+    return false;
+}
+
+// THE SENTENCE FOR A BARE WORD OF THE LANGUAGE AFTER A RECEIVER ONLY THE RUN CAN TYPE (the author's N of 2026-10-11):
+// what to write, and why it is not his -- no spacesuit has a capsule of that name, so it can only be the language's;
+// or one has, where this line cannot call it (`hidden`, a_capsule_could_be_called).
+std::string bare_word_written(const std::string &receiver, const std::string &word, const std::string &hidden)
+{
+    return receiver + "." + word + " is written " + receiver + ".satellite." + word + " now -- the language's own "
+           "words are under satellite, and " +
+           (hidden.empty() ? "no spacesuit of this program has a capsule named " + word
+                           : "no capsule named " + word + " is one this line can call -- " + hidden +
+                                 "'s is not in its satellite.public part");
+}
+
 // A CHAIN'S LATER LINKS, judged as its first is while what each link answers is known
 // (method_periods.hpp's kind_a_method_answers): the author's B of 2026-10-10, every call of a chain takes
 // its own period -- `s.satellite.upper().satellite.find("X")`. `k` is the first link's period and `kind`
 // what the receiver before it is; `spelled` the receiver as written, which grows a link at a time into the
 // walker's own name for each turn (link_spelled), so the two say one sentence.
+//
+// AND ONCE NOTHING HERE KNOWS WHAT A LINK ANSWERED -- an item a list put there, a thread's join(), a capsule's
+// answer -- every bare word after it is refused before anything runs, unless some spacesuit has a capsule of that
+// name (the author's N of 2026-10-11, "n yes"; his A of that afternoon: "x.pointer() has to return an error unless
+// the user has defined a function named "pointer" -- this error has to show up for everything"). Its `.satellite.`
+// words and his names are the walker's to judge, and the chain is followed past them. Only with `where`: a caller
+// without one is judged as it always was.
 signed long long int chain_periods(const std::vector<std::bitset<16>> &row, std::size_t k, satelliteObject::Kind kind,
-                                   const std::string &receiver, const std::string &file, std::string &why)
+                                   const std::string &receiver, const std::string &file, std::string &why,
+                                   const Where *where = nullptr)
 {
     // THE SENTENCE IS SPELLED ONLY WHEN ONE IS SAID (the review): a chain that is right costs its walk and no text.
     const std::size_t first = k;
@@ -1135,7 +1240,10 @@ signed long long int chain_periods(const std::vector<std::bitset<16>> &row, std:
         std::string spelled = receiver;
         for (std::size_t at = first; at < stop;) {
             spelled += link_spelled(row, at);
-            at += 2;
+            if (code_at(row, ++at) == token::name_token)
+                text_at(row, at);          // a name and its letters
+            else
+                ++at;
             if (code_at(row, at) == token::left_parenthesis_token) {
                 std::size_t close = at, count = 0;
                 if (!brackets_at(row, at, close, count)) break;
@@ -1145,44 +1253,124 @@ signed long long int chain_periods(const std::vector<std::bitset<16>> &row, std:
         return spelled;
     };
     for (;;) {
-        kind = kind_a_method_answers(kind, code_at(row, k + 1));
-        std::size_t next = k + 2;
+        // WHAT THE LINK WAS GIVEN, counted before what it answers is asked: a colour's .transparency reads a
+        // number and .transparency(50) answers the colour (method_periods.hpp). A NAME is a link only once nothing
+        // here knows the chain: his capsule's, or a widget's.
+        const token::Code method = code_at(row, k + 1);
+        // A WORD A KNOWN KIND DOES NOT HAVE, WRITTEN BARE, is the run's to refuse (his E of 2026-10-11, open) -- and
+        // the fault the run names first, so nothing after it is judged as if it had answered something.
+        if (kind != satelliteObject::how_many_kinds && method != token::name_token &&
+            code_at(row, k) == token::method_token && number_a_method_runs(kind, method) == 0)
+            return success;
+        std::size_t next = k + 1, given = 0;
+        if (method != token::name_token)
+            ++next;
+        else if (kind != satelliteObject::how_many_kinds)
+            return success;
+        else
+            text_at(row, next);
         if (code_at(row, next) == token::left_parenthesis_token) {
-            std::size_t close = next, count = 0;
-            if (!brackets_at(row, next, close, count))
+            std::size_t close = next;
+            if (!brackets_at(row, next, close, given))
                 return success;
             next = close + 1;
         }
-        if (kind == satelliteObject::how_many_kinds || !a_method_period(code_at(row, next)) ||
-            !token::is_method_code(code_at(row, next + 1)))
+        if (kind != satelliteObject::how_many_kinds)
+            kind = kind_a_method_answers(kind, method, given);
+        if (!a_method_period(code_at(row, next)))
             return success;
+        if (kind == satelliteObject::how_many_kinds) {
+            if (where == nullptr)
+                return success;
+            if (code_at(row, next + 1) == token::name_token) {
+                // A WIDGET'S NAME is judged where the loop meets it, as a window's (names_in_statement).
+                std::size_t name_at = next + 1;
+                if (where->widget_names != nullptr && where->widget_names->count(text_at(row, name_at)) != 0)
+                    return success;
+                k = next;
+                continue;
+            }
+            if (!token::is_method_code(code_at(row, next + 1)))
+                return success;
+            std::string written, hidden;
+            if (code_at(row, next) == token::method_token &&
+                !a_capsule_could_be_called(*where, row, next + 1, written, hidden)) {
+                why = bare_word_written(spelled_to(next), written, hidden);
+                return satl_line_not_understood;
+            }
+            k = next;
+            continue;
+        }
+        if (!token::is_method_code(code_at(row, next + 1)))
+            return success;
+        // A WINDOW'S WORD OF PARTS WRITTEN AS ITS PARTS is told the whole word (window_calls.hpp).
+        if (kind == satelliteObject::window && a_word_in_parts(row, next)) {
+            why = word_in_parts_written_wrong(row, next, spelled_to(next));
+            return satl_line_not_understood;
+        }
         const bool under = code_at(row, next) == token::satellite_method_token;
         if ((number_a_method_runs(kind, code_at(row, next + 1)) != 0) != under) {
             why = period_written_wrong(spelled_to(next), method_as_written(row, next + 1, file,
                                                                            method_spelling(code_at(row, next + 1))),
-                                       satelliteObject::kind_name_of(kind), under);
+                                       kind, under);
             return satl_line_not_understood;
         }
         k = next;
     }
 }
 
+// AN OBJECT AN ITEM IS, THROUGH EVERY [ ] -- `squares[key]` on a map<number, land_square>, `grid[1][2]` on a
+// list<list<cell>>: the spacesuit its declared shape reaches (a list<T>'s item is a T, a map<K, V>'s value a V),
+// with `close` on the last `]` and `spelled` the receiver as a sentence says it (`squares[...]`); kNoSuit when the
+// shape reaches no spacesuit. `k` is the first `[`. (The fresh reader of 2026-10-11: such an item's members were
+// judged only as their line ran, where a list<suit>'s were judged before anything ran.)
+std::size_t suit_an_item_is(const std::vector<std::bitset<16>> &row, std::size_t k, const TypeShape &shape,
+                            std::size_t &close, std::string &spelled)
+{
+    const TypeShape *here = &shape;
+    while (code_at(row, k) == token::left_square_bracket_token) {
+        std::size_t count = 0;
+        if (!brackets_at(row, k, close, count))
+            return kNoSuit;
+        if (here->word == word::code_of(1, 4, 2) && here->parameters.size() == 1)
+            here = &here->parameters[0];
+        else if (is_an_index_word(here->word) && here->parameters.size() == 2)
+            here = &here->parameters[1];
+        else
+            return kNoSuit;
+        spelled += "[...]";
+        k = close + 1;
+    }
+    return here != &shape && here->is_a_suit() ? here->suit : kNoSuit;
+}
+
+signed long long int words_after_an_answer(const std::vector<std::bitset<16>> &row, std::size_t k,
+                                           satelliteObject::Kind kind, const std::string &receiver, const Where &where,
+                                           std::string &why);
+
 // AN ITEM'S METHOD, judged by what the name was declared to hold (the review of 2026-10-10): `names[1].size` on a
 // list<string> is a string's word, so it takes `.satellite.` -- said before anything runs, as a name's own is. Only
 // while the declared shape says what each [ ] reaches: an item of a list<T> is a T, a value of a map<K, V> a V, a
-// character of a string and a line of a file are text. Anything else -- a list with no <type>, a multiple -- waits
-// for the run, which knows. `k` is the first `[`.
+// character of a string and a line of a file are text. `k` is the first `[`.
+//
+// ANYTHING ELSE -- a list with no <type>, a multiple, the arguments, a [ ] past what the shape says -- is what the run
+// put there, and a bare word of the language after it is refused before anything runs, unless some spacesuit has a
+// capsule of that name (the author's N of 2026-10-11; words_after_an_answer). Only with `where`: without one it waits
+// for the run, as it always did.
 signed long long int item_periods(const std::vector<std::bitset<16>> &row, std::size_t k, const TypeShape &shape,
-                                  const std::string &name, const std::string &file, std::string &why)
+                                  const std::string &name, const std::string &file, std::string &why,
+                                  const Where *where = nullptr)
 {
     satelliteObject::Kind kind = satelliteObject::how_many_kinds;
     const TypeShape *here = &shape;
     std::string spelled = name;
     while (code_at(row, k) == token::left_square_bracket_token) {
         std::size_t close = k, count = 0;
-        if (here == nullptr || !brackets_at(row, k, close, count))
+        if (!brackets_at(row, k, close, count))
             return success;
-        if (here->word == word::code_of(1, 4, 2) && here->parameters.size() == 1) {
+        if (here == nullptr) {
+            kind = satelliteObject::how_many_kinds;   // past what the shape says
+        } else if (here->word == word::code_of(1, 4, 2) && here->parameters.size() == 1) {
             here = &here->parameters[0];
             kind = kind_of_type_word(here->word);
         } else if (is_an_index_word(here->word) && here->parameters.size() == 2) {
@@ -1191,22 +1379,76 @@ signed long long int item_periods(const std::vector<std::bitset<16>> &row, std::
         } else if (here->word == word::code_of(1, 6, 1) || here->word == word::code_of(1, 6, 2)) {
             here = nullptr;                // a character, or a line of a file: text, with nothing under it
             kind = satelliteObject::string;
+        } else if (here->word == word::code_of(1, 6, 22)) {
+            here = nullptr;                // an info's item: a map of string keys, its values what the run read
+            kind = satelliteObject::index;
         } else {
-            return success;
+            here = nullptr;
+            kind = satelliteObject::how_many_kinds;
         }
         spelled += "[...]";
         k = close + 1;
     }
-    if (kind == satelliteObject::how_many_kinds || !a_method_period(code_at(row, k)) ||
-        !token::is_method_code(code_at(row, k + 1)))
+    if (kind == satelliteObject::how_many_kinds)
+        return where == nullptr ? success : words_after_an_answer(row, k, kind, spelled, *where, why);
+    if (!a_method_period(code_at(row, k)) || !token::is_method_code(code_at(row, k + 1)))
         return success;
+    if (kind == satelliteObject::window && a_word_in_parts(row, k)) {
+        why = word_in_parts_written_wrong(row, k, spelled);
+        return satl_line_not_understood;
+    }
     const bool under = code_at(row, k) == token::satellite_method_token;
     if ((number_a_method_runs(kind, code_at(row, k + 1)) != 0) != under) {
         why = period_written_wrong(spelled, method_as_written(row, k + 1, file, method_spelling(code_at(row, k + 1))),
-                                   satelliteObject::kind_name_of(kind), under);
+                                   kind, under);
         return satl_line_not_understood;
     }
-    return chain_periods(row, k, kind, spelled, file, why);
+    return chain_periods(row, k, kind, spelled, file, why, where);
+}
+
+// A MULTIPLE'S WORD, JUDGED BY THE TYPES IT LISTS (the author's F of 2026-10-11: "yes" -- x.satellite.upper() on a
+// multiple holding "abc" was refused as "not built for satellite.container.multiple", and x.satellite.max(9) counted as
+// a list's, though the walker runs the word of whatever the multiple holds). Every type between its < and >, or every
+// kind there is when it lists none. `.satellite.` before a word some listed type numbers is let through -- what it is
+// given and what it answers are the held value's, judged when it runs; a bare `.` before one is refused before anything
+// runs, naming its new spelling, unless a spacesuit it lists declares a capsule of that name, which a bare `.` calls
+// (his C). `decided` is false for a word no listed type numbers, which goes on to method_judged as it always went.
+signed long long int multiples_word(const std::vector<std::bitset<16>> &row, std::size_t k, const std::string &name,
+                                    const Where &where, std::string &why, const std::string &file, bool &decided)
+{
+    decided = false;
+    const Code method = code_at(row, k + 1);
+    const std::unordered_map<std::string, TypeShape>::const_iterator shape = where.shapes.find(name);
+    std::vector<satelliteObject::Kind> kinds;
+    std::vector<std::size_t> suits;
+    if (shape == where.shapes.end() || shape->second.parameters.empty()) {
+        for (std::size_t each = 0; each < satelliteObject::how_many_kinds; ++each)
+            kinds.push_back(static_cast<satelliteObject::Kind>(each));
+    } else {
+        for (const TypeShape &arm : shape->second.parameters) {
+            if (arm.is_a_suit())
+                suits.push_back(arm.suit);
+            else
+                kinds.push_back(kind_of_type_word(arm.word));
+        }
+    }
+    satelliteObject::Kind numbers_it = satelliteObject::how_many_kinds;
+    for (const satelliteObject::Kind each : kinds)
+        if (each != satelliteObject::user_defined && each != satelliteObject::pointer &&
+            each != satelliteObject::how_many_kinds && number_a_method_runs(each, method) != 0) {
+            numbers_it = each;
+            break;
+        }
+    if (numbers_it == satelliteObject::how_many_kinds)
+        return success;
+    decided = true;
+    if (code_at(row, k) == token::satellite_method_token)
+        return success;
+    for (const std::size_t suit : suits)
+        if (where.capsules.declares(suit, method_spelling(method), where.scope))
+            return success;
+    why = period_written_wrong(name, method_as_written(row, k + 1, file, method_spelling(method)), numbers_it, false);
+    return satl_line_not_understood;
 }
 
 // AS WRITTEN: `n.power(2)` is told about n.power, not the registry's n.power_of (ERRORS2 #10).
@@ -1215,33 +1457,218 @@ signed long long int item_periods(const std::vector<std::bitset<16>> &row, std::
 // time grow with the square of the file -- 8,000 lines of `s = s.lower()` took 17 s, not
 // 0.1. A method that passes is judged once, by the registry's name, which it never shows;
 // one that is refused is judged again under the name it was written with, for the sentence.
+//
+// `where`, when given, is the line's place, which a MULTIPLE is judged by (multiples_word, below).
 signed long long int method_on_a_name(const std::vector<std::bitset<16>> &row, std::size_t k,
                                       const std::string &name, Code declared_as, std::string &why,
-                                      const std::string &file)
+                                      const std::string &file, const Where *where = nullptr)
 {
     if (!a_method_period(code_at(row, k)) || !token::is_method_code(code_at(row, k + 1)))
         return success;
     const std::string registry_name = method_spelling(code_at(row, k + 1));
+    // A MULTIPLE'S WORD, JUDGED BY THE TYPES IT LISTS (the author's F of 2026-10-11: "yes"), before the rest.
+    if (declared_as == word::code_of(1, 4, 6) && where != nullptr) {
+        bool decided = false;
+        const signed long long int judged = multiples_word(row, k, name, *where, why, file, decided);
+        // AND THE REST OF ITS CHAIN (the author's N of 2026-10-11): what the word answered on whatever the multiple
+        // holds, or what his capsule handed back, only the run knows.
+        if (decided)
+            return judged != success
+                       ? judged
+                       : chain_periods(row, k, satelliteObject::how_many_kinds, name, file, why, where);
+    }
+    // object.satellite.pointer() AND .satellite.reference() ON ANYTHING BUT AN OBJECT are told they are an
+    // object's, in the new spelling whichever period was written -- before the period is judged, which
+    // would tell a number to write n.pointer() and then refuse that (method_judged says it; a multiple,
+    // which may hold an object, is let through).
+    if (code_at(row, k + 1) == token::pointer_token || code_at(row, k + 1) == token::reference_token) {
+        const signed long long int judged =
+            method_judged(row, k, name, declared_as, why, name + ".satellite." + registry_name);
+        if (judged != success)
+            return judged;
+    }
+    // .get AND .set ON THE ARGUMENTS VARIABLE ARE REFUSED WHICHEVER PERIOD THEY ARE WRITTEN WITH, as they were
+    // while the two were matched by name (main_arguments.hpp) -- asked first, so `args.get(...)` is not sent to
+    // write args.satellite.get(...) and be refused again.
+    if (declared_as == word::code_of(1, 6, 21)) {
+        const std::string refused = get_or_set_on_the_arguments(code_at(row, k + 1), name);
+        if (!refused.empty()) {
+            why = refused;
+            return satl_line_not_understood;
+        }
+    }
     // WHICH PERIOD IT TAKES (method_periods.hpp), by what the name was declared as: `.satellite.` for a
     // string's and a list's own words, `.` for everything else -- the walker's rule, said before anything
     // runs. A multiple may hold a string, a list or neither, so its call is judged when it runs.
     const bool under = code_at(row, k) == token::satellite_method_token;
     const satelliteObject::Kind kind = kind_of_type_word(declared_as);
+    // A WINDOW'S WORD OF PARTS WRITTEN AS ITS PARTS -- `main_window.widgets.display.file(...)`, the family's old
+    // name displays, a scroll alone -- is told the whole word, before the period's rule names only its first part.
+    if (kind == satelliteObject::window && a_word_in_parts(row, k)) {
+        why = word_in_parts_written_wrong(row, k, name);
+        return satl_line_not_understood;
+    }
     if (kind != satelliteObject::how_many_kinds &&
         (number_a_method_runs(kind, code_at(row, k + 1)) != 0) != under) {
-        why = period_written_wrong(name, method_as_written(row, k + 1, file, registry_name),
-                                   satelliteObject::kind_name_of(kind), under);
+        why = period_written_wrong(name, method_as_written(row, k + 1, file, registry_name), kind, under);
         return satl_line_not_understood;
     }
     const std::string period = under ? ".satellite." : ".";
     const signed long long int judged = method_judged(row, k, name, declared_as, why, name + period + registry_name);
     if (judged == success)
-        return kind == satelliteObject::how_many_kinds ? success : chain_periods(row, k, kind, name, file, why);
+        return kind == satelliteObject::how_many_kinds && where == nullptr
+                   ? success
+                   : chain_periods(row, k, kind, name, file, why, where);
     const std::string written = method_as_written(row, k + 1, file, registry_name);
     if (written == registry_name)
         return judged;
     why.clear();
     return method_judged(row, k, name, declared_as, why, name + period + written);
+}
+
+// A WINDOW VALUE'S WORD, judged where the checker knows the receiver is one though no name was declared one -- after
+// a widget's own name (main_window.files_display), after a window word's answer (satellite.window.button("x")): a
+// word of parts whole, the period a window's words take, and every link of the chain after it (NM-8, 2026-10-11).
+// `k` is the period; `receiver` the call as written up to it.
+signed long long int window_link_periods(const std::vector<std::bitset<16>> &row, std::size_t k,
+                                         const std::string &receiver, const std::string &file, std::string &why,
+                                         const Where *where = nullptr)
+{
+    if (a_word_in_parts(row, k)) {
+        why = word_in_parts_written_wrong(row, k, receiver);
+        return satl_line_not_understood;
+    }
+    const bool under = code_at(row, k) == token::satellite_method_token;
+    if ((number_a_method_runs(satelliteObject::window, code_at(row, k + 1)) != 0) != under) {
+        why = period_written_wrong(receiver, method_as_written(row, k + 1, file, method_spelling(code_at(row, k + 1))),
+                                   satelliteObject::window, under);
+        return satl_line_not_understood;
+    }
+    return chain_periods(row, k, satelliteObject::window, receiver, file, why, where);
+}
+
+// THE WORDS AFTER AN ANSWER THE CHECKER MEETS IN A LINE -- a bracket's value, a capsule's answer, a word's, a {}
+// literal, a row of the arguments, an item (the author's N of 2026-10-11, "n yes": a bare word after any of them was
+// refused only as its line ran, after the lines above it had printed). `k` is the period after it; `kind` what it is
+// where that is known here, and how_many_kinds where only the run knows; `receiver` the answer as the walker names
+// it -- "that value", "that answer", satellite.file.new.
+//
+// A KNOWN KIND takes its own period, as a declared name of it does: a word it does not have at all stays for the run
+// (his E of 2026-10-11, left open). AN UNKNOWN ONE: a bare `.` before a word of the language is refused, unless some
+// spacesuit of the program has a capsule of that name, which a bare `.` calls (his C) -- his A of that afternoon:
+// "x.pointer() has to return an error unless the user has defined a function named "pointer" -- this error has to
+// show up for everything". Its `.satellite.` words are the walker's to judge. Every later link the same way
+// (chain_periods). A widget's name after it is judged where the loop meets it, as a window's.
+signed long long int words_after_an_answer(const std::vector<std::bitset<16>> &row, std::size_t k,
+                                           satelliteObject::Kind kind, const std::string &receiver, const Where &where,
+                                           std::string &why)
+{
+    if (!a_method_period(code_at(row, k)))
+        return success;
+    const Code word = code_at(row, k + 1);
+    if (word == token::name_token) {
+        std::size_t name_at = k + 1;
+        if (kind != satelliteObject::how_many_kinds ||
+            (where.widget_names != nullptr && where.widget_names->count(text_at(row, name_at)) != 0))
+            return success;
+        return chain_periods(row, k, kind, receiver, file_of(where), why, &where);
+    }
+    if (!token::is_method_code(word))
+        return success;
+    if (kind == satelliteObject::window)
+        return window_link_periods(row, k, receiver, file_of(where), why, &where);
+    const bool under = code_at(row, k) == token::satellite_method_token;
+    if (kind == satelliteObject::how_many_kinds) {
+        std::string written, hidden;
+        if (!under && !a_capsule_could_be_called(where, row, k + 1, written, hidden)) {
+            why = bare_word_written(receiver, written, hidden);
+            return satl_line_not_understood;
+        }
+    } else if ((number_a_method_runs(kind, word) != 0) != under) {
+        why = period_written_wrong(receiver, method_as_written(row, k + 1, file_of(where), method_spelling(word)), kind,
+                                   under);
+        return satl_line_not_understood;
+    }
+    return chain_periods(row, k, kind, receiver, file_of(where), why, &where);
+}
+
+// THE WORDS AFTER A ROW OF THE ARGUMENTS (the author's N of 2026-10-11): the row keeps its own name -- his ruling of
+// that afternoon, satellite.arguments.username -- and a word of the language after it goes under satellite:
+// `.username.upper()`, `.username.size` (split from the row as the walker splits it, a_word_after_the_rows),
+// `.cpu.features[1].upper()`, `["username"].upper()`. A row satl holds has a kind the checker can read
+// (kind_of_a_row_satl_holds), so its words are judged as a declared name's are; a program's own row, or a key worked
+// out, is what only the run can type. `from` is the `.` or the `[` after the arguments' name `name`, `rows_end` where
+// the dotted run of its row names ends.
+signed long long int words_after_the_rows(const std::vector<std::bitset<16>> &row, std::size_t from,
+                                          std::size_t rows_end, const std::string &name, const Where &where,
+                                          std::string &why)
+{
+    std::string key;
+    satelliteObject::Kind kind = satelliteObject::how_many_kinds;
+    const std::size_t word = a_word_after_the_rows(row, from, where.arguments, where.functions, key, kind);
+    if (word != from)
+        return words_after_an_answer(row, word, kind, name + "." + key, where, why);
+    // NOTHING AFTER THE ROW BUT ITS VALUE'S END -- the common read -- asks no row its kind.
+    if (!a_method_period(code_at(row, rows_end)) && code_at(row, rows_end) != token::left_square_bracket_token)
+        return success;
+    past_the_argument_names(row, from, key);
+    kind = key.empty() ? satelliteObject::how_many_kinds
+                       : kind_of_a_row_satl_holds(key, where.arguments, where.functions);
+    std::string spelled = key.empty() ? name : name + "." + key;
+    std::size_t k = rows_end;
+    while (code_at(row, k) == token::left_square_bracket_token) {
+        std::size_t close = k, count = 0;
+        if (!brackets_at(row, k, close, count))
+            return success;
+        // A LIST ROW OF satl'S HOLDS TEXT (the_value_of_a_row), and a character of text is text.
+        kind = kind == satelliteObject::list || kind == satelliteObject::string ? satelliteObject::string
+                                                                                 : satelliteObject::how_many_kinds;
+        spelled += "[...]";
+        k = close + 1;
+    }
+    return words_after_an_answer(row, k, kind, spelled, where, why);
+}
+
+// WHAT A WORD'S CALL ANSWERS, where the checker can say it before anything runs (the author's N of 2026-10-11) -- as
+// the walker's word answers it, each row proved on BUILD 0039 by a probe of the word's answer: a file word's new file;
+// whether a file is there, and whether a file was cleared or the folder changed, a bool; an empty list, an empty map
+// and an info's read; the console's input as text; a folder's free space a float; a drawn number and the seed handed
+// back; a time; infinity; and a display's -- with its .satellite.center() -- the number 0. how_many_kinds for every
+// other word, whose answer only the run knows: a window word's is judged by the window's; a word not built, or one
+// whose count is refused, never reaches here; and satellite.directory.list(), which reads its folder and then cannot
+// hand a program the names (M14), and satellite.time.sleep, which answers nothing, are left to the run.
+satelliteObject::Kind kind_a_word_answers(Code code)
+{
+    using O = satelliteObject;
+    if (code == word::code_of(1, 8, 1) || code == word::code_of(1, 8, 2) || code == word::code_of(1, 8, 4) ||
+        code == word::code_of(1, 8, 6))
+        return O::file;
+    if (code == word::code_of(1, 8, 5) || code == word::code_of(1, 8, 3) || code == word::code_of(1, 18, 1))
+        return O::boolean;
+    // THE WHOLE PATH LEXES FIRST (bytecode_registry.cpp): satellite.container.list() is the word 1 4 2 with its
+    // brackets, never its path() row 1 4 2 0 -- so a word is known here by its family, which holds both.
+    if (code == word::fixed_code<1, 4, 1> || code == word::fixed_code<1, 4, 1, 0>)
+        return O::index;
+    if (is_container_word(code) || code == word::code_of(1, 30, 1) || code == word::code_of(1, 30, 2))
+        return O::list;
+    if (code == word::code_of(1, 5, 2) || code == word::code_of(1, 5, 3))
+        return O::string;
+    if (code == word::code_of(1, 18, 7))
+        return O::floating;
+    if (is_infinity_word(code))
+        return O::infinity;              // satellite.infinity(x), not built, is refused before this is asked
+    for (int draw = 4; draw <= 12; ++draw)       // fast, normal and ultra: digits, a range, a range and a step
+        if (code == word::code_of(1, 7, draw))
+            return O::number;
+    if (code == word::code_of(1, 7, 17))
+        return O::number;
+    if (code == word::code_of(1, 9, 5) || code == word::code_of(1, 9, 6) || code == word::code_of(1, 9, 7))
+        return O::time;
+    // THE CONSOLE'S DOINGS answer the number 0, as a display does: its clear() and home(). (Its foreground() and
+    // background() lex as their bare words, which their colour-taking calls share, so they are left to the run.)
+    if (is_display_word(code) || code == word::code_of(1, 5, 8) || code == word::code_of(1, 5, 9))
+        return O::number;
+    return O::how_many_kinds;
 }
 
 // WHAT A METHOD-CALL STATEMENT MAY BE, WHOLE (the review: `f.size = 3`, `f.`,
@@ -1328,7 +1755,7 @@ signed long long int a_press_can_run(const CapsuleSite &site, const std::string 
 {
     const std::vector<CapsuleParameter> &wants = site.parameters;
     if (wants.size() > 2) {
-        why = name + " takes " + std::to_string(wants.size()) + " arguments, and ." +
+        why = name + " takes " + std::to_string(wants.size()) + " arguments, and .satellite." +
               std::string(token::method_name_of(method)) + " has only two to give: write " + name + "(), " + name +
               "(satellite.variable.window the_piece), or " + name +
               "(satellite.variable.window the_piece, satellite.variable.window its_window)";
@@ -1337,7 +1764,7 @@ signed long long int a_press_can_run(const CapsuleSite &site, const std::string 
     for (const CapsuleParameter &takes : wants) {
         if (takes.declared() == word::code_of(1, 6, 18))
             continue;
-        why = name + "'s " + takes.name + " is declared " + word::spelling_of(takes.declared()) + ", and ." +
+        why = name + "'s " + takes.name + " is declared " + word::spelling_of(takes.declared()) + ", and .satellite." +
               std::string(token::method_name_of(method)) +
               " hands it the piece it happened to and the window it happened in -- "
               "both are satellite.variable.window";
@@ -1354,17 +1781,11 @@ signed long long int a_press_can_run(const CapsuleSite &site, const std::string 
 signed long long int a_name_it_may_take(const CapsuleTable &capsules, std::size_t scope, const std::string &name,
                                         std::string &why)
 {
-    // arguments IS THE RUN'S OWN ARGUMENTS, READABLE IN EVERY CAPSULE (the author, 2026-10-04: "arguments.anything
-    // needs to be able to be read anywhere"), so no variable, object or parameter takes the name -- only
-    // satellite.main's parameter, which is the arguments (check_program says so). A name a body declared after
-    // reading the run's own under it made the checker and the walker read one line two ways on a loop's second
-    // pass (the fresh reader, 2026-10-06); no program of the author's names anything else arguments.
-    if (name == kTheRunsArguments) {
-        why = "arguments is the run's own arguments, readable in every capsule, so a variable, an object or a "
-              "parameter cannot be named arguments -- give it another name. satellite.main's parameter is the "
-              "one that may be, because it is the arguments";
-        return name_declared_twice;
-    }
+    // `arguments` WAS KEPT FROM EVERY NAME BUT satellite.main's PARAMETER from 2026-10-04, while the bare name was
+    // the run's own arguments in every capsule: a body that declared it after reading the run's own under it read
+    // one line two ways on a loop's second pass (the fresh reader, 2026-10-06). The run's own are
+    // satellite.arguments since 2026-10-11, which no name can be, and the bare name reads nothing of the run's --
+    // so it is a name like any other (main_arguments.hpp).
     const std::string taken = capsules.already_names(scope, name);
     if (taken.empty())
         return success;
@@ -1455,10 +1876,17 @@ signed long long int a_call_for_its_answer(const std::vector<std::bitset<16>> &r
 // `.` and is left on the call's `(`, so the arguments are judged as the loop goes on.
 // `receiver_at` is where `obj` stands: a call that IS the whole statement lets its
 // answer go, and anywhere else the answer is used.
+//
+// AND ITS PERIOD (pointer_calls.hpp; NM-8, 2026-10-11): `.satellite.` before the five words every
+// object has, and a bare `.` before a capsule of his -- which a name his spacesuit declares always is,
+// one of the five too (the author's C of 2026-10-10). A multiple's five are refused bare before anything runs as
+// an object's are -- a file's are under satellite too (2026-10-11; the author's F that evening: a multiple judged by
+// the types it lists), so nothing it may hold takes them bare.
 signed long long int member_of_an_object(const std::vector<std::bitset<16>> &row, std::size_t &k,
                                          std::size_t receiver_at, const std::string &receiver, std::size_t suit,
                                          const Where &where, std::string &why)
 {
+    const bool under = code_at(row, k) == token::satellite_method_token;
     std::size_t m = k + 1;
     std::string member;
     if (code_at(row, m) == token::name_token) {
@@ -1471,25 +1899,46 @@ signed long long int member_of_an_object(const std::vector<std::bitset<16>> &row
               where.capsules.scopes[suit].layout->shown + " has";
         return satl_line_not_understood;
     }
-    const std::string written = receiver + "." + member;
-    // THE AUTHOR'S LOCK (satellite_object/object_lock.hpp): every object has .lock() and
-    // .unlock(), whatever its spacesuit declares, and each takes nothing. And his pointer(),
-    // reference() and ok() (pointer_calls.hpp), the same way.
-    if (code_at(row, k + 1) == token::lock_token || code_at(row, k + 1) == token::unlock_token ||
-        every_object_answers(code_at(row, k + 1))) {
-        if (code_at(row, m) != token::left_parenthesis_token || code_at(row, m + 1) != token::right_parenthesis_token) {
-            why = written + "() takes nothing, in its brackets";
-            // A SPACESUIT'S OWN CAPSULE OF THAT NAME is out of reach from outside, and is said to be.
-            signed long long int unused_code = success;
-            std::string unused_why;
-            if (where.capsules.member(suit, member, where.scope, unused_code, unused_why) != nullptr)
-                why += " -- " + member + "() is every object's own word, and " +
-                       where.capsules.scopes[suit].layout->shown + "'s own " + member +
-                       "(...) is called by its bare name, inside " + where.capsules.scopes[suit].layout->shown;
+    const std::string written = receiver + (under ? ".satellite." : ".") + member;
+    const bool one_of_the_five = code_at(row, k + 1) != token::name_token && object_number_of(code_at(row, k + 1)) != 0;
+    // ASKED ONLY WHERE IT DECIDES THE PERIOD: an ordinary `obj.call_x()` is looked up once, by member() below.
+    // A BARE ONE OF THE FIVE IS HIS ONLY WHERE THIS LINE REACHES HIS CAPSULE OF THAT NAME (CapsuleTable::declares):
+    // from outside, a protected lock() of his leaves `d.lock()` the language's word written the old way.
+    const bool his = (under || one_of_the_five) &&
+                     where.capsules.declares(suit, member, under ? kNoScope : where.scope);
+    // THE FIVE WORDS EVERY OBJECT HAS (pointer_calls.hpp), whatever its spacesuit declares, each taking
+    // nothing: after `.satellite.` always, and after a bare `.` when his spacesuit has no capsule of that
+    // name -- refused then, naming the new spelling, as the walker refuses it.
+    if (one_of_the_five && (under || !his)) {
+        if (!under) {
+            why = period_written_wrong(receiver, member, satelliteObject::user_defined, false);
             return satl_line_not_understood;
         }
+        if (code_at(row, m) != token::left_parenthesis_token || code_at(row, m + 1) != token::right_parenthesis_token) {
+            why = written + "() takes nothing, in its brackets";
+            return satl_line_not_understood;
+        }
+        const std::size_t period = k;
         k = m;
-        return success;
+        // AND THE REST OF ITS CHAIN, before anything runs (the author's B of 2026-10-10: every call of a
+        // chain takes its own period). pointer() and reference() answer an object of this same
+        // spacesuit, whose next link is judged as this one was; ok() answers a bool, judged as one is.
+        const std::size_t next = m + 2;
+        if (!a_method_period(code_at(row, next)) ||
+            (code_at(row, next + 1) != token::name_token && !token::is_method_code(code_at(row, next + 1))))
+            return success;
+        if (code_at(row, period + 1) == token::pointer_token || code_at(row, period + 1) == token::reference_token) {
+            std::size_t link = next;
+            return member_of_an_object(row, link, receiver_at, written + "()", suit, where, why);
+        }
+        return token::is_method_code(code_at(row, next + 1))
+                   ? chain_periods(row, period, satelliteObject::user_defined, receiver, file_of(where), why, &where)
+                   : success;
+    }
+    // A CAPSULE OF HIS WRITTEN UNDER SATELLITE: his own spacesuit's methods stay as he writes them (his C).
+    if (under && his) {
+        why = period_written_wrong(receiver, member, satelliteObject::user_defined, true);
+        return satl_line_not_understood;
     }
     signed long long int code = success;
     const CapsuleSite *site = where.capsules.member(suit, member, where.scope, code, why);
@@ -1514,8 +1963,39 @@ signed long long int member_of_an_object(const std::vector<std::bitset<16>> &row
                         "in it has a value";
         return capsule_gave_no_answer;
     }
+    // AND THE WORDS AFTER WHAT HIS CAPSULE HANDS BACK, which only the run can type (the author's N of 2026-10-11) --
+    // named as the walker names it, `h.call_inner()`.
+    const signed long long int answered = words_after_an_answer(row, close + 1, satelliteObject::how_many_kinds,
+                                                                written + (given == 0 ? "()" : "(...)"), where, why);
+    if (answered != success)
+        return answered;
     k = m;
     return success;
+}
+
+// WHAT A VALUE WORD ANSWERS -- a word with no brackets that answers a value, which a word may follow as one follows
+// a literal (the author's G of 2026-10-11: "yes" -- satellite.bool.true.satellite.string,
+// satellite.console.width.satellite.string, satellite.library.arguments.username.satellite.upper()): a bool word and
+// a setting read by its bare name answer a bool, the console's width and height a number, and a fact about the
+// machine what its library says -- asked here as it is when its line runs, since a fact only reads. how_many_kinds
+// for any other word, and for a fact that could not be read, which the walker then says.
+satelliteObject::Kind kind_a_value_word_answers(Code code, const FunctionTable &functions)
+{
+    if (code == word::code_of(1, 17, 1) || code == word::code_of(1, 17, 2))
+        return satelliteObject::boolean;
+    if (is_console_fact(code))
+        return satelliteObject::number;
+    const NumberRow *library = functions[code];
+    if (library == nullptr)
+        return satelliteObject::how_many_kinds;
+    if (library->scenarios.flag_setting != nullptr)
+        return satelliteObject::boolean;
+    if (library->scenarios.fact != nullptr) {
+        const FactReply said = library->scenarios.fact();
+        if (said.code == success)
+            return said.is_text ? satelliteObject::string : satelliteObject::number;
+    }
+    return satelliteObject::how_many_kinds;
 }
 
 // Every name a statement USES as a value -- so a name with no declaration is
@@ -1542,11 +2022,41 @@ signed long long int names_in_statement(const std::vector<std::bitset<16>> &row,
     Code one_back = 0, two_back = 0;
     std::vector<std::size_t> judged;     // members judged through a list of objects
     std::vector<std::size_t> option_names;   // `foreground` in foreground=..., judged by its word
+    std::vector<std::pair<std::size_t, std::size_t>> options_under;   // satellite.end=: where it starts, its value
     for (std::size_t at = from; at < stop && at < row.size(); ) {
         const Code code = code_at(row, at);
         const Code before_this = one_back, and_before_that = two_back;
         two_back = one_back;
         one_back = code;
+
+        // THE ARGUMENTS' OLD PLACE IS REFUSED BEFORE ANYTHING RUNS (the author's K of 2026-10-11):
+        // satellite.library.main.arguments.<row>, where they lived until 2026-10-03, is satellite.arguments.<row>.
+        if (word::is_word_code(code)) {
+            static const std::string old_place = "satellite.library.main.arguments";
+            const char *spelled = word::spelling_of(code);
+            if (spelled != nullptr && std::string_view(spelled).substr(0, old_place.size()) == old_place) {
+                std::string written = spelled;
+                if (const std::size_t open = written.find('('); open != std::string::npos)
+                    written.erase(open);
+                why = written + " is written satellite.arguments" + written.substr(old_place.size()) +
+                      " now -- satellite.library.main.arguments is where the arguments lived until 2026-10-03";
+                return satl_line_not_understood;
+            }
+        }
+
+        // A NAMED OPTION WRITTEN UNDER SATELLITE -- satellite.end= -- is stepped over whole, to its value: the word,
+        // its period and the name are the option's, judged with its word below (the author's B of 2026-10-11).
+        bool an_option_under = false;
+        for (const auto &[starts, value] : options_under)
+            if (starts == at) {
+                at = value;
+                an_option_under = true;
+                break;
+            }
+        if (an_option_under) {
+            one_back = token::assign_token;
+            continue;
+        }
 
         // HOW `.pressed(...)` IS SPELLED, WHEREVER IT STANDS AND WHATEVER IT IS
         // WRITTEN ON (WIN-11). A method is judged by its RECEIVER in
@@ -1555,15 +2065,19 @@ signed long long int names_in_statement(const std::vector<std::bitset<16>> &row,
         // method is never reached. Here there is no receiver to be gated on --
         // this loop walks every statement and skips every payload, so a
         // `pressed_token` it visits is a real one, wherever it was written.
-        // THE AUTHOR'S WIDGET CHAIN (2026-10-09), judged wherever it is written:
-        // main_window.widgets.displays.file("file_display") -- .displays after .widgets, and .file and
-        // .input after .displays (window_calls.hpp says it once, for this walk and the walker's).
-        if (before_this == token::method_token) {
-            const std::string wrong = widgets_spelled_wrong(code, and_before_that);
-            if (!wrong.empty()) {
-                why = wrong;
-                return satl_line_not_understood;
-            }
+        // THE AUTHOR'S WIDGET WORDS (2026-10-09), judged wherever they are written: widgets.display.file and
+        // widgets.display.input are each ONE word, `.satellite.` once before it (his final syntax, 2026-10-10
+        // ~21:15), and the lexer reads them so -- so a `.displays`, a `.file` or an `.input` that reaches this walk,
+        // or a `.widgets` or a `.display` with the rest of the word after it, is the word written as its parts, on
+        // whatever it was written on (window_calls.hpp says the sentence). A name declared a window, or anything
+        // else whose kind is known, was told already with its own name; here there is no receiver to name.
+        if (a_method_period(before_this) && a_method_period(code_at(row, at - 1)) &&
+            (code == token::displays_token || code == token::file_piece_token || code == token::input_piece_token ||
+             (code == token::widgets_token && a_method_period(code_at(row, at + 1)) &&
+              (code_at(row, at + 2) == token::display_token || code_at(row, at + 2) == token::displays_token)) ||
+             (code == token::display_token && a_word_in_parts(row, at - 1)))) {
+            why = word_in_parts_written_wrong(row, at - 1, "");
+            return satl_line_not_understood;
         }
         // `.listen()` IS `.listen` WITH NO CAPSULE (the author, 2026-10-09): nothing in its brackets is
         // the other right shape, and the rule below is for the shape with a name.
@@ -1574,7 +2088,7 @@ signed long long int names_in_statement(const std::vector<std::bitset<16>> &row,
         }
         if (window_method_takes_a_capsule_name(code) &&
             code_at(row, at + 1) == token::left_parenthesis_token) {
-            const std::string spelled = std::string(".") + token::method_name_of(code);
+            const std::string spelled = std::string(".satellite.") + token::method_name_of(code);
             std::size_t argument = at + 2;
             // TEXT IS NOT A NAME. It would lex, check, run, open the window, and
             // fail at the moment of the press -- window already up.
@@ -1616,8 +2130,8 @@ signed long long int names_in_statement(const std::vector<std::bitset<16>> &row,
         // half of a typo.
         if (code == token::press_token && code_at(row, at + 1) == token::left_parenthesis_token &&
             code_at(row, at + 2) != token::right_parenthesis_token) {
-            why = ".press() is the PROGRAM pressing it, and a click has nothing to say, so it takes "
-                  "nothing. To name what a press RUNS, that is .pressed(a_capsule)";
+            why = ".satellite.press() is the PROGRAM pressing it, and a click has nothing to say, so it takes "
+                  "nothing. To name what a press RUNS, that is .satellite.pressed(a_capsule)";
             return satl_line_not_understood;
         }
 
@@ -1628,9 +2142,81 @@ signed long long int names_in_statement(const std::vector<std::bitset<16>> &row,
             Code type = 0;
             const signed long long int read = library_read_is_right(capsules, where.registry, row, at, written, type, why);
             if (read != success) return read;
-            const signed long long int method = method_on_a_name(row, at, written, type, why, file_of(where));
+            const signed long long int method = method_on_a_name(row, at, written, type, why, file_of(where), &where);
             if (method != success) return method;
             continue;
+        }
+
+        // THE RUN'S OWN ARGUMENTS, satellite.arguments (the author, 2026-10-11, of what the bare name `arguments`
+        // read from 2026-10-04: "arguments.missing or arguments.anything needs to be able to be read anywhere"):
+        // its rows are names, as main's are, and which rows there are is the run's to say -- the walker says it.
+        // A method on the whole of it is judged as on main's; one that changes it in place is refused, because
+        // what it would change is a copy nobody keeps -- and asked of EITHER period, or
+        // satellite.arguments.satellite.clear() slipped past (method_periods.hpp's a_method_period).
+        if (code == kTheRunsArgumentsWord) {
+            std::size_t k = at + 1;
+            std::string key;
+            std::size_t open = k;
+            if (code_at(row, k) == token::left_parenthesis_token) {
+                why = std::string(kTheRunsArguments) + " is not a call -- the run's own arguments are read row by row, "
+                      "as satellite.arguments.username, and shown whole as satellite.arguments";
+                return satl_line_not_understood;
+            }
+            // A SETTING WRITTEN BY ITS CALL, INSIDE AN EXPRESSION -- `display(satellite.arguments.missing(false))`:
+            // the call changes a row and answers nothing, so it is a line of its own (the fresh reader, 2026-10-06).
+            if (an_argument_call(row, k, key, open)) {
+                why = std::string(kTheRunsArguments) + "." + key + "(...) changes a row of the arguments and answers "
+                      "nothing, so it is a line of its own -- the row is read as " + kTheRunsArguments + "." + key;
+                return satl_line_not_understood;
+            }
+            const std::size_t rows_end = past_the_argument_names(row, k);
+            if (rows_end != k && !a_map_word_where_a_row_would_be(row, k)) {
+                // AND THE WORDS AFTER THE ROW (the author's N of 2026-10-11): the row keeps its name, the word moves.
+                const signed long long int after =
+                    words_after_the_rows(row, k, rows_end, kTheRunsArguments, where, why);
+                if (after != success) return after;
+                k = rows_end;
+            } else if (a_method_period(code_at(row, k)) && token::is_method_code(code_at(row, k + 1)) &&
+                       changes_a_container(code_at(row, k + 1))) {
+                why = std::string(kTheRunsArguments) + ".satellite." + token::method_name_of(code_at(row, k + 1)) +
+                      "(...) would change a copy of the run's own rows that nothing keeps -- satellite.arguments is "
+                      "read, and a setting of it changed with satellite.arguments.<row>(value)";
+                return satl_line_not_understood;
+            } else if (code_at(row, k) == token::left_square_bracket_token) {
+                // A ROW BY ITS KEY, satellite.arguments["username"], and the words after it (N, as above).
+                const signed long long int after = words_after_the_rows(row, k, k, kTheRunsArguments, where, why);
+                if (after != success) return after;
+            } else {
+                const signed long long int judged_here =
+                    method_on_a_name(row, k, kTheRunsArguments, word::code_of(1, 6, 21), why, file_of(where), &where);
+                if (judged_here != success) return judged_here;
+            }
+            at = k;
+            continue;
+        }
+
+        // A BRACKET'S VALUE AND A {} LITERAL, AND THE WORDS AFTER THEM (the author's N of 2026-10-11, "n yes"):
+        // `(5).floor()` and `{1, 2}.size` were refused only as their line ran. A `(` with no name, word or method
+        // straight before it is no call's: it holds "that value", as the walker names it, which only the run can
+        // type (words_after_an_answer). A `{` where a value goes is a list, or a map when a `:` follows its first item.
+        if (code == token::left_parenthesis_token && before_this != token::name_token &&
+            !token::is_method_code(before_this) && !word::is_word_code(before_this)) {
+            std::size_t close = at, count = 0;
+            if (brackets_at(row, at, close, count) && a_method_period(code_at(row, close + 1))) {
+                const signed long long int after = words_after_an_answer(
+                    row, close + 1, satelliteObject::how_many_kinds, "that value", where, why);
+                if (after != success) return after;
+            }
+        }
+        if (code == token::left_brace_token) {
+            std::size_t close = at;
+            bool a_map = false;
+            if (braces_at(row, at, close, a_map) && a_method_period(code_at(row, close + 1))) {
+                const signed long long int after =
+                    words_after_an_answer(row, close + 1, a_map ? satelliteObject::index : satelliteObject::list,
+                                          a_map ? "that map" : "that list", where, why);
+                if (after != success) return after;
+            }
         }
 
         if (code == token::name_token) {
@@ -1643,6 +2229,9 @@ signed long long int names_in_statement(const std::vector<std::bitset<16>> &row,
             bool an_option = false;
             for (const std::size_t each : option_names) an_option = an_option || each == at;
             if (an_option) {
+                // ITS `=` IS WHAT STANDS BEFORE ITS VALUE, so a bracket opening the value is a bracket's, not a call's
+                // (the author's N of 2026-10-11: end=("!").upper() was judged only as its line ran).
+                one_back = token::assign_token;
                 at = k + 1;
                 continue;
             }
@@ -1688,7 +2277,7 @@ signed long long int names_in_statement(const std::vector<std::bitset<16>> &row,
                 if (reached.site == nullptr) {
                     why = reached.through_a_scope || reached.why.rfind("no capsule named ", 0) != 0
                               ? reached.why
-                              : "no capsule named " + written + " -- ." +
+                              : "no capsule named " + written + " -- .satellite." +
                                     std::string(token::method_name_of(and_before_that)) +
                                     "(...) names a capsule to run, and there is no satellite.capsule " + written +
                                     "() in this program";
@@ -1698,7 +2287,8 @@ signed long long int names_in_statement(const std::vector<std::bitset<16>> &row,
                 // (the review, 2026-09-22: it passed here and would have run with no object).
                 if (reached.site->suit != kNoScope) {
                     why = written + " is a capsule of the spacesuit " + capsules.scopes[reached.site->suit].within +
-                          ", and it runs on an object -- ." + std::string(token::method_name_of(and_before_that)) +
+                          ", and it runs on an object -- .satellite." +
+                          std::string(token::method_name_of(and_before_that)) +
                           "(...) names a capsule of a file or a satellite.namespace, which a press runs with none";
                     return satl_line_not_understood;
                 }
@@ -1709,27 +2299,70 @@ signed long long int names_in_statement(const std::vector<std::bitset<16>> &row,
                 continue;
             }
 
-            // AN OBJECT'S CAPSULES ARE WRITTEN WITH A `.` (method_periods.hpp; the author's C of
-            // 2026-10-10: his own spacesuit's methods stay as he writes them).
-            if (!after_a_dot && code_at(row, k) == token::satellite_method_token && where.objects.count(name) != 0) {
-                why = period_written_wrong(name, method_spelling(code_at(row, k + 1)), "an object", true);
-                return satl_line_not_understood;
+            // A WIDGET BY ITS NAME AFTER AN ITEM OR AN ANSWER -- `ws[1].files`, `m["a"].files`,
+            // `ws.satellite.first.files`, `make().files`: a name after a `]`, a `)` or a word's answer that the
+            // program gives a widget in quotes somewhere is that widget's, as the walker reads it (a_member_next,
+            // a_widget_by_name), and is judged as one after a declared window's name is, below: every name after it a
+            // widget's, and the word after them a window's (window_link_periods). A name no widget has is told what
+            // it always was. (The sweep of 2026-10-11: ws[1].files.satellite.directory("/tmp/") was refused as an
+            // undeclared variable, so no spelling of it could run.)
+            if (after_a_dot && where.widget_names != nullptr && where.widget_names->count(name) != 0 &&
+                code_at(row, k) != token::left_parenthesis_token &&
+                (and_before_that == token::right_square_bracket_token ||
+                 and_before_that == token::right_parenthesis_token || token::is_method_code(and_before_that))) {
+                std::size_t m = k;
+                std::string reached = name;
+                while (code_at(row, m) == token::method_token && code_at(row, m + 1) == token::name_token) {
+                    std::size_t n = m + 1;
+                    const std::string member = text_at(row, n);
+                    if (where.widget_names->count(member) == 0) {
+                        why = reached + "." + member + " -- no widget is named " + member + " in this program: "
+                              ".satellite.widgets.display.file(\"" + member + "\"), "
+                              ".satellite.widgets.display.input(\"" + member + "\") or .satellite.section(\"" +
+                              member + "\", 100%, 50%) makes one";
+                        return name_not_declared;
+                    }
+                    reached += "." + member;
+                    m = n;
+                }
+                if (a_method_period(code_at(row, m)) && token::is_method_code(code_at(row, m + 1))) {
+                    const signed long long int linked =
+                        window_link_periods(row, m, reached, file_of(where), why, &where);
+                    if (linked != success)
+                        return linked;
+                    if (code_at(row, m + 1) == token::section_token) {
+                        const signed long long int judged =
+                            section_written_wrong(row, m + 2, reached + ".satellite.section", why);
+                        if (judged != success)
+                            return judged;
+                    }
+                }
+                at = m;
+                continue;
             }
-            // A MEMBER OF AN OBJECT -- `log.call_open()`, `plan.call_threads()` -- judged by
-            // the spacesuit the name holds an object of (2026-09-22). `k` comes back on the
-            // call's `(`, so its arguments are judged as the loop goes on.
-            if (!after_a_dot && code_at(row, k) == token::method_token && declared.count(name) != 0) {
+
+            // A MEMBER OF AN OBJECT -- `log.call_open()`, `plan.call_threads()`, `log.satellite.lock()` --
+            // judged by the spacesuit the name holds an object of (2026-09-22), and its period with it:
+            // his capsules with a `.`, the five words every object has with `.satellite.` (member_of_an_object).
+            // `k` comes back on the call's `(`, so its arguments are judged as the loop goes on.
+            if (!after_a_dot && a_method_period(code_at(row, k)) && declared.count(name) != 0) {
                 const std::size_t *suit = nullptr;
                 const DeclaredObjects::const_iterator object = where.objects.find(name);
                 if (object != where.objects.end())
                     suit = &object->second;
-                else if (code_at(row, k + 1) == token::name_token || every_object_answers(code_at(row, k + 1)) ||
-                         code_at(row, k + 1) == token::lock_token || code_at(row, k + 1) == token::unlock_token) {
+                else if (code_at(row, k + 1) == token::name_token || object_number_of(code_at(row, k + 1)) != 0 ||
+                         (named_until_numbered(code_at(row, k + 1)) &&
+                          code_at(row, k) != token::satellite_method_token)) {
                     // A MULTIPLE WITH A SPACESUIT AMONG ITS TYPES: its capsules, and the words every
                     // object answers (pointer_calls.hpp) -- the review of 2026-10-02 found m.pointer()
-                    // refused here as "not an object's" though m held one.
+                    // refused here as "not an object's" though m held one. AND THE ELEVEN NAMES A NUMBER'S
+                    // WORDS MADE CODES OF (number_calls.hpp, 2026-10-11), let through as the names they were:
+                    // `m.round()` with a `.` is his spacesuit's round, since a number's is m.satellite.round() --
+                    // which goes on to the multiple's own judging (multiples_word), not to his capsules (his F).
                     const DeclaredObjects::const_iterator multiple = where.multiples.find(name);
-                    if (multiple != where.multiples.end()) suit = &multiple->second;
+                    if (multiple != where.multiples.end()) {
+                        suit = &multiple->second;
+                    }
                 }
                 if (suit != nullptr) {
                     const signed long long int judged =
@@ -1740,8 +2373,9 @@ signed long long int names_in_statement(const std::vector<std::bitset<16>> &row,
                 }
                 // A WIDGET BY ITS NAME, AFTER A WINDOW (the author, 2026-10-09): `main_window.file_display`
                 // and `main_window.file_display.text_input`, each name one the program gives a widget in
-                // quotes somewhere (check_program read them all). What follows the names is judged as the
-                // loop goes on -- `.listen(when_typed)` names a capsule, wherever it stands.
+                // quotes somewhere (check_program read them all). HIS OWN NAMES KEEP THEIR PERIOD (2026-10-10
+                // ~21:15). What follows the names is judged as the loop goes on -- `.listen(when_typed)`
+                // names a capsule, wherever it stands.
                 if (code_at(row, k + 1) == token::name_token &&
                     declared.find(name)->second == word::code_of(1, 6, 18)) {
                     std::size_t m = k;
@@ -1751,18 +2385,30 @@ signed long long int names_in_statement(const std::vector<std::bitset<16>> &row,
                         const std::string member = text_at(row, n);
                         if (where.widget_names != nullptr && where.widget_names->count(member) == 0) {
                             why = reached + "." + member + " -- no widget is named " + member + " in this program: "
-                                  ".widgets.displays.file(\"" + member + "\"), .widgets.displays.input(\"" +
-                                  member + "\") or .section(\"" + member + "\", 100%, 50%) makes one";
+                                  ".satellite.widgets.display.file(\"" + member + "\"), "
+                                  ".satellite.widgets.display.input(\"" + member + "\") or .satellite.section(\"" +
+                                  member + "\", 100%, 50%) makes one";
                             return name_not_declared;
                         }
                         reached += "." + member;
                         m = n;
                     }
-                    // AND A SECTION MADE IN ONE: main_window.top.section("inner", 50%, 50%).
-                    if (code_at(row, m) == token::method_token && code_at(row, m + 1) == token::section_token) {
-                        const signed long long int judged = section_written_wrong(row, m + 2, reached + ".section", why);
-                        if (judged != success)
-                            return judged;
+                    // AND THE WORD AFTER THEM, ON THE WIDGET THEY REACH -- a window value, so a window's word:
+                    // written `.satellite.` (his line, 2026-10-10 ~21:15:
+                    // main_window.files_display.satellite.widgets.display.file("list_of_files", 100%, 100%)), a word
+                    // of parts whole, a section made in one with its name in quotes --
+                    // main_window.top.satellite.section("inner", 50%, 50%) -- and every link of its chain after it.
+                    if (a_method_period(code_at(row, m)) && token::is_method_code(code_at(row, m + 1))) {
+                        const signed long long int linked =
+                            window_link_periods(row, m, reached, file_of(where), why, &where);
+                        if (linked != success)
+                            return linked;
+                        if (code_at(row, m + 1) == token::section_token) {
+                            const signed long long int judged =
+                                section_written_wrong(row, m + 2, reached + ".satellite.section", why);
+                            if (judged != success)
+                                return judged;
+                        }
                     }
                     at = m;
                     continue;
@@ -1774,14 +2420,6 @@ signed long long int names_in_statement(const std::vector<std::bitset<16>> &row,
                     declared.find(name)->second != word::code_of(1, 6, 21)) {
                     std::size_t m = k + 1;
                     const std::string member = text_at(row, m);
-                    // A MAP'S .get(k) AND .set(k, v) (expression.cpp, 2026-09-26): its key and
-                    // value are judged from the `(` as the loop goes on; the count, when it runs.
-                    const Code as = declared.find(name)->second;
-                    if ((member == "get" || member == "set") && code_at(row, m) == token::left_parenthesis_token &&
-                        (is_an_index_word(as) || as == word::code_of(1, 4, 6))) {
-                        at = m;
-                        continue;
-                    }
                     why = name + " is " + word::spelling_of(declared.find(name)->second) + ", and " + member +
                           " is not one of its methods -- only an object of a satellite.spacesuit has capsules to call";
                     return satl_line_not_understood;
@@ -1798,6 +2436,13 @@ signed long long int names_in_statement(const std::vector<std::bitset<16>> &row,
                 if (reached.site != nullptr) {
                     const signed long long int judged = a_call_for_its_answer(row, past, *reached.site, written, where, why);
                     if (judged != success) return judged;
+                    // AND THE WORDS AFTER ITS ANSWER, which only the run can type (the author's N of 2026-10-11).
+                    std::size_t close = past, given = 0;
+                    if (brackets_at(row, past, close, given)) {
+                        const signed long long int after = words_after_an_answer(
+                            row, close + 1, satelliteObject::how_many_kinds, "that answer", where, why);
+                        if (after != success) return after;
+                    }
                     at = past;
                     continue;
                 }
@@ -1837,10 +2482,17 @@ signed long long int names_in_statement(const std::vector<std::bitset<16>> &row,
                 }
                 const signed long long int judged = a_call_for_its_answer(row, k, *reached.site, name, where, why);
                 if (judged != success) return judged;
+                // AND THE WORDS AFTER ITS ANSWER, which only the run can type (the author's N of 2026-10-11).
+                std::size_t close = k, given = 0;
+                if (brackets_at(row, k, close, given)) {
+                    const signed long long int after = words_after_an_answer(
+                        row, close + 1, satelliteObject::how_many_kinds, "that answer", where, why);
+                    if (after != success) return after;
+                }
                 at = k;
                 continue;
-            } else if (!after_a_dot && (name == kTheRunsArguments || declared.find(name) != declared.end()) &&
-                       (declared.find(name) == declared.end() || declared.find(name)->second == word::code_of(1, 6, 21)) &&
+            } else if (!after_a_dot && declared.find(name) != declared.end() &&
+                       declared.find(name)->second == word::code_of(1, 6, 21) &&
                        [&] { std::string key; std::size_t open = k; return an_argument_call(row, k, key, open); }()) {
                 // A SETTING WRITTEN BY ITS CALL, INSIDE AN EXPRESSION -- `display(arguments.missing(false))`: the call
                 // changes a row and answers nothing, so it is a line of its own (the fresh reader, 2026-10-06: it
@@ -1851,26 +2503,12 @@ signed long long int names_in_statement(const std::vector<std::bitset<16>> &row,
                 why = name + "." + key + "(...) changes a row of the arguments and answers nothing, so it is a line of "
                                          "its own -- the row is read as " + name + "." + key;
                 return satl_line_not_understood;
-            } else if (!after_a_dot && name == kTheRunsArguments && declared.find(name) == declared.end()) {
-                // THE RUN'S OWN ARGUMENTS BY THEIR BARE NAME (the author, 2026-10-04: "arguments.missing or
-                // arguments.anything needs to be able to be read anywhere"), where this body has no name
-                // called arguments: its rows are names, as main's are, and which rows there are is the run's
-                // to say -- the walker says it. A method on the whole of it is judged as on main's; one that
-                // changes it in place is refused, because what it would change is a copy nobody keeps.
-                const std::size_t rows_end = past_the_argument_names(row, k);
-                if (rows_end != k) {
-                    k = rows_end;
-                } else if (code_at(row, k) == token::method_token && token::is_method_code(code_at(row, k + 1)) &&
-                           changes_a_container(code_at(row, k + 1))) {
-                    why = "arguments." + std::string(token::method_name_of(code_at(row, k + 1))) +
-                          "(...) would change a copy of the run's own rows that nothing keeps -- the bare name "
-                          "arguments is read, and a setting of it changed with arguments.<row>(value)";
-                    return satl_line_not_understood;
-                } else {
-                    const signed long long int judged_here =
-                        method_on_a_name(row, k, name, word::code_of(1, 6, 21), why, file_of(where));
-                    if (judged_here != success) return judged_here;
-                }
+            } else if (!after_a_dot && name == kTheOldBareArguments && declared.find(name) == declared.end()) {
+                // THE BARE NAME THE RUN'S OWN ARGUMENTS HAD UNTIL 2026-10-11, where this body has no name called
+                // that: refused before anything runs, naming the new spelling (main_arguments.hpp). The run's own
+                // are satellite.arguments, judged above this loop's names.
+                why = the_bare_arguments_refused(row, k);
+                return name_not_declared;
             } else if (declared.find(name) == declared.end()) {
                 // A FIELD'S VALUE NAMING ANOTHER FIELD: there is no object yet (003's S0511).
                 const bool a_field = where.field && capsules.scopes[scope].layout != nullptr &&
@@ -1887,18 +2525,24 @@ signed long long int names_in_statement(const std::vector<std::bitset<16>> &row,
                                        : not_declared_why(where, row, name);
                 return name_not_declared;
             } else if (declared.find(name)->second == word::code_of(1, 6, 21) &&
-                       past_the_argument_names(row, k) != k) {
+                       past_the_argument_names(row, k) != k && !a_map_word_where_a_row_would_be(row, k)) {
                 // THE ARGUMENTS VARIABLE'S ROWS ARE NAMES, NOT VARIABLES:
                 // `arguments.memory.total` is one row (main_arguments.hpp), and which
-                // rows there are is the machine's to say, so the walker says it.
-                k = past_the_argument_names(row, k);
+                // rows there are is the machine's to say, so the walker says it. A map's
+                // word where a row would be is its method, judged below (2026-10-11).
+                // AND THE WORDS AFTER THE ROW (the author's N of 2026-10-11): `args.username.upper()`.
+                const std::size_t rows_end = past_the_argument_names(row, k);
+                const signed long long int after = words_after_the_rows(row, k, rows_end, name, where, why);
+                if (after != success) return after;
+                k = rows_end;
             } else if (where.lists.count(name) != 0 && code_at(row, k) == token::left_square_bracket_token) {
                 // `units[i].call_x()` -- AN ITEM'S MEMBER, judged by the spacesuit the list was
                 // declared to hold (the review, 2026-09-22: it was judged only running). The
                 // index's own names are judged as the loop goes on; the member's name, when
                 // the loop reaches it, is skipped as judged.
+                // EITHER PERIOD: member_of_an_object judges which the member takes.
                 std::size_t close = k, count = 0;
-                if (brackets_at(row, k, close, count) && code_at(row, close + 1) == token::method_token &&
+                if (brackets_at(row, k, close, count) && a_method_period(code_at(row, close + 1)) &&
                     (code_at(row, close + 2) == token::name_token || token::is_method_code(code_at(row, close + 2)))) {
                     std::size_t dot = close + 1;
                     const signed long long int member =
@@ -1914,15 +2558,39 @@ signed long long int names_in_statement(const std::vector<std::bitset<16>> &row,
                     const signed long long int indexed = string_index_check(row, k, name, why);
                     if (indexed != success) return indexed;
                 }
-                // AN ITEM'S METHOD, by the shape the name was declared with (item_periods).
+                // AN ITEM'S METHOD, by the shape the name was declared with (item_periods) -- AND AN ITEM THAT IS AN
+                // OBJECT, a map's value or one two brackets down, judged as a list<suit>'s item is above: his
+                // capsules after `.`, the five words every object has after `.satellite.` (member_of_an_object).
                 const std::unordered_map<std::string, TypeShape>::const_iterator shape = where.shapes.find(name);
                 if (code_at(row, k) == token::left_square_bracket_token && shape != where.shapes.end() &&
                     shape->second.word == declared.find(name)->second) {
-                    const signed long long int item = item_periods(row, k, shape->second, name, file_of(where), why);
+                    std::size_t close = k;
+                    std::string spelled = name;
+                    const std::size_t suit = suit_an_item_is(row, k, shape->second, close, spelled);
+                    if (suit != kNoSuit && a_method_period(code_at(row, close + 1)) &&
+                        (code_at(row, close + 2) == token::name_token || token::is_method_code(code_at(row, close + 2)))) {
+                        std::size_t dot = close + 1;
+                        const signed long long int member =
+                            member_of_an_object(row, dot, at, spelled, suit, where, why);
+                        if (member != success) return member;
+                        judged.push_back(close + 2);
+                    } else {
+                        const signed long long int item =
+                            item_periods(row, k, shape->second, name, file_of(where), why, &where);
+                        if (item != success) return item;
+                    }
+                } else if (code_at(row, k) == token::left_square_bracket_token) {
+                    // AN ITEM OF A NAME WHOSE SHAPE IS NOT KEPT, judged by its declared type alone: a character of a
+                    // string, a line of a file -- and, for anything else, what only the run can type (the author's N
+                    // of 2026-10-11), a bare word after it refused unless some spacesuit has a capsule of that name.
+                    TypeShape declared_shape;
+                    declared_shape.word = declared.find(name)->second;
+                    const signed long long int item =
+                        item_periods(row, k, declared_shape, name, file_of(where), why, &where);
                     if (item != success) return item;
                 }
                 const signed long long int judged_here =
-                    method_on_a_name(row, k, name, declared.find(name)->second, why, file_of(where));
+                    method_on_a_name(row, k, name, declared.find(name)->second, why, file_of(where), &where);
                 if (judged_here != success) return judged_here;
             }
             at = k;
@@ -1945,6 +2613,14 @@ signed long long int names_in_statement(const std::vector<std::bitset<16>> &row,
             dotted_names_at(row, past, names);
             std::string written = names.front();
             for (std::size_t n = 1; n < names.size(); ++n) written += "." + names[n];
+            // A WORD UNDER SATELLITE IS THE LANGUAGE'S, NEVER A CAPSULE OF YOURS (NM-8, 2026-10-11):
+            // `satellite.thread.new(x.satellite.pointer())` is told that, as the walker tells it -- the names
+            // stop at `.satellite.`, and were told they name a capsule without calling it.
+            if (code_at(row, past) == token::satellite_method_token) {
+                const std::string word = token::method_name_of(code_at(row, past + 1));
+                why = not_a_capsule_for_a_thread(written + ".satellite." + word, word);
+                return thread_needs_a_capsule_call;
+            }
             if (code_at(row, past) != token::left_parenthesis_token) {
                 why = "satellite.thread.new(" + written + ") names a capsule and does not call it -- write " +
                       written + "(), with what it takes inside the brackets";
@@ -1956,7 +2632,9 @@ signed long long int names_in_statement(const std::vector<std::bitset<16>> &row,
             const DeclaredObjects::const_iterator object =
                 names.size() == 2 ? where.objects.find(names.front()) : where.objects.end();
             if (object != where.objects.end()) {
-                if (every_object_word(names.back())) {
+                // ONE OF THE FIVE IS NO CAPSULE TO RUN -- unless his spacesuit declares a capsule of that
+                // name, which a bare `.` calls everywhere (pointer_calls.hpp; the author's C of 2026-10-10).
+                if (every_object_word(names.back()) && !capsules.declares(object->second, names.back(), scope)) {
                     why = not_a_capsule_for_a_thread(written, names.back());
                     return thread_needs_a_capsule_call;
                 }
@@ -1986,6 +2664,13 @@ signed long long int names_in_statement(const std::vector<std::bitset<16>> &row,
                 why = "satellite.thread.new takes one capsule call and nothing after it";
                 return satl_line_not_understood;
             }
+            // AND THE WORDS AFTER IT, ON THE THREAD IT ANSWERS (the author's N of 2026-10-11): judged before the thread
+            // is made, where `satellite.thread.new(w()).start()` was refused only after it had been.
+            const std::string spelled_word(word::spelling_of(code));
+            const signed long long int after =
+                words_after_an_answer(row, close + 2, satelliteObject::thread,
+                                      spelled_word.substr(0, spelled_word.find('(')) + "(...)", where, why);
+            if (after != success) return after;
             at = past;
             continue;
         }
@@ -2045,6 +2730,16 @@ signed long long int names_in_statement(const std::vector<std::bitset<16>> &row,
             std::size_t close = at + 1, given = 0;
             if (brackets_at(row, at + 1, close, given)) {
                 const std::string spelled_word(word::spelling_of(code));
+                // .center() ON A DISPLAY IS UNDER SATELLITE (NM-8, 2026-10-11): it is the word
+                // satellite.console.display.center, 1 5 1 1, written satellite.console.display(x).satellite.center()
+                // -- a bare `.` is refused, naming it, before anything runs, as the walker refuses it.
+                if (is_display_word(code) && code_at(row, close + 1) == token::method_token &&
+                    display_number_of(code_at(row, close + 2)) != 0) {
+                    why = center_written_bare(spelled_word.substr(0, spelled_word.find('(')),
+                                              method_as_written(row, close + 2, file_of(where),
+                                                                method_spelling(code_at(row, close + 2))));
+                    return satl_line_not_understood;
+                }
                 // NAMED OPTIONS, `foreground=xFF8800` (console_calls.hpp): judged by name
                 // and by literal here, never counted as arguments, and their names
                 // stepped over as options rather than judged as variables nobody declared.
@@ -2058,7 +2753,10 @@ signed long long int names_in_statement(const std::vector<std::bitset<16>> &row,
                     for (std::size_t n = 0; n < options.size(); ++n) {
                         const signed long long int refused = option_refused(code, row, options, n, why);
                         if (refused != success) return refused;
-                        option_names.push_back(options[n].name_at);
+                        if (options[n].under)
+                            options_under.emplace_back(options[n].name_at, options[n].value_at);
+                        else
+                            option_names.push_back(options[n].name_at);
                     }
                     given -= options.size();
                 }
@@ -2126,6 +2824,19 @@ signed long long int names_in_statement(const std::vector<std::bitset<16>> &row,
                           (given == 1 ? " argument" : " arguments");
                     return satl_line_not_understood;
                 }
+                // A WINDOW WORD'S ANSWER IS A WINDOW VALUE (window_calls.hpp), so the words called on it are a
+                // window's and are judged as a name's are, before anything runs:
+                // satellite.window.button("x").satellite.title("t") -- every link of the chain (NM-8). NAMED WITH
+                // ITS BRACKETS, as every other word's answer is below, so the spelling it is told can run:
+                // satellite.window.button(...).satellite.title (the verify of 0040).
+                if (is_window_word(code) && a_method_period(code_at(row, close + 1)) &&
+                    token::is_method_code(code_at(row, close + 2))) {
+                    const signed long long int linked = window_link_periods(
+                        row, close + 1, spelled_word.substr(0, spelled_word.find('(')) + (given == 0 ? "()" : "(...)"),
+                        file_of(where), why, &where);
+                    if (linked != success)
+                        return linked;
+                }
                 if (!is_file_word(code) && !is_window_word(code) && !is_random_word(code) && !is_test_word(code) &&
                     !is_time_word(code)) {
                     const std::string spelled(word::spelling_of(code));
@@ -2151,6 +2862,30 @@ signed long long int names_in_statement(const std::vector<std::bitset<16>> &row,
                         return satl_line_not_understood;
                     }
                 }
+                // AND THE WORDS AFTER ITS ANSWER (the author's N of 2026-10-11, "n yes"), by what it answers where
+                // that is known here -- satellite.file.new(p) a file, satellite.random.fast(1, 9) a number -- and,
+                // where only the run knows, a bare word refused unless some spacesuit has a capsule of that name. A
+                // window word's were judged above. A display's own .satellite.center() is the display's and is
+                // stepped over: the chain after it is on the number both answer.
+                std::size_t past = close + 1;
+                if (!is_window_word(code) && a_method_period(code_at(row, past))) {
+                    // NAMED WITH ITS BRACKETS, so the spelling it is told can run: satellite.infinity().satellite.string
+                    std::string receiver =
+                        spelled_word.substr(0, spelled_word.find('(')) + (given == 0 ? "()" : "(...)");
+                    if (is_display_word(code) && code_at(row, past) == token::satellite_method_token &&
+                        display_number_of(code_at(row, past + 1)) != 0) {
+                        receiver += std::string(".satellite.") + method_spelling(code_at(row, past + 1));
+                        past += 2;
+                        std::size_t shut = past, none = 0;
+                        if (code_at(row, past) == token::left_parenthesis_token && brackets_at(row, past, shut, none)) {
+                            receiver += "()";
+                            past = shut + 1;
+                        }
+                    }
+                    const signed long long int after =
+                        words_after_an_answer(row, past, kind_a_word_answers(code), receiver, where, why);
+                    if (after != success) return after;
+                }
             }
         }
 
@@ -2166,21 +2901,26 @@ signed long long int names_in_statement(const std::vector<std::bitset<16>> &row,
             std::size_t past = at;
             const std::string literal = text_at(row, past);
             const Code method = code_at(row, past + 1);
-            // WHICH PERIOD IT TAKES (method_periods.hpp): a string literal's own words are under
-            // satellite, as a name's are, and every other literal's are not -- said here in the
-            // walker's words, which call a literal "that string", "that number".
+            // WHAT THE LITERAL IS -- "that string", "that number" in the walker's words: 2.5 is a float. A number
+            // straight after a touching slash is a fraction's bottom (fraction_values.cpp), and a method on it is
+            // the fraction's: `1/3.satellite.numerator` (2026-10-11, when a fraction's words went under satellite).
+            const bool decimal = code == token::number_token && literal.find('.') != std::string::npos;
+            const bool a_fractions_bottom = code == token::number_token && before_this == token::fraction_token;
+            const satelliteObject::Kind literal_kind = code == token::string_token       ? satelliteObject::string
+                                                     : a_fractions_bottom               ? satelliteObject::fraction
+                                                     : decimal                          ? satelliteObject::floating
+                                                     : code == token::number_token      ? satelliteObject::number
+                                                     : code == token::binary_token      ? satelliteObject::binary
+                                                     : code == token::hexadecimal_token ? satelliteObject::hexadecimal
+                                                     : code == token::percentage_token  ? satelliteObject::percentage
+                                                                                        : satelliteObject::time;
+            const std::string that = std::string("that ") + (satelliteObject::kind_name_of(literal_kind) + 2);
+            // WHICH PERIOD IT TAKES (method_periods.hpp): a literal's own words are under satellite as a
+            // name's of its type are -- said here in the walker's words.
             const bool under = code_at(row, past) == token::satellite_method_token;
             if (a_method_period(code_at(row, past)) && token::is_method_code(method) &&
-                (code == token::string_token && string_number_of(method) != 0) != under) {
-                const bool decimal = code == token::number_token && literal.find('.') != std::string::npos;
-                const char *kind = code == token::string_token        ? "a string"
-                                   : decimal                          ? "a float"
-                                   : code == token::number_token      ? "a number"
-                                   : code == token::binary_token      ? "a binary"
-                                   : code == token::hexadecimal_token ? "a hex"
-                                   : code == token::time_token        ? "a time"
-                                                                      : "a percentage";
-                why = period_written_wrong(std::string("that ") + (kind + 2), method_spelling(method), kind, under);
+                (number_a_method_runs(literal_kind, method) != 0) != under) {
+                why = period_written_wrong(that, method_spelling(method), literal_kind, under);
                 return satl_line_not_understood;
             }
             const std::string period = under ? ".satellite." : ".";
@@ -2222,6 +2962,21 @@ signed long long int names_in_statement(const std::vector<std::bitset<16>> &row,
                     string_method_check(row, past + 2, bracketed, given, method, spelled, why);
                 if (judged != success)
                     return judged;
+            } else if (a_method_period(code_at(row, past)) && literal_kind == satelliteObject::number &&
+                       number_number_of(method) != 0) {
+                // A NUMBER'S OWN METHOD ON A NUMBER LITERAL (NM-8, 2026-10-11): judged as a name's is, by
+                // number_calls.hpp, and let through when it is right -- `3.satellite.max(5)`, which the line below
+                // refused as a container's word while a number had none of its own.
+                const std::string spelled = std::string("that number") + period + method_spelling(method);
+                std::size_t close = past + 2, given = 0;
+                const bool bracketed = code_at(row, past + 2) == token::left_parenthesis_token;
+                if (bracketed && !brackets_at(row, past + 2, close, given)) {
+                    why = spelled + "( is never closed on its line";
+                    return satl_line_not_understood;
+                }
+                const signed long long int judged = number_method_check(bracketed, given, method, spelled, why);
+                if (judged != success)
+                    return judged;
             } else if (a_method_period(code_at(row, past)) &&
                        (container_arity(method) >= 0 ||
                         (string_method_arity(method) >= 0 && method != token::find_token)) &&
@@ -2239,17 +2994,32 @@ signed long long int names_in_statement(const std::vector<std::bitset<16>> &row,
             }
             // AND THE REST OF ITS CHAIN, while what each link answers is known (chain_periods).
             if (a_method_period(code_at(row, past)) && token::is_method_code(method)) {
-                const bool decimal = code == token::number_token && literal.find('.') != std::string::npos;
-                const satelliteObject::Kind kind = code == token::string_token        ? satelliteObject::string
-                                                 : decimal                           ? satelliteObject::floating
-                                                 : code == token::number_token       ? satelliteObject::number
-                                                 : code == token::binary_token       ? satelliteObject::binary
-                                                 : code == token::hexadecimal_token  ? satelliteObject::hexadecimal
-                                                 : code == token::percentage_token   ? satelliteObject::percentage
-                                                                                     : satelliteObject::time;
                 const signed long long int chained =
-                    chain_periods(row, past, kind, std::string("that ") + (satelliteObject::kind_name_of(kind) + 2),
-                                  file_of(where), why);
+                    chain_periods(row, past, literal_kind, that, file_of(where), why, &where);
+                if (chained != success)
+                    return chained;
+            }
+        }
+        // A VALUE WORD AND THE WORD AFTER IT (the author's G of 2026-10-11): satellite.bool.true, a setting read by its
+        // bare name, the console's width and a fact about the machine answer a value with no brackets, and the walker
+        // reads a word after one as after a literal (expression.cpp, maybe_a_method) -- so its period is judged here,
+        // by the kind it answers, before anything runs, and the rest of its chain with it. Before that day no
+        // spelling after one could be read, and the bare one was told to mind its math signs.
+        if (word::is_word_code(code) && code_at(row, at + 1) != token::left_parenthesis_token &&
+            a_method_period(code_at(row, at + 1)) && token::is_method_code(code_at(row, at + 2))) {
+            const satelliteObject::Kind answers = kind_a_value_word_answers(code, functions);
+            if (answers != satelliteObject::how_many_kinds) {
+                const std::string spelled = word::spelling_of(code);
+                const Code method = code_at(row, at + 2);
+                const bool under = code_at(row, at + 1) == token::satellite_method_token;
+                if ((number_a_method_runs(answers, method) != 0) != under) {
+                    why = period_written_wrong(spelled, method_as_written(row, at + 2, file_of(where),
+                                                                         method_spelling(method)),
+                                               answers, under);
+                    return satl_line_not_understood;
+                }
+                const signed long long int chained =
+                    chain_periods(row, at + 1, answers, spelled, file_of(where), why, &where);
                 if (chained != success)
                     return chained;
             }
@@ -2395,6 +3165,31 @@ signed long long int check_statement(const std::vector<std::bitset<16>> &row,
         code == token::right_brace_token) {
         ++at;
         return success;
+    }
+
+    // A LINE THAT BEGINS WITH A SIGN, refused before anything runs (the author's 6 of 2026-10-11, "refuse yes"):
+    // the walker steps over a token it has no arm for, so `-n = 9` ran as n = 9 and nobody was told (ERRORS4 003).
+    // A minus belongs to the value, after the =; a lone line of the shape name = number is told its spelling.
+    if (code == token::tight_minus_token || code == token::minus_token || code == token::tight_plus_token ||
+        code == token::plus_token) {
+        const bool minus = code == token::tight_minus_token || code == token::minus_token;
+        const std::string sign = minus ? "-" : "+";
+        why = "a line does not begin with " + sign + " -- " +
+              (minus ? "a minus belongs to the value, after the =: n = -9" : "a plus is not written before a value");
+        std::size_t k = at + 1;
+        if (code_at(row, k) == token::name_token) {
+            const std::string name = text_at(row, k);
+            std::size_t v = k + 1;
+            if (code_at(row, k) == token::assign_token && code_at(row, v) == token::number_token) {
+                const std::string value = text_at(row, v);
+                const Code after = code_at(row, v);
+                if (after == token::line_end_token || after == token::comment_token || after == token::end_of_file_token)
+                    why = sign + name + " = " + value + " is written " + name + " = " + (minus ? "-" : "") + value +
+                          " -- a line does not begin with " + sign;
+            }
+        }
+        at = past_the_statement(row, at);
+        return satl_line_not_understood;
     }
 
     // satellite.delete(name), A LINE OF ITS OWN (delete_calls.hpp) -- judged before the arms below,
@@ -2790,7 +3585,9 @@ signed long long int check_statement(const std::vector<std::bitset<16>> &row,
     if (is_library_word(code) && code_at(row, at + 1) == token::method_token)
         return library_statement(capsules, where.registry, row, at, why);
 
-    if (word::is_word_code(code)) {
+    // satellite.arguments IS THE ONE WORD THAT IS NOT THIS: the run's own arguments, judged below as the bare name
+    // `arguments` was until 2026-10-11 (main_arguments.hpp).
+    if (word::is_word_code(code) && code != kTheRunsArgumentsWord) {
         // A WORD FOLLOWED BY `=` IS A SETTING BEING WRITTEN -- the third shape a
         // statement can start with, checked here so the walker's arm for it is
         // ever reached. The checker runs first and refuses what it has no shape
@@ -2806,12 +3603,11 @@ signed long long int check_statement(const std::vector<std::bitset<16>> &row,
             const NumberRow *library = functions[code];
             if (library != nullptr && library->scenarios.flag_setting != nullptr) {
                 const std::size_t stop = past_the_statement(row, at);
-                // satellite.library.arguments.access = false -- ONE OF THE ARGUMENTS TAKES A BARE
-                // true OR false (MS-2's D22), and the walker takes the same.
-                const signed long long int held =
-                    a_word_of_the_arguments(code) && a_bare_true_or_false(row, at + 2) != nullptr
-                        ? success
-                        : names_in_statement(row, at, stop, declared, where, why);
+                // satellite.library.arguments.access = satellite.bool.false -- ITS VALUE IS JUDGED AS ANY VALUE IS,
+                // so a bare true or false is refused here as everywhere, naming satellite.bool.false (the author,
+                // 2026-10-11: "So there should be no true then only an error message, and satellite.bool.true" --
+                // which ends MS-2's D22 of 2026-10-03, where the arguments took the bare word).
+                const signed long long int held = names_in_statement(row, at, stop, declared, where, why);
                 at = stop;
                 return held;
             }
@@ -2819,14 +3615,14 @@ signed long long int check_statement(const std::vector<std::bitset<16>> &row,
 
         // satellite.library.arguments.access(false) -- A SETTING'S FULL NAME, WRITTEN AS A CALL (the fresh reader,
         // 2026-10-06: told "false has no satellite.variable line"): how a line at the top of a file may spell it,
-        // and in a capsule and at the prompt the setting is changed as arguments.access(value).
+        // and in a capsule and at the prompt the setting is changed as satellite.arguments.access(value).
         if (code_at(row, at + 1) == token::left_parenthesis_token && a_word_of_the_arguments(code)) {
             const std::string spelled = word::spelling_of(code);
             const std::string key = spelled.substr(spelled.rfind("arguments.") + std::string("arguments.").size());
             if (const Setting *setting = a_setting_named(key)) {
                 why = where.at_the_prompt || setting->read == SettingRead::while_it_runs
                           ? spelled + " is how a line at the top of a file may spell it -- in a capsule, and at the "
-                                      "prompt, the setting is changed as arguments." + key + "(value)"
+                                      "prompt, the setting is changed as satellite.arguments." + key + "(value)"
                           : why_a_file_line_is_too_late(*setting, spelled, false);
                 at = past_the_statement(row, at);
                 return word_takes_no_assignment;
@@ -2868,7 +3664,8 @@ signed long long int check_statement(const std::vector<std::bitset<16>> &row,
                         const std::string written = std::string(word::spelling_of(code)) + "." + key;
                         why = where.at_the_prompt || setting->read == SettingRead::while_it_runs
                                   ? written + " is how a line at the top of a file may spell it -- in a capsule, and "
-                                              "at the prompt, the setting is changed as arguments." + key + "(value)"
+                                              "at the prompt, the setting is changed as satellite.arguments." + key +
+                                                  "(value)"
                                   : why_a_file_line_is_too_late(*setting, written, false);
                         at = past_the_statement(row, at);
                         return word_takes_no_assignment;
@@ -2909,9 +3706,13 @@ signed long long int check_statement(const std::vector<std::bitset<16>> &row,
     if (code == token::name_token && an_object_declaration_at(row, at))
         return check_object_declaration(row, at, where, declared, why);
 
-    if (code == token::name_token) {
+    // A NAME -- AND satellite.arguments, CARRIED AS THE NAME kTheRunsArguments, which no variable can have.
+    const bool the_runs_word = code == kTheRunsArgumentsWord;
+    if (code == token::name_token || the_runs_word) {
         std::size_t k = at;
-        const std::string name = text_at(row, k);
+        const std::string name = the_runs_word ? std::string(kTheRunsArguments) : text_at(row, k);
+        if (the_runs_word)
+            ++k;                         // one code, and no letters behind it
         const std::size_t stop = past_the_statement(row, at);
         // `name(` is a capsule call; `name =` is an assignment to a declared name.
         const DeclaredNames::const_iterator found = declared.find(name);
@@ -2921,7 +3722,7 @@ signed long long int check_statement(const std::vector<std::bitset<16>> &row,
         // and `a.b(` as one when no variable is named `a` (a_name_it_may_take keeps a
         // variable from ever sharing a file's or a space's name); this reads them the
         // same way, and hands names_in_statement only the ARGUMENTS.
-        {
+        if (!the_runs_word) {
             std::vector<std::string> names;
             std::size_t open = at;
             dotted_names_at(row, open, names);
@@ -2963,14 +3764,22 @@ signed long long int check_statement(const std::vector<std::bitset<16>> &row,
                 }
             }
         }
+        // THE BARE NAME THE RUN'S OWN ARGUMENTS HAD UNTIL 2026-10-11, where no name of this body is called that:
+        // refused before anything runs, naming the new spelling (main_arguments.hpp).
+        if (!the_runs_word && name == kTheOldBareArguments && found == declared.end() &&
+            code_at(row, k) != token::left_parenthesis_token) {
+            why = the_bare_arguments_refused(row, k);
+            at = stop;
+            return name_not_declared;
+        }
         // THE ARGUMENTS, WRITTEN (main_arguments.hpp, setting_writes.hpp) -- by main's own name for them,
-        // or as THE RUN'S OWN BY THEIR BARE NAME where this body has no name called arguments (the author,
-        // 2026-10-06): `x.row = v`, and `x.row(v)` -- "the alias syntax using = ... does the same
+        // or as THE RUN'S OWN, satellite.arguments (the author, 2026-10-06, of the bare name it had until
+        // 2026-10-11): `x.row = v`, and `x.row(v)` -- "the alias syntax using = ... does the same
         // thing". Judged here, before anything runs, in the words the walker asks: a setting is written
         // (for good at the prompt, for this run in a file, unless a file's line is too late for it), a
         // row satl holds is not, and a name of the program's own is main's. `argz.n += 1` is refused as
         // every name's `+=` is.
-        const bool the_runs = found == declared.end() && name == kTheRunsArguments;
+        const bool the_runs = the_runs_word;
         const bool an_arguments = the_runs || (found != declared.end() && found->second == word::code_of(1, 6, 21));
         if (an_arguments && code_at(row, k) == token::method_token) {
             ArgumentWrite write;
@@ -2997,10 +3806,9 @@ signed long long int check_statement(const std::vector<std::bitset<16>> &row,
                     at = stop;
                     return satl_line_not_understood;
                 }
-                // A BARE true OR false IS THE VALUE IN THE BRACKETS TOO (MS-2's D22).
-                const signed long long int held = a_bare_true_or_false_in_brackets(row, open + 1) != nullptr
-                                                      ? success
-                                                      : names_in_statement(row, open + 1, close, declared, where, why);
+                // ITS VALUE IS JUDGED AS ANY VALUE IS: a bare true or false in the brackets is refused, naming
+                // satellite.bool.false (the author, 2026-10-11, which ends MS-2's D22).
+                const signed long long int held = names_in_statement(row, open + 1, close, declared, where, why);
                 at = stop;
                 return held;
             }
@@ -3008,30 +3816,29 @@ signed long long int check_statement(const std::vector<std::bitset<16>> &row,
                 signed long long int held = after_the_name(row, past, name + "." + key, false, why);
                 if (held == success) {
                     why = why_an_argument_is_not_written(key, name, nullptr, where.arguments, where.functions, write);
-                    // A BARE true OR false IS TAKEN HERE (MS-2's D22): `argz.access = false`.
+                    // ITS VALUE IS JUDGED AS ANY VALUE IS: `argz.access = false` is refused, naming
+                    // satellite.bool.false (the author, 2026-10-11, which ends MS-2's D22).
                     held = !why.empty() ? word_takes_no_assignment
-                           : after == token::assign_token && a_bare_true_or_false(row, past + 1) != nullptr
-                               ? success
-                               : names_in_statement(row, past + 1, stop, declared, where, why);
+                                        : names_in_statement(row, past + 1, stop, declared, where, why);
                 }
                 at = stop;
                 return held;
             }
         }
-        // THE RUN'S OWN, NOT WRITTEN: a line that only reads it -- `arguments.username.upper()` -- is
+        // THE RUN'S OWN, NOT WRITTEN: a line that only reads it -- `satellite.arguments.username.upper()` -- is
         // judged as the expression it is; a key in brackets is main's copy's, and the run's own rows are
-        // changed by their settings, arguments.<row>(value).
+        // changed by their settings, satellite.arguments.<row>(value).
         if (the_runs) {
             if (code_at(row, k) == token::left_square_bracket_token) {
-                why = "arguments[...] as a line of its own writes a key, and the bare name arguments is the run's own "
-                      "rows, changed only by their settings -- arguments.<row>(value); a row is read with "
-                      "arguments.<row> or arguments[\"row\"]";
+                why = "satellite.arguments[...] as a line of its own writes a key, and satellite.arguments is the "
+                      "run's own rows, changed only by their settings -- satellite.arguments.<row>(value); a row is "
+                      "read with satellite.arguments.<row> or satellite.arguments[\"row\"]";
                 at = stop;
                 return satl_line_not_understood;
             }
-            // `arguments.infinity[1] = 5`, `arguments.mine[1] = 5` -- AN ITEM OF A ROW: before anything runs,
-            // as main's is (the fresh reader, 2026-10-06): a setting is given a value whole, a fact is satl's,
-            // and a name of the program's own is main's.
+            // `satellite.arguments.infinity[1] = 5`, `satellite.arguments.mine[1] = 5` -- AN ITEM OF A ROW: before
+            // anything runs, as main's is (the fresh reader, 2026-10-06): a setting is given a value whole, a fact
+            // is satl's, and a name of the program's own is main's.
             {
                 std::string row_key;
                 const std::size_t past = past_the_argument_names(row, k, row_key);
@@ -3043,8 +3850,9 @@ signed long long int check_statement(const std::vector<std::bitset<16>> &row,
                     write.at_the_prompt = where.at_the_prompt;
                     write.the_runs = true;
                     why = a_setting_named(row_key) != nullptr
-                              ? "arguments." + row_key + " is a setting, given a value whole -- arguments." + row_key +
-                                    "(value) -- and there is nothing inside it to change"
+                              ? "satellite.arguments." + row_key + " is a setting, given a value whole -- "
+                                    "satellite.arguments." + row_key + "(value) -- and there is nothing inside it "
+                                    "to change"
                               : why_an_argument_is_not_written(row_key, name, nullptr, where.arguments,
                                                                where.functions, write);
                     at = stop;
@@ -3052,8 +3860,8 @@ signed long long int check_statement(const std::vector<std::bitset<16>> &row,
                 }
             }
             if (!a_method_period(code_at(row, k))) {
-                why = "arguments is the run's own rows, and not a variable to give a value -- a row is read with "
-                      "arguments.<row>, and a setting changed with arguments.<row>(value)";
+                why = "satellite.arguments is the run's own rows, and not a variable to give a value -- a row is read "
+                      "with satellite.arguments.<row>, and a setting changed with satellite.arguments.<row>(value)";
                 at = stop;
                 return satl_line_not_understood;
             }
@@ -3088,9 +3896,9 @@ signed long long int check_statement(const std::vector<std::bitset<16>> &row,
             const std::size_t past = past_the_argument_names(row, k, key);
             // `argz["access"] = false` -- ONE KEY IN BRACKETS. A setting by its key is judged here, before
             // anything runs, as its dotted spelling is: a sentence that says a capsule's line is too late
-            // must not be said after main's lines have run (the fresh reader, 2026-10-04). With a bare true
-            // or false (MS-2's D22) the key is judged as any value is, and the walker takes the bare word
-            // as the row's true or false.
+            // must not be said after main's lines have run (the fresh reader, 2026-10-04). Its value is judged
+            // below as any value is -- a bare true or false refused, naming satellite.bool.false (the author,
+            // 2026-10-11, which ends MS-2's D22).
             if (past == k && code_at(row, k) == token::left_square_bracket_token) {
                 std::size_t close = 0, count = 0;
                 if (brackets_at(row, k, close, count) && count == 1 && code_at(row, close + 1) == token::assign_token) {
@@ -3100,11 +3908,6 @@ signed long long int check_statement(const std::vector<std::bitset<16>> &row,
                         why = why_an_argument_is_not_written(key, name, nullptr, where.arguments, where.functions,
                                                              write);
                         if (!why.empty()) { at = stop; return word_takes_no_assignment; }
-                    }
-                    if (a_bare_true_or_false(row, close + 2) != nullptr) {
-                        const signed long long int held = names_in_statement(row, k + 1, close, declared, where, why);
-                        at = stop;
-                        return held;
                     }
                 }
             }
@@ -3363,7 +4166,7 @@ signed long long int check_program(const BytecodeRegistry &registry,
     }
 
     // EVERY NAME A WIDGET IS GIVEN, IN EVERY FILE (the author's .widgets, 2026-10-09):
-    // `.widgets.displays.file("file_display")` anywhere makes `my_window.file_display` a name the
+    // `.satellite.widgets.display.file("file_display")` anywhere makes `my_window.file_display` a name the
     // program may write anywhere -- in main, and in the capsule a key runs. THE NAME IS WRITTEN IN
     // QUOTES, so it is known before the run: a name worked out by the run could never be checked.
     std::unordered_set<std::string> widget_names;
@@ -3375,14 +4178,33 @@ signed long long int check_program(const BytecodeRegistry &registry,
             const std::vector<std::bitset<16>> &row = registry[site.row];
             for (std::size_t at = 0; at < row.size(); ) {
                 const Code code = code_at(row, at);
-                // `.displays.file(...)` and `.displays.input(...)` -- and `.section(...)` on a window or a
-                // section (2026-10-10), whose name is reached after in the same way: main_window.top.
-                const bool a_display = code == token::displays_token && code_at(row, at + 1) == token::method_token &&
-                                       makes_a_widget(code_at(row, at + 2));
-                const bool a_section = code == token::method_token && code_at(row, at + 1) == token::section_token;
+                // `.satellite.widgets.display.file(...)` and `.satellite.widgets.display.input(...)`, one word each
+                // (2026-10-10 ~21:15) -- and `.satellite.section(...)` on a window or a section (2026-10-10), whose
+                // name is reached after in the same way: main_window.top. Either period: a word written the old
+                // way is refused where it is written, by its spelling.
+                const bool a_display = a_method_period(code) && makes_a_widget(code_at(row, at + 1));
+                const bool a_section = a_method_period(code) && code_at(row, at + 1) == token::section_token;
+                // THE WIDGET WORD WRITTEN AS ITS PARTS -- `.display.file("files")`, `.displays.input(...)` -- names
+                // its widget too, and is not judged here: its line is refused for its spelling, and a name it gave
+                // must not be refused again, wherever it is used, as one nobody gave.
+                if ((code == token::display_token || code == token::displays_token) &&
+                    a_method_period(code_at(row, at + 1)) &&
+                    (code_at(row, at + 2) == token::file_piece_token ||
+                     code_at(row, at + 2) == token::input_piece_token)) {
+                    std::size_t k = at + 4;
+                    std::string why;
+                    if (code_at(row, at + 3) == token::left_parenthesis_token &&
+                        code_at(row, k) == token::string_token) {
+                        const std::string named = text_at(row, k);
+                        if (a_widget_name_fits(named, why))
+                            widget_names.insert(named);
+                    }
+                    ++at;
+                    continue;
+                }
                 if (a_display || a_section) {
-                    const std::size_t made_at = a_display ? at + 2 : at + 1;
-                    const std::string spelled = std::string(".") + token::method_name_of(code_at(row, made_at));
+                    const std::size_t made_at = at + 1;
+                    const std::string spelled = std::string(".satellite.") + token::method_name_of(code_at(row, made_at));
                     // THE NAME FIRST, IN QUOTES, and then the bracket -- or, with a size after it, a comma:
                     // .file("files", 100%, 100%), .section("top", 100%, 50%).
                     std::size_t k = made_at + 2;
@@ -3467,17 +4289,20 @@ signed long long int check_program(const BytecodeRegistry &registry,
         // the arguments variable, every row satl holds (main_arguments.hpp).
         for (const CapsuleParameter &takes : site.parameters) {
             std::string why;
-            // satellite.main's parameter may be called arguments: it IS the arguments (a_name_it_may_take).
-            const signed long long int named =
-                site.name == "satellite.main" && takes.name == kTheRunsArguments
-                    ? success
-                    : a_name_it_may_take(capsules, site.scope, takes.name, why);
+            const signed long long int named = a_name_it_may_take(capsules, site.scope, takes.name, why);
             if (named != success)
                 return raise_at(named, why, site.shown, state, row, site.declared_at, "satl(check)");
             if (declared.count(takes.name) != 0)
                 return raise_at(name_declared_twice, declared_twice(where, takes.name), site.shown, state, row,
                                 site.declared_at, "satl(check)");
-            // main's is the arguments variable, whatever type it was written with.
+            // main's is the arguments variable, and is WRITTEN as one (the author's K of 2026-10-11): the older
+            // header, main(satellite.container.list<satellite.variable.string> arguments), is refused by name.
+            if (site.name == "satellite.main" && takes.declared() != word::code_of(1, 6, 21))
+                return raise_at(satl_line_not_understood,
+                                "satellite.main's parameter is written satellite.variable.arguments " + takes.name +
+                                    " now -- it holds the arguments, and " + std::string(word::spelling_of(takes.declared())) +
+                                    " was their older spelling",
+                                site.shown, state, row, site.declared_at, "satl(check)");
             declared[takes.name] = site.name == "satellite.main" ? word::code_of(1, 6, 21) : takes.declared();
             remember_shape(where, takes.name, takes.shape);
         }
@@ -3555,6 +4380,7 @@ signed long long int check_program(const BytecodeRegistry &registry,
             EndingNames ending;
             Where where{registry, capsules, s, functions};
             where.field = true;
+            where.arguments = state.arguments;   // satl's rows, as the other three places have them (N, 2026-10-11)
             std::size_t at = field.at;
             std::string why;
             const signed long long int code_of_line = check_statement(row, at, where, declared, ending, why);

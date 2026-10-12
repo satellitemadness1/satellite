@@ -556,3 +556,120 @@
 1 6 1 26	satellite.variable.string.add(x)	
 1 4 2 27	satellite.container.list.by_name	
 1 4 2 28	satellite.container.list.by_value	
+1 6 2 12	satellite.variable.file.append(x)	
+1 6 2 13	satellite.variable.file.insert(n, x)	
+1 6 2 14	satellite.variable.file.replace(a, b)	
+1 6 2 15	satellite.variable.file.index_of(x)	
+1 6 2 16	satellite.variable.file.search(x)	
+1 6 2 17	satellite.variable.file.contains(x)	
+1 6 2 18	satellite.variable.file.remove_at(n)	
+1 6 2 19	satellite.variable.file.remove(x)	
+1 6 2 20	satellite.variable.file.remove_first	
+1 6 2 21	satellite.variable.file.remove_last	
+1 6 2 22	satellite.variable.file.truncate(n)	
+1 6 2 23	satellite.variable.file.clear	
+1 6 2 24	satellite.variable.file.size	
+1 6 2 25	satellite.variable.file.empty	
+1 6 2 26	satellite.variable.file.first	
+1 6 2 27	satellite.variable.file.last	
+1 6 2 28	satellite.variable.file.save	
+1 6 2 29	satellite.variable.file.lock	
+1 6 2 30	satellite.variable.file.unlock	
+1 10 1	satellite.spacesuit.pointer()	
+1 10 2	satellite.spacesuit.reference()	
+1 10 3	satellite.spacesuit.ok()	
+1 10 4	satellite.spacesuit.lock()	
+1 10 5	satellite.spacesuit.unlock()	
+1 5 1 1	satellite.console.display.center	
+1 5 1 2	satellite.console.display.centre	
+1 6 18 1	satellite.variable.window.append(piece, across, down)	
+1 6 18 2	satellite.variable.window.open()	
+1 6 18 3	satellite.variable.window.close()	
+1 6 18 4	satellite.variable.window.focus()	
+1 6 18 5	satellite.variable.window.title(text)	
+1 6 18 6	satellite.variable.window.pressed(capsule)	
+1 6 18 7	satellite.variable.window.press()	
+1 6 18 8	satellite.variable.window.text(words)	
+1 6 18 9	satellite.variable.window.on(on)	
+1 6 18 10	satellite.variable.window.value(x)	
+1 6 18 11	satellite.variable.window.chosen(item)	
+1 6 18 12	satellite.variable.window.path(file)	
+1 6 18 13	satellite.variable.window.changed(capsule)	
+1 6 18 14	satellite.variable.window.closed(capsule)	
+1 6 18 15	satellite.variable.window.resize(wide, tall)	
+1 6 18 16	satellite.variable.window.width	
+1 6 18 17	satellite.variable.window.height	
+1 6 18 18	satellite.variable.window.fullscreen(on)	
+1 6 18 19	satellite.variable.window.colour(colour)	
+1 6 18 20	satellite.variable.window.background(colour)	
+1 6 18 21	satellite.variable.window.font(face, size)	
+1 6 18 22	satellite.variable.window.every(capsule, milliseconds)	
+1 6 18 23	satellite.variable.window.key(capsule)	
+1 6 18 24	satellite.variable.window.clicked(capsule)	
+1 6 18 25	satellite.variable.window.message(saying)	
+1 6 18 26	satellite.variable.window.ask(capsule, question)	
+1 6 18 27	satellite.variable.window.choose_a_file(capsule)	
+1 6 18 28	satellite.variable.window.answer	
+1 6 18 29	satellite.variable.window.menu(a_menu)	
+1 6 18 30	satellite.variable.window.item(capsule, words)	
+1 6 18 31	satellite.variable.window.separator()	
+1 6 18 32	satellite.variable.window.line(from_across, from_down, to_across, to_down)	
+1 6 18 33	satellite.variable.window.box(across, down, wide, tall)	
+1 6 18 34	satellite.variable.window.circle(across, down, radius)	
+1 6 18 35	satellite.variable.window.write(across, down, words)	
+1 6 18 36	satellite.variable.window.arc(across, down, radius, from_degrees, to_degrees)	
+1 6 18 37	satellite.variable.window.thickness(pixels)	
+1 6 18 38	satellite.variable.window.outline(on)	
+1 6 18 39	satellite.variable.window.across	
+1 6 18 40	satellite.variable.window.down	
+1 6 18 41	satellite.variable.window.clear()	
+1 6 18 42	satellite.variable.window.save(path)	
+1 6 18 43	satellite.variable.window.display(words)	
+1 6 18 44	satellite.variable.window.typed(capsule)	
+1 6 18 45	satellite.variable.window.home()	
+1 6 18 46	satellite.variable.window.columns	
+1 6 18 47	satellite.variable.window.rows	
+1 6 18 48	satellite.variable.window.scroll	
+1 6 18 48 1	satellite.variable.window.scroll.vertical(on)	
+1 6 18 48 2	satellite.variable.window.scroll.horizontal(on)	
+1 6 18 49	satellite.variable.window.widgets	
+1 6 18 49 1	satellite.variable.window.widgets.display	
+1 6 18 49 1 1	satellite.variable.window.widgets.display.file(name)	
+1 6 18 49 1 2	satellite.variable.window.widgets.display.input(name)	
+1 6 18 50	satellite.variable.window.directory(path)	
+1 6 18 51	satellite.variable.window.listen(capsule)	
+1 6 18 52	satellite.variable.window.section(name, width, height)	
+1 6 18 53	satellite.variable.window.ok	
+1 6 11 11	satellite.variable.hex.add(x)	
+1 6 11 12	satellite.variable.hex.reverse	
+1 6 5 13	satellite.variable.binary.add(x)	
+1 6 5 14	satellite.variable.binary.reverse	
+1 6 19 1	satellite.variable.color.transparency	
+1 6 19 2	satellite.variable.color.string	
+1 6 19 3	satellite.variable.color.number	
+1 6 19 4	satellite.variable.color.binary	
+1 6 19 5	satellite.variable.color.hex	
+1 6 20 1	satellite.variable.fraction.numerator	
+1 6 20 2	satellite.variable.fraction.denominator	
+1 6 20 3	satellite.variable.fraction.string	
+1 6 16 1	satellite.variable.percentage.string	
+1 6 16 2	satellite.variable.percentage.add(x)	
+1 6 6 1	satellite.variable.bool.string	
+1 6 3 1	satellite.variable.time.string	
+1 6 4 21	satellite.variable.number.add(x)	
+1 6 4 22	satellite.variable.number.reverse	
+1 6 4 23	satellite.variable.number.bytes	
+1 6 17 1	satellite.variable.infinity.string	
+1 6 17 2	satellite.variable.infinity.power_of(x)	
+1 6 17 3	satellite.variable.infinity.resize(n)	
+1 6 17 4	satellite.variable.infinity.nines	
+1 4 1 11	satellite.container.map.first	
+1 4 1 12	satellite.container.map.last	
+1 4 1 13	satellite.container.map.sort(by)	
+1 4 1 14	satellite.container.map.reverse	
+1 4 1 15	satellite.container.map.remove_first()	
+1 4 1 16	satellite.container.map.remove_last()	
+1 34	satellite.arguments	
+1 6 6 2	satellite.variable.bool.add(x)	
+1 6 10 6	satellite.variable.float.reverse	
+1 6 20 4	satellite.variable.fraction.reverse	

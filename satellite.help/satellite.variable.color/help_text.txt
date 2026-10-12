@@ -15,14 +15,17 @@ A later line like c = 00ff00, digits that start with a number and hold a
 letter, needs its x, and the refusal says so.
 
 A colour can be see-through. Its transparency is a whole number from 0 (solid)
-to 99 (almost clear), set either of two ways: c.transparency(50), or a comma
-after the colour, c = x000000, 50. c.transparency reads it back. A colour with
-a transparency shows as x000000, 50, the way you write it.
+to 99 (almost clear), set either of two ways: c.satellite.transparency(50), or a
+comma after the colour, c = x000000, 50. c.satellite.transparency reads it back.
+A colour with a transparency shows as x000000, 50, the way you write it.
 
 == and != compare the digits and the transparency; a colour has no order and
-no arithmetic. .number is what the six digits are worth, .hex is the six
-digits, .binary is its 24 bits, and .string is how it is shown. Saturation is
-not part of a colour.
+no arithmetic. .satellite.number is what the six digits are worth,
+.satellite.hex is the six digits, .satellite.binary is its 24 bits, and
+.satellite.string is how it is shown. Since 2026-10-11 a colour's words are
+written with satellite. in front of them, as every word built into the language
+is; the old sky.number is refused before anything runs, naming the new
+spelling. Saturation is not part of a colour.
 
 example:
 
@@ -34,10 +37,10 @@ satellite.capsule satellite.main(satellite.variable.arguments arguments)
     satellite.variable.colour ink = x000000, 50
     satellite.console.display(sky) // x87CEEB
     satellite.console.display(ink) // x000000, 50
-    sky.transparency(40)
-    satellite.console.display(sky.transparency) // 40
+    sky.satellite.transparency(40)
+    satellite.console.display(sky.satellite.transparency) // 40
     satellite.console.display(sky) // x87CEEB, 40
-    satellite.console.display(sky.number) // 8900331
-    satellite.console.display(sky.hex) // 87CEEB
+    satellite.console.display(sky.satellite.number) // 8900331
+    satellite.console.display(sky.satellite.hex) // 87CEEB
     satellite.return(satellite)
 }

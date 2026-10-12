@@ -1,7 +1,7 @@
 satellite.include(satellite)
-arguments.float.decimal(128)
-arguments.float.whole(4096)
-arguments.infinity_display(32)
+satellite.arguments.float.decimal(128)
+satellite.arguments.float.whole(4096)
+satellite.arguments.infinity_display(32)
 
 // full_numbers_1 -- satellite.test.full(): satellite.variable.number, every operator, method and
 // conversion its help page lists. One line a check: "ok <what>", or "WRONG <what>: <answered>
@@ -36,27 +36,27 @@ satellite.capsule satellite.main()
     {
         satellite.variable.bool show = turn == rounds
         satellite.variable.number n = 87
-        check(show, "number + - * add, take away and multiply, below zero too", (n + 13).string + " " + (n - 100).string + " " + (6 * 7).string, "100 -13 42")
-        check(show, "number / is whole-number division, cut toward zero", (4 / 3).string + " " + (-7 / 2).string, "1 -3")
-        check(show, "number % takes the sign of the number divided", (-7 % 2).string + " " + (7 % -2).string, "-1 1")
-        check(show, "number ^ is power, grouped right to left", (2 ^ 10).string + " " + (2 ^ 3 ^ 2).string, "1024 512")
-        check(show, "number ** is the second spelling of ^", (2 ** 3 ** 2).string, "512")
-        check(show, "number * / % bind tighter than + and -", (2 + 3 * 4).string + " " + (2 + 10 % 4).string + " " + (1 - 10 / 3).string, "14 4 -2")
-        check(show, "number - and / group left to right, and brackets come first", (10 - 3 - 2).string + " " + (100 / 10 / 5).string + " " + ((2 + 3) * 4).string, "5 2 20")
-        check(show, "number a touching minus is part of the number, -2 ^ 2 is 4", (-2 ^ 2).string, "4")
-        check(show, "number has no size limit and never wraps", (2 ^ 70).string + " " + (18446744073709551615 + 1).string, "1180591620717411303424 18446744073709551616")
-        check(show, "number * / % past one unsigned long long", (12345678901234567890123 * 98765432109876543210).string + " " + (2 ^ 64 / 3).string + " " + (2 ^ 64 % 1000007).string, "1219326311370217952249611949260778341714830 6148914691236517205 919788")
-        check(show, "number 2 ^ -1 is the float 0.5", (2 ^ -1).string, "0.5")
-        check(show, "number == != < > <= >= answer true or false", (5 == 5).string + " " + (5 != 5).string + " " + (-5 < 3).string + " " + (n > 50).string + " " + (5 <= 5).string + " " + (5 >= 6).string, "true false true true true false")
-        check(show, "number - in front of a name turns it over", (-n).string, "-87")
-        check(show, "number .string .to_string and .str are its base 10 text", n.string + " " + n.to_string + " " + n.str, "87 87 87")
-        check(show, "number .binary and .bin are its base 2 text, .hex its base 16 text", n.binary + " " + n.bin + " " + n.hex + " " + (255).hex, "1010111 1010111 57 FF")
-        check(show, "number .reverse() turns its digits round and keeps the sign", n.reverse().string + " " + (-120).reverse().string, "78 -21")
-        check(show, "number .add(x) is +", n.add(13).string, "100")
-        check(show, "number meets text by what the text says: a number in quotes is added, other text joined", (5 + "2").string + " " + (5 + "a"), "7 5a")
+        check(show, "number + - * add, take away and multiply, below zero too", (n + 13).satellite.string + " " + (n - 100).satellite.string + " " + (6 * 7).satellite.string, "100 -13 42")
+        check(show, "number / is whole-number division, cut toward zero", (4 / 3).satellite.string + " " + (-7 / 2).satellite.string, "1 -3")
+        check(show, "number % takes the sign of the number divided", (-7 % 2).satellite.string + " " + (7 % -2).satellite.string, "-1 1")
+        check(show, "number ^ is power, grouped right to left", (2 ^ 10).satellite.string + " " + (2 ^ 3 ^ 2).satellite.string, "1024 512")
+        check(show, "number ** is the second spelling of ^", (2 ** 3 ** 2).satellite.string, "512")
+        check(show, "number * / % bind tighter than + and -", (2 + 3 * 4).satellite.string + " " + (2 + 10 % 4).satellite.string + " " + (1 - 10 / 3).satellite.string, "14 4 -2")
+        check(show, "number - and / group left to right, and brackets come first", (10 - 3 - 2).satellite.string + " " + (100 / 10 / 5).satellite.string + " " + ((2 + 3) * 4).satellite.string, "5 2 20")
+        check(show, "number a touching minus is part of the number, -2 ^ 2 is 4", (-2 ^ 2).satellite.string, "4")
+        check(show, "number has no size limit and never wraps", (2 ^ 70).satellite.string + " " + (18446744073709551615 + 1).satellite.string, "1180591620717411303424 18446744073709551616")
+        check(show, "number * / % past one unsigned long long", (12345678901234567890123 * 98765432109876543210).satellite.string + " " + (2 ^ 64 / 3).satellite.string + " " + (2 ^ 64 % 1000007).satellite.string, "1219326311370217952249611949260778341714830 6148914691236517205 919788")
+        check(show, "number 2 ^ -1 is the float 0.5", (2 ^ -1).satellite.string, "0.5")
+        check(show, "number == != < > <= >= answer true or false", (5 == 5).satellite.string + " " + (5 != 5).satellite.string + " " + (-5 < 3).satellite.string + " " + (n > 50).satellite.string + " " + (5 <= 5).satellite.string + " " + (5 >= 6).satellite.string, "true false true true true false")
+        check(show, "number - in front of a name turns it over", (-n).satellite.string, "-87")
+        check(show, "number .satellite.string .satellite.to_string and .satellite.str are its base 10 text", n.satellite.string + " " + n.satellite.to_string + " " + n.satellite.str, "87 87 87")
+        check(show, "number .satellite.binary and .satellite.bin are its base 2 text, .satellite.hex its base 16 text", n.satellite.binary + " " + n.satellite.bin + " " + n.satellite.hex + " " + (255).satellite.hex, "1010111 1010111 57 FF")
+        check(show, "number .satellite.reverse() turns its digits round and keeps the sign", n.satellite.reverse().satellite.string + " " + (-120).satellite.reverse().satellite.string, "78 -21")
+        check(show, "number .satellite.add(x) is +", n.satellite.add(13).satellite.string, "100")
+        check(show, "number meets text by what the text says: a number in quotes is added, other text joined", (5 + "2").satellite.string + " " + (5 + "a"), "7 5a")
         satellite.variable.number from_binary = b0011
         satellite.variable.number from_hex = x1F
-        check(show, "number a number name given a binary or a hex holds what it is worth", from_binary.string + " " + from_hex.string, "3 31")
+        check(show, "number a number name given a binary or a hex holds what it is worth", from_binary.satellite.string + " " + from_hex.satellite.string, "3 31")
     }
     satellite.return(satellite)
 }

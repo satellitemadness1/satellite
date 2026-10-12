@@ -9,10 +9,10 @@ satellite.capsule satellite.main()
     satellite.statement.if (n == 1)
     {
         satellite.variable.file notes = satellite.file.new("block_notes.se", "text")
-        notes.append("written inside the block")
+        notes.satellite.append("written inside the block")
     }
     satellite.variable.file again = satellite.file.open("block_notes.se")
-    satellite.console.display(again.size)
+    satellite.console.display(again.satellite.size)
     satellite.console.display(again[1])
     satellite.return(satellite)
 }

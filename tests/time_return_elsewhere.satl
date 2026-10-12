@@ -10,7 +10,7 @@ satellite.capsule quit_soon()
 satellite.capsule satellite.main()
 {
     satellite.variable.thread t = satellite.thread.new(quit_soon())
-    t.start()
+    t.satellite.start()
     satellite.time.sleep(3600s)
     satellite.console.display("never reached")
     satellite.return(satellite)

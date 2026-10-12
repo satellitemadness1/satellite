@@ -16,10 +16,12 @@ any of five named options, each written name=value, once, after the value:
   background=x000000         the colour behind it
   bold=satellite.bool.true   italic=satellite.bool.true
 
-.center() written after the call -- satellite.console.display("title").center(),
-or .centre() -- puts the line in the middle of the console, for the width the
-console has as the line is shown; a later resize moves nothing, and into a pipe
-or a file the line goes as written.
+.satellite.center() written after the call --
+satellite.console.display("title").satellite.center(), or .satellite.centre() --
+puts the line in the middle of the console, for the width the console has as the
+line is shown; a later resize moves nothing, and into a pipe or a file the line
+goes as written. It is the word satellite.console.display.center, 1 5 1 1, so
+.center() with a bare . is refused before anything runs, naming it.
 
 The style lasts for that one line. satl writes it as the terminal's own codes,
 so it shows in any terminal and in satl's own console; into a pipe or a file the
@@ -33,7 +35,7 @@ on its own.
 A display hands its line to satl's printing thread and the program goes straight
 on; the line reaches the screen a moment later, always in the order it was
 displayed, and before any report that comes after it. A program must not display
-faster than the console can print: when more than arguments.display.buffer lines
+faster than the console can print: when more than satellite.arguments.display.buffer lines
 are waiting for the console -- 131072, unless ~/.satl/config.ini says
 display.buffer = ... -- the program stops with S840 and exits 65. Displaying into
 a pipe nobody reads, or into a less nobody scrolls, reaches it too.
@@ -60,32 +62,44 @@ puts the cursor in the top-left corner; .home() only moves the cursor there,
 for a frame drawn over the last one.
 
 Not built yet in satellite 004: .input(prompt, target) and .typed(). A console
-you make yourself, below, has its own .typed, and that is built.
+you make yourself, below, has its own .satellite.typed, and that is built.
 
 satellite.console.new(title, width, height) makes a console of your own: a
 window whose whole inside is a terminal. It answers a satellite.variable.window
-and has every method a window has -- .close(), .title, .resize, .closed, .key,
-.every, .message, .ask, .menu -- and these of its own:
+and has every method a window has, each written with satellite. in front of it
+as a window's are -- .satellite.close(), .satellite.title, .satellite.resize,
+.satellite.closed, .satellite.key, .satellite.every, .satellite.message,
+.satellite.ask, .satellite.menu -- and these of its own:
 
-  c.display("words")   one line into the console; a number shows as its digits
-  c.typed(a_capsule)   the capsule that runs when a person finishes a line
-  c.typed              read bare, the last line a person finished
-  c.clear()  c.home()  empty the screen; put the cursor in the top-left corner
-  c.columns  c.rows    how many characters fit across, and lines fit down
-  c.colour("#000000")  c.background("#90D5FF")  c.font("IBM Plex Mono", 12)
+  c.satellite.display("words")   one line into the console; a number shows as
+                                 its digits
+  c.satellite.typed(a_capsule)   the capsule that runs when a person finishes a
+                                 line
+  c.satellite.typed              read bare, the last line a person finished
+  c.satellite.clear()  c.satellite.home()   empty the screen; put the cursor in
+                                            the top-left corner
+  c.satellite.columns  c.satellite.rows     how many characters fit across, and
+                                            lines fit down
+  c.satellite.colour("#000000")  c.satellite.background("#90D5FF")
+  c.satellite.font("IBM Plex Mono", 12)
 
 A console scrolls up and down -- a bar down its right side, and no ceiling on
-the lines it keeps -- and sideways: it is 2048 characters wide, wraps nothing,
-and a bar along the bottom appears when a line runs past the window. Each is on
-unless the rows arguments.scroll.vertical and arguments.scroll.horizontal say
-false (in config.ini, at the prompt, or at the top of a file: arguments.scroll.horizontal
-= false wraps long lines again), and satl's own console follows a change at
-once. A console of your own has c.scroll.vertical(0) and c.scroll.horizontal(0)
-to turn each off, (1) on, and each read bare answers which.
+the lines it keeps -- and sideways: it is as wide as the widest line it has
+printed (or the window, when that is wider), wraps nothing, and has a bar along
+the bottom; Shift with the wheel moves it. Each is on
+unless the rows satellite.arguments.scroll.vertical and
+satellite.arguments.scroll.horizontal say false (in config.ini, at the prompt,
+or at the top of a file: satellite.arguments.scroll.horizontal =
+satellite.bool.false wraps long lines again), and satl's own console follows a
+change at once. A console
+of your own has c.satellite.scroll.vertical(0) and
+c.satellite.scroll.horizontal(0) to turn each off, (1) on, and each read bare
+answers which.
 
-A console holds no pieces: .append is refused, and .text is sent to .display.
-satellite.console.display still writes to standard output, never into a console
-you made -- c.display is how words get into that one.
+A console holds no pieces: .satellite.append is refused, and .satellite.text is
+sent to .satellite.display. satellite.console.display still writes to standard
+output, never into a console you made -- c.satellite.display is how words get
+into that one.
 
 satl --console [file.satl] [words...] runs your program -- or, with no file,
 the prompt -- in a console of satl's own. satl's input and output ARE that
@@ -105,7 +119,7 @@ satellite.include(satellite)
 
 satellite.capsule when_typed(satellite.variable.window the_console)
 {
-    the_console.display("you typed " + the_console.typed)
+    the_console.satellite.display("you typed " + the_console.satellite.typed)
 }
 
 satellite.capsule satellite.main()
@@ -115,16 +129,16 @@ satellite.capsule satellite.main()
     satellite.console.display(n + 1)         // 5
     satellite.console.display(n > 3)         // true
     satellite.console.display({1, "two"})    // {1, "two"}
-    satellite.console.display("careful", foreground=xFF8800, bold=satellite.bool.true) // careful, orange and bold
-    satellite.console.display("Loading", end="...")
+    satellite.console.display("careful", satellite.foreground=xFF8800, satellite.bold=satellite.bool.true) // careful, orange and bold
+    satellite.console.display("Loading", satellite.end="...")
     satellite.console.display(" done")       // Loading... done
     satellite.console.foreground(x33FF33)
     satellite.console.display("green")       // green, in green
     satellite.console.foreground()
 
     satellite.variable.window c = satellite.console.new("a console", 800, 600)
-    c.display("type a line and press Enter")
-    c.typed(when_typed)
+    c.satellite.display("type a line and press Enter")
+    c.satellite.typed(when_typed)
 
     satellite.return(satellite)
 }

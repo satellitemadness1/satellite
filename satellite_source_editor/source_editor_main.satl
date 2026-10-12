@@ -11,7 +11,7 @@ satellite.capsule satellite.main(satellite.variable.arguments arguments)
 
     // now 50% of the window is made of this file display,
 
-    main_window.open()
+    main_window.satellite.open()
 
     // satellite.variable.string local_directory_input = main_window.file_display.text_input.listen()
 

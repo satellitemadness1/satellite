@@ -14,8 +14,8 @@ satellite.capsule satellite.main()
     satellite.statement.for(satellite.variable.number i = 1; i <= 10; i++)
     {
         satellite.variable.window my_window = satellite.window.new("window " + i, 800, 600)
-        satellite.console.display(my_window.ok)                 // true
-        my_window.close()
+        satellite.console.display(my_window.satellite.ok)                 // true
+        my_window.satellite.close()
         satellite.console.display(my_window)                    // (closed window "window 1")
     }
     satellite.return(satellite)

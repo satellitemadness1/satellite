@@ -1,14 +1,16 @@
 satellite.include(satellite)
 
 // full_numbers_13 -- satellite.test.full(), a program satl must REFUSE.
-// number: n.max(3) has no library wired to it yet (M17), so it is not built (S210).
-// It exits 14, and its report on stderr holds: n.max is not built for satellite.variable.number
+// number: n.satellite.sqrt() is numbered and not built yet (M17), so it is refused (S210).
+// It exits 14, and its report on stderr holds: n.satellite.sqrt is numbered (1 6 4 14) and not built yet
 // Nothing is printed on stdout.
+// REBASED 2026-10-11 (NM-8): it refused n.max(3), not built while a number's words had no code; a number's
+// words are built and under satellite since, and n.satellite.max(3) answers 3 -- .sqrt is the one still owed.
 
 satellite.capsule satellite.main()
 {
     satellite.variable.number passes = 1
     satellite.variable.number n = 1
-    satellite.console.display(n.max(3))
+    satellite.console.display(n.satellite.sqrt())
     satellite.return(satellite)
 }

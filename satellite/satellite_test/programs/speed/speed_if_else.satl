@@ -33,6 +33,6 @@ satellite.capsule satellite.main()
             d = d + 1
         }
     }
-    satellite.console.display(a.string + " " + b.string + " " + c.string + " " + d.string)
+    satellite.console.display(a.satellite.string + " " + b.satellite.string + " " + c.satellite.string + " " + d.satellite.string)
     satellite.return(satellite)
 }

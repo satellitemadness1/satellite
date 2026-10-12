@@ -19,9 +19,11 @@ nanosecond is let go: 0.5ns is 0ns. A time shows in the unit it was written
 in, so 250ms displays 250ms and satellite.time.second(1.5) displays 1.5s.
 
 Two times are the same time when they are the same length, so 1s == 1000ms is
-true, and < > <= >= order times by their lengths. .string is its text. A time
-keeps its sign: -1s is a time, and satellite.time.sleep refuses to wait one.
-+ - * / on times are not built yet, and a time does not meet a number.
+true, and < > <= >= order times by their lengths. .satellite.string is its text
+-- written with satellite. in front since 2026-10-11, as every word built into
+the language is, and the old .string refused naming it. A time keeps its sign:
+-1s is a time, and satellite.time.sleep refuses to wait one. + - * / on times
+are not built yet, and a time does not meet a number.
 
 example:
 

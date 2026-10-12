@@ -608,6 +608,18 @@ like .find() and .replace and .append() to stick to the same system, that is how
   `arguments` becomes `satellite.arguments` with its rows straight after it; symbols, literal endings and quoted
   words stay. Each type as strings and lists went: a number for every word, the call runs it, then `.satellite.`,
   then every program, test, help page and his ~/code/satl converted; check.sh green, at most 5% slower.
+- EVERY TYPE LEFT -- THE FOUNDATION BUILT (BUILD 0032, 2026-10-11, no behaviour change): `number_a_method_runs` one case
+  a type; the period sentence for any numbered kind; `Scenarios::method_call` for every type numbered from now; the
+  converter's `NUMBER_SWITCHES`. Then seven families numbered at once, each in its own copy, merged one at a time
+  (SCRATCH.md/OPEN_ITEMS_2026-10-11.md section 0a). HIS ASK OF ~15:00: his newest program,
+  ~/code/satl/infinity_data3/infinity_data_main.satl, already written `.satellite.` everywhere, must RUN, unchanged --
+  *"can you do the work necessary to make that file run without changing that file? If it has an error of course,
+  don't change the interpreter to work around any errors, obviously if the file has an error we would need to change
+  the file, not the interpreter"*. It needs five families: numbers (`.satellite.to_string()`), the float
+  (`depth.satellite.string`), objects (`.satellite.lock()`, `.satellite.pointer()`, and the thread handoff
+  `satellite.thread.new(units_worker(progress, block.satellite.pointer(), ...))`), threads (`pool[k].satellite.start()`,
+  `.satellite.join()`) and files (`done.satellite.append(line)`, `saved = done.satellite.close`). BUILD 0032 stops at its
+  line 143 (S110, "a number's words are not under satellite yet").
 - STILL ASKED (2026-10-10, before he chose numbers first; D, E and F answered 2026-10-11 by the A-C above): D. the arguments variable too, `args.satellite.username`?
   E. words in quotes stay (`"text"`)? F. symbols stay (`+ == 5ms 50%`)? G. names like `size` and `section` become
   free for his own things? (A was his D of 21:15; B and C his B and C of 22:20.)

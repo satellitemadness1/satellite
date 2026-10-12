@@ -784,7 +784,9 @@ WE DO NOT ACCEPT DONATIONS, GIFTS OR A BUYOUT REQUEST OF ANY VALUE(S) OR ITEM(S)
             if (typed.empty())
                 continue;
             reader.remember(line);
-            if (typed == "exit" || typed == "quit")
+            // AND UNDER satellite TOO (the author's D of 2026-10-11, of exit, quit, run and interpret: "both should
+            // work"): satellite.exit and satellite.quit leave as exit and quit do.
+            if (typed == "exit" || typed == "quit" || typed == "satellite.exit" || typed == "satellite.quit")
                 break;
             // `interpret <file>` AND `run <file>`, the prompt's own words as `exit` is
             // (prompt_run.hpp): a whole program, run exactly as `satl <file>` runs it.

@@ -27,12 +27,13 @@ its block ends it becomes inaccessible, and its record stays. satellite.access(x
 shows the place, on its line legal. A file only a block's name held is saved and
 closed at that block's }, as at the end of a capsule.
 
-The rule belongs to the switch arguments.access, on by default. Written
-arguments.access = false at the top of a file, a name lasts to the end of its
-capsule, as it did before satellite.legal -- what the author called "bad
-programming habits that some people have". The rule is decided before a run
-begins, so arguments.access(false) written inside a capsule does not change it
-for that run; at the prompt, a capsule keeps the rule it was declared under.
+The rule belongs to the switch satellite.arguments.access, on by default.
+Written satellite.arguments.access = satellite.bool.false at the top of a file,
+a name lasts to the end of its capsule, as it did before satellite.legal -- what
+the author called "bad programming habits that some people have". The rule is
+decided before a run begins, so satellite.arguments.access(satellite.bool.false)
+written inside a capsule does not change it for that run; at the prompt, a
+capsule keeps the rule it was declared under.
 
 satellite.legal is satl's own: a program cannot change it or list it. The
 checker reads it and writes it: as it reads a capsule, each name a line declares

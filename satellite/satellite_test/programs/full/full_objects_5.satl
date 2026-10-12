@@ -66,7 +66,7 @@ satellite.spacesuit report()
             }
             satellite.statement.else
             {
-                wrong_answer(what, got.to_string(), want.to_string())
+                wrong_answer(what, got.satellite.to_string(), want.satellite.to_string())
             }
         }
 
@@ -95,7 +95,7 @@ satellite.capsule run_all(report r)
 {
     satellite.variable.number across = satellite.console.width
     satellite.variable.number down = satellite.console.height
-    r.check_text("console width and height are 80 and 24 when the output is not a terminal", across.to_string() + " " + down.to_string(), "80 24")
+    r.check_text("console width and height are 80 and 24 when the output is not a terminal", across.satellite.to_string() + " " + down.satellite.to_string(), "80 24")
 }
 
 // WHAT DISPLAY WRITES. These lines check themselves: each is right only when it comes out exactly
@@ -105,17 +105,17 @@ satellite.capsule run_all(report r)
 satellite.capsule show_display()
 {
     satellite.variable.color orange = xFF8800
-    satellite.console.display("ok display end=\"\" keeps the next display ", end="")
+    satellite.console.display("ok display end=\"\" keeps the next display ", satellite.end="")
     satellite.console.display("on the same line")              // ok display end="" keeps the next display on the same line
-    satellite.console.display("ok display end= writes its own ", end="ending")
+    satellite.console.display("ok display end= writes its own ", satellite.end="ending")
     satellite.console.display(" in place of the newline")      // ok display end= writes its own ending in place of the newline
-    satellite.console.display("ok display foreground= into a pipe is plain text", foreground=xFF8800)
-    satellite.console.display("ok display a satellite.variable.color and background= into a pipe are plain text", foreground=orange, background=x101010)
-    satellite.console.display("ok display bold= and italic= into a pipe are plain text", bold=satellite.bool.true, italic=satellite.bool.true)
-    satellite.console.display("ok display .center() into a pipe goes as written").center()
+    satellite.console.display("ok display foreground= into a pipe is plain text", satellite.foreground=xFF8800)
+    satellite.console.display("ok display a satellite.variable.color and background= into a pipe are plain text", satellite.foreground=orange, satellite.background=x101010)
+    satellite.console.display("ok display bold= and italic= into a pipe are plain text", satellite.bold=satellite.bool.true, satellite.italic=satellite.bool.true)
+    satellite.console.display("ok display .satellite.center() into a pipe goes as written").satellite.center()
     satellite.console.foreground(x33FF33)
     satellite.console.background(orange)
-    satellite.console.display("ok console.foreground() and .background() into a pipe are plain text")
+    satellite.console.display("ok satellite.console.foreground() and .background() into a pipe are plain text")
     satellite.console.foreground()
     satellite.console.background()
     satellite.terminal.background(x101010)
@@ -123,10 +123,10 @@ satellite.capsule show_display()
     satellite.terminal.foreground()
     satellite.terminal.background()
     satellite.terminal.foreground(x33FF33)
-    satellite.console.display("ok terminal.foreground() and .background() write nothing into a pipe")
-    satellite.console.display("ok display shows a number as its digits: ", end="")
+    satellite.console.display("ok satellite.terminal.foreground() and .background() write nothing into a pipe")
+    satellite.console.display("ok display shows a number as its digits: ", satellite.end="")
     satellite.console.display(6 * 7)                          // ok display shows a number as its digits: 42
-    satellite.console.display("ok display shows a list as ", end="")
+    satellite.console.display("ok display shows a list as ", satellite.end="")
     satellite.console.display({1, "two"})                      // ok display shows a list as {1, "two"}
 }
 

@@ -18,10 +18,10 @@ satellite.capsule satellite.main()
     satellite.console.display(flags)
 
     // What the bits are worth, and the other conversions.
-    satellite.console.display(my_number.number)
-    satellite.console.display(my_number.string)
-    satellite.console.display(flags.bin)
-    satellite.console.display(my_number.hex)
+    satellite.console.display(my_number.satellite.number)
+    satellite.console.display(my_number.satellite.string)
+    satellite.console.display(flags.satellite.bin)
+    satellite.console.display(my_number.satellite.hex)
 
     // Arithmetic reads a binary by its worth, as a b literal always did -- but a
     // minus in front keeps it a binary, with its sign (the author, 2026-09-17).

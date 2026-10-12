@@ -97,6 +97,20 @@ ColourWord colour_word(Code code)
 const char *const kDisplayOptions[] = {"end", "foreground", "background", "bold", "italic", nullptr};
 const char *const kInputOptions[] = {"foreground", "background", "bold", "italic", nullptr};
 
+// AN OPTION AS IT WAS WRITTEN, for a sentence: satellite.end= (the author's B of 2026-10-11), or a name no word
+// takes, bare, as written.
+static std::string option_written(const WrittenOption &option)
+{
+    return (option.under ? "satellite." : "") + option.name + "=";
+}
+
+// AND AS THE RUN HOLDS IT: an option the run was given passed the checker, so it was written under satellite.
+static std::string option_written(const NamedOption &option)
+{
+    return "satellite." + option.name + "=";
+}
+
+
 bool a_colour_option(const std::string &name) { return name == "foreground" || name == "background"; }
 bool a_switch_option(const std::string &name) { return name == "bold" || name == "italic"; }
 
@@ -136,7 +150,7 @@ bool style_of(const std::string &spelled, const std::vector<NamedOption> &option
         if (a_colour_option(option.name)) {
             unsigned int rgb = 0;
             if (!colour_of(option.value, rgb, why)) {
-                context.refuse(types_do_not_meet, spelled + "'s " + option.name + "= -- " + why);
+                context.refuse(types_do_not_meet, spelled + "'s " + option_written(option) + " -- " + why);
                 return false;
             }
             (option.name == "foreground" ? style.has_foreground : style.has_background) = true;
@@ -144,8 +158,8 @@ bool style_of(const std::string &spelled, const std::vector<NamedOption> &option
         } else if (a_switch_option(option.name)) {
             const bool *on = option.value.as_bool();
             if (on == nullptr) {
-                context.refuse(types_do_not_meet, spelled + "'s " + option.name +
-                                                      "= takes satellite.bool.true or satellite.bool.false, and was given " +
+                context.refuse(types_do_not_meet, spelled + "'s " + option_written(option) +
+                                                      " takes satellite.bool.true or satellite.bool.false, and was given " +
                                                       option.value.kind_name());
                 return false;
             }
@@ -161,6 +175,14 @@ bool style_of(const std::string &spelled, const std::vector<NamedOption> &option
     return true;
 }
 
+// THE LINE IN THE MIDDLE OF THE CONSOLE IS satellite.console.display.center's OWN since 2026-10-11:
+// centred_text moved whole into its number's file, satellite-numbers/words/1.5.1.1.cpp, which
+// display_with_options runs (below).
+
+} // namespace
+
+namespace console_parts {
+
 int terminal_size(bool across)
 {
     winsize size{};
@@ -169,39 +191,58 @@ int terminal_size(bool across)
     return across ? 80 : 24;       // 003's, and v1's before it: no terminal, the shape of one
 }
 
-// EACH LINE IN THE MIDDLE OF THE CONSOLE (.center(), the author 2026-09-25: "it doesn't need
-// to change with a resized console, just for that console at that time"). Padded with half
-// of what is left of the width the terminal has NOW, counted in characters; a line as wide
-// as the console or wider is left as it is. NOT A TERMINAL -- a file, a pipe -- has no width
-// to be in the middle of, and the text goes out as written, as colour does there.
-std::string centred_text(const std::string &text)
+} // namespace console_parts
+
+using console_parts::terminal_size;
+
+// EVERY NUMBER BELOW IS IN words/words.tsv, OR THIS FILE DOES NOT COMPILE: a fixed_code of 0 would
+// quietly leave .satellite.center with no number to run.
+static_assert(word::fixed_code<1, 5, 1, 1> != 0 && word::fixed_code<1, 5, 1, 2> != 0,
+              "satellite.console.display.center's number is missing from words/words.tsv");
+
+token::Code display_number_of(token::Code method)
 {
-    if (!isatty(STDOUT_FILENO))
-        return text;
-    const std::size_t width = static_cast<std::size_t>(terminal_size(true));
-    std::string out;
-    std::size_t start = 0;
-    for (;;) {
-        const std::size_t end = text.find('\n', start);
-        const std::string line = text.substr(start, end == std::string::npos ? std::string::npos : end - start);
-        std::size_t shown = 0;
-        for (const char c : line)
-            if ((static_cast<unsigned char>(c) & 0xC0) != 0x80) ++shown;
-        if (shown < width)
-            out.append((width - shown) / 2, ' ');
-        out += line;
-        if (end == std::string::npos)
-            break;
-        out += '\n';
-        start = end + 1;
+    switch (method) {
+    case token::center_token: return word::fixed_code<1, 5, 1, 1>;
+    default: return 0;
     }
-    return out;
 }
 
-} // namespace
+std::string center_written_bare(const std::string &display, const std::string &spelling)
+{
+    return display + "(...)." + spelling + " is written " + display + "(...).satellite." + spelling +
+           "() now -- the display's own words are under satellite";
+}
 
 bool an_option_at(const std::vector<std::bitset<16>> &row, std::size_t at, std::string &name, std::size_t &value_at)
 {
+    bool under = false;
+    return an_option_at(row, at, name, value_at, under);
+}
+
+bool an_option_at(const std::vector<std::bitset<16>> &row, std::size_t at, std::string &name, std::size_t &value_at,
+                  bool &under)
+{
+    // WRITTEN UNDER SATELLITE (the author's B of 2026-10-11): the word satellite, its period, the name -- a method's
+    // code when the name is one, as foreground is -- and the `=`.
+    static const Code the_word_satellite = word::code_of_spelling("satellite");
+    under = false;
+    if (code_at(row, at) == the_word_satellite && code_at(row, at + 1) == token::method_token) {
+        std::size_t past = at + 2;
+        std::string spelled;
+        if (code_at(row, past) == token::name_token)
+            spelled = text_at(row, past);
+        else if (token::is_method_code(code_at(row, past)))
+            spelled = token::method_name_of(code_at(row, past++));
+        else
+            return false;
+        if (code_at(row, past) != token::assign_token)
+            return false;
+        name = spelled;
+        value_at = past + 1;
+        under = true;
+        return true;
+    }
     if (code_at(row, at) != token::name_token)
         return false;
     // STEPPED OVER, NOT READ, until the `=` says it is an option: every argument that
@@ -217,6 +258,14 @@ bool an_option_at(const std::vector<std::bitset<16>> &row, std::size_t at, std::
     return true;
 }
 
+// ONE OF THE FIVE NAMED OPTIONS A DISPLAY OR AN INPUT TAKES (kDisplayOptions holds them all).
+static bool option_of_the_language(const std::string &name)
+{
+    for (const char *const *each = kDisplayOptions; *each != nullptr; ++each)
+        if (name == *each) return true;
+    return false;
+}
+
 bool options_written_in(const std::vector<std::bitset<16>> &row, std::size_t open,
                         std::vector<WrittenOption> &out, std::string &why)
 {
@@ -229,14 +278,21 @@ bool options_written_in(const std::vector<std::bitset<16>> &row, std::size_t ope
         if (at_a_start && depth == 1 && code != token::right_parenthesis_token) {
             at_a_start = false;
             WrittenOption option;
-            if (an_option_at(row, at, option.name, option.value_at)) {
+            if (an_option_at(row, at, option.name, option.value_at, option.under)) {
                 option.name_at = at;
+                // A NAMED OPTION OF THE LANGUAGE IS WRITTEN UNDER SATELLITE (the author's B of 2026-10-11, NM-8):
+                // the five a display or an input takes, written bare, are refused naming the new spelling.
+                if (!option.under && option_of_the_language(option.name)) {
+                    why = option.name + "= is written satellite." + option.name +
+                          "= now -- the language's own words are under satellite";
+                    return false;
+                }
                 out.push_back(option);
                 at = option.value_at;
                 continue;
             }
             if (!out.empty()) {
-                why = "a plain argument comes before every named one, and this one follows " + out.back().name + "=";
+                why = "a plain argument comes before every named one, and this one follows " + option_written(out.back());
                 return false;
             }
         }
@@ -272,7 +328,7 @@ std::string options_said(Code word)
     std::size_t count = 0;
     while (names[count] != nullptr) ++count;
     for (std::size_t at = 0; at < count; ++at)
-        said += std::string(at == 0 ? "" : at + 1 == count ? " and " : ", ") + names[at] + "=";
+        said += std::string(at == 0 ? "" : at + 1 == count ? " and " : ", ") + "satellite." + names[at] + "=";
     return said;
 }
 
@@ -315,23 +371,23 @@ signed long long int option_refused(Code word, const std::vector<std::bitset<16>
     for (const char *const *name = names; name != nullptr && *name != nullptr; ++name)
         taken = taken || option.name == *name;
     if (!taken) {
-        why = bare + " has no option called " + option.name + "= -- " +
+        why = bare + " has no option called " + option_written(option) + " -- " +
               (names == nullptr ? std::string("it takes no named options") : "it takes " + options_said(word));
         return satl_line_not_understood;
     }
     for (std::size_t before = 0; before < which; ++before) {
         if (options[before].name == option.name) {
-            why = bare + "'s " + option.name + "= is given twice -- once is all an option means";
+            why = bare + "'s " + option_written(option) + " is given twice -- once is all an option means";
             return satl_line_not_understood;
         }
     }
     if (a_colour_option(option.name))
-        why = colour_literal_refused(row, option.value_at, bare + "'s " + option.name + "=");
+        why = colour_literal_refused(row, option.value_at, bare + "'s " + option_written(option));
     if (a_switch_option(option.name)) {
         const Code code = code_at(row, option.value_at);
         if (code == token::string_token || code == token::number_token || code == token::hexadecimal_token ||
             code == token::binary_token || code == token::percentage_token || code == token::time_token)
-            why = bare + "'s " + option.name + "= takes satellite.bool.true or satellite.bool.false";
+            why = bare + "'s " + option_written(option) + " takes satellite.bool.true or satellite.bool.false";
     }
     return why.empty() ? success : types_do_not_meet;
 }
@@ -473,8 +529,28 @@ Value display_with_options(Code code, const Scenarios &scenarios, const Value &a
         context.refuse(not_built_yet, spelled + " has no text scenario");
         return Value();
     }
-    if (centred)
-        text = centred_text(text);
+    // .satellite.center RUNS ITS NUMBER (the author, 2026-10-11: "we have to give everything a number and
+    // then make it run those numbers"): 1 5 1 1, satellite-numbers/words/1.5.1.1.cpp, handed the line and
+    // answering it in the middle of the console -- before it is styled, as it always was.
+    if (centred) {
+        const NumberRow *number = context.functions.method(word::fixed_code<1, 5, 1, 1>);
+        if (number == nullptr || number->scenarios.method_call == nullptr) {
+            context.refuse(not_built_yet, spelled + "(...).satellite.center is not built yet");
+            return Value();
+        }
+        Value line;
+        std::size_t bad = 0;
+        const signed long long int made = Value::of_utf8(text, line, bad);
+        if (made != success) {
+            context.refuse(made, spelled + "(...).satellite.center was handed a line whose bytes are not text, at "
+                                           "byte " + std::to_string(bad + 1));
+            return Value();
+        }
+        const Value middle = number->scenarios.method_call(line, nullptr, nullptr, {}, true, spelled, context);
+        if (context.code != success)
+            return Value();
+        text = middle.text_utf8();
+    }
     // ONE CALL, ONE LINE: the style's reset goes before end= or the newline (003). Made here,
     // where its refusals are, and handed to the printing satellite as the bytes it is
     // (display/printing_satellite.hpp).

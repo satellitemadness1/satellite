@@ -78,11 +78,11 @@ satellite.capsule satellite.main()
         x = x * 10                                                                              // 5
         x = x + 7                                                                               // 6: it ends in 7, so its digits turn round and back with no 0 lost
         wrong = wrong + lost(x, 100961091370127731378102614942904483847)                        // check: .reverse() drops the zeros a number ends with, so x * 10 here would come back
-        x = x.reverse()                                                                         // 7: its digits turned round
-        x = x.add(547311173)                                                                    // 8: + 547311173, with .add
+        x = x.satellite.reverse()                                                                         // 7: its digits turned round
+        x = x.satellite.add(547311173)                                                                    // 8: + 547311173, with .add
         x = x + x                                                                               // 9: doubled
         x = 0 - x                                                                               // 10: below zero
-        x = x.to_string                                                                         // 11: a STRING now: its digits as text
+        x = x.satellite.to_string                                                                         // 11: a STRING now: its digits as text
         x = x + "0"                                                                             // 12: a 0 written on the end
         wrong = wrong + lost(x, "-14967688184988324037462754421474749603480")                   // check: 13 reads a number out of text, which cannot see a 0 too many in front or after a point
         x = 0 + x                                                                               // 13: a NUMBER again, ten times larger: a number plus text that spells one
@@ -122,7 +122,7 @@ satellite.capsule satellite.main()
         x["copy"][1] = 0                                                                        // 42: only the copy changes
         x["string"] = x["string"].satellite.reverse()                                                     // 43
         x["number"] = x["number"] * x[547311173]                                                // 44: times that count
-        x = x.values                                                                            // 45: the map's values: a LIST again
+        x = x.satellite.values                                                                            // 45: the map's values: a LIST again
         x = {x}                                                                                 // 46: that list inside a list
         x = {"outer": x}                                                                        // 47: inside a map
         x["outer"][1][2] = x["outer"][1][2] + 1                                                 // 48: three levels down: the number
@@ -142,20 +142,20 @@ satellite.capsule satellite.main()
         wrong = wrong + lost(x["copy"][1], 0)                                                   // check: the 0 42 wrote, before 59 writes over it
         x["copy"][1] = x["satellite"][1]                                                        // 59: undoes 42, from the list the copy was made from
         wrong = wrong + lost(x["copy"], x["satellite"])                                         // check: the copy 41 made, before 60 drops it unread
-        x.remove("copy")                                                                        // 60: undoes 41
+        x.satellite.remove("copy")                                                                        // 60: undoes 41
         x["satellite"][1] = x["satellite"][1] * 4                                               // 61: undoes 40
         wrong = wrong + lost(x[547311173], x["satellite"].satellite.size)                                 // check: the count 39 filed, before 62 drops it unread
-        x.remove(547311173)                                                                     // 62: undoes 39
+        x.satellite.remove(547311173)                                                                     // 62: undoes 39
         wrong = wrong + lost(x["string"], "547311173")                                          // check: "string", before 63 drops it unread
-        x.remove("string")                                                                      // 63: undoes 38
+        x.satellite.remove("string")                                                                      // 63: undoes 38
         wrong = wrong + lost(x["number"], 547311173)                                            // check: "number", before 64 drops it unread
-        x.remove("number")                                                                      // 64: undoes 37
-        wrong = wrong + lost(x.keys, {"satellite"})                                             // check: 60-64 took out the rest, before 65 drops the map whole
+        x.satellite.remove("number")                                                                      // 64: undoes 37
+        wrong = wrong + lost(x.satellite.keys, {"satellite"})                                             // check: 60-64 took out the rest, before 65 drops the map whole
         x = x["satellite"]                                                                      // 65: undoes 36, a LIST again
         x.satellite.remove_at(x.satellite.index_of(x.satellite.size - 1))                                                     // 66: undoes 35, the item that holds the size the list had
         x.satellite.remove("satellite")                                                                   // 67: undoes 34
         wrong = wrong + lost(x[x.satellite.size]["s"], 5)                                                 // check: the 5 33 filed, before 68 drops it unread
-        x[x.satellite.size].remove("s")                                                                   // 68: undoes 33
+        x[x.satellite.size].satellite.remove("s")                                                                   // 68: undoes 33
         x.satellite.remove({"satellite": 547311173})                                                      // 69: undoes 32
         x[x.satellite.size] = x[x.satellite.size] / 2 + x[x.satellite.size] % 2 * far                                         // 70: undoes 31, its remainder kept
         wrong = wrong + lost(x[2], "Mm")                                                        // check: 71 answers the text unchanged when its "m" never came
@@ -180,8 +180,8 @@ satellite.capsule satellite.main()
         x = x / 0.125                                                                           // 84: undoes 17
         x = x - 0.5                                                                             // 85: undoes 16
         x = x * 1024                                                                            // 86: undoes 15
-        x = x.number                                                                            // 87: undoes 14, a NUMBER again
-        x = x.str                                                                               // 88: undoes 13, a STRING again
+        x = x.satellite.number                                                                            // 87: undoes 14, a NUMBER again
+        x = x.satellite.str                                                                               // 88: undoes 13, a STRING again
         wrong = wrong + lost(x, "-14967688184988324037462754421474749603480")                   // check: 89 drops its last character whatever it is -- the 0 12 wrote -- so the text must be exactly this
         x = x.satellite.string.satellite.substring(1, x.satellite.size - 1)                                                   // 89: undoes 12, the 0 taken off the end
         wrong = wrong + lost(x, "-1496768818498832403746275442147474960348")                    // check: 90 reads a number out of the text the same way
@@ -190,7 +190,7 @@ satellite.capsule satellite.main()
         x = x / 2 + x % 2 * far                                                                 // 92: undoes 9, its remainder kept
         x = x - 547311173                                                                       // 93: undoes 8
         wrong = wrong + lost(x, 748384409249416201873137721073190169001)                        // check: 94's .reverse() drops the zeros a number ends with
-        x = x.string.satellite.reverse().satellite.number                                                           // 94: undoes 7
+        x = x.satellite.string.satellite.reverse().satellite.number                                                           // 94: undoes 7
         x = x - 7                                                                               // 95: undoes 6
         x = x / 10 + x % 10 * far                                                               // 96: undoes 5, its remainder kept
         x = x / 2 ^ 64 + x % 2 ^ 64 * far                                                       // 97: undoes 4, its remainder kept

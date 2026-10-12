@@ -1,34 +1,30 @@
-// A BARE true OR false, WRITTEN TO THE ARGUMENTS (MS-2's D22, the author 2026-10-03: "let's allow
-// bare false/true on the special arguments variable as it breaks all of the rules, and also allow
-// it to take satellite.bool.true, or satellite.bool.false"): a row of the program's own, the same
-// by its key in brackets, the access setting by the variable and by its word -- and there the bare
-// word is the value even where the program declared a variable named false, which is read as
-// (false), in brackets. check.sh runs it in a home of its own -- access was written to config.ini until
-// 2026-10-06, and a line in a file now changes it for that run alone, which check.sh asserts too --
-// and asserts every line in order.
+// THE ARGUMENTS TAKE satellite.bool.true AND satellite.bool.false, AS EVERY VALUE DOES (the author, 2026-10-11:
+// "So there should be no true then only an error message, and satellite.bool.true" -- which ends MS-2's D22 of
+// 2026-10-03, when a bare true or false was the value here): a row of the program's own, the same by its key in
+// brackets, the access setting by the variable, by its word and as a call. A bare true or false is refused before
+// anything runs, naming satellite.bool.<it> -- check.sh asserts that for each of these writes, a row each. A
+// variable the program named false is a name like any other, read where it is written. check.sh runs it in a home
+// of its own -- access was written to config.ini until 2026-10-06, and a line in a file now changes it for that
+// run alone, which check.sh asserts too -- and asserts every line in order.
 
 satellite.include(satellite)
 
 satellite.capsule satellite.main(satellite.variable.arguments args)
 {
-    args.mine = false
+    args.mine = satellite.bool.false
     satellite.console.display(args.mine)
-    args.mine = true
+    args.mine = satellite.bool.true
     satellite.console.display(args.mine)
-    args["theirs"] = false
+    args["theirs"] = satellite.bool.false
     satellite.console.display(args.theirs)
-    args.access = false
-    satellite.console.display(args.access)
-    satellite.library.arguments.access = true
-    satellite.console.display(satellite.library.arguments.access)
     args.access = satellite.bool.false
     satellite.console.display(args.access)
     satellite.library.arguments.access = satellite.bool.true
     satellite.console.display(satellite.library.arguments.access)
+    args.access(satellite.bool.false)
+    satellite.console.display(args.access)
     satellite.variable.bool false = satellite.bool.true
     args.declared = false
-    satellite.console.display(args.declared)
-    args.declared = (false)
     satellite.console.display(args.declared)
     satellite.return(satellite)
 }

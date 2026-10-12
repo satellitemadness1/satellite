@@ -1,0 +1,28 @@
+containers             satellite.container.map                words  14  row   8  tree  1023  his   795
+containers             satellite.container.map (also satellit words   1  row   1  tree   366  his  1185
+containers             satellite.variable.arguments           words   6  row   1  tree   499  his    58
+containers             satellite.variable.arguments (1 6 21;  words   1  row   0  tree     9  his     8
+files                  satellite.variable.file                words  26  row   7  tree   364  his   137
+numbers                satellite.variable.infinity            words  10  row   0  tree    43  his     0
+numbers                satellite.variable.number              words  22  row  18  tree   385  his  1033
+objects-and-everything satellite.console.display(...) word ca words   1  row   0  tree     6  his     1
+objects-and-everything satellite.spacesuit object (also a poi words   4  row   0  tree    46  his     0
+objects-and-everything satellite.spacesuit object (also a poi words   1  row   0  tree    36  his     6
+objects-and-everything satellite.variable.binary              words   5  row   3  tree    87  his     0
+objects-and-everything satellite.variable.binary (second spel words   1  row   1  tree    24  his     0
+objects-and-everything satellite.variable.bool                words   1  row   0  tree   287  his     0
+objects-and-everything satellite.variable.percentage          words   1  row   0  tree     0  his     0
+objects-and-everything satellite.variable.percentage (second  words   1  row   0  tree    22  his     0
+other-scalars          satellite.variable.binary (and .bin)   words   9  row   6  tree   107  his     0
+other-scalars          satellite.variable.bool                words   7  row   0  tree   178  his     0
+other-scalars          satellite.variable.color (and .colour) words   6  row   0  tree   303  his     0
+other-scalars          satellite.variable.float (and .double) words   5  row   4  tree    38  his     8
+other-scalars          satellite.variable.fraction            words   4  row   0  tree   408  his     0
+other-scalars          satellite.variable.hex (and .hexadecim words   7  row   5  tree    96  his     0
+other-scalars          satellite.variable.percentage (and .pe words   7  row   0  tree    26  his     0
+other-scalars          satellite.variable.time                words   7  row   0  tree     0  his     2
+threads-programs       satellite.variable.bash                words  11  row  11  tree    91  his     0
+threads-programs       satellite.variable.program             words  11  row  11  tree   173  his    10
+threads-programs       satellite.variable.thread              words   4  row   4  tree   204  his    93
+window                 satellite.variable.window              words  58  row   0  tree   269  his     7
+total words 231

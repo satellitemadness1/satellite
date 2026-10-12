@@ -29,6 +29,7 @@
 #include "function_table.hpp"
 #include "value.hpp"
 #include "expression.hpp"
+#include "word_codes.hpp"
 
 #include <bitset>
 #include <cstddef>
@@ -51,6 +52,30 @@ Value the_arguments_value(const Arguments *arguments, const FunctionTable &funct
 std::size_t past_the_argument_names(const std::vector<std::bitset<16>> &row, std::size_t at);
 std::size_t past_the_argument_names(const std::vector<std::bitset<16>> &row, std::size_t at, std::string &key);
 
+// A MAP'S WORD WRITTEN WHERE A ROW WOULD BE -- `args.size`, `satellite.arguments.first` -- with no brackets, as
+// the walker reads it: no row is named so, and the method runs (main_arguments.cpp, read_an_argument). The
+// arguments' methods are a map's, written under satellite since 2026-10-11, so the checker judges such a run
+// as that method written with the other period, before anything runs. `at` on the `.` after the name.
+bool a_map_word_where_a_row_would_be(const std::vector<std::bitset<16>> &row, std::size_t at);
+
+// THE KIND OF THE ROW satl HOLDS UNDER `key`, as the walker would read it (read_an_argument): a row gathered at
+// start-up or a setting -- text a string, a count, a number or a size a number, a switch a bool, a list a list of
+// text -- or a library word with a fact or a switch to answer (live_row), asked now as it is when its line runs.
+// how_many_kinds for anything else: a program's own row, a word with no row behind it (machine, session), and a name
+// the walker refuses before it reads (argument0, argument_1). The checker's (the author's N of 2026-10-11): what a
+// word after a row is on.
+satelliteObject::Kind kind_of_a_row_satl_holds(const std::string &key, const Arguments *arguments,
+                                               const FunctionTable &functions);
+
+// A WORD OF THE LANGUAGE AFTER A ROW, written with no brackets (the author's N of 2026-10-11):
+// `satellite.arguments.username.size` is the row username and then its .size, where past_the_argument_names reads
+// one dotted run. Split as the walker splits it -- the longest run that names a row it reads -- for the rows the
+// checker can know: satl's own (kind_of_a_row_satl_holds, which says `kind`). `at` on the `.` after the arguments'
+// name; answers the `.` before the word, with `key` the row before it, or `at` with `key` empty when no word follows
+// such a row. A program's own rows, `args.my_row.size`, are the run's to know: one may be named with a word in it.
+std::size_t a_word_after_the_rows(const std::vector<std::bitset<16>> &row, std::size_t at, const Arguments *arguments,
+                                  const FunctionTable &functions, std::string &key, satelliteObject::Kind &kind);
+
 // A MACHINE FACT WRITTEN AS satellite.<fact> (ERRORS2 #9): `satellite.machine.cores()` is no
 // word, and was told "machine has no satellite.variable line declaring it" -- true, and about
 // something else. `at` on the first name after `satellite.` (or after `satellite.system.`, when
@@ -69,18 +94,33 @@ std::string arguments_row_written_as_a_word(const std::vector<std::bitset<16>> &
 // A ROW satl HOLDS IS READ AS IT IS NOW (2026-10-06), out of the run's own rows and not
 // out of the copy main was handed: a line may change a setting while the program runs
 // (setting_writes.hpp), by this name or any other, and the next read must see it.
-// `the_runs` is THE RUN'S OWN: the bare name `arguments` where no name of the body is
-// called that (the author, 2026-10-04: "arguments.missing or arguments.anything needs
-// to be able to be read anywhere"), which reads satl's rows and has no copy of main's.
+// `the_runs` is THE RUN'S OWN: satellite.arguments (the author, 2026-10-04: "arguments.missing
+// or arguments.anything needs to be able to be read anywhere"), which reads satl's rows and has
+// no copy of main's.
 Value read_an_argument(const std::vector<std::bitset<16>> &row, std::size_t &at, const std::string &name,
                        const Value &arguments, ExpressionContext &context, bool &read, std::string &read_as,
                        bool the_runs = false);
 
-// THE RUN'S OWN ARGUMENTS BY THEIR BARE NAME (the author, 2026-10-04: "arguments.anything needs
-// to be able to be read anywhere"): `arguments` in a capsule that declares no name called that,
-// and at the prompt. Its rows are read where they are (read_an_argument, with no copy), its
-// settings changed (setting_writes.hpp); a name of the program's own is main's to write.
-inline const char *const kTheRunsArguments = "arguments";
+// THE RUN'S OWN ARGUMENTS ARE satellite.arguments (the author, 2026-10-11: "arguments becomes
+// satellite.arguments but the arguments like .username .machine don't get the word "satellite", so we
+// don't type satellite.arguments.satellite.username, we just enter satellite.arguments.username"): ONE
+// WORD, 1 34, read in every capsule and at the prompt where the bare name `arguments` was read from
+// 2026-10-04 until that day (the author: "arguments.anything needs to be able to be read anywhere"). Its
+// rows are read where they are (read_an_argument, with no copy), its settings changed
+// (setting_writes.hpp); a name of the program's own is main's to write. ITS METHODS ARE A MAP'S AND ARE
+// UNDER SATELLITE, its rows are data and are not: satellite.arguments.satellite.size,
+// satellite.arguments.username -- after `.satellite.` a method, after `.` a row, so the two never meet.
+// kTheRunsArguments is how every sentence spells it, and the name the walker and the checker carry for it.
+inline const char *const kTheRunsArguments = "satellite.arguments";
+inline constexpr token::Code kTheRunsArgumentsWord = word::fixed_code<1, 34>;
+static_assert(kTheRunsArgumentsWord != 0, "satellite.arguments (1 34) is missing from words/words.tsv");
+
+// THE BARE NAME IT HAD UNTIL THEN IS A NAME LIKE ANY OTHER: a program's own -- satellite.main's parameter,
+// most often, `satellite.main(satellite.variable.arguments arguments)` -- and where no name of the body is
+// called that, refused before anything runs, naming the new spelling. `after` is the code after the name;
+// answers the sentence, "arguments.username is written satellite.arguments.username now -- ...".
+inline const char *const kTheOldBareArguments = "arguments";
+std::string the_bare_arguments_refused(const std::vector<std::bitset<16>> &row, std::size_t after);
 
 // A KEY HANDED TO THE ARGUMENTS VARIABLE AS TEXT (MS-1, and a fresh reader the same day) --
 // `args["arg3"]`, `args.contains("arguments3")`, `args.remove("argument03")` -- names the row
@@ -88,6 +128,13 @@ inline const char *const kTheRunsArguments = "arguments";
 // the checker refuses both on the arguments variable before anything runs.) The old argument_N and an argument numbered 0 are refused in the dotted read's
 // own words. A key that is not text is left as it is. False when it has refused.
 bool an_argument_key(Value &key, const std::string &name, ExpressionContext &context);
+
+// .get AND .set ON THE ARGUMENTS VARIABLE ITSELF ARE REFUSED (the integrator's ruling of 2026-10-11: as they
+// were while the two were matched by name, and no further -- the author's arguments.get("program") is a
+// question of his own). The variable's other methods are a map's, 1 4 1 n, under satellite; a row is read
+// and written by its name. "" for any other method, or the refusal, naming what to write instead. Asked by
+// the checker, before anything runs, and by the walker with the same words.
+std::string get_or_set_on_the_arguments(token::Code method, const std::string &name);
 
 // THE WALKER, WRITING -- `argz.some_var = some_value` (the author, 2026-09-23: "the syntax
 // is: satellite.variable.arguments any_name then any_name.some_var = some_value"). 003
@@ -135,23 +182,19 @@ void write_an_argument(const std::string &key, Value value, const std::string &n
 bool an_argument_call(const std::vector<std::bitset<16>> &row, std::size_t at, std::string &key, std::size_t &open,
                       bool any_names = false);
 
-// A BARE true OR false AS THE ONE VALUE IN A CALL'S BRACKETS -- `arguments.missing(false)` --
+// A BARE true OR false AS THE ONE VALUE IN A CALL'S BRACKETS -- `satellite.arguments.missing(false)` --
 // `at` on the code after the `(`: "true" or "false" when that name is all there is before its `)`
-// and the `)` ends the line; nullptr otherwise. MS-2's D22, for the call as for the `=`.
+// and the `)` ends the line; nullptr otherwise. The file-top switch line asks it, to refuse the bare
+// word naming satellite.bool.<it>, as a_bare_true_or_false below says.
 const char *a_bare_true_or_false_in_brackets(const std::vector<std::bitset<16>> &row, std::size_t at);
-// A BARE true OR false, WRITTEN TO THE ARGUMENTS (MS-2's D22, the author 2026-10-03: "let's
-// allow bare false/true on the special arguments variable as it breaks all of the rules, and also
-// allow it to take satellite.bool.true, or satellite.bool.false as that is clear by what the user
-// meant"). `at` on the first code of the value in `args.row = ...`, `args["row"] = ...`,
-// `satellite.library.arguments.access = ...` or a file's `arguments.missing = ...`: "true" or
-// "false" when it is that name, bare, with nothing after it but the line's end -- nullptr for
-// anything else, so `args.row = false || x` is read as it always was. satellite.bool.true and
-// .false need nothing here: they are the two values wherever a value goes. THERE, THE BARE WORD IS
-// THE VALUE, ALWAYS -- "as it breaks all of the rules" -- read off the codes alone, so the checker
-// and the walker cannot disagree: asking which names were declared, they did (the fresh reader,
-// 2026-10-04: a `false` declared further down a loop's body gave one line two values in one run).
-// A variable a program named false is read there as `(false)`, in brackets; no program of the
-// author's declares one (measured that day).
+// A BARE true OR false, WRITTEN AS A SWITCH LINE'S VALUE at the top of a file -- `satellite.arguments.missing
+// = false` -- `at` on the value's first code: "true" or "false" when it is that name, bare, with nothing after
+// it but the line's end; nullptr for anything else. ASKED ONLY TO REFUSE IT, naming satellite.bool.<it>: a bare
+// true or false is no value anywhere in satellite, the arguments included (the author, 2026-10-11: "So there
+// should be no true then only an error message, and satellite.bool.true"). That ends MS-2's D22 of 2026-10-03
+// ("let's allow bare false/true on the special arguments variable as it breaks all of the rules"), under which
+// the bare word was the value here; in a capsule and at the prompt it is now judged as any value is, and
+// refused as an undeclared name is (expression.cpp name_not_declared_why).
 const char *a_bare_true_or_false(const std::vector<std::bitset<16>> &row, std::size_t at);
 
 // WHETHER A WORD IS ONE OF THE ARGUMENTS': spelled under satellite.library.arguments, or under

@@ -14,8 +14,8 @@ satellite.spacesuit animal()
         {
             call_speak()
             satellite.variable.thread t = satellite.thread.new(call_speak())
-            t.start()
-            t.join()
+            t.satellite.start()
+            t.satellite.join()
         }
     }
 }
@@ -36,7 +36,7 @@ satellite.capsule satellite.main()
     dog d()
     d.call_both()
     satellite.variable.thread u = satellite.thread.new(d.call_speak())
-    u.start()
-    u.join()
+    u.satellite.start()
+    u.satellite.join()
     satellite.return(satellite)
 }

@@ -59,12 +59,17 @@ struct WrittenOption {
     std::string name;
     std::size_t name_at = 0;
     std::size_t value_at = 0;
+    bool under = false;      // written satellite.end= (the author's B of 2026-10-11), not end=
 };
 
 // DOES AN ARGUMENT START HERE WITH `name =`? `at` is the argument's first code; on true,
 // `name` is the option's name and `value_at` is where its value begins.
 bool an_option_at(const std::vector<std::bitset<16>> &row, std::size_t at, std::string &name,
                   std::size_t &value_at);
+// AND WHETHER IT WAS WRITTEN UNDER SATELLITE: `satellite.end = ""` -- the word satellite, its period, the option's
+// name and the `=` -- or bare, `end = ""`, which B refuses for the five a display or an input takes.
+bool an_option_at(const std::vector<std::bitset<16>> &row, std::size_t at, std::string &name, std::size_t &value_at,
+                  bool &under);
 
 // EVERY OPTION OF THE CALL WHOSE `(` IS AT `open`, at its own depth -- an option of a
 // call inside it is that call's. Answers false with `why` when a plain argument comes
@@ -105,6 +110,24 @@ bool a_colour_word_given_one(token::Code code);
 // satellite.console.display, asked without a search (call_word asks it of every word).
 bool is_display_word(token::Code code);
 
+// THE NUMBER A METHOD WRITTEN ON A DISPLAY'S CALL RUNS -- satellite.console.display.center, 1 5 1 1,
+// for .center() and .centre() (the author, 2026-10-11: "we have to give everything a number and then make
+// it run those numbers") -- or 0. It follows a word of the language, not a value, so it is written
+// `satellite.console.display(x).satellite.center()` and taken inside the display word's own call.
+token::Code display_number_of(token::Code method);
+
+// THE SENTENCE FOR .center() WRITTEN WITH A BARE `.`, said by the checker and the walker alike:
+// `display` is the word as it is spelled, `spelling` center or centre as written.
+std::string center_written_bare(const std::string &display, const std::string &spelling);
+
+// THE PIECES THE CONSOLE'S NUMBERED WORDS SHARE WITH console_calls.cpp, in a namespace of their own.
+namespace console_parts {
+
+// The terminal's columns (across) or rows -- 80 by 24 when there is no terminal.
+int terminal_size(bool across);
+
+} // namespace console_parts
+
 // WHAT display PRINTS FOR A VALUE, as text: false, with why, for one that has none.
 // satellite.access's value line is written by it too (access_calls.hpp).
 bool display_text(const Value &value, std::string &text, std::string &why);
@@ -120,7 +143,8 @@ Value call_console_word(token::Code code, const std::vector<Value> &arguments,
 
 // display with options, or with console colours set. `scenarios` is display's
 // library; what it prints is one line, as 003 queued one unit.
-// `centred` is .center() written on the call: each line in the middle of the console.
+// `centred` is .satellite.center() written on the call: each line in the middle of the console, by
+// that word's number (1 5 1 1).
 Value display_with_options(token::Code code, const Scenarios &scenarios, const Value &argument,
                            const std::vector<NamedOption> &options, ExpressionContext &context,
                            bool centred = false);

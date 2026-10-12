@@ -7,13 +7,13 @@ satellite.capsule satellite.main()
 {
     satellite.variable.color my_color = x000000, 50
     satellite.console.display(my_color)
-    my_color.transparency(20)
+    my_color.satellite.transparency(20)
     satellite.console.display(my_color)
-    satellite.console.display(my_color.transparency)
-    satellite.console.display(my_color.transparency())
+    satellite.console.display(my_color.satellite.transparency)
+    satellite.console.display(my_color.satellite.transparency())
     my_color = x00ff00, 99
     satellite.console.display(my_color)
-    my_color.transparency(0)
+    my_color.satellite.transparency(0)
     satellite.console.display(my_color)
     satellite.return(satellite)
 }

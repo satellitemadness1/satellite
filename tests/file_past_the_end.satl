@@ -1,9 +1,9 @@
 satellite.include(satellite)
 
-satellite.capsule satellite.main(satellite.container.list<satellite.variable.string> arguments)
+satellite.capsule satellite.main(satellite.variable.arguments arguments)
 {
     satellite.variable.file f = satellite.file.new("past.se")
-    f.append("the only line")
+    f.satellite.append("the only line")
     satellite.console.display(f[1])
     satellite.console.display(f[2])
     satellite.return(satellite)

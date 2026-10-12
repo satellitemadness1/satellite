@@ -46,7 +46,7 @@ satellite.spacesuit node()
         }
         satellite.capsule call_has_parent()
         {
-            satellite.return(parent.ok())
+            satellite.return(parent.satellite.ok())
         }
         satellite.capsule call_child(satellite.variable.number n)
         {
@@ -63,17 +63,17 @@ satellite.capsule satellite.main()
 {
     node root
     root.call_put(1)
-    root.call_set_itself(root.pointer())
+    root.call_set_itself(root.satellite.pointer())
     node first
     first.call_put(2)
-    first.call_set_parent(root.pointer())
+    first.call_set_parent(root.satellite.pointer())
     root.call_adopt(first)
     node second
     second.call_put(3)
-    second.call_set_parent(root.pointer())
+    second.call_set_parent(root.satellite.pointer())
     root.call_adopt(second)
 
-    node copy = root.reference()
+    node copy = root.satellite.reference()
     copy.call_put(100)
 
     // THE COPY'S POINTERS POINT INTO THE COPY: its root's pointer at itself, and its children's

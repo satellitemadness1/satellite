@@ -8,12 +8,13 @@
 //
 // WHAT IS BUILT of the infinity (satellite.help(satellite.variable.infinity)): satellite.infinity(),
 // its display, its order against numbers, binaries and other infinities (against a hex it is S210,
-// not built yet), the minus that turns it over, and an infinity name that holds a plain number. Its
+// not built yet), the minus that turns it over, and a multiple that holds a number or an infinity. Its
 // arithmetic is NOT built: + - * / ^ .power_of() on an infinity stop the run (S210, INF-3 to INF-5),
 // so this test does not use them.
 //
-// So x, an infinity name, starts at 547311173 -- a plain number, as the help allows -- and up and held
-// are infinity names too: up is satellite.infinity(), held starts at 0. Each pass runs 100 DIFFERENT
+// So x starts at 547311173 and holds an infinity part of each pass, so it is declared a multiple of a
+// number and an infinity (an infinity name holds a minimum of infinity, the author's H of 2026-10-11);
+// up is an infinity name, satellite.infinity(), and held a number that starts at 0. Each pass runs 100 DIFFERENT
 // operations, 50 forward and then the same 50 undone, last first, each undo spelled differently:
 // + - * / with small, negative and very large operands (10 ^ 40, 2 ^ 100, 3 ^ 40), .add(), the
 // minus in its spellings, .reverse() undone through .string.reverse().number, a digit put on the end
@@ -62,9 +63,9 @@ satellite.include(satellite)
 satellite.capsule satellite.main()
 {
     satellite.variable.number start = 547311173
-    satellite.variable.infinity x = 547311173
+    satellite.container.multiple<satellite.variable.number, satellite.variable.infinity> x = 547311173
     satellite.variable.infinity up = satellite.infinity()
-    satellite.variable.infinity held = 0
+    satellite.variable.number held = 0
     satellite.variable.number wrong = 0
     satellite.variable.number far = 10 ^ 1000
     satellite.variable.string seen = ""
@@ -95,7 +96,7 @@ satellite.capsule satellite.main()
         {
             x = x * 2
         }
-        x = x.add(123456789)
+        x = x.satellite.add(123456789)
         up = -(up)
         satellite.statement.if (up > 10 ^ 100)
         {
@@ -145,7 +146,7 @@ satellite.capsule satellite.main()
         }
         x = held - 7
         held = held - x - 7
-        satellite.statement.if (held.string != "0")
+        satellite.statement.if (held.satellite.string != "0")
         {
             wrong = wrong + 1
         }
@@ -180,7 +181,7 @@ satellite.capsule satellite.main()
         {
             x = x - 2 ^ 100
         }
-        x = x.add(-987654321)
+        x = x.satellite.add(-987654321)
         x = x * 3 ^ 40
         satellite.statement.if (up <= -547311173)
         {
@@ -199,8 +200,8 @@ satellite.capsule satellite.main()
         {
             x = x - 6
         }
-        x = (x.string + "3").satellite.number
-        x = x.reverse() + (x % 10 - 3) * far
+        x = (x.satellite.string + "3").satellite.number
+        x = x.satellite.reverse() + (x % 10 - 3) * far
         x = x * -1
         x = x + 547311173
         satellite.statement.if (up == -satellite.infinity())
@@ -212,7 +213,7 @@ satellite.capsule satellite.main()
             x = x * 19
         }
         x = x - 10 ^ 25
-        x = (x.string + "9").satellite.number
+        x = (x.satellite.string + "9").satellite.number
         x = x * 1000003
         satellite.statement.if (-up > x)
         {
@@ -226,15 +227,15 @@ satellite.capsule satellite.main()
         x = x * 6
 
         // HALFWAY: x, up and held are where exact math says they are, read as text
-        satellite.statement.if (x.string != "-376499371844816554510841540749494252040346453616672301458606841097114894823870")
+        satellite.statement.if (x.satellite.string != "-376499371844816554510841540749494252040346453616672301458606841097114894823870")
         {
             wrong = wrong + 1
         }
-        satellite.statement.if (up.string != "(-infinity)")
+        satellite.statement.if (up.satellite.string != "(-infinity)")
         {
             wrong = wrong + 1
         }
-        satellite.statement.if (held.string != "759")
+        satellite.statement.if (held.satellite.string != "759")
         {
             wrong = wrong + 1
         }
@@ -263,7 +264,7 @@ satellite.capsule satellite.main()
         }
         x = x - 547311173
         x = x / -1 + x % -1 * far
-        x = x.string.satellite.reverse().satellite.number + (x % 10 - 8) * far
+        x = x.satellite.string.satellite.reverse().satellite.number + (x % 10 - 8) * far
         x = (x - 3) / 10 + (x - 3) % 10 * far
         satellite.statement.if (x < satellite.infinity())
         {
@@ -352,7 +353,7 @@ satellite.capsule satellite.main()
             held = held + 17
         }
         x = -(-(-x))
-        satellite.statement.if (x.string != "(-infinity)")
+        satellite.statement.if (x.satellite.string != "(-infinity)")
         {
             wrong = wrong + 1
         }
@@ -406,11 +407,11 @@ satellite.capsule satellite.main()
         {
             wrong = wrong + 1
         }
-        satellite.statement.if (up.string != "(infinity)")
+        satellite.statement.if (up.satellite.string != "(infinity)")
         {
             wrong = wrong + 1
         }
-        satellite.statement.if (held.string != "0")
+        satellite.statement.if (held.satellite.string != "0")
         {
             wrong = wrong + 1
         }
@@ -418,7 +419,7 @@ satellite.capsule satellite.main()
         {
             satellite.statement.if (seen == "")
             {
-                seen = "pass " + pass.string + ": wrong " + wrong.string + ", " + x.string + " " + up.string + " " + held.string
+                seen = "pass " + pass.satellite.string + ": wrong " + wrong.satellite.string + ", " + x.satellite.string + " " + up.satellite.string + " " + held.satellite.string
             }
             satellite.statement.break
         }
@@ -427,7 +428,7 @@ satellite.capsule satellite.main()
     // 547311173, x's own text -- or the first pass that went wrong, and what x, up and held were then
     satellite.statement.if (seen == "")
     {
-        seen = x.string
+        seen = x.satellite.string
     }
     satellite.console.display(seen)
     satellite.return(satellite)

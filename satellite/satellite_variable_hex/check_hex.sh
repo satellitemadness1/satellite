@@ -23,8 +23,9 @@ expect "a hex in a satellite.variable.number name keeps what it is worth: x1F is
        "31|32" "$(sed -n '7,8p' build/hex.out | tr '\n' '|' | sed 's/|$//')"
 
 # THE METHODS: worth, text as shown, four bits to the digit, its own digits as wide as
-# written, the width in bits (003 DESIGN 8.5: "width() COUNTS BITS"), reversed.
-expect "x00FF .number .string .binary .hex .width .reverse(), and (-x1F).hex" \
+# written, the width in bits (003 DESIGN 8.5: "width() COUNTS BITS"), reversed -- each written
+# .satellite. since 2026-10-11 (NM-8, bytecode/scalar_calls.hpp).
+expect "x00FF .satellite.number .string .binary .hex .width .reverse(), and (-x1F).satellite.hex" \
        "255|x00FF|0000000011111111|00FF|16|xFF00|-1F" \
        "$("$interpreter" tests/hex_methods.satl 2>/dev/null | tr '\n' '|' | sed 's/|$//')"
 
@@ -40,8 +41,10 @@ expect "... says ERROR: expected xFF, before anything runs" "1|" \
 expect "... is told x1G is not hex, before anything runs" "1|" \
        "$(grep -c 'satl(check).*ERROR: x1G is not hex' build/hex_x.out)|$(grep -x before build/hex_x.out)"
 "$interpreter" tests/hex_method_not_a_hex.satl > build/hex_x.out 2>&1; expect "my_number.append on a hex name" 27 $?
+# THE WHOLE SENTENCE, ITS LINES JOINED: in the .satellite. spelling (2026-10-11) it no longer fits
+# the report's first line, so it is read as check_color.sh reads its own.
 expect "... is told what a hex has, before anything runs" "1|" \
-       "$(grep -c 'satl(check).*my_number.append -- a hex has .number, .string,' build/hex_x.out)|$(grep -x before build/hex_x.out)"
+       "$(tr '\n' ' ' < build/hex_x.out | grep -c 'satl(check): in satellite.main, my_number.append -- a hex has .satellite.number, .satellite.string, .satellite.binary, .satellite.hex, .satellite.width, .satellite.add and .satellite.reverse()')|$(grep -x before build/hex_x.out)"
 
 # A SUM ON A HEX IS A NUMBER, and a hex name refuses it rather than invent a width.
 "$interpreter" tests/hex_sum_in_a_hex.satl > build/hex_x.out 2>&1; expect "a hex name given my_number + x01" 27 $?

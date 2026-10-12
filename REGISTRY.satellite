@@ -260,8 +260,8 @@ bits              name                         what it is
 0000010100000110  free                         to 0000010111111111, free for this family
 
 -- LOGIC AND BITS  (0000011000000000 up)
-0000011000000000  and_token                    &&   QUESTION: 003 DESIGN §13 leaves && and || open, and may spell them as words
-0000011000000001  or_token                     ||   QUESTION: as above
+0000011000000000  and_token                    &&   ANSWERED 2026-09-22 (C's symbols), BUILT 2026-10-12 (his 10): both bools, the right run only when it decides
+0000011000000001  or_token                     ||   ANSWERED 2026-09-22 (C's symbols), BUILT 2026-10-12 (his 10): as && -- a true before it is the answer
 0000011000000010  not_token                    !    QUESTION: §13 leaves open whether ! is the negation
 0000011000000011  bit_and_token                &    QUESTION: §6 has no bitwise row; & ends an expression and is reported
 0000011000000100  bit_or_token                 |    QUESTION: as above
@@ -324,7 +324,7 @@ bits              name                         what it is
 0000101100000001  replace_token                replace  [METHOD] object.replace(a, b)
 0000101100000010  to_string_token              to_string/str/string  [METHOD] the receiver as base-10 text
 0000101100000011  to_number_token              number/as_number/to_number  [METHOD] the receiver as a whole number
-0000101100000100  to_binary_token              binary/bin/as_binary  [METHOD] the receiver as base-2 text
+0000101100000100  to_binary_token              binary/bin/as_binary/to_binary  [METHOD] the receiver as base-2 text
 0000101100000101  to_hexadecimal_token         hex/as_hex/to_hex  [METHOD] the receiver as base-16 text
 0000101100000110  add_token                    add  [METHOD] object.add(x)
 0000101100000111  append_token                 append  [METHOD] object.append(x) -- a new last line (a file); a new last item (a list) (SATELLITE_FILE_OPERATIONS, 2026-09-18)
@@ -432,17 +432,34 @@ bits              name                         what it is
 0000101101101101  shutdown_token               shutdown  [METHOD] program.shutdown() -- the same as program.end(), with its own code, as exit's
 0000101101101110  pointer_token                pointer  [METHOD] object.pointer() -- points at the object and does not keep it living: once nothing else holds the object it is gone, and the pointer is empty (the author, 2026-10-02)
 0000101101101111  reference_token              reference  [METHOD] object.reference() -- an exact copy of the object, its own from then on: the object can be emptied and the reference is still there (the author, 2026-10-02)
-0000101101110000  scroll_token                 scroll  [METHOD] window.scroll -- the window itself, so .vertical(on) and .horizontal(on) can follow it as the author spelled them: w.scroll.vertical(false) (2026-10-07)
-0000101101110001  vertical_token               vertical  [METHOD] window.scroll.vertical(on) -- whether a window or a console scrolls up and down; read bare for the answer; the arguments' scroll.vertical row stands in where nothing was set
-0000101101110010  horizontal_token             horizontal  [METHOD] window.scroll.horizontal(on) -- whether it scrolls sideways; a console with it on is 2048 characters wide and wraps nothing (the author, 2026-10-07)
-0000101101110011  widgets_token                widgets  [METHOD] window.widgets -- the window itself, so .displays can follow it as the author spelled it: main_window.widgets.displays.file("file_display"); a widget made that way has .widgets of its own (the author, 2026-10-09: "windows have .widgets and .widget objects have .widgets")
-0000101101110100  displays_token               displays  [METHOD] window.widgets.displays -- still the window, so the kind follows: .file("a_name") or .input("a_name") (the author, 2026-10-09)
-0000101101110101  file_piece_token             file  [METHOD] window.widgets.displays.file("a_name") -- a file display: the files of a directory, made in the window or widget the chain began on, top to bottom, and reached after as window.a_name (the author, 2026-10-09)
-0000101101110110  input_piece_token            input  [METHOD] window.widgets.displays.input("a_name") -- a one-line text input, made and reached the same way (the author, 2026-10-09)
+0000101101110000  scroll_token                 scroll  [METHOD] SINCE NM-8 (2026-10-11) A PART: window.satellite.scroll.vertical(on) and .horizontal(on) are each one word (scroll_vertical_token), and a scroll written alone or bare is refused naming them. Before: window.scroll -- the window itself, so .vertical(on) and .horizontal(on) can follow it as the author spelled them: w.scroll.vertical(false) (2026-10-07)
+0000101101110001  vertical_token               vertical  [METHOD] SINCE NM-8 A PART of window.satellite.scroll.vertical(on) (scroll_vertical_token). Before: window.scroll.vertical(on) -- whether a window or a console scrolls up and down; read bare for the answer; the arguments' scroll.vertical row stands in where nothing was set
+0000101101110010  horizontal_token             horizontal  [METHOD] SINCE NM-8 A PART of window.satellite.scroll.horizontal(on) (scroll_horizontal_token). Before: window.scroll.horizontal(on) -- whether it scrolls sideways; a console with it on is 2048 characters wide and wraps nothing (the author, 2026-10-07)
+0000101101110011  widgets_token                widgets  [METHOD] SINCE NM-8 A PART: window.satellite.widgets.display.file("a_name") and .input("a_name") are each one word (widgets_display_file_token), and widgets written alone or bare is refused naming them. Before: window.widgets -- the window itself, so .displays can follow it as the author spelled it: main_window.widgets.displays.file("file_display"); a widget made that way has .widgets of its own (the author, 2026-10-09: "windows have .widgets and .widget objects have .widgets")
+0000101101110100  displays_token               displays  [METHOD] SINCE NM-8 THE OLD NAME, refused naming widgets.display (the author's rename of 2026-10-10 ~21:14, and his D). Before: window.widgets.displays -- still the window, so the kind follows: .file("a_name") or .input("a_name") (the author, 2026-10-09)
+0000101101110101  file_piece_token             file  [METHOD] SINCE NM-8 A PART of window.satellite.widgets.display.file("a_name") (widgets_display_file_token). Before: window.widgets.displays.file("a_name") -- a file display: the files of a directory, made in the window or widget the chain began on, top to bottom, and reached after as window.a_name (the author, 2026-10-09)
+0000101101110110  input_piece_token            input  [METHOD] SINCE NM-8 A PART of window.satellite.widgets.display.input("a_name") (widgets_display_input_token). Before: window.widgets.displays.input("a_name") -- a one-line text input, made and reached the same way (the author, 2026-10-09)
 0000101101110111  directory_token              directory  [METHOD] file_display.directory("/home/you/") -- which directory a file display shows; read bare for the one it shows (the author, 2026-10-09)
 0000101101111000  listen_token                 listen  [METHOD] text_input.listen() keeps its text up to date; text_input.listen(a_capsule) also runs that capsule on every key typed in it (the author, 2026-10-09)
 0000101101111001  section_token                section  [METHOD] window.section("a_name", 100%, 50%) -- a section of the window, as wide and as tall as a share of what holds it or as pixels, filled left to right; reached after as window.a_name, and holding widgets and sections of its own (the author, 2026-10-10: "to program GUIs in satellite you must learn the section code scheme")
-0000101101111010  free                         to 0000101111111111, free for this family
+0000101101111010  abs_token                    abs  [METHOD] number.satellite.abs() -- the number without its sign: -7 is 7 (003's word 1 6 4 4; NM-8, 2026-10-11: a number's words had no token until then)
+0000101101111011  floor_token                  floor  [METHOD] number.satellite.floor() -- a whole number is its own floor, so it answers itself (003 DESIGN 8.6; word 1 6 4 7)
+0000101101111100  ceil_token                   ceil  [METHOD] number.satellite.ceil() -- a whole number is its own ceiling, so it answers itself (003 DESIGN 8.6; word 1 6 4 8)
+0000101101111101  round_token                  round  [METHOD] number.satellite.round() -- a whole number is already round, so it answers itself (003 DESIGN 8.6; word 1 6 4 9)
+0000101101111110  sqrt_token                   sqrt  [METHOD] number.satellite.sqrt() -- numbered (word 1 6 4 14) and not built: an exact whole square root is owed (MILESTONES.md M17)
+0000101101111111  digits_token                 digits  [METHOD] number.satellite.digits() -- how many decimal digits its size has; 0 has 1 (word 1 6 4 15)
+0000101110000000  modulus_method_token         modulus  [METHOD] number.satellite.modulus(x) -- the % operator's own: what is left of the number after dividing by x (word 1 6 4 12); modulus_token is %
+0000101110000001  shift_left_method_token      shift_left  [METHOD] number.satellite.shift_left(n) -- the number times 2 to the power n; a negative n is refused (word 1 6 4 1); shift_left_token is <<
+0000101110000010  shift_right_method_token     shift_right  [METHOD] number.satellite.shift_right(n) -- the number divided by 2 to the power n, cut toward zero (word 1 6 4 11); shift_right_token is >>
+0000101110000011  clamp_token                  clamp  [METHOD] number.satellite.clamp(low, high) -- the number held between low and high, both kept; low above high is refused (word 1 6 4 5)
+0000101110000100  bytes_token                  bytes  [METHOD] number.satellite.bytes() -- how many bytes the number takes in memory, 8 a limb (word 1 6 4 23, MILESTONES.md M17)
+0000101110001011  get_token                    get  [METHOD] map.get(k) -- the value under the key k, the same as map[k]; a key it does not hold is refused (satellite.container.map.get(k), 1 4 1 2 -- 003's word, given a token on 2026-10-11 so it runs its number, written map.satellite.get(k))
+0000101110001100  set_token                    set  [METHOD] map.set(k, v) -- files v under the key k, the same as map[k] = v, and answers nothing (satellite.container.map.set(k, v), 1 4 1 1 -- 003's word, given a token on 2026-10-11 with get)
+0000101110010111  widgets_display_file_token   widgets.display.file  [METHOD] window.satellite.widgets.display.file("a_name") -- a file display, made in the window or section the chain began on and reached after as window.a_name: ONE WORD OF THREE PARTS, `.satellite.` once before it and plain periods inside it, read by the lexer as one code (the author's final syntax, 2026-10-10 ~21:15: main_window.files_display.satellite.widgets.display.file("list_of_files", 100%, 100%)); a name, or a name and a size
+0000101110011000  widgets_display_input_token  widgets.display.input  [METHOD] window.satellite.widgets.display.input("a_name") -- a one-line text input, made and reached the same way: one word of three parts (NM-8, 2026-10-11)
+0000101110011001  scroll_vertical_token        scroll.vertical  [METHOD] window.satellite.scroll.vertical(on) -- whether a window or a console scrolls up and down; read bare for the answer: one word of two parts (NM-8, 2026-10-11)
+0000101110011010  scroll_horizontal_token      scroll.horizontal  [METHOD] window.satellite.scroll.horizontal(on) -- whether it scrolls sideways; read bare for the answer: one word of two parts (NM-8, 2026-10-11)
+0000101110011011  free                         to 0000101111111111, free for this family
 
 0001000000000000  word_base                    reserved: no word has this code
 0001000000000001  the first word               satellite -- and every satellite.something.something after it

@@ -10,13 +10,13 @@ satellite.capsule satellite.main(satellite.variable.arguments args)
         lot = lot + lot
     }
     satellite.variable.bash clock = "date +%s.%N"
-    clock.start()
-    clock.join()                                             // the time before
+    clock.satellite.start()
+    clock.satellite.join()                                             // the time before
     satellite.variable.program counter = {"wc", "-c"}
-    counter.start()
-    counter.pass(lot)
-    counter.join()                                           // 83886081: 10 x 2^23, and its end of line
-    clock.start()
-    clock.join()                                             // the time after
+    counter.satellite.start()
+    counter.satellite.pass(lot)
+    counter.satellite.join()                                           // 83886081: 10 x 2^23, and its end of line
+    clock.satellite.start()
+    clock.satellite.join()                                             // the time after
     satellite.return(satellite)
 }

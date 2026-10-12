@@ -12,5 +12,5 @@ ok float 1.0 / 3 * 3 shows 1.0 but holds 128 nines, so it is not 1
 ok float 0.5 ^ 400 shows 0.0 but is not 0 at 128 places
 ok float has no limit on its size, and multiplies every digit
 ok float a whole number given to a float name becomes a float, and the name keeps a product
-ok float .number is the whole number when nothing is after the point
-ok float arguments.float.decimal is the places held
+ok float .satellite.number is the whole number when nothing is after the point
+ok float satellite.arguments.float.decimal is the places held

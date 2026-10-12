@@ -27,9 +27,9 @@ satellite.capsule satellite.main()
     box a
     a.call_put(5)
     satellite.container.multiple<box, satellite.variable.number> m = a
-    satellite.console.display(m.ok())
-    satellite.console.display(m.pointer().call_take())
-    box r = m.reference()
+    satellite.console.display(m.satellite.ok())
+    satellite.console.display(m.satellite.pointer().call_take())
+    box r = m.satellite.reference()
     a.call_put(6)
     satellite.console.display(r.call_take())
     satellite.return(satellite)

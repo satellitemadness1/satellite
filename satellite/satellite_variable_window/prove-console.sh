@@ -94,7 +94,7 @@ satellite.include(satellite)
 
 satellite.capsule satellite.main()
 {
-    satellite.file.new("clean.se").append("the program ran in a console and finished")
+    satellite.file.new("clean.se").satellite.append("the program ran in a console and finished")
     satellite.console.display("done")
     satellite.return(satellite)
 }
@@ -113,7 +113,7 @@ satellite.capsule satellite.main()
     {
         satellite.console.display(s)
     }
-    satellite.file.new("loud.se").append("printed every line")
+    satellite.file.new("loud.se").satellite.append("printed every line")
     satellite.return(satellite)
 }
 SATL
@@ -123,17 +123,17 @@ satellite.include(satellite)
 
 satellite.capsule when_typed(satellite.variable.window the_console)
 {
-    satellite.console.display("typed: " + the_console.typed)
-    satellite.console.display(the_console.columns)
-    satellite.console.display(the_console.rows)
-    the_console.close()
+    satellite.console.display("typed: " + the_console.satellite.typed)
+    satellite.console.display(the_console.satellite.columns)
+    satellite.console.display(the_console.satellite.rows)
+    the_console.satellite.close()
 }
 
 satellite.capsule satellite.main()
 {
     satellite.variable.window c = satellite.console.new("a program's console", 700, 400)
-    c.display("type a line and press Enter")
-    c.typed(when_typed)
+    c.satellite.display("type a line and press Enter")
+    c.satellite.typed(when_typed)
     satellite.console.display("main is finished, and the console is waiting")
     satellite.return(satellite)
 }
@@ -220,7 +220,7 @@ finish() { waited=0
 # THE PROMPT. A Shift first (swallowed), a line that writes a file, Return,
 # `exit`, Return, a pause for the hold to be up, and a Space to close it.
 start prompt --console; sleep 5
-/usr/bin/python3 "$work/drive.py" shift 'type:satellite.file.new("typed.se").append("hello from the console")' return \
+/usr/bin/python3 "$work/drive.py" shift 'type:satellite.file.new("typed.se").satellite.append("hello from the console")' return \
     wait:2 'type:exit' return wait:3 >"$work/prompt.drive" 2>&1
 alive prompt
 # A SECOND SESSION, SO A SECOND SWALLOWED FIRST KEY: Shift before the Space.
@@ -233,7 +233,7 @@ finish prompt
 env -u DISPLAY -u DBUS_SESSION_BUS_ADDRESS -u SATL_NO_WINDOW HOME="$work/home" WAYLAND_DISPLAY=satlcon \
     setsid -w "$satl" </dev/null >/dev/null 2>"$work/bare.err" & pid=$!
 sleep 5
-/usr/bin/python3 "$work/drive.py" shift 'type:satellite.file.new("bare.se").append("a launcher reached the prompt")' return \
+/usr/bin/python3 "$work/drive.py" shift 'type:satellite.file.new("bare.se").satellite.append("a launcher reached the prompt")' return \
     wait:2 'type:exit' return wait:3 >"$work/bare.drive" 2>&1
 alive bare
 /usr/bin/python3 "$work/drive.py" shift space >"$work/bare.drive2" 2>&1

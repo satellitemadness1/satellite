@@ -146,7 +146,7 @@ gboolean fit_cells(GtkWidget *widget, GdkFrameClock *, gpointer data)
         gtk_widget_get_width(widget) <= 0)
         return G_SOURCE_CONTINUE;
     // THE COLUMNS A PERSON CAN SEE, when the terminal is wider than its scroller (sideways
-    // scrolling, 2026-10-07): the window is sized by those, not by the 2048 the terminal holds.
+    // scrolling, 2026-10-07): the window is sized by those, not by the widest line the terminal holds.
     if (console->scroller != nullptr) {
         const int seen = gtk_widget_get_width(static_cast<GtkWidget *>(console->scroller));
         if (seen > 0 && seen / cell_width < columns)

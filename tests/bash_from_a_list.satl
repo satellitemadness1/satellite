@@ -6,7 +6,7 @@ satellite.capsule satellite.main(satellite.variable.arguments args)
 {
     satellite.console.display("before")
     satellite.variable.bash listed = {"echo", "hello"}
-    listed.start()
-    listed.join()
+    listed.satellite.start()
+    listed.satellite.join()
     satellite.return(satellite)
 }

@@ -25,18 +25,19 @@ expect "a colour given 123456, abcdef, x00ff00, the variable facade, ff00aa, 5 a
        "$("$interpreter" tests/color_later_lines.satl 2>/dev/null | tr '\n' '|' | sed 's/|$//')"
 
 # TRANSPARENCY, HIS TWO WAYS: "my_color.transparency(0 - 99) and my_color = x000000,
-# 0-99 for transparency". Displayed in his own spelling; a solid colour has no ", 0".
+# 0-99 for transparency". Displayed in his own spelling; a solid colour has no ", 0". The
+# method is written .satellite.transparency since 2026-10-11 (NM-8, bytecode/scalar_calls.hpp).
 "$interpreter" tests/color_transparency.satl > build/color.out 2>/dev/null
 expect "tests/color_transparency.satl runs" 0 $?
-expect "= x000000, 50 displays x000000, 50, and .transparency(20) makes it x000000, 20" \
+expect "= x000000, 50 displays x000000, 50, and .satellite.transparency(20) makes it x000000, 20" \
        "x000000, 50|x000000, 20" "$(sed -n '1,2p' build/color.out | tr '\n' '|' | sed 's/|$//')"
-expect ".transparency and .transparency() read it back: 20" "20|20" \
+expect ".satellite.transparency and .satellite.transparency() read it back: 20" "20|20" \
        "$(sed -n '3,4p' build/color.out | tr '\n' '|' | sed 's/|$//')"
-expect "= x00ff00, 99 on a later line, and .transparency(0) leaves the ', 0' off" "x00FF00, 99|x00FF00" \
+expect "= x00ff00, 99 on a later line, and .satellite.transparency(0) leaves the ', 0' off" "x00FF00, 99|x00FF00" \
        "$(sed -n '5,6p' build/color.out | tr '\n' '|' | sed 's/|$//')"
 
 # ITS CONVERSIONS, AND SAMENESS: the digits AND the transparency.
-expect "x00FF00 .number .hex .binary .string, then == and != with and without a transparency" \
+expect "x00FF00 .satellite.number .hex .binary .string, then == and != with and without a transparency" \
        "65280|00FF00|000000001111111100000000|x00FF00|true|false|true" \
        "$("$interpreter" tests/color_methods.satl 2>/dev/null | tr '\n' '|' | sed 's/|$//')"
 
@@ -58,25 +59,25 @@ expect "... says a color has no sign, before anything runs" "1|" \
        "$(color_said 'satl(check): in satellite.main, ERROR: a color has no sign, and this one has a minus in front of it -- x000000 is black, and there is no color below it ')|$(grep -x before build/color.out)"
 
 # A TRANSPARENCY IS 0 TO 99: after the comma it is judged before anything runs, and
-# given to .transparency(...) it is judged where it runs.
+# given to .satellite.transparency(...) it is judged where it runs.
 "$interpreter" tests/color_transparency_100.satl > build/color.out 2>&1; expect "= x000000, 100" 27 $?
 expect "... says a transparency is 0 to 99, before anything runs" "1|" \
        "$(color_said 'satl(check): in satellite.main, ERROR: a transparency is a whole number from 0 (solid) to 99 (almost clear), and this is 100 ')|$(grep -x before build/color.out)"
-"$interpreter" tests/color_transparency_method_100.satl > build/color.out 2>&1; expect "my_color.transparency(100)" 27 $?
+"$interpreter" tests/color_transparency_method_100.satl > build/color.out 2>&1; expect "my_color.satellite.transparency(100)" 27 $?
 expect "... says a transparency is 0 to 99, after before" "1|before" \
-       "$(color_said 'satl(run): in my_color, my_color.transparency(...) -- a transparency is a whole number from 0 (solid) to 99 (almost clear), and it was given 100 ')|$(grep -x before build/color.out)"
+       "$(color_said 'satl(run): in my_color, my_color.satellite.transparency(...) -- a transparency is a whole number from 0 (solid) to 99 (almost clear), and it was given 100 ')|$(grep -x before build/color.out)"
 
 # WHAT A COLOUR HAS NOT GOT: a method, before anything runs; an order and arithmetic
 # where they run, each by name.
 "$interpreter" tests/color_method_not_a_color.satl > build/color.out 2>&1; expect "my_color.append on a colour name" 27 $?
 expect "... is told what a color has, before anything runs" "1|" \
-       "$(color_said 'satl(check): in satellite.main, my_color.append -- a color has .transparency, .number, .string, .hex and .binary ')|$(grep -x before build/color.out)"
+       "$(color_said 'satl(check): in satellite.main, my_color.append -- a color has .satellite.transparency, .satellite.number, .satellite.string, .satellite.hex and .satellite.binary ')|$(grep -x before build/color.out)"
 "$interpreter" tests/color_no_order.satl > build/color.out 2>&1; expect "red < blue on two colours" 27 $?
 expect "... says only == and != compare two colors" 1 \
        "$(color_said 'satl(run): < was given two colors, and only == and != compare those -- there is no order between two colors ')"
 "$interpreter" tests/color_arithmetic.satl > build/color.out 2>&1; expect "red + 1" 27 $?
 expect "... says a color has no arithmetic, and where its number is" 1 \
-       "$(color_said 'satl(run): + was given a color and a number -- a color has no arithmetic: it is six hex digits and a transparency. Its .number is what the digits are worth, to do sums on ')"
+       "$(color_said 'satl(run): + was given a color and a number -- a color has no arithmetic: it is six hex digits and a transparency. Its .satellite.number is what the digits are worth, to do sums on ')"
 
 # MIXING THE NEW TYPES IS THE AUTHOR'S "GRAND FINALE": said as not built yet.
 "$interpreter" tests/color_meets_hex.satl > build/color.out 2>&1; expect "green == x00FF00" 14 $?

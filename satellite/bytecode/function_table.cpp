@@ -25,9 +25,9 @@ signed long long int FunctionTable::build(const NumberIndex &index, MachineState
         if (row == nullptr) continue;
         const std::size_t slot = static_cast<std::size_t>(code) - word::kBase;
         every_row_[slot] = row;
-        // A LIST'S METHOD IS NOT CALLED BY ITS NAME (the header says why): its row is
-        // method()'s alone.
-        if (row->scenarios.list_call == nullptr)
+        // A LIST'S METHOD IS NOT CALLED BY ITS NAME (the header says why), nor any other type's
+        // numbered since: its row is method()'s alone.
+        if (row->scenarios.list_call == nullptr && row->scenarios.method_call == nullptr)
             rows_[slot] = row;
         ++filled_;
     }

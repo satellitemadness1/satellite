@@ -5,8 +5,8 @@ satellite.include(satellite)
 satellite.capsule satellite.main(satellite.variable.arguments args)
 {
     satellite.variable.program long_line = {"sh", "-c", "head -c 40000000 /dev/zero | tr '\\0' a"}
-    long_line.start()
-    long_line.join()
+    long_line.satellite.start()
+    long_line.satellite.join()
     satellite.console.display("")
     satellite.return(satellite)
 }

@@ -34,24 +34,24 @@ satellite.capsule satellite.main()
         satellite.variable.bool show = turn == rounds
         satellite.variable.binary flags = b0010
         satellite.variable.bin second = b1010
-        check(show, "binary shows exactly as written, b and leading zeros, and .string is that; bin is its second spelling", flags.string + " " + second.string, "b0010 b1010")
-        check(show, "binary the width is part of the value, b0010 is not b10", (flags == b10).string + " " + (flags == b0010).string, "false true")
-        check(show, "binary .number .to_number and .as_number are what the bits are worth", flags.number.string + " " + flags.to_number.string + " " + flags.as_number.string, "2 2 2")
-        check(show, "binary .binary and .bin are the digits without the b, .hex its worth in base 16", flags.binary + " " + flags.bin + " " + b10101010.hex, "0010 0010 AA")
-        check(show, "binary .reverse() turns the bits round and keeps the width", b1000.reverse().string, "b0001")
-        check(show, "binary + - * / % ^ read a binary by its worth and answer a number", (b1000 + b0101).string + " " + (b1111 - b0001).string + " " + (b1111 * 2).string + " " + (b1111 / b0010).string + " " + (b1111 % b0100).string + " " + (b0010 ^ b0011).string, "13 14 30 7 3 8")
-        check(show, "binary .add(x) is +", b0101.add(3).string, "8")
-        check(show, "binary meets a number by its worth, and orders by its worth", (b1010 == 10).string + " " + (b1010 != 10).string + " " + (b1010 < b1011).string + " " + (b1010 > 9).string, "true false true true")
+        check(show, "binary shows exactly as written, b and leading zeros, and .satellite.string is that; bin is its second spelling", flags.satellite.string + " " + second.satellite.string, "b0010 b1010")
+        check(show, "binary the width is part of the value, b0010 is not b10", (flags == b10).satellite.string + " " + (flags == b0010).satellite.string, "false true")
+        check(show, "binary .satellite.number .satellite.to_number and .satellite.as_number are what the bits are worth", flags.satellite.number.satellite.string + " " + flags.satellite.to_number.satellite.string + " " + flags.satellite.as_number.satellite.string, "2 2 2")
+        check(show, "binary .satellite.binary and .satellite.bin are the digits without the b, .satellite.hex its worth in base 16", flags.satellite.binary + " " + flags.satellite.bin + " " + b10101010.satellite.hex, "0010 0010 AA")
+        check(show, "binary .satellite.reverse() turns the bits round and keeps the width", b1000.satellite.reverse().satellite.string, "b0001")
+        check(show, "binary + - * / % ^ read a binary by its worth and answer a number", (b1000 + b0101).satellite.string + " " + (b1111 - b0001).satellite.string + " " + (b1111 * 2).satellite.string + " " + (b1111 / b0010).satellite.string + " " + (b1111 % b0100).satellite.string + " " + (b0010 ^ b0011).satellite.string, "13 14 30 7 3 8")
+        check(show, "binary .satellite.add(x) is +", b0101.satellite.add(3).satellite.string, "8")
+        check(show, "binary meets a number by its worth, and orders by its worth", (b1010 == 10).satellite.string + " " + (b1010 != 10).satellite.string + " " + (b1010 < b1011).satellite.string + " " + (b1010 > 9).satellite.string, "true false true true")
         satellite.variable.bin below = -b0101
-        check(show, "binary keeps a sign: -b0101 is worth -5, is not b0101, and orders below b0001", below.string + " " + below.number.string + " " + (below == b0101).string + " " + (below == -b0101).string + " " + (below < b0001).string, "-b0101 -5 false true true")
-        check(show, "binary a minus turns it over, and zero has no sign", (-below).string + " " + (-b0000).string, "b0101 b0000")
-        check(show, "binary .reverse() .binary and .hex keep the sign", below.reverse().string + " " + below.bin + " " + below.hex, "-b1010 -0101 -5")
+        check(show, "binary keeps a sign: -b0101 is worth -5, is not b0101, and orders below b0001", below.satellite.string + " " + below.satellite.number.satellite.string + " " + (below == b0101).satellite.string + " " + (below == -b0101).satellite.string + " " + (below < b0001).satellite.string, "-b0101 -5 false true true")
+        check(show, "binary a minus turns it over, and zero has no sign", (-below).satellite.string + " " + (-b0000).satellite.string, "b0101 b0000")
+        check(show, "binary .satellite.reverse() .satellite.binary and .satellite.hex keep the sign", below.satellite.reverse().satellite.string + " " + below.satellite.bin + " " + below.satellite.hex, "-b1010 -0101 -5")
         satellite.variable.number worth = b0011
         flags = b0000
-        check(show, "binary a number name given b0011 holds 3, and a binary name takes another binary", worth.string + " " + flags.string, "3 b0000")
+        check(show, "binary a number name given b0011 holds 3, and a binary name takes another binary", worth.satellite.string + " " + flags.satellite.string, "3 b0000")
         flags = b11111111111111111111111111111111111111111111111111111111111111111111111111111111
-        check(show, "binary has no length limit, 80 ones", flags.number.string + " " + flags.hex, "1208925819614629174706175 FFFFFFFFFFFFFFFFFFFF")
-        check(show, "binary a string joins a binary as its .string", "b " + b1010, "b b1010")
+        check(show, "binary has no length limit, 80 ones", flags.satellite.number.satellite.string + " " + flags.satellite.hex, "1208925819614629174706175 FFFFFFFFFFFFFFFFFFFF")
+        check(show, "binary a string joins a binary as its .satellite.string", "b " + b1010, "b b1010")
     }
     satellite.return(satellite)
 }

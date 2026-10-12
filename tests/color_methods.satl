@@ -6,13 +6,13 @@ satellite.include(satellite)
 satellite.capsule satellite.main()
 {
     satellite.variable.color green = x00FF00
-    satellite.console.display(green.number)
-    satellite.console.display(green.hex)
-    satellite.console.display(green.binary)
-    satellite.console.display(green.string)
+    satellite.console.display(green.satellite.number)
+    satellite.console.display(green.satellite.hex)
+    satellite.console.display(green.satellite.binary)
+    satellite.console.display(green.satellite.string)
     satellite.variable.color also_green = 00ff00
     satellite.console.display(green == also_green)
-    also_green.transparency(50)
+    also_green.satellite.transparency(50)
     satellite.console.display(green == also_green)
     satellite.console.display(green != also_green)
     satellite.return(satellite)

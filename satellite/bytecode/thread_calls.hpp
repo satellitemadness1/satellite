@@ -56,8 +56,33 @@ int thread_method_arity(token::Code method);
 // For a refusal: the methods a thread has.
 std::string thread_methods_are();
 
-Value call_thread_method(token::Code method, const ThreadHandle &which, const std::vector<Value> &arguments,
-                         bool had_parentheses, const std::string &name, ExpressionContext &context);
+// EVERY ONE OF THEM RUNS BY ITS NUMBER (the author, 2026-10-11: "we still need to get the word satellite
+// onto everything, before we do anything ... everything builtin needs the word satellite still"). A
+// thread's method is the word satellite.variable.thread.<it>, 1 6 13 n in words/words.tsv -- start and
+// join are 003's numbers, stop and wait 004's -- and its code is a file under satellite-numbers/words/
+// named by that number. So it is written `.satellite.`: t.satellite.start(), t.satellite.join().
+// THE NUMBER A THREAD'S METHOD RUNS, or 0 for a method a thread does not have.
+token::Code thread_number_of(token::Code method);
+
+// THE WALKER'S HALF: the method's number, run. `number` is thread_number_of(method) as the walker asked
+// it, and 0 for a method a thread does not have -- refused here, in the words it always was, as are a
+// count that is not nothing and a name that holds no thread yet, all before anything runs. Then the
+// number's function, through the function table.
+Value run_thread_number(token::Code method, token::Code number, const Value &receiver,
+                        const std::vector<Value> &arguments, bool had_parentheses, const std::string &name,
+                        ExpressionContext &context);
+
+// THE BODIES THE NUMBERS RUN (thread_calls.cpp), in a namespace of their own as a string's and a list's
+// are: start() is 1 6 13 1's, and join() is both 1 6 13 2's and 1 6 13 4's -- wait() is join()'s second
+// name, its own word and number running the one body. `spelling` is the name the call was written with,
+// "join" or "wait", for its refusals.
+namespace thread_method_parts {
+
+Value start(const ThreadHandle &which, const std::string &name, ExpressionContext &context);
+Value join(const ThreadHandle &which, const std::string &name, const std::string &spelling,
+           ExpressionContext &context);
+
+} // namespace thread_method_parts
 
 // THE END OF THE RUN (structured-library.cpp): every thread still running is asked to stop
 // and waited for. Answers the code of the first thread that failed and that nobody joined

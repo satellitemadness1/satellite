@@ -7,6 +7,6 @@ satellite.capsule satellite.main()
 {
     satellite.variable.number passes = 1
     satellite.variable.program p = "true"
-    satellite.console.display(p.join())
+    satellite.console.display(p.satellite.join())
     satellite.return(satellite)
 }

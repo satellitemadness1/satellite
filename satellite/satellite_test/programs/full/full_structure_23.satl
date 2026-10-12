@@ -6,6 +6,6 @@ satellite.include(satellite)
 satellite.capsule satellite.main()
 {
     satellite.variable.number passes = 1
-    arguments.access = 5
+    satellite.arguments.access = 5
     satellite.return(satellite)
 }

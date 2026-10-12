@@ -84,11 +84,14 @@ bool run_a_file_from_the_prompt(const std::string &typed, signed long long int &
     // THE WORD ALONE IS THE COMMAND WITH NOTHING AFTER IT, and says so -- read as a
     // statement it would be "interpret has no satellite.variable line", which is
     // true and sends a person the wrong way.
+    // AND UNDER satellite TOO (the author's D of 2026-10-11, of exit, quit, run and interpret: "both should work"):
+    // `satellite.run p.satl` is `run p.satl`, and `satellite.interpret p.satl` is `interpret p.satl`.
+    const std::string word = starts_with(typed, "satellite.") ? typed.substr(10) : typed;
     std::string rest;
-    if (starts_with(typed, "interpret ") || typed == "interpret")
-        rest = typed.substr(std::min<std::size_t>(typed.size(), 10));
-    else if (starts_with(typed, "run ") || typed == "run")
-        rest = typed.substr(std::min<std::size_t>(typed.size(), 4));
+    if (starts_with(word, "interpret ") || word == "interpret")
+        rest = word.substr(std::min<std::size_t>(word.size(), 10));
+    else if (starts_with(word, "run ") || word == "run")
+        rest = word.substr(std::min<std::size_t>(word.size(), 4));
     else
         return false;
 

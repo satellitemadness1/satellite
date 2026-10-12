@@ -33,13 +33,13 @@ satellite.capsule waiter(timer a)
 satellite.capsule satellite.main()
 {
     timer a
-    a.lock()
+    a.satellite.lock()
     satellite.variable.thread th = satellite.thread.new(waiter(a))
-    th.start()
+    th.satellite.start()
     satellite.time.sleep(100ms)
     a.call_set(5ms)
-    th.stop()
-    th.join()
+    th.satellite.stop()
+    th.satellite.join()
     satellite.console.display(a.call_get())
     satellite.return(satellite)
 }

@@ -4,11 +4,11 @@ satellite.include(satellite)
 satellite.capsule satellite.main(satellite.variable.arguments args)
 {
     satellite.variable.program counter = {"sh", "-c", "i=1; while [ $i -le 2000 ]; do echo program-line-$i-abcdefghijklmnopqrstuvwxyz; i=$((i+1)); done"}
-    counter.start()
+    counter.satellite.start()
     satellite.statement.for (satellite.variable.number i = 1; i < 2001; i++)
     {
         satellite.console.display("satl-line-" + i + "-abcdefghijklmnopqrstuvwxyz")
     }
-    counter.join()
+    counter.satellite.join()
     satellite.return(satellite)
 }

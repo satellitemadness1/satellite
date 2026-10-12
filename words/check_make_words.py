@@ -51,6 +51,9 @@ NEXT = next_under((1, 6))
 # THE NEXT FREE NUMBER UNDER satellite.console, asked and never typed: it was 1 5 10,
 # then 1 5 11, and each word 004 put under console moved these cases by hand.
 CONSOLE_NEXT = next_under((1, 5))
+# THE NEXT FREE NUMBER UNDER satellite.variable.percentage, asked and never typed: these cases wrote 1 6 16 1
+# while percentage had no words, and on 2026-10-11 its .string and .add(x) took 1 6 16 1 and 2 (NM-8).
+PERCENT_NEXT = next_under((1, 6, 16))
 
 # (what it proves, rows after the committed ones, what make_words.py must say)
 # A REFUSAL is its exit 1 and a sentence of make_words.py's own -- never a traceback.
@@ -63,7 +66,7 @@ REFUSED = [
     ("numbers that are not numbers", "1 6 x\tsatellite.variable.y\n", "write numbers, a tab, then the path"),
     ("a word under a bare shape", "1 6 4 0 1\tsatellite.variable.number().x\n",
      "cannot go under satellite.variable.number(), which holds no words"),
-    ("a bare shape given a number", "1 6 16 1\tsatellite.variable.percentage()\n",
+    ("a bare shape given a number", f"1 6 16 {PERCENT_NEXT}\tsatellite.variable.percentage()\n",
      "satellite.variable.percentage() is a bare shape, which keeps 0: 1 6 16 0"),
     ("a 0 that is not a bare shape", "1 6 16 0\tsatellite.variable.percentage(x)\n",
      "is not a bare shape, so it cannot keep 0"),
@@ -73,9 +76,9 @@ REFUSED = [
 ]
 ACCEPTED = [
     ("a bare shape at 0, then a word and its child",
-     "1 6 16 0\tsatellite.variable.percentage()\n1 6 16 1\tsatellite.variable.percentage.round\n"
-     "1 6 16 1 1\tsatellite.variable.percentage.round.up\n"),
-    ("an argument form under the word itself", "1 6 16 1\tsatellite.variable.percentage(x)\n"),
+     f"1 6 16 0\tsatellite.variable.percentage()\n1 6 16 {PERCENT_NEXT}\tsatellite.variable.percentage.round\n"
+     f"1 6 16 {PERCENT_NEXT} 1\tsatellite.variable.percentage.round.up\n"),
+    ("an argument form under the word itself", f"1 6 16 {PERCENT_NEXT}\tsatellite.variable.percentage(x)\n"),
     # CONSOLE_NEXT, ASKED: GTK-17 took 1 5 10 and satellite.console.foreground and
     # .background took 1 5 11 and 1 5 12 (2026-09-23), and a typed number went stale twice.
     ("a word numbered under its own parent", f"1 5 {CONSOLE_NEXT}\tsatellite.console.foo\n"),

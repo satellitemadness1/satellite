@@ -21,6 +21,6 @@ satellite.capsule satellite.main()
 {
     satellite.console.display("THIS LINE MUST NOT RUN")
     box a
-    box p = a.pointer(1)
+    box p = a.satellite.pointer(1)
     satellite.return(satellite)
 }

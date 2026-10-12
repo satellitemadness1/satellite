@@ -35,7 +35,7 @@ satellite.capsule satellite.main()
     satellite.console.display(-half)
     satellite.console.display(half == 50%)
     satellite.console.display(half < 75%)
-    satellite.console.display(half.string)
+    satellite.console.display(half.satellite.string)
     satellite.console.display(100% / 3)
     satellite.console.display(200% / 3)
 

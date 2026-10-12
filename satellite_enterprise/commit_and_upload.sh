@@ -22,6 +22,16 @@
 #      used is still asked at a terminal (a minute of silence is no), and refused without one.
 #      The commit that went up is written in .git/satellite-last-upload, and a build whose
 #      commit is already up -- nothing changed -- does not fill another slot with the same copy.
+#   3. PUSH (the author, 2026-10-12: "commit, always, unless I say replace main"). GitHub, with the
+#      server, is where his builds are kept, so every build's commit goes there too: on a branch of
+#      the same name as the one checked out, NEVER main -- main is replaced only on his word. What
+#      goes up is what main was given: the commit's files without old_versions/ ("take out the
+#      folder old_versions", 2026-10-09), as one commit a build on top of the last one pushed --
+#      the first on top of GitHub's main -- so none of this tree's older history goes with it. A
+#      changed file outside vendor/ that names one of his machines' addresses, or holds a private
+#      key, stops it before anything is sent, naming the file. The deploy key pushes, never with
+#      --force: a branch on GitHub this one does not follow is said, never overwritten. The commit
+#      that went up is written in .git/satellite-last-push.
 #
 # ONLY THE AUTHOR'S CHECKOUT COMMITS AND UPLOADS (the author, 2026-10-11: "ask to install, but
 # what is going to be asked when someone pulls this from the git repo??"). The two are his record
@@ -137,9 +147,58 @@ short=$(git -C "$repo" rev-parse --short HEAD)
 marker=$gitdir/satellite-last-upload
 if [ -f "$marker" ] && [ "$(cat -- "$marker")" = "$head" ]; then
     say "commit $short is already on the server: nothing uploaded"
+else
+    say "uploading commit $short: python3 satellite_backup_main.py $profile next --yes (in $backup)"
+    (cd -- "$backup" && python3 satellite_backup_main.py "$profile" next --yes) ||
+        fail "the upload failed: satl is built and installed, and commit $short is made -- it is NOT on the server"
+    printf '%s\n' "$head" > "$marker"
+fi
+
+# 3. PUSH
+pushed=$gitdir/satellite-last-push
+if [ -f "$pushed" ] && [ "$(cat -- "$pushed")" = "$head" ]; then
+    say "commit $short is already on GitHub: nothing pushed"
     exit 0
 fi
-say "uploading commit $short: python3 satellite_backup_main.py $profile next --yes (in $backup)"
-(cd -- "$backup" && python3 satellite_backup_main.py "$profile" next --yes) ||
-    fail "the upload failed: satl is built and installed, and commit $short is made -- it is NOT on the server"
-printf '%s\n' "$head" > "$marker"
+key=$HOME/.ssh/satellite_deploy_2026-10-09_ed25519
+[ -f "$key" ] || fail "no deploy key at $key: commit $short is made and uploaded -- it is NOT on GitHub"
+ssh_with_the_key="ssh -i $key -o IdentitiesOnly=yes -o BatchMode=yes"
+github=refs/satellite-github/$branch
+# WHERE THE BRANCH STANDS ON GITHUB, or GitHub's main when the branch is not there yet.
+if ! GIT_SSH_COMMAND=$ssh_with_the_key git -C "$repo" fetch -q --no-tags origin "+refs/heads/$branch:$github" 2> /dev/null &&
+    ! GIT_SSH_COMMAND=$ssh_with_the_key git -C "$repo" fetch -q --no-tags origin "+refs/heads/main:$github"; then
+    fail "GitHub could not be reached: commit $short is made and uploaded -- it is NOT on GitHub"
+fi
+parent=$(git -C "$repo" rev-parse --verify -q "$github^{commit}") ||
+    fail "no commit came back from GitHub for $branch or main: commit $short is NOT on GitHub"
+# THE COMMIT'S FILES WITHOUT old_versions/, through an index of its own, so the tree's index is never touched.
+index=$gitdir/satellite-github-index
+rm -f -- "$index"
+GIT_INDEX_FILE=$index git -C "$repo" read-tree HEAD &&
+    GIT_INDEX_FILE=$index git -C "$repo" rm -r -q --cached --ignore-unmatch -- old_versions > /dev/null ||
+    fail "the files for GitHub could not be gathered: commit $short is NOT on GitHub"
+tree=$(GIT_INDEX_FILE=$index git -C "$repo" write-tree) ||
+    fail "the files for GitHub could not be written: commit $short is NOT on GitHub"
+rm -f -- "$index"
+if [ "$(git -C "$repo" rev-parse "$parent^{tree}")" = "$tree" ]; then
+    say "GitHub's $branch already holds these files: nothing pushed"
+    printf '%s\n' "$head" > "$pushed"
+    exit 0
+fi
+# NOTHING OF HIS MACHINES GOES UP: every file that changed since the last push, outside vendor/ (whose
+# upstream test keys and example addresses are theirs), read for her address, the Dell's and a private key.
+# WRITTEN IN PIECES, so this file and check.sh's row on it do not hold an address the scan would find.
+private='2603:6010:''6706|feba:''9340|192\.168\.0\.''210|BEGIN [A-Z ]*PRIVATE KEY'
+named=$(git -C "$repo" diff --name-only "$parent" "$tree" -- . ':!vendor' | while IFS= read -r file; do
+    if git -C "$repo" cat-file -p "$tree:$file" 2> /dev/null | grep -q -E "$private"; then printf '%s ' "$file"; fi
+done)
+[ -z "$named" ] ||
+    fail "not pushed: $named-- names one of his machines or holds a private key. Commit $short is made and uploaded -- it is NOT on GitHub"
+commit=$(git -C "$repo" log -1 --format=%B HEAD | git -C "$repo" commit-tree "$tree" -p "$parent") ||
+    fail "the commit for GitHub could not be made: commit $short is NOT on GitHub"
+say "pushing commit $short to GitHub's $branch, without old_versions/"
+GIT_SSH_COMMAND=$ssh_with_the_key git -C "$repo" push -q origin "$commit:refs/heads/$branch" ||
+    fail "the push failed: commit $short is made and uploaded -- it is NOT on GitHub"
+git -C "$repo" update-ref "$github" "$commit"
+printf '%s\n' "$head" > "$pushed"
+say "commit $short is on GitHub's $branch as $(git -C "$repo" rev-parse --short "$commit")"

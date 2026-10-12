@@ -794,9 +794,11 @@ signed long long int satelliteObject::to_string(satellite_string &out, std::stri
         why = "a pointer's object has no to_string capsule, and satellite does not invent one";
         return not_built_yet;
     // A FILE'S TEXT IS read_all, and its name is path -- two different strings, so
-    // `.string` choosing one of them would be a guess.
+    // `.string` choosing one of them would be a guess. Each is written .satellite. since a
+    // file's words run their numbers (NM-8, 2026-10-11).
     case file:
-        why = "a file has two strings, its text (read_all) and its name (path) -- write the one you mean";
+        why = "a file has two strings, its text (.satellite.read_all) and its name (.satellite.path) -- write the "
+              "one you mean";
         return types_do_not_meet;
     // A LIST READS BACK AS WHAT WAS TYPED: {1, "two", {3}}.
     //

@@ -403,7 +403,7 @@ satellite.capsule travel(satellite.container.list words, satellite.container.lis
         }
         satellite.statement.else
         {
-            path = path + " -> " + next + " (" + best.to_string() + ")"
+            path = path + " -> " + next + " (" + best.satellite.to_string() + ")"
             here = next
         }
     }
@@ -427,11 +427,11 @@ satellite.capsule show(satellite.variable.string sentence, satellite.container.m
             satellite.console.display("    " + words[i] + ": " + kinds[i] + " -- " + how[i])
         }
         satellite.container.list links = connections_of(words, kinds, how, together)
-        satellite.console.display("\nTHE CONNECTIONS, " + links.satellite.size.to_string() + " of them, and every thing about each")
+        satellite.console.display("\nTHE CONNECTIONS, " + links.satellite.size.satellite.to_string() + " of them, and every thing about each")
         satellite.statement.for(satellite.variable.number k = 1; k <= links.satellite.size; k++)
         {
             connection link = links[k]
-            satellite.console.display("    " + link.how_many_things().to_string() + " things about " + link.text_of("from") +
+            satellite.console.display("    " + link.how_many_things().satellite.to_string() + " things about " + link.text_of("from") +
                                       " -> " + link.text_of("to") + ":")
             satellite.console.display(link.things())
         }
@@ -449,7 +449,7 @@ satellite.capsule sentences_in(satellite.variable.string path)
 {
     satellite.container.list sentences = satellite.container.list()
     satellite.variable.file text = satellite.file.open(path, "text")
-    satellite.statement.for(satellite.variable.number i = 1; i <= text.size; i++)
+    satellite.statement.for(satellite.variable.number i = 1; i <= text.satellite.size; i++)
     {
         satellite.variable.string line = text[i]
         satellite.container.list pieces = line.satellite.split(". ")
@@ -462,7 +462,7 @@ satellite.capsule sentences_in(satellite.variable.string path)
             }
         }
     }
-    text.close()
+    text.satellite.close()
     satellite.return(sentences)
 }
 
@@ -504,8 +504,8 @@ satellite.capsule satellite.main(satellite.variable.arguments x)
         }
     }
 
-    satellite.console.display("\n" + sentences.satellite.size.to_string() + " sentences, " + together.words_counted().to_string() +
-                              " different words, " + together.pairs_counted().to_string() + " pairs counted")
+    satellite.console.display("\n" + sentences.satellite.size.satellite.to_string() + " sentences, " + together.words_counted().satellite.to_string() +
+                              " different words, " + together.pairs_counted().satellite.to_string() + " pairs counted")
     satellite.statement.if(x.length == 2)
     {
         satellite.console.display("\nWHAT THE SENTENCES TAUGHT THE ONES AFTER THEM:")
@@ -522,7 +522,7 @@ satellite.capsule satellite.main(satellite.variable.arguments x)
     satellite.statement.for(satellite.variable.number k = first; k <= most.satellite.size; k++)
     {
         satellite.variable.string word = most[k]
-        satellite.console.display("    " + word + ": " + with_is[word].to_string())
+        satellite.console.display("    " + word + ": " + with_is[word].satellite.to_string())
     }
     satellite.return(satellite)
 }

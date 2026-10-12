@@ -57,11 +57,11 @@ satellite.spacesuit satl_18_vars()
 
         satellite.capsule write_to_file()
         {
-            my_file.append("hello, world!")
+            my_file.satellite.append("hello, world!")
 
-            my_file.close()
+            my_file.satellite.close()
 
-            my_file.open()
+            my_file.satellite.open()
 
             satellite.console.display(my_file[1])
         }
@@ -94,7 +94,7 @@ satellite.spacesuit satl_18_vars()
 
         satellite.capsule add_infinity()
         {
-            satellite.console.display("infinite_number: " + my_infinite_number.string)
+            satellite.console.display("infinite_number: " + my_infinite_number.satellite.string)
 
             satellite.variable.infinity to_add = satellite.infinity()
 
@@ -102,7 +102,7 @@ satellite.spacesuit satl_18_vars()
             // INF-3) -- but turning one negative is, and so is comparing two
             my_infinite_number = -to_add
 
-            satellite.console.display("infinite_number: " + my_infinite_number.string)
+            satellite.console.display("infinite_number: " + my_infinite_number.satellite.string)
         }
 
         satellite.capsule add_number()
@@ -123,10 +123,10 @@ satellite.spacesuit satl_18_vars()
 
         satellite.capsule run_program()
         {
-            my_program.start()
+            my_program.satellite.start()
 
             // .join() waits for it and answers its exit code; .end() STOPS it (143, SIGTERM)
-            satellite.console.display(my_program.join())
+            satellite.console.display(my_program.satellite.join())
         }
 
         satellite.capsule display_str()
@@ -139,14 +139,14 @@ satellite.spacesuit satl_18_vars()
             // made here and not as a field: a field's value is worked out before the object exists
             my_thread = satellite.thread.new(binary_number())
 
-            my_thread.start()
+            my_thread.satellite.start()
 
-            my_thread.join()
+            my_thread.satellite.join()
         }
 
         satellite.capsule open_window()
         {
-            my_window.close()
+            my_window.satellite.close()
         }
 
         satellite.capsule flip_bool()
@@ -158,9 +158,9 @@ satellite.spacesuit satl_18_vars()
 
         satellite.capsule run_bash()
         {
-            my_bash.start()
+            my_bash.satellite.start()
 
-            satellite.console.display(my_bash.join())
+            satellite.console.display(my_bash.satellite.join())
         }
 
         satellite.capsule add_to_list()

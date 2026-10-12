@@ -49,7 +49,7 @@ float_home() {   # float_home <name> <config.ini line>
     printf '%s' "$PWD/build/float_home_$1"
 }
 expect "arguments.float.whole and arguments.float.decimal are rows, 4096 and 128 by default" 2 \
-       "$("$interpreter" --debug tests/float_divide.satl 2>&1 | grep -cE '^\[satellite\] arguments\.float\.(whole = 4096|decimal = 128) ')"
+       "$("$interpreter" --debug tests/float_divide.satl 2>&1 | grep -cE '^\[satellite\] satellite\.arguments\.float\.(whole = 4096|decimal = 128) ')"
 expect "... and float.decimal = 10 in config.ini holds 2.0 / 3 to 10 places" \
        "$(float_divide_wanted 10)" "$(float_lines env HOME="$(float_home ten 'float.decimal = 10')" "$interpreter" tests/float_divide.satl)"
 expect "... and past float.whole = 3 digits the low digits round to zeros, half away from zero" \
@@ -97,7 +97,7 @@ expect "+ - * / % ^ on floats and numbers agree with Python's decimal, digit for
 # THE REFUSALS, each a sentence naming what was written.
 "$interpreter" tests/float_refused.satl > build/float_refused.out 2>&1
 code=$?
-expect "12.5's .number is refused where it is reached, naming the value -- satellite rounds nothing on its own" "24|1|1" \
+expect "12.5's .satellite.number is refused where it is reached, naming the value -- satellite rounds nothing on its own" "24|1|1" \
        "$code|$(grep -cx before build/float_refused.out)|$(tr '\n' ' ' < build/float_refused.out | grep -c '12.5 is not a whole number, so there is no number to make of it')"
 "$interpreter" tests/float_method_check.satl > build/float_method_check.out 2>&1
 code=$?

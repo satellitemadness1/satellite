@@ -5,22 +5,22 @@ satellite.include(satellite)
 // (S742). The review of steps 2-5 found end() answering the restarted run's 0, and losing the S742.
 satellite.capsule restart(satellite.variable.program p)
 {
-    p.join()
-    p.start()
+    p.satellite.join()
+    p.satellite.start()
     satellite.return(0)
 }
 
 satellite.capsule satellite.main(satellite.variable.arguments args)
 {
     satellite.variable.program p = {"sleep", "8.27"}
-    p.start()
+    p.satellite.start()
     satellite.variable.thread t = satellite.thread.new(restart(p))
-    t.start()
+    t.satellite.start()
     satellite.variable.program settle = {"sleep", "0.3"}
-    settle.start()
-    settle.join()
-    satellite.console.display(p.end())                       // 143
-    t.join()
+    settle.satellite.start()
+    settle.satellite.join()
+    satellite.console.display(p.satellite.end())                       // 143
+    t.satellite.join()
     satellite.console.display("main ends")                   // main ends -- then S742 for the thread's run
     satellite.return(satellite)
 }

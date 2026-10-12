@@ -16,8 +16,10 @@ namespace color_reading {
 inline constexpr const char *kSixDigits = "a color is exactly six hex digits, like x00FF00";
 
 // WHAT A COLOR HAS, said whole in every refusal of a method it has not got, so a
-// person reads the answer where they read the question.
-inline constexpr const char *kWhatAColorHas = "a color has .transparency, .number, .string, .hex and .binary";
+// person reads the answer where they read the question -- each written as it is
+// written since 2026-10-11, under satellite (scalar_calls.hpp).
+inline constexpr const char *kWhatAColorHas =
+    "a color has .satellite.transparency, .satellite.number, .satellite.string, .satellite.hex and .satellite.binary";
 
 // THE AUTHOR'S "0 - 99", both ends in, said the same way from his two ways of
 // writing one -- the checker's and the walker's -- so one rule is one sentence.

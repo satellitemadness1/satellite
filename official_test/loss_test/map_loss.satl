@@ -71,9 +71,9 @@ satellite.capsule satellite.main()
     satellite.statement.for(satellite.variable.number pass = 0; pass < 10000; pass + 1)
     {
         // 1-50: away from where it began
-        x = x.sort("value")                                                                                              // 1: the entries in value order
+        x = x.satellite.sort("value")                                                                                              // 1: the entries in value order
         x["number"] = 547311173                                                                                          // 2: 547311173 itself, under a new key
-        x.set("float", 547311173.0)                                                                                      // 3: as a float, with .set
+        x.satellite.set("float", 547311173.0)                                                                                      // 3: as a float, with .set
         x["string"] = "547311173"                                                                                        // 4: as a string
         x["digits"] = {5, 4, 7, 3, 1, 1, 1, 7, 3}                                                                        // 5: as a list of its digits: a map of lists
         x["map"] = {"satellite": 547311173}                                                                              // 6: as a map: a map in the map
@@ -90,7 +90,7 @@ satellite.capsule satellite.main()
         x["satellit"] = x["satellit"] * 10000000000000000000000000000000000000000                                        // 16: 7 -> 7 and 40 zeros
         x["satellite"] = x["satellite"] * 547311173                                                                      // 17: 3 -> 1641933519
         wrong = wrong + lost(x["number"], 547311173)                                                                     // check: a number's .reverse() drops the zeros it ends with, so x * 10 would come back
-        x["number"] = x["number"].reverse()                                                                              // 18: 547311173 -> 371113745
+        x["number"] = x["number"].satellite.reverse()                                                                              // 18: 547311173 -> 371113745
         wrong = wrong + lost(x["float"], 547311173.0)                                                                    // check: / 64 rounds a loss in the 128th place away
         x["float"] = x["float"] / 64                                                                                     // 19: -> 8551737.078125
         x["float"] = x["float"] - 8551737                                                                                // 20: -> 0.078125
@@ -103,36 +103,36 @@ satellite.capsule satellite.main()
         x[547311173] = x[547311173] + "!"                                                                                // 26: "satellite!", under the number key
         x[satellite.bool.true] = x[satellite.bool.true] * 2                                                              // 27: 1094622347.0, under the bool key
         x["digits"].satellite.append(x["sat"])                                                                                     // 28: 7 ^ 50 copied into the list in the map ...
-        x.remove("sat")                                                                                                  // 29: ... and "sat" taken out: it lives only in the list
+        x.satellite.remove("sat")                                                                                                  // 29: ... and "sat" taken out: it lives only in the list
         x["digits"][10] = x["digits"][10] / 7 + x["digits"][10] % 7 * far                                                // 30: 7 ^ 49, written inside the list inside the map, its remainder kept
         x["map"]["s"] = x["s"]                                                                                           // 31: 547311173 copied into the map in the map ...
-        x.remove("s")                                                                                                    // 32: ... and "s" taken out
-        x["moved"] = x.get("satel")                                                                                      // 33: the first entry's value copied with .get ...
-        x.remove_first()                                                                                                 // 34: ... and the first entry, "satel", taken out
+        x.satellite.remove("s")                                                                                                    // 32: ... and "s" taken out
+        x["moved"] = x.satellite.get("satel")                                                                                      // 33: the first entry's value copied with .get ...
+        x.satellite.remove_first()                                                                                                 // 34: ... and the first entry, "satel", taken out
         x["box"] = satellite.container.map()                                                                             // 35: an empty map
         x["box"]["sa"] = x["sa"]                                                                                         // 36: 547311172 copied into it ...
-        x.remove("sa")                                                                                                   // 37: ... and "sa" taken out
-        x["sate"] = x["sate"] + x.size                                                                                   // 38: + how many entries there are, 14
-        x["string"] = x["string"] + x.first                                                                              // 39: + the first key now, "satell"
-        x["string"] = x["string"] + x.has("s")                                                                           // 40: + " false": "s" is gone
-        x["string"] = x["string"] + x["map"].contains("s")                                                               // 41: + " true": it is in the map in the map
-        x["string"] = x["string"] + "?" + x["box"].empty                                                                 // 42: + "? false": the box holds "sa"
+        x.satellite.remove("sa")                                                                                                   // 37: ... and "sa" taken out
+        x["sate"] = x["sate"] + x.satellite.size                                                                                   // 38: + how many entries there are, 14
+        x["string"] = x["string"] + x.satellite.first                                                                              // 39: + the first key now, "satell"
+        x["string"] = x["string"] + x.satellite.has("s")                                                                           // 40: + " false": "s" is gone
+        x["string"] = x["string"] + x["map"].satellite.contains("s")                                                               // 41: + " true": it is in the map in the map
+        x["string"] = x["string"] + "?" + x["box"].satellite.empty                                                                 // 42: + "? false": the box holds "sa"
         x["satellite"] = x["satellite"] * x["digits"].satellite.size                                                               // 43: * 10, the size of the list in the map
         x["satellit"] = x["satellit"] + x["digits"].satellite.max                                                                  // 44: + 7 ^ 49, its largest
         x["satelli"] = x["satelli"] - x["digits"].satellite.min                                                                    // 45: - 1, its smallest
-        x["number"] = x["number"] + x.values.satellite.size                                                                        // 46: + how many values there are, 14
-        x["string"] = x["string"] + x.keys.satellite.join("")                                                                      // 47: + every key's text, in order
-        wrong = wrong + lost(x["map"].keys, {"satellite", "s"})                                                          // check: its order, before 48 sorts any order back
-        x["map"] = x["map"].sort()                                                                                       // 48: the map in the map in key order
-        x["string"] = x["string"] + "<" + x.last + ">"                                                                   // 49: + the newest key, "<box>"
-        x["keys"] = x.keys                                                                                               // 50: the keys, as a list under a key of their own
+        x["number"] = x["number"] + x.satellite.values.satellite.size                                                                        // 46: + how many values there are, 14
+        x["string"] = x["string"] + x.satellite.keys.satellite.join("")                                                                      // 47: + every key's text, in order
+        wrong = wrong + lost(x["map"].satellite.keys, {"satellite", "s"})                                                          // check: its order, before 48 sorts any order back
+        x["map"] = x["map"].satellite.sort()                                                                                       // 48: the map in the map in key order
+        x["string"] = x["string"] + "<" + x.satellite.last + ">"                                                                   // 49: + the newest key, "<box>"
+        x["keys"] = x.satellite.keys                                                                                               // 50: the keys, as a list under a key of their own
         // 51-100: back again, each undoing one of 1-50, the last one first
         wrong = wrong + lost(x["keys"], {"satell", "satelli", "sate", "satellite", "satellit", "number", "float", "string", "digits", "map", 547311173, satellite.bool.true, "moved", "box"}) // check: the keys 50 filed, before 51 drops them unread
-        x.remove_last()                                                                                                  // 51: undoes 50, the newest entry, "keys"
+        x.satellite.remove_last()                                                                                                  // 51: undoes 50, the newest entry, "keys"
         wrong = wrong + lost(x["string"], "ETILLETAS371113745satell false true? falsesatellsatellisatesatellitesatellitnumberfloatstringdigitsmap547311173truemovedbox<box>") // check: 52-62 answer the text unchanged when what they take away never came
         x["string"] = x["string"] - "<box>"                                                                              // 52: undoes 49
-        wrong = wrong + lost(x["map"].keys, {"s", "satellite"})                                                          // check: its order, before 53 sorts any order back
-        x["map"] = x["map"].sort("value")                                                                                // 53: undoes 48, its own order again: 3 before 547311173
+        wrong = wrong + lost(x["map"].satellite.keys, {"s", "satellite"})                                                          // check: its order, before 53 sorts any order back
+        x["map"] = x["map"].satellite.sort("value")                                                                                // 53: undoes 48, its own order again: 3 before 547311173
         x["string"] = x["string"] - "satellsatellisatesatellitesatellitnumberfloatstringdigitsmap547311173truemovedbox"  // 54: undoes 47
         x["number"] = x["number"] - 14                                                                                   // 55: undoes 46
         x["satelli"] = x["satelli"] + 1                                                                                  // 56: undoes 45
@@ -144,13 +144,13 @@ satellite.capsule satellite.main()
         x["string"] = x["string"] - "satell"                                                                             // 62: undoes 39
         x["sate"] = x["sate"] - 14                                                                                       // 63: undoes 38
         x["sa"] = x["box"]["sa"]                                                                                         // 64: undoes 37, 547311172 back from the box
-        x["box"].clear()                                                                                                 // 65: undoes 36
-        wrong = wrong + lost(x["box"].size, 0)                                                                           // check: the box 65 cleared, before 66 drops it whole
-        x.remove("box")                                                                                                  // 66: undoes 35
+        x["box"].satellite.clear()                                                                                                 // 65: undoes 36
+        wrong = wrong + lost(x["box"].satellite.size, 0)                                                                           // check: the box 65 cleared, before 66 drops it whole
+        x.satellite.remove("box")                                                                                                  // 66: undoes 35
         x["satel"] = x["moved"]                                                                                          // 67: undoes 34
-        x.remove("moved")                                                                                                // 68: undoes 33
+        x.satellite.remove("moved")                                                                                                // 68: undoes 33
         x["s"] = x["map"]["s"]                                                                                           // 69: undoes 32, 547311173 back from the map in the map
-        x["map"].remove_last()                                                                                           // 70: undoes 31, its newest entry, "s"
+        x["map"].satellite.remove_last()                                                                                           // 70: undoes 31, its newest entry, "s"
         x["digits"][10] = x["digits"][10] * 7                                                                            // 71: undoes 30
         x["sat"] = x["digits"].satellite.last                                                                                      // 72: undoes 29, 7 ^ 50 back from the list
         x["digits"].satellite.remove_last()                                                                                        // 73: undoes 28
@@ -166,35 +166,35 @@ satellite.capsule satellite.main()
         x["float"] = x["float"] + 8551737                                                                                // 81: undoes 20
         x["float"] = x["float"] * 64                                                                                     // 82: undoes 19
         wrong = wrong + lost(x["number"], 371113745)                                                                     // check: 83's .reverse() drops a number's end zeros too
-        x["number"] = x["number"].string.satellite.reverse().satellite.number                                                                // 83: undoes 18
+        x["number"] = x["number"].satellite.string.satellite.reverse().satellite.number                                                                // 83: undoes 18
         x["satellite"] = x["satellite"] / x["digits"].satellite.join("").satellite.number + x["satellite"] % x["digits"].satellite.join("").satellite.number * far // 84: undoes 17, the list in the map joined back into 547311173, its remainder kept
         x["satellit"] = x["satellit"] / 10000000000000000000000000000000000000000 + x["satellit"] % 10000000000000000000000000000000000000000 * far // 85: undoes 16, its remainder kept
         x["satelli"] = x["satelli"] + x["number"]                                                                        // 86: undoes 15, adding back what "number" holds
         x["satell"] = x["satell"] - x["string"].satellite.number                                                                   // 87: undoes 14, taking away what "string" spells
         wrong = wrong + lost(x["satel"], 547311173.0)                                                                    // check: dividing by 547311173.0 rounds a loss in its last places away
-        x["satel"] = (x["satel"] / x["float"]).number                                                                    // 88: undoes 13, dividing by what "float" holds
+        x["satel"] = (x["satel"] / x["float"]).satellite.number                                                                    // 88: undoes 13, dividing by what "float" holds
         x["sate"] = x["sate"] + x["map"]["satellite"] + 3                                                                // 89: undoes 12, adding back what the map in the map holds
         x["sat"] = x["sat"] / 256923577521058878088611477224235621321607 + x["sat"] % 256923577521058878088611477224235621321607 * far // 90: undoes 11, 7 ^ 50 / 7 ^ 49, its remainder kept
         x["sa"] = x["sa"] / 136827793 + x["sa"] % 136827793 * far                                                        // 91: undoes 10, its remainder kept
         x["s"] = x["s"] - 547311168                                                                                      // 92: undoes 9
         wrong = wrong + lost(x[satellite.bool.true], 547311173.5)                                                        // check: the bool key's value, which nothing else ever reads, before 93 drops it
-        x.remove(satellite.bool.true)                                                                                    // 93: undoes 8
+        x.satellite.remove(satellite.bool.true)                                                                                    // 93: undoes 8
         wrong = wrong + lost(x[547311173], "satellite")                                                                  // check: each entry 94-99 take out is read first, so none is dropped unread
-        x.remove(547311173)                                                                                              // 94: undoes 7
+        x.satellite.remove(547311173)                                                                                              // 94: undoes 7
         wrong = wrong + lost(x["map"], {"satellite": 547311173})                                                         // check: the map in the map, whole
-        x.remove("map")                                                                                                  // 95: undoes 6
+        x.satellite.remove("map")                                                                                                  // 95: undoes 6
         wrong = wrong + lost(x["digits"], {5, 4, 7, 3, 1, 1, 1, 7, 3})                                                   // check: 84's join("") cannot see "5" for 5, or the digits in another order
-        x.remove("digits")                                                                                               // 96: undoes 5
+        x.satellite.remove("digits")                                                                                               // 96: undoes 5
         wrong = wrong + lost(x["string"], "547311173")                                                                   // check: 87's .number cannot see "0547311173"
-        x.remove("string")                                                                                               // 97: undoes 4
+        x.satellite.remove("string")                                                                                               // 97: undoes 4
         wrong = wrong + lost(x["float"], 547311173.0)                                                                    // check: 88's division rounds a loss in its last places away
-        x.remove("float")                                                                                                // 98: undoes 3
+        x.satellite.remove("float")                                                                                                // 98: undoes 3
         wrong = wrong + lost(x["number"], 547311173)                                                                     // check: "number", last read by 86
-        x.remove("number")                                                                                               // 99: undoes 2
-        wrong = wrong + lost(x.keys, {"satell", "satelli", "sate", "satellite", "satellit", "sa", "satel", "s", "sat"})  // check: their order, before 100 sorts any order back
-        x = x.sort("key")                                                                                                // 100: undoes 1, every key back in its own order
+        x.satellite.remove("number")                                                                                               // 99: undoes 2
+        wrong = wrong + lost(x.satellite.keys, {"satell", "satelli", "sate", "satellite", "satellit", "sa", "satel", "s", "sat"})  // check: their order, before 100 sorts any order back
+        x = x.satellite.sort("key")                                                                                                // 100: undoes 1, every key back in its own order
         wrong = wrong + lost(x, start)                                                                                   // check: every pass ends with the entries it began with ...
-        wrong = wrong + lost(x.keys, start.keys)                                                                         // ... in the same order
+        wrong = wrong + lost(x.satellite.keys, start.satellite.keys)                                                                         // ... in the same order
         satellite.statement.if (wrong > 0)
         {
             failed = pass

@@ -26,12 +26,12 @@ satellite.capsule satellite.main()
 {
     box a
     a.call_put(7)
-    box p = a.pointer()
+    box p = a.satellite.pointer()
     box shared = a
     satellite.delete(a)
-    satellite.console.display(p.ok())
+    satellite.console.display(p.satellite.ok())
     satellite.console.display(shared.call_take())
     satellite.delete(shared)
-    satellite.console.display(p.ok())
+    satellite.console.display(p.satellite.ok())
     satellite.return(satellite)
 }

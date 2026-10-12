@@ -65,7 +65,7 @@ satellite.spacesuit report()
             }
             satellite.statement.else
             {
-                wrong_answer(what, got.to_string(), want.to_string())
+                wrong_answer(what, got.satellite.to_string(), want.satellite.to_string())
             }
         }
 
@@ -169,7 +169,7 @@ satellite.spacesuit shelf()
         satellite.capsule call_add(box b)
         {
             boxes.satellite.append(b)
-            back = b.pointer()
+            back = b.satellite.pointer()
         }
 
         satellite.capsule call_sum()
@@ -258,7 +258,7 @@ satellite.spacesuit ship()
             log fresh
             fresh.call_write()
             satellite.variable.number times = fresh.call_write()
-            satellite.return(name + " logged " + times.to_string())
+            satellite.return(name + " logged " + times.satellite.to_string())
         }
     }
 }
@@ -323,7 +323,7 @@ satellite.spacesuit eclipse(view)
     {
         satellite.capsule call_show()
         {
-            satellite.return(banner("depth " + depth.to_string()))
+            satellite.return(banner("depth " + depth.satellite.to_string()))
         }
 
         satellite.capsule call_speak()
@@ -351,7 +351,7 @@ satellite.capsule pointer_at_a_local()
 {
     box local
     local.call_put(5)
-    satellite.return(local.pointer())
+    satellite.return(local.satellite.pointer())
 }
 
 satellite.capsule speak_of(view any)
@@ -428,13 +428,13 @@ satellite.capsule check_pointers(report r)
 {
     box a
     a.call_put(7)
-    box p = a.pointer()
-    r.check_text("spacesuit ok() is true of an object, and of a pointer while its object lives", "ok:" + a.ok() + p.ok(), "ok: true true")
+    box p = a.satellite.pointer()
+    r.check_text("spacesuit ok() is true of an object, and of a pointer while its object lives", "ok:" + a.satellite.ok() + p.satellite.ok(), "ok: true true")
     satellite.variable.number seen = p.call_take()
     p.call_put(8)
-    r.check_text("spacesuit pointer reaches its object, and a change through it changes the object", seen.to_string() + " " + a.call_take().to_string(), "7 8")
+    r.check_text("spacesuit pointer reaches its object, and a change through it changes the object", seen.satellite.to_string() + " " + a.call_take().satellite.to_string(), "7 8")
     r.check_bool("spacesuit object == a pointer at it", a == p, satellite.bool.true)
-    box c = a.reference()
+    box c = a.satellite.reference()
     r.check_number("spacesuit reference() is a copy of the fields", c.call_take(), 8)
     r.check_bool("spacesuit != between an object and its copy", c != a, satellite.bool.true)
     a.call_put(9)
@@ -447,10 +447,10 @@ satellite.capsule check_pointers(report r)
     r.check_bool("spacesuit two objects with equal fields are not ==", d == e, satellite.bool.false)
     box other
     a = other
-    r.check_bool("spacesuit pointer empties when nothing else holds its object", p.ok(), satellite.bool.false)
+    r.check_bool("spacesuit pointer empties when nothing else holds its object", p.satellite.ok(), satellite.bool.false)
     r.check_number("spacesuit reference stays after the original is emptied", c.call_take(), 10)
     box gone = pointer_at_a_local()
-    r.check_bool("spacesuit pointer at a capsule's own object is empty after it ends", gone.ok(), satellite.bool.false)
+    r.check_bool("spacesuit pointer at a capsule's own object is empty after it ends", gone.satellite.ok(), satellite.bool.false)
     box x
     x.call_put(3)
     box y
@@ -458,7 +458,7 @@ satellite.capsule check_pointers(report r)
     shelf s
     s.call_add(x)
     s.call_add(y)
-    shelf copied = s.reference()
+    shelf copied = s.satellite.reference()
     box back = copied.call_back()
     back.call_put(40)
     r.check_number("spacesuit reference() copies the objects it holds all the way down", copied.call_sum(), 43)

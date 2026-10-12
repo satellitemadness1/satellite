@@ -33,7 +33,7 @@
 namespace satellite004 {
 
 enum class SettingKind {
-    flag,     // true or false -- bare, or satellite.bool.true and .false (MS-2's D22)
+    flag,     // satellite.bool.true or satellite.bool.false -- never bare (the author, 2026-10-11; MS-2's D22 ended)
     number,   // a whole number, never under the row's least
     text,     // words: a folder, a path
 };

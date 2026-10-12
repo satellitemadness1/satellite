@@ -1,4 +1,4 @@
-ok percentage shows with its %, and .string is that; percent is its second spelling
+ok percentage shows with its %, and .satellite.string is that; percent is its second spelling
 ok percentage two percentages stay a percentage: 50% + 25%, 50% - 25%, 50% * 50%
 ok percentage 50% / 4 is 12.5%, a share of it
 ok percentage a number and a percentage answer a number: 200 * 50% and 50% * 200
@@ -12,4 +12,4 @@ ok percentage below zero, written with its minus and its %
 ok percentage == != < > <= >= between two percentages
 ok percentage a binary is read by its worth, b1010 * 50% is 5
 ok percentage a percentage name keeps a percentage answer, 50% - 75%
-ok percentage a string joins a percentage as its .string
+ok percentage a string joins a percentage as its .satellite.string

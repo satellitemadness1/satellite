@@ -6,7 +6,7 @@ ok satellite.legal: satellite.access names the place a name is legal in
 ok satellite.legal: a capsule is a place of its own, satellite.legal.greet
 ok satellite.legal: a space's capsule, satellite.legal.tools.where
 ok satellite.legal: an object's capsule, satellite.legal.box.call_where
-ok satellite.legal's switch: arguments.access reads true, as this file wrote it
+ok satellite.legal's switch: satellite.arguments.access reads true, as this file wrote it
 ok satellite.delete: the name is declared again, as anything
 ok satellite.delete: a parameter is its capsule's to delete
 ok satellite.delete: a name a loop declares is deleted and declared every pass

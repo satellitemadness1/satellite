@@ -13,20 +13,20 @@ of it: s.satellite.find("x"), "abc".satellite.reverse(), and at every link of a
 chain, s.satellite.upper().satellite.find("X"). The old s.find("x") is refused
 (S110), and the refusal names the new spelling.
 
-+ joins two strings, and .satellite.add(x) is the same join. A number added to
-a string joins as the text its own .string gives: "n = " + 4 is n = 4, and so
-are "f " + 1.5, "p " + 50%, "b " + b1010 and "h " + x1F. With the number first,
-text that spells a number is added -- 4 + "2" is the number 6 -- and any other
-text is joined after it: 4 + "abc" is 4abc. A bool joins as true or false with
-one space between: "flag:" + satellite.bool.true is flag: true. A colour added
-to a string is refused (S301): write its .string. - takes away the FIRST place
-the right string occurs, and answers the left string unchanged when it is not
-there. == and != compare two strings, and < and > order them by satellite's own
-character table: a to z, then A to Z, then digits, then signs, then the space,
-so "a" < "B" is true.
++ joins two strings, and .satellite.add(x) is the same join. A number added to a
+string joins as the text its own .satellite.string gives: "n = " + 4 is n = 4, and so are
+"f " + 1.5, "p " + 50%, "b " + b1010 and "h " + x1F. With the number first, text
+that spells a number is added -- 4 + "2" is the number 6 -- and any other text
+is joined after it: 4 + "abc" is 4abc. A bool joins as true or false with one
+space between: "flag:" + satellite.bool.true is flag: true. A colour added to a
+string is refused (S301): write its .satellite.string. - takes away the FIRST
+place the right string occurs, and answers the left string unchanged when it is
+not there. == and != compare two strings, and < and > order them by satellite's
+own character table: a to z, then A to Z, then digits, then signs, then the
+space, so "a" < "B" is true.
 
-.satellite.find(x) answers where x first begins, counting from 0, so
-"abc".satellite.find("b") is 1; a string that is not there is refused (S420)
+.satellite.find(x) answers where x first begins, counting from 1 as every
+position does, so "abc".satellite.find("b") is 2; a string that is not there is refused (S420)
 rather than answered as -1. .satellite.number (or .satellite.as_number,
 .satellite.to_number) reads a whole number out of the text and refuses anything
 else, "3.5" included (S120). .satellite.binary (or .satellite.bin,
@@ -68,8 +68,8 @@ the characters from start to end, both counted from 1 and both kept, so
 one before its start. A position of 0 or past the end is refused (S411), a
 negative one too (S410), and so is a range that runs backwards (S412). On a
 string name, a 0, a float or text written straight into the brackets is refused
-before anything runs. .satellite.find counts from 0, so the character it finds
-is s[s.satellite.find(x) + 1]. A string's characters are read, never written:
+before anything runs. .satellite.find counts from 1, so the character it finds
+is s[s.satellite.find(x)]. A string's characters are read, never written:
 s[1] = "j" is refused (S301).
 
 .satellite.split(separator) answers a satellite.container.list of the pieces
@@ -87,7 +87,7 @@ and leaves the name as it was.
 list's .satellite.append changes the list: s.satellite.append("!") adds to the
 end of s, and s.satellite.clear empties it. They need a name to change, so
 "abc".satellite.append("d") inside an expression -- as
-display("abc".satellite.append("d")) -- is refused (S110), and so is
+satellite.console.display("abc".satellite.append("d")) -- is refused (S110), and so is
 s.satellite.trim.satellite.append("d"): s.satellite.trim is a new string, with
 no name of its own.
 
@@ -120,7 +120,7 @@ satellite.capsule satellite.main()
     satellite.console.display(n + "2") // 6
     satellite.console.display(s.satellite.upper()) // HELLO WORLD
     satellite.console.display(s - "o") // hell world
-    satellite.console.display(s.satellite.find("world")) // 6
+    satellite.console.display(s.satellite.find("world")) // 7
     satellite.console.display(s.satellite.size) // 11
     satellite.console.display(s.satellite.contains("lo w")) // true
     satellite.console.display(s.satellite.starts_with("hello")) // true
@@ -138,7 +138,7 @@ satellite.capsule satellite.main()
     satellite.console.display("42".satellite.number + 1) // 43
     satellite.console.display("42".satellite.bin) // 101010
     satellite.console.display("255".satellite.hex) // FF
-    satellite.console.display("87".satellite.bin.satellite.find("111")) // 4
+    satellite.console.display("87".satellite.bin.satellite.find("111")) // 5
     satellite.console.display("status: " + "OK".satellite.foreground(x00FF00)) // status: OK -- the OK green at a terminal
     satellite.console.display("apple" < "banana") // true
     satellite.console.display("say \"hi\"") // say "hi"
@@ -153,6 +153,6 @@ satellite.include(satellite)
 satellite.capsule satellite.main()
 {
     satellite.variable.color c = x00FF00
-    satellite.console.display("c: " + c) // refused: S301, write c.string
+    satellite.console.display("c: " + c) // refused: S301, write c.satellite.string
     satellite.return(satellite)
 }

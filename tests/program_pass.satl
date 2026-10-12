@@ -6,30 +6,30 @@ satellite.capsule satellite.main(satellite.variable.arguments args)
 {
     // TWO LINES TYPED, read one at a time.
     satellite.variable.program asker = {"sh", "-c", "read a; read b; echo got $a and $b"}
-    asker.start()
-    satellite.console.display(asker.pass("first"))           // true
-    asker.pass("second")
-    satellite.console.display(asker.join())                  // got first and second, then 0
+    asker.satellite.start()
+    satellite.console.display(asker.satellite.pass("first"))           // true
+    asker.satellite.pass("second")
+    satellite.console.display(asker.satellite.join())                  // got first and second, then 0
 
     // A LIST, ONE LINE EACH, to a program that reads to its end: join() closes the input.
     satellite.variable.program sorter = "sort"
-    sorter.start()
-    sorter.pass({"pear", "apple", "fig"})
-    sorter.join()                                            // apple, fig, pear
+    sorter.satellite.start()
+    sorter.satellite.pass({"pear", "apple", "fig"})
+    sorter.satellite.join()                                            // apple, fig, pear
 
     // A NUMBER IS TYPED AS ITS DIGITS.
     satellite.variable.program counter = {"sh", "-c", "read n; echo n is $n"}
-    counter.start()
-    counter.pass(42)
-    counter.join()                                           // n is 42
+    counter.satellite.start()
+    counter.satellite.pass(42)
+    counter.satellite.join()                                           // n is 42
 
     // NOTHING TYPED: join() closes the input, and cat finishes with nothing.
     satellite.variable.program reader = "cat"
-    reader.start()
-    satellite.console.display(reader.join())                 // 0
+    reader.satellite.start()
+    satellite.console.display(reader.satellite.join())                 // 0
 
     // TO ONE THAT HAS ENDED: false, and nothing is typed.
-    satellite.console.display(reader.pass("too late"))      // false
+    satellite.console.display(reader.satellite.pass("too late"))      // false
 
     // PASS NEVER WAITS: a lot of text, to a program that reads it only half a second later. A pass()
     // that waited for the program to take it would put the program's "reading" before satl's "passed"
@@ -40,9 +40,9 @@ satellite.capsule satellite.main(satellite.variable.arguments args)
         lot = lot + lot
     }
     satellite.variable.program slow_reader = {"sh", "-c", "sleep 0.5; echo reading; wc -c"}
-    slow_reader.start()
-    slow_reader.pass(lot)
+    slow_reader.satellite.start()
+    slow_reader.satellite.pass(lot)
     satellite.console.display("passed")                      // passed -- before wc has read a byte
-    slow_reader.join()                                       // reading, then 1310721: 10 x 2^17, and its end of line
+    slow_reader.satellite.join()                                       // reading, then 1310721: 10 x 2^17, and its end of line
     satellite.return(satellite)
 }

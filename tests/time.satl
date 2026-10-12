@@ -3,7 +3,7 @@
 // .millisecond(n) and .nanosecond(n), whose second spellings are .s(n), .ms(n) and .ns(n).
 satellite.include(satellite)
 
-satellite.capsule satellite.main(satellite.container.list<satellite.variable.string> arguments)
+satellite.capsule satellite.main(satellite.variable.arguments arguments)
 {
     satellite.variable.time my_time = satellite.time.second(1)
     satellite.console.display(my_time)

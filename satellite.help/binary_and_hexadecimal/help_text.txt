@@ -10,8 +10,8 @@ page says what works today and what is coming.
 
 What works today: arithmetic reads a binary, and a hex, by what it is worth,
 and answers a plain number. b1100 + xFF is 267, and b1000 + b0101 is 13, not
-b1101. To see one radix as the other, ask for its text: b1100.hex is C, and
-(12).binary is 1100.
+b1101. To see one radix as the other, ask for its text: b1100.satellite.hex is
+C, and (12).satellite.binary is 1100.
 
 DECIDED IN 003 AND OWED HERE (old_versions/second_satellite/DESIGN.md section
 8.5, "decided and unbuilt"; MILESTONES.md M20 lists them as owed, and when
@@ -30,10 +30,11 @@ can for this then, and also allow .and() .or() like we allow .power()"):
 
 - conditions: && || !
 - bits: & | ~ << >>
-- methods beside them, as .power() is beside ^: .and() .or(), and with them
-  .not() .shift_left(n) .shift_right(n)
+- methods beside them, as .satellite.power() is beside ^: .satellite.and()
+  .satellite.or(), and with them .satellite.not() .satellite.shift_left(n)
+  .satellite.shift_right(n)
 - exclusive or gets no symbol, because ^ is power (ruled 2026-09-16), so it
-  is the method .xor()
+  is the method .satellite.xor()
 
 Still to be decided when they are built: what a bit operator does with a
 binary's sign (-b0101), since a binary keeps one. None of this reads today:
@@ -45,13 +46,13 @@ example, of what runs today:
 
 satellite.include(satellite)
 
-satellite.capsule satellite.main(satellite.container.list<satellite.variable.string> arguments)
+satellite.capsule satellite.main(satellite.variable.arguments arguments)
 {
     satellite.variable.binary low = b1100
     satellite.console.display(low + xFF)        // 267
     satellite.console.display(low + b0101)      // 17
-    satellite.console.display(low.hex)          // C
-    satellite.console.display((12).binary)      // 1100
+    satellite.console.display(low.satellite.hex)          // C
+    satellite.console.display((12).satellite.binary)    // 1100
     satellite.return(satellite)
 }
 

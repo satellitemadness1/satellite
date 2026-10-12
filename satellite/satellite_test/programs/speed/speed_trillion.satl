@@ -19,6 +19,6 @@ satellite.capsule satellite.main()
         sum = sum + mix + trillion
         big = big + mix * trillion
     }
-    satellite.console.display(mix.string + " " + sum.string + " " + big.string)
+    satellite.console.display(mix.satellite.string + " " + sum.satellite.string + " " + big.satellite.string)
     satellite.return(satellite)
 }

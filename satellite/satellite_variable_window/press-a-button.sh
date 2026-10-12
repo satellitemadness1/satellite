@@ -94,8 +94,8 @@ satellite.capsule satellite.main()
 {
     satellite.variable.window w = satellite.window.new("press test", 800, 600)
     satellite.variable.window b = satellite.window.button("press me")
-    b.pressed(when_pressed)
-    w.append(b, 400, 300)
+    b.satellite.pressed(when_pressed)
+    w.satellite.append(b, 400, 300)
     satellite.console.display("main is finished, and the window is still open")
     satellite.return(satellite)
 }
@@ -122,13 +122,13 @@ satellite.capsule satellite.main()
 {
     satellite.variable.window w = satellite.window.new("self press", 800, 600)
     satellite.variable.window b = satellite.window.button("press me")
-    b.pressed(when_pressed)
-    w.append(b, 400, 300)
+    b.satellite.pressed(when_pressed)
+    w.satellite.append(b, 400, 300)
 
-    b.press()
-    b.press()
+    b.satellite.press()
+    b.satellite.press()
     satellite.console.display("main pressed it twice and is closing the window")
-    w.close()
+    w.satellite.close()
 
     satellite.return(satellite)
 }
@@ -144,8 +144,8 @@ satellite.include(satellite)
 
 satellite.capsule when_pressed(satellite.variable.window the_piece, satellite.variable.window its_window)
 {
-    satellite.console.display("the capsule was handed the window: " + its_window.title)
-    its_window.close()
+    satellite.console.display("the capsule was handed the window: " + its_window.satellite.title)
+    its_window.satellite.close()
     satellite.console.display("the capsule closed it")
 }
 
@@ -153,9 +153,9 @@ satellite.capsule satellite.main()
 {
     satellite.variable.window w = satellite.window.new("reached from a press", 800, 600)
     satellite.variable.window b = satellite.window.button("press me")
-    b.pressed(when_pressed)
-    w.append(b, 400, 300)
-    b.press()
+    b.satellite.pressed(when_pressed)
+    w.satellite.append(b, 400, 300)
+    b.satellite.press()
     satellite.console.display("main is finished and has NOT closed anything")
     satellite.return(satellite)
 }

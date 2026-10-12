@@ -12,6 +12,6 @@ satellite.capsule satellite.main()
 {
     satellite.variable.number passes = 1
     satellite.variable.thread t = satellite.thread.new(twice(2))
-    satellite.console.display(t.join())
+    satellite.console.display(t.satellite.join())
     satellite.return(satellite)
 }

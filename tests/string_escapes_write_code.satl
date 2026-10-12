@@ -15,9 +15,9 @@ satellite.capsule satellite.main()
     satellite.variable.file out = satellite.file.new("made_by_a_program.satl", "text")
     satellite.statement.for(satellite.variable.number i = 1; i < code.satellite.size + 1; i + 1)
     {
-        out.append(code[i])
+        out.satellite.append(code[i])
     }
-    out.close()
+    out.satellite.close()
     satellite.console.display(code[4])
     satellite.return(satellite)
 }

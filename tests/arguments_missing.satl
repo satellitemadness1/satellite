@@ -5,7 +5,7 @@
 // check.sh runs both, side by side.
 
 satellite.include(satellite)
-arguments.missing = false
+satellite.arguments.missing = satellite.bool.false
 
 satellite.capsule satellite.main(satellite.variable.arguments args)
 {

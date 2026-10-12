@@ -4,7 +4,7 @@ satellite.include(satellite)
 satellite.capsule satellite.main(satellite.variable.arguments args)
 {
     satellite.variable.program p = "true"
-    p.start("hide", "loud")
-    p.join()
+    p.satellite.start("hide", "loud")
+    p.satellite.join()
     satellite.return(satellite)
 }

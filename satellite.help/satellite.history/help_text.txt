@@ -51,7 +51,7 @@ satl --rebuild prints, among its other lines:
 
 satellite.include(satellite)
 
-satellite.capsule satellite.main(satellite.container.list<satellite.variable.string> arguments)
+satellite.capsule satellite.main(satellite.variable.arguments arguments)
 {
     satellite.statement.for(satellite.variable.number i = 0; i < 3; i + 1)
     {

@@ -17,6 +17,6 @@ satellite.capsule satellite.main()
         x = x / 1000033
         y = y + x
     }
-    satellite.console.display((x % 1000000007).string + " " + (y % 1000000007).string + " " + x.string.satellite.size.string + " " + y.string.satellite.size.string)
+    satellite.console.display((x % 1000000007).satellite.string + " " + (y % 1000000007).satellite.string + " " + x.satellite.string.satellite.size.satellite.string + " " + y.satellite.string.satellite.size.satellite.string)
     satellite.return(satellite)
 }

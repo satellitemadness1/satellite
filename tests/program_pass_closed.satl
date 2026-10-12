@@ -5,12 +5,12 @@ satellite.include(satellite)
 satellite.capsule satellite.main(satellite.variable.arguments args)
 {
     satellite.variable.bash closer = "exec 0<&-; sleep 0.6; echo closer done"
-    closer.start()
+    closer.satellite.start()
     satellite.variable.program settle = {"sleep", "0.2"}
-    settle.start()
-    settle.join()
-    satellite.console.display(closer.pass("one"))            // false
-    satellite.console.display(closer.pass("two"))            // false
-    satellite.console.display(closer.join())                 // closer done, then 0
+    settle.satellite.start()
+    settle.satellite.join()
+    satellite.console.display(closer.satellite.pass("one"))            // false
+    satellite.console.display(closer.satellite.pass("two"))            // false
+    satellite.console.display(closer.satellite.join())                 // closer done, then 0
     satellite.return(satellite)
 }

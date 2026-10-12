@@ -123,7 +123,7 @@ satellite.spacesuit vault()
         // the digits of the number turned round, its sign kept
         satellite.capsule turn()
         {
-            value = value.reverse()
+            value = value.satellite.reverse()
         }
 
         satellite.capsule add_twice(satellite.variable.number n)
@@ -157,7 +157,7 @@ satellite.spacesuit vault()
         {
             satellite.variable.number was = value
             value = text.satellite.number
-            text = was.string
+            text = was.satellite.string
         }
 
         // THE TEXT
@@ -258,7 +258,7 @@ satellite.spacesuit vault()
 
         satellite.capsule state()
         {
-            satellite.return(value.string + " " + text + " " + digits.satellite.join(",") + " " + inner.take().string + " " + wrong.string)
+            satellite.return(value.satellite.string + " " + text + " " + digits.satellite.join(",") + " " + inner.take().satellite.string + " " + wrong.satellite.string)
         }
     }
 }
@@ -294,7 +294,7 @@ satellite.spacesuit big_vault(vault)
         // replaces vault's state: every field, extra too
         satellite.capsule state()
         {
-            satellite.return(value.string + " " + text + " " + digits.satellite.join(",") + " " + inner.take().string + " " + wrong.string + " " + extra.string)
+            satellite.return(value.satellite.string + " " + text + " " + digits.satellite.join(",") + " " + inner.take().satellite.string + " " + wrong.satellite.string + " " + extra.satellite.string)
         }
     }
 }
@@ -304,8 +304,8 @@ satellite.capsule satellite.main()
     big_vault v
     big_vault same = v
     vault as_vault = v
-    big_vault p = v.pointer()
-    big_vault saved = v.reference()
+    big_vault p = v.satellite.pointer()
+    big_vault saved = v.satellite.reference()
     satellite.variable.string begun = v.state()
     satellite.variable.string seen = ""
     // every field after the 50 calls out, worked out by hand from the start: <number> <text> <digits> <pocket>
@@ -371,7 +371,7 @@ satellite.capsule satellite.main()
         // already be what the 50 calls out make it
         satellite.statement.if (v.state() != middle)
         {
-            seen = "pass " + pass.string + ", the middle: " + v.state()
+            seen = "pass " + pass.satellite.string + ", the middle: " + v.state()
             satellite.statement.break
         }
 
@@ -432,7 +432,7 @@ satellite.capsule satellite.main()
         {
             satellite.statement.if (seen == "")
             {
-                seen = "pass " + pass.string + ": " + v.state()
+                seen = "pass " + pass.satellite.string + ": " + v.state()
             }
             satellite.statement.break
         }
@@ -455,7 +455,7 @@ satellite.capsule satellite.main()
     }
     satellite.statement.if (seen == "")
     {
-        satellite.statement.if (p.ok() == satellite.bool.false)
+        satellite.statement.if (p.satellite.ok() == satellite.bool.false)
         {
             seen = "the pointer is empty"
         }
@@ -464,7 +464,7 @@ satellite.capsule satellite.main()
     // 547311173, the object's own number -- or what went wrong
     satellite.statement.if (seen == "")
     {
-        seen = v.get().string
+        seen = v.get().satellite.string
     }
     satellite.console.display(seen)
     satellite.return(satellite)

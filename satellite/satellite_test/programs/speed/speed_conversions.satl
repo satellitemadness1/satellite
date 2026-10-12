@@ -17,11 +17,11 @@ satellite.capsule satellite.main()
     satellite.statement.for(satellite.variable.number i = 0; i < passes; i + 1)
     {
         x = x * 48271 % 2147483647
-        text = x.string
+        text = x.satellite.string
         back = text.satellite.number
         total = total + back + (1 + text)
-        sizes = sizes + text.satellite.size + x.hex.satellite.size + x.binary.satellite.size
+        sizes = sizes + text.satellite.size + x.satellite.hex.satellite.size + x.satellite.binary.satellite.size
     }
-    satellite.console.display(total.string + " " + sizes.string)
+    satellite.console.display(total.satellite.string + " " + sizes.satellite.string)
     satellite.return(satellite)
 }

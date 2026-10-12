@@ -1,11 +1,17 @@
 // satellite/bytecode/thread_calls.cpp -- the header says what these are for, and which of
-// its rules are 003's.
+// its rules are 003's. A thread's methods run BY THEIR NUMBERS since 2026-10-11: each one's own code
+// is a file under satellite-numbers/words/ named by its number -- 1.6.13.1.cpp is start() -- and this
+// file is what they share: the OS thread and the list of every thread start() made, start() and
+// join() themselves, and run_thread_number, which refuses what a thread refuses and then calls the one
+// a method's number names.
 
 #include "thread_calls.hpp"
 
 #include "capsule_calls.hpp"
 #include "capsule_scopes.hpp"
+#include "pointer_calls.hpp"
 #include "program_walk.hpp"
+#include "word_codes.hpp"
 #include "../machine/console_lock.hpp"
 #include "../machine/critical_report.hpp"
 #include "../machine/s_codes.hpp"
@@ -135,12 +141,21 @@ bool holds_a_window(const Value &value)
     return false;
 }
 
+} // namespace
+
+// THE BODIES THE NUMBERS RUN (thread_calls.hpp) -- moved out of the namespace above whole on 2026-10-11,
+// so 1.6.13.1.cpp, 1.6.13.2.cpp and 1.6.13.4.cpp can call them. What they do, and the order they do it
+// in -- the list of running threads, stop_of_this_thread, the object locks let go and taken back, 003's
+// join-once rule -- is what call_thread_method did; only the period in their sentences is new.
+namespace thread_method_parts {
+
 Value start(const ThreadHandle &which, const std::string &name, ExpressionContext &context)
 {
     satellite_thread &thread = *which;
     if (thread.started.exchange(true)) {
-        context.refuse(thread_already_started, name + ".start() -- " + thread.name + " is already running or has run, "
-                                                      "and a thread runs once; satellite.thread.new makes another");
+        context.refuse(thread_already_started, name + ".satellite.start() -- " + thread.name +
+                                                   " is already running or has run, and a thread runs once; "
+                                                   "satellite.thread.new makes another");
         return Value();
     }
     // THE FLAG BEFORE THE THREAD (console_lock.hpp): from here every line is written whole.
@@ -170,7 +185,7 @@ Value start(const ThreadHandle &which, const std::string &name, ExpressionContex
             thread.os_joined = true;     // there is no OS thread to join
         }
         thread.ended_signal.notify_all();
-        context.refuse(thread_cannot_start, name + ".start() -- the machine said: " + std::strerror(refused));
+        context.refuse(thread_cannot_start, name + ".satellite.start() -- the machine said: " + std::strerror(refused));
         return Value();
     }
     launch.release();   // the thread owns it now
@@ -187,15 +202,16 @@ Value join(const ThreadHandle &which, const std::string &name, const std::string
 {
     satellite_thread &thread = *which;
     if (!thread.started.load()) {
-        context.refuse(thread_not_started, name + "." + spelling + "() -- " + thread.name + " was never started, so "
-                                           "there is nothing to wait for; " + name + ".start() comes first");
+        context.refuse(thread_not_started, name + ".satellite." + spelling + "() -- " + thread.name +
+                                           " was never started, so there is nothing to wait for; " + name +
+                                           ".satellite.start() comes first");
         return Value();
     }
     // A THREAD WAITING FOR ITSELF waits forever (003's S1407, its smallest case). A wider
     // circle -- through joins and locks -- is caught by start_waiting_for below, S728.
     if (stop_of_this_thread == &thread.stop_asked) {
-        context.refuse(satl_line_not_understood, name + "." + spelling + "() is this thread waiting for itself, and "
-                                                 "that would never end");
+        context.refuse(satl_line_not_understood, name + ".satellite." + spelling + "() is this thread waiting for "
+                                                 "itself, and that would never end");
         return Value();
     }
     // A JOIN THAT WOULD NEVER RETURN is S728 (satellite_object/object_lock.hpp): the thread
@@ -206,7 +222,7 @@ Value join(const ThreadHandle &which, const std::string &name, const std::string
     // thread it waits for can take them -- and then takes them back.
     let_go_while_waiting();
     if (start_waiting_for(thread) != success) {
-        context.refuse(wait_never_ends, name + "." + spelling + "() would never return -- " + thread.name +
+        context.refuse(wait_never_ends, name + ".satellite." + spelling + "() would never return -- " + thread.name +
                                             " is waiting, through locks and joins, for this thread");
         return Value();
     }
@@ -214,8 +230,8 @@ Value join(const ThreadHandle &which, const std::string &name, const std::string
     done_waiting_for_a_thread();
     const signed long long int back = take_back_after_waiting();
     if (back != success) {
-        context.refuse(back, name + "." + spelling + "() returned, and taking this line's object locks back would "
-                                 "never end");
+        context.refuse(back, name + ".satellite." + spelling + "() returned, and taking this line's object locks "
+                                 "back would never end");
         return Value();
     }
     bool again = false;
@@ -251,14 +267,14 @@ Value join(const ThreadHandle &which, const std::string &name, const std::string
     // A REFUSAL ON THE THREAD WAS REPORTED THERE, with its own line and caret; the joiner
     // stops with the same code and says nothing more, as a called capsule's caller does.
     if (stops_the_program(code)) {
-        context.refuse(code, name + "." + spelling + "() -- " + thread.name + " stopped on its thread");
+        context.refuse(code, name + ".satellite." + spelling + "() -- " + thread.name + " stopped on its thread");
         context.reported = true;
         return Value();
     }
     return answered ? answer : Value();
 }
 
-} // namespace
+} // namespace thread_method_parts
 
 bool is_thread_word(token::Code code)
 {
@@ -278,6 +294,17 @@ Value call_thread_new(const std::vector<std::bitset<16>> &row, std::size_t &at, 
     std::vector<std::string> names;
     std::size_t past = k;
     dotted_names_at(row, past, names);
+    // A WORD UNDER SATELLITE IS THE LANGUAGE'S, NEVER A CAPSULE OF YOURS (NM-8, 2026-10-11):
+    // `satellite.thread.new(x.satellite.pointer())` is told that, as the checker tells it -- the names stop
+    // at `.satellite.`, and were told they name a capsule without calling it.
+    if (code_here(row, past) == token::satellite_method_token) {
+        std::string written = names.front();
+        for (std::size_t n = 1; n < names.size(); ++n) written += "." + names[n];
+        const std::string word = token::method_name_of(code_here(row, past + 1));
+        context.refuse(thread_needs_a_capsule_call, not_a_capsule_for_a_thread(written + ".satellite." + word, word),
+                       open);
+        return Value();
+    }
     if (code_here(row, past) != token::left_parenthesis_token) {
         context.refuse(thread_needs_a_capsule_call, "satellite.thread.new names a capsule and does not call it -- "
                                                     "write it with its brackets", open);
@@ -323,33 +350,61 @@ int thread_method_arity(token::Code method)
 
 std::string thread_methods_are()
 {
-    return "a thread has .start(), .stop(), .join() and .wait()";
+    return "a thread has .satellite.start(), .satellite.stop(), .satellite.join() and .satellite.wait()";
 }
 
-Value call_thread_method(token::Code method, const ThreadHandle &which, const std::vector<Value> &arguments,
-                         bool had_parentheses, const std::string &name, ExpressionContext &context)
+// EVERY NUMBER BELOW IS IN words/words.tsv, OR THIS FILE DOES NOT COMPILE: a fixed_code of 0 would
+// quietly send that method to run_thread_number's "a thread has" refusal instead of to its number.
+template <int... Last>
+inline constexpr bool every_thread_word_numbered = ((word::fixed_code<1, 6, 13, Last> != 0) && ...);
+static_assert(every_thread_word_numbered<1, 2, 3, 4>, "a thread method's number is missing from words/words.tsv");
+
+token::Code thread_number_of(token::Code method)
 {
+    // ONE METHOD, ONE NUMBER, read off words/words.tsv. wait() is join()'s second name (the author,
+    // 2026-09-23) and still its own word with its own number, 1 6 13 4, running join()'s body: its
+    // spelling was its own token from the day it was built, wait_method_token, as the batch mark's
+    // `wait` is another.
+    switch (method) {
+    case token::start_token: return word::fixed_code<1, 6, 13, 1>;
+    case token::join_token: return word::fixed_code<1, 6, 13, 2>;
+    case token::stop_token: return word::fixed_code<1, 6, 13, 3>;
+    case token::wait_method_token: return word::fixed_code<1, 6, 13, 4>;
+    default: return 0;
+    }
+}
+
+Value run_thread_number(token::Code method, token::Code number, const Value &receiver,
+                        const std::vector<Value> &arguments, bool had_parentheses, const std::string &name,
+                        ExpressionContext &context)
+{
+    // call_thread_method's three refusals, in its words, before any number runs. A method a thread does not
+    // have reaches here only as it was written, with its `.` -- `t.satellite.size` was refused by the period
+    // check first (method_periods.hpp), saying a thread has no size -- so it is said with that `.`.
     const std::string spelling = token::method_name_of(method);
-    if (thread_method_arity(method) < 0) {
+    if (thread_method_arity(method) < 0 || number == 0) {
         context.refuse(types_do_not_meet, name + "." + spelling + " -- " + thread_methods_are());
         return Value();
     }
     if (!had_parentheses || !arguments.empty()) {
-        context.refuse(satl_line_not_understood, name + "." + spelling + "() takes nothing, in its brackets");
+        context.refuse(satl_line_not_understood, name + ".satellite." + spelling + "() takes nothing, in its brackets");
         return Value();
     }
-    if (which == nullptr) {
+    const ThreadHandle *which = receiver.thread_handle();
+    if (which == nullptr || *which == nullptr) {
         context.refuse(satl_line_not_understood, name + " holds no thread yet -- give it one with "
                                                  "= satellite.thread.new(a_capsule())");
         return Value();
     }
-    if (method == token::start_token)
-        return start(which, name, context);
-    if (method == token::stop_token) {
-        which->stop_asked.store(true, std::memory_order_relaxed);
-        return Value::of_thread(which);
+
+    // THE NUMBER RUNS: table[code], one subtraction and one load (function_table.hpp), and the
+    // function its file under satellite-numbers/words/ put in the row at start-up.
+    const NumberRow *row = context.functions.method(number);
+    if (row == nullptr || row->scenarios.method_call == nullptr) {
+        context.refuse(not_built_yet, name + ".satellite." + spelling + " is not built for a thread yet");
+        return Value();
     }
-    return join(which, name, spelling, context);
+    return row->scenarios.method_call(receiver, nullptr, nullptr, arguments, had_parentheses, name, context);
 }
 
 signed long long int close_every_thread()

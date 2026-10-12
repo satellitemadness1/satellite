@@ -21,6 +21,6 @@ satellite.capsule satellite.main()
         s = s + q - r * 3 + (r % 10) ^ 2
         t = (t * 31 + q / 7 - r) % 1000000007
     }
-    satellite.console.display(x.string + " " + s.string + " " + t.string)
+    satellite.console.display(x.satellite.string + " " + s.satellite.string + " " + t.satellite.string)
     satellite.return(satellite)
 }

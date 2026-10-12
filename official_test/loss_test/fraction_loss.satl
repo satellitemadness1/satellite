@@ -78,204 +78,204 @@ satellite.capsule satellite.main()
     {
         // FORWARD: 50 operations take it far from where it began
         f = -f
-        satellite.statement.if (f.denominator != 1)
+        satellite.statement.if (f.satellite.denominator != 1)
         {
             wrong = wrong + 1
         }
         h = -h                                         // h: its sign turned over
-        f = f.numerator * 1000 + (f.denominator - 1) * far
-        f = f.numerator + 999999999999999999 + (f.denominator - 1) * far
-        f = f.numerator * 4 + (f.denominator - 1) * far
+        f = f.satellite.numerator * 1000 + (f.satellite.denominator - 1) * far
+        f = f.satellite.numerator + 999999999999999999 + (f.satellite.denominator - 1) * far
+        f = f.satellite.numerator * 4 + (f.satellite.denominator - 1) * far
         l[1] = -f
         f = l[1]
         l[1] = -h                                      // h: a list, there and back
         h = l[1]
-        f = f.numerator + f.denominator + (f.denominator - 1) * far
+        f = f.satellite.numerator + f.satellite.denominator + (f.satellite.denominator - 1) * far
         m["a"] = f
         f = -m["a"]
         m["a"] = h                                     // h: a map, there and back
         h = -m["a"]
-        f = (f.string - "/1").satellite.number + 5 + (f.denominator - 1) * far
-        f = f.numerator * -2 + (f.denominator - 1) * far
-        f = f.numerator * 3 + (f.denominator - 1) * far
+        f = (f.satellite.string - "/1").satellite.number + 5 + (f.satellite.denominator - 1) * far
+        f = f.satellite.numerator * -2 + (f.satellite.denominator - 1) * far
+        f = f.satellite.numerator * 3 + (f.satellite.denominator - 1) * far
         g = f
-        satellite.statement.if (g.denominator != 1)
+        satellite.statement.if (g.satellite.denominator != 1)
         {
             wrong = wrong + 1
         }
-        f = g.numerator - 547311173 + (g.denominator - 1) * far
+        f = g.satellite.numerator - 547311173 + (g.satellite.denominator - 1) * far
         g = h                                          // h: the other fraction name, there and back
         h = g
-        f = f.numerator * 1024 + (f.denominator - 1) * far
-        f = f.numerator * 10000000000 + (f.denominator - 1) * far
-        f = f.numerator * 5 + (f.denominator - 1) * far
-        f = f.numerator * 41 + (f.denominator - 1) * far
+        f = f.satellite.numerator * 1024 + (f.satellite.denominator - 1) * far
+        f = f.satellite.numerator * 10000000000 + (f.satellite.denominator - 1) * far
+        f = f.satellite.numerator * 5 + (f.satellite.denominator - 1) * far
+        f = f.satellite.numerator * 41 + (f.satellite.denominator - 1) * far
         g = -f
-        satellite.statement.if (g.denominator != 1)
+        satellite.statement.if (g.satellite.denominator != 1)
         {
             wrong = wrong + 1
         }
-        f = 7 + g.numerator + (g.denominator - 1) * far
+        f = 7 + g.satellite.numerator + (g.satellite.denominator - 1) * far
         g = -h                                         // h: the other fraction name, turned over both ways
         h = -g
-        f = f.numerator - 1000000000000 + (f.denominator - 1) * far
-        f = f.numerator * 8 + (f.denominator - 1) * far
-        f = f.numerator * f.denominator * 16 + (f.denominator - 1) * far
-        f = f.numerator + 42923 + (f.denominator - 1) * far
-        f = f.numerator * 311 + (f.denominator - 1) * far
-        f = f.numerator * 100 + (f.denominator - 1) * far
-        f = (f.string - "/1").satellite.number * 2 + (f.denominator - 1) * far
+        f = f.satellite.numerator - 1000000000000 + (f.satellite.denominator - 1) * far
+        f = f.satellite.numerator * 8 + (f.satellite.denominator - 1) * far
+        f = f.satellite.numerator * f.satellite.denominator * 16 + (f.satellite.denominator - 1) * far
+        f = f.satellite.numerator + 42923 + (f.satellite.denominator - 1) * far
+        f = f.satellite.numerator * 311 + (f.satellite.denominator - 1) * far
+        f = f.satellite.numerator * 100 + (f.satellite.denominator - 1) * far
+        f = (f.satellite.string - "/1").satellite.number * 2 + (f.satellite.denominator - 1) * far
         l[3] = f
-        satellite.statement.if (l[3].denominator != 1)
+        satellite.statement.if (l[3].satellite.denominator != 1)
         {
             wrong = wrong + 1
         }
-        f = l[3].numerator + 1 + (l[3].denominator - 1) * far
+        f = l[3].satellite.numerator + 1 + (l[3].satellite.denominator - 1) * far
         l[3] = h                                       // h: l[3], there and back
         h = l[3]
-        f = f.numerator - 33333333333333333333 + (f.denominator - 1) * far
-        f = f.numerator * 25 + (f.denominator - 1) * far
-        f = f.numerator * -1 + (f.denominator - 1) * far
+        f = f.satellite.numerator - 33333333333333333333 + (f.satellite.denominator - 1) * far
+        f = f.satellite.numerator * 25 + (f.satellite.denominator - 1) * far
+        f = f.satellite.numerator * -1 + (f.satellite.denominator - 1) * far
         m["c"] = -f
-        satellite.statement.if (m["c"].denominator != 1)
+        satellite.statement.if (m["c"].satellite.denominator != 1)
         {
             wrong = wrong + 1
         }
-        f = m["c"].numerator * 4096 + (m["c"].denominator - 1) * far
+        f = m["c"].satellite.numerator * 4096 + (m["c"].satellite.denominator - 1) * far
         m["c"] = -h                                    // h: m["c"], turned over both ways
         h = -m["c"]
-        f = f.numerator * 2000000 + (f.denominator - 1) * far
-        f = f.numerator * 7 + (f.denominator - 1) * far
-        f = f.numerator + 547311173547311173 + (f.denominator - 1) * far
-        f = f.numerator * 50 + (f.denominator - 1) * far
-        f = f.numerator - f.denominator * 1000000 + (f.denominator - 1) * far
-        f = (f.string - "/1").satellite.number - 547311173 + (f.denominator - 1) * far
-        f = f.numerator * 128 + (f.denominator - 1) * far
-        f = f.numerator * -10 + (f.denominator - 1) * far
-        f = f.numerator + 2 + (f.denominator - 1) * far
-        f = f.numerator * 1000000000000 + (f.denominator - 1) * far
-        f = f.numerator - 99999999999999999999999999999999 + (f.denominator - 1) * far
-        f = f.numerator * 625 + (f.denominator - 1) * far
-        f = -f.numerator * 20 + (f.denominator - 1) * far
-        f = f.numerator + f.numerator + (f.denominator - 1) * far
-        f = f.numerator * 256 + (f.denominator - 1) * far
-        f = f.numerator + 1000000007 + (f.denominator - 1) * far
+        f = f.satellite.numerator * 2000000 + (f.satellite.denominator - 1) * far
+        f = f.satellite.numerator * 7 + (f.satellite.denominator - 1) * far
+        f = f.satellite.numerator + 547311173547311173 + (f.satellite.denominator - 1) * far
+        f = f.satellite.numerator * 50 + (f.satellite.denominator - 1) * far
+        f = f.satellite.numerator - f.satellite.denominator * 1000000 + (f.satellite.denominator - 1) * far
+        f = (f.satellite.string - "/1").satellite.number - 547311173 + (f.satellite.denominator - 1) * far
+        f = f.satellite.numerator * 128 + (f.satellite.denominator - 1) * far
+        f = f.satellite.numerator * -10 + (f.satellite.denominator - 1) * far
+        f = f.satellite.numerator + 2 + (f.satellite.denominator - 1) * far
+        f = f.satellite.numerator * 1000000000000 + (f.satellite.denominator - 1) * far
+        f = f.satellite.numerator - 99999999999999999999999999999999 + (f.satellite.denominator - 1) * far
+        f = f.satellite.numerator * 625 + (f.satellite.denominator - 1) * far
+        f = -f.satellite.numerator * 20 + (f.satellite.denominator - 1) * far
+        f = f.satellite.numerator + f.satellite.numerator + (f.satellite.denominator - 1) * far
+        f = f.satellite.numerator * 256 + (f.satellite.denominator - 1) * far
+        f = f.satellite.numerator + 1000000007 + (f.satellite.denominator - 1) * far
 
         // HALFWAY: both are where exact math says they are
-        satellite.statement.if (f.string != "235533733560022552984973921055864111603275119958566891331571200000000993600007/1")
+        satellite.statement.if (f.satellite.string != "235533733560022552984973921055864111603275119958566891331571200000000993600007/1")
         {
             wrong = wrong + 1
         }
-        satellite.statement.if (h.string != "-547311173/7")
+        satellite.statement.if (h.satellite.string != "-547311173/7")
         {
             wrong = wrong + 1
         }
 
         // BACK: the 50 inverses, in reverse order
-        f = f.numerator - 1000000007 + (f.denominator - 1) * far
-        f = f.numerator * 0.390625% + (f.denominator - 1) * far
-        f = f.numerator * 50% + (f.denominator - 1) * far
-        f = f.numerator * -5% + (f.denominator - 1) * far
-        f = f.numerator * 0.16% + (f.denominator - 1) * far
-        f = f.numerator + 99999999999999999999999999999999 + (f.denominator - 1) * far
-        f = f.numerator * 0.0000000001% + (f.denominator - 1) * far
-        f = f.numerator - 2 + (f.denominator - 1) * far
-        f = f.numerator * -10% + (f.denominator - 1) * far
-        f = f.numerator * 0.78125% + (f.denominator - 1) * far
-        f = (f.string - "/1").satellite.number + 547311173 + (f.denominator - 1) * far
-        f = f.numerator + f.denominator * 1000000 + (f.denominator - 1) * far
-        f = f.numerator * 2% + (f.denominator - 1) * far
-        f = f.numerator - 547311173547311173 + (f.denominator - 1) * far
-        k = f.numerator / -7 + (f.denominator - 1) * far
-        satellite.statement.if (k * -7 != f.numerator)
+        f = f.satellite.numerator - 1000000007 + (f.satellite.denominator - 1) * far
+        f = f.satellite.numerator * 0.390625% + (f.satellite.denominator - 1) * far
+        f = f.satellite.numerator * 50% + (f.satellite.denominator - 1) * far
+        f = f.satellite.numerator * -5% + (f.satellite.denominator - 1) * far
+        f = f.satellite.numerator * 0.16% + (f.satellite.denominator - 1) * far
+        f = f.satellite.numerator + 99999999999999999999999999999999 + (f.satellite.denominator - 1) * far
+        f = f.satellite.numerator * 0.0000000001% + (f.satellite.denominator - 1) * far
+        f = f.satellite.numerator - 2 + (f.satellite.denominator - 1) * far
+        f = f.satellite.numerator * -10% + (f.satellite.denominator - 1) * far
+        f = f.satellite.numerator * 0.78125% + (f.satellite.denominator - 1) * far
+        f = (f.satellite.string - "/1").satellite.number + 547311173 + (f.satellite.denominator - 1) * far
+        f = f.satellite.numerator + f.satellite.denominator * 1000000 + (f.satellite.denominator - 1) * far
+        f = f.satellite.numerator * 2% + (f.satellite.denominator - 1) * far
+        f = f.satellite.numerator - 547311173547311173 + (f.satellite.denominator - 1) * far
+        k = f.satellite.numerator / -7 + (f.satellite.denominator - 1) * far
+        satellite.statement.if (k * -7 != f.satellite.numerator)
         {
             wrong = wrong + 1
         }
         f = -k
-        satellite.statement.if (f.denominator != 1)
+        satellite.statement.if (f.satellite.denominator != 1)
         {
             wrong = wrong + 1
         }
-        f = f.numerator * 0.00005% + (f.denominator - 1) * far
-        f = f.numerator * -0.0244140625% + (f.denominator - 1) * far
-        f = 0 - f.numerator + (f.denominator - 1) * far
-        f = f.numerator * 4% + (f.denominator - 1) * far
-        f = f.numerator + 33333333333333333333 + (f.denominator - 1) * far
-        f = f.numerator - 1 + (f.denominator - 1) * far
-        f = (f.string - "/1").satellite.number * 50% + (f.denominator - 1) * far
-        f = f.numerator * 1% + (f.denominator - 1) * far
-        n = f.numerator / -311 + (f.denominator - 1) * far
-        satellite.statement.if (n * -311 != f.numerator)
+        f = f.satellite.numerator * 0.00005% + (f.satellite.denominator - 1) * far
+        f = f.satellite.numerator * -0.0244140625% + (f.satellite.denominator - 1) * far
+        f = 0 - f.satellite.numerator + (f.satellite.denominator - 1) * far
+        f = f.satellite.numerator * 4% + (f.satellite.denominator - 1) * far
+        f = f.satellite.numerator + 33333333333333333333 + (f.satellite.denominator - 1) * far
+        f = f.satellite.numerator - 1 + (f.satellite.denominator - 1) * far
+        f = (f.satellite.string - "/1").satellite.number * 50% + (f.satellite.denominator - 1) * far
+        f = f.satellite.numerator * 1% + (f.satellite.denominator - 1) * far
+        n = f.satellite.numerator / -311 + (f.satellite.denominator - 1) * far
+        satellite.statement.if (n * -311 != f.satellite.numerator)
         {
             wrong = wrong + 1
         }
         f = -n
-        satellite.statement.if (f.denominator != 1)
+        satellite.statement.if (f.satellite.denominator != 1)
         {
             wrong = wrong + 1
         }
-        f = f.numerator - 42923 + (f.denominator - 1) * far
-        f = f.numerator * 6.25% + (f.denominator - 1) * far
-        f = f.numerator * 12.5% + (f.denominator - 1) * far
-        f = f.numerator + 1000000000000 + (f.denominator - 1) * far
-        f = 7 - f.numerator + (f.denominator - 1) * far
-        k = f.numerator / 41 + (f.denominator - 1) * far
-        satellite.statement.if (k * 41 != f.numerator)
+        f = f.satellite.numerator - 42923 + (f.satellite.denominator - 1) * far
+        f = f.satellite.numerator * 6.25% + (f.satellite.denominator - 1) * far
+        f = f.satellite.numerator * 12.5% + (f.satellite.denominator - 1) * far
+        f = f.satellite.numerator + 1000000000000 + (f.satellite.denominator - 1) * far
+        f = 7 - f.satellite.numerator + (f.satellite.denominator - 1) * far
+        k = f.satellite.numerator / 41 + (f.satellite.denominator - 1) * far
+        satellite.statement.if (k * 41 != f.satellite.numerator)
         {
             wrong = wrong + 1
         }
         f = k
-        satellite.statement.if (f.denominator != 1)
+        satellite.statement.if (f.satellite.denominator != 1)
         {
             wrong = wrong + 1
         }
-        f = f.numerator * 20% + (f.denominator - 1) * far
-        f = f.numerator * 0.00000001% + (f.denominator - 1) * far
-        f = f.numerator * 0.09765625% + (f.denominator - 1) * far
-        f = f.numerator + 547311173 + (f.denominator - 1) * far
-        n = f.numerator / 3 + (f.denominator - 1) * far
-        satellite.statement.if (n * 3 != f.numerator)
+        f = f.satellite.numerator * 20% + (f.satellite.denominator - 1) * far
+        f = f.satellite.numerator * 0.00000001% + (f.satellite.denominator - 1) * far
+        f = f.satellite.numerator * 0.09765625% + (f.satellite.denominator - 1) * far
+        f = f.satellite.numerator + 547311173 + (f.satellite.denominator - 1) * far
+        n = f.satellite.numerator / 3 + (f.satellite.denominator - 1) * far
+        satellite.statement.if (n * 3 != f.satellite.numerator)
         {
             wrong = wrong + 1
         }
         f = n
-        satellite.statement.if (f.denominator != 1)
+        satellite.statement.if (f.satellite.denominator != 1)
         {
             wrong = wrong + 1
         }
-        f = f.numerator * -50% + (f.denominator - 1) * far
-        f = (f.string - "/1").satellite.number - 5 + (f.denominator - 1) * far
+        f = f.satellite.numerator * -50% + (f.satellite.denominator - 1) * far
+        f = (f.satellite.string - "/1").satellite.number - 5 + (f.satellite.denominator - 1) * far
         m["b"] = -f
         f = m["b"]
         m["b"] = -h                                    // h: m["b"], there and back
         h = m["b"]
-        f = f.numerator - f.denominator + (f.denominator - 1) * far
+        f = f.satellite.numerator - f.satellite.denominator + (f.satellite.denominator - 1) * far
         l[2] = -f
         f = l[2]
-        satellite.statement.if (f.denominator != 1)
+        satellite.statement.if (f.satellite.denominator != 1)
         {
             wrong = wrong + 1
         }
         l[2] = -h                                      // h: l[2], there and back
         h = l[2]
-        f = f.numerator * 25% + (f.denominator - 1) * far
-        f = f.numerator - 999999999999999999 + (f.denominator - 1) * far
-        f = f.numerator * 0.1% + (f.denominator - 1) * far
-        f = -f.numerator + (f.denominator - 1) * far
+        f = f.satellite.numerator * 25% + (f.satellite.denominator - 1) * far
+        f = f.satellite.numerator - 999999999999999999 + (f.satellite.denominator - 1) * far
+        f = f.satellite.numerator * 0.1% + (f.satellite.denominator - 1) * far
+        f = -f.satellite.numerator + (f.satellite.denominator - 1) * far
         h = -h                                         // h: its sign turned back
 
         // THE PASS ENDS WHERE IT BEGAN -- or the run stops at the first pass that does not, and says so
-        satellite.statement.if (f.string != start.string)
+        satellite.statement.if (f.satellite.string != start.satellite.string)
         {
             wrong = wrong + 1
         }
-        satellite.statement.if (h.string != "547311173/7")
+        satellite.statement.if (h.satellite.string != "547311173/7")
         {
             wrong = wrong + 1
         }
         satellite.statement.if (wrong > 0)
         {
-            seen = "pass " + pass.string + ": wrong " + wrong.string + ", f = " + f.string + ", h = " + h.string
+            seen = "pass " + pass.satellite.string + ": wrong " + wrong.satellite.string + ", f = " + f.satellite.string + ", h = " + h.satellite.string
             satellite.statement.break
         }
     }
@@ -283,7 +283,7 @@ satellite.capsule satellite.main()
     {
         satellite.statement.if (f == start)
         {
-            satellite.statement.if (f.string == start.string)
+            satellite.statement.if (f.satellite.string == start.satellite.string)
             {
                 satellite.console.display(547311173)
             }

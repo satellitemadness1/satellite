@@ -90,7 +90,9 @@ namespace satellite004 {
 inline int container_arity(token::Code method)
 {
     switch (method) {
-    case token::insert_token: return 2;
+    case token::insert_token:
+    case token::set_token: return 2;           // a map's .set(k, v), a token since 2026-10-11
+    case token::get_token:                     // a map's .get(k), the same day
     case token::append_token:
     case token::join_token:
     case token::reserve_token:
@@ -131,11 +133,16 @@ inline bool container_given_fits(token::Code method, std::size_t given)
     return given == static_cast<std::size_t>(container_arity(method)) || (method == token::sort_token && given == 1);
 }
 
-// "takes 1 argument, and was given 2" -- or .sort's own sentence, which is not a count.
+// "takes 1 argument, and was given 2" -- or .sort's own sentence, which is not a count, and a map's .get's
+// and .set's, which said what each takes when they were matched by name (expression.cpp, 2026-09-26).
 inline std::string container_takes(token::Code method, int wanted)
 {
     if (method == token::sort_token)
         return " takes nothing, or \"key\" or \"value\" on a map";
+    if (method == token::get_token)
+        return "(key) takes one key, and reads the value under it";
+    if (method == token::set_token)
+        return "(key, value) takes a key and a value, and files one under the other";
     return " takes " + std::to_string(wanted) + (wanted == 1 ? " argument" : " arguments");
 }
 
@@ -157,10 +164,15 @@ std::string sort_word_refused(const std::string &word, bool on_a_map, const std:
 // is walked a SECOND time, by reference, so `grid[1].append(3)` reaches the real
 // item instead of a copy of it. Reading is left on the copy, which is what stops
 // a read from cloning a shared list.
+//
+// A MAP'S .set(k, v) IS ONE OF THEM (a token since 2026-10-11): it files a value, so `rows[1].satellite.set(k, v)`
+// reaches the real map in the list as `rows[1].satellite.clear()` does -- matched by name until then, it was a
+// word of a name's own map and nothing else's.
 inline bool changes_a_container(token::Code method)
 {
     switch (method) {
     case token::append_token:
+    case token::set_token:
     case token::clear_token:
     case token::insert_token:
     case token::remove_token:
@@ -179,8 +191,17 @@ inline bool changes_a_container(token::Code method)
 // container method but .keys and .values is a list's.
 token::Code list_number_of(token::Code method);
 
-// WHAT A LIST AND A MAP HAVE, for every refusal that lists them: a list's own words under satellite (NM-8,
-// 2026-10-10), a map's not yet.
+// THE NUMBER A MAP'S METHOD RUNS -- the code of satellite.container.map.<it>, 1 4 1 n (the author,
+// 2026-10-11: "we still need to get the word satellite onto everything ... everything builtin needs the word
+// satellite still") -- or 0 for a method a map does not have. ONE VALUE KIND UNDER FOUR TYPE WORDS: a map is
+// an index (type_shape.hpp), and so is what satellite.container.index declares, the arguments variable and an
+// info's every item -- a value does not know which word declared it, so these numbers are every one's, and
+// none of the four has rows of its own. .search(pattern) keeps its number, 1 4 1 10, with no code: a map has
+// no positions to search along, and is refused as before.
+token::Code map_number_of(token::Code method);
+
+// WHAT A LIST AND A MAP HAVE, for every refusal that lists them: both kinds' own words are under satellite
+// (NM-8, a list's 2026-10-10 and a map's 2026-10-11).
 const char *what_containers_have();
 
 // A LIST'S METHOD, RUN BY ITS NUMBER: the count and the brackets refused as they always were, then
@@ -203,6 +224,15 @@ const char *what_containers_have();
 Value run_list_number(token::Code method, token::Code number, const Value &receiver, Value *home,
                       const TypeShape *shape, const std::vector<Value> &arguments, bool had_parentheses,
                       const std::string &name, ExpressionContext &context);
+
+// A MAP'S METHOD, RUN BY ITS NUMBER: the count and the brackets refused as call_container_method refused
+// them, then the function its file under satellite-numbers/words/ put in the number's row (method_call).
+// `number` is map_number_of(method), already asked, never 0. `home` and `shape` as run_list_number's: the
+// variable's own object, never a copy -- .clear, .remove and .set change it in place -- and what the name
+// was declared as, which .set's value must fit.
+Value run_map_number(token::Code method, token::Code number, const Value &receiver, Value *home,
+                     const TypeShape *shape, const std::vector<Value> &arguments, bool had_parentheses,
+                     const std::string &name, ExpressionContext &context);
 
 // THE PIECES A LIST'S NUMBERED METHODS SHARE WITH WHAT IS LEFT IN container_calls.cpp, in a
 // namespace of their own.
@@ -237,15 +267,32 @@ bool position_argument(const Value &given, bool a_count_of_items, const std::str
 
 } // namespace container_parts
 
-// AN INDEX'S METHOD -- and since 2026-10-10 a list's REFUSALS only: a list comes here with a method
-// it does not have (.keys, .values, anything not a container's), and is refused; every method it
-// has is run_list_number's. `home` is the variable's own object when the
-// receiver came straight from a name, and nullptr otherwise -- `.clear` and `.remove` need
-// it, because a container is a value and changing a copy changes nothing.
-//
-// IT MUST BE THE VARIABLE'S OWN OBJECT AND NEVER A COPY OF IT, here as in run_list_number:
-// an index's .clear and .remove change it in place, and copy-on-write asked through a copy
-// would copy every entry first.
+// THE PIECES A MAP'S NUMBERED METHODS SHARE (satellite-numbers/words/1.4.1.n.cpp), as container_parts
+// are a list's.
+struct satelliteIndex;   // satellite_object/satellite_index.hpp
+
+namespace map_method_parts {
+
+// THE OPENING EVERY ONE OF A MAP'S CHANGES SHARES -- .clear, .remove(k), .remove_first(), .remove_last(),
+// .set(k, v) -- as call_container_method made it until 2026-10-11: a name to change, and that name's own
+// map, made its own (copy-on-write) before anything else is asked of it. nullptr, refused. `method` is the
+// method's spelling, for the refusals.
+satelliteIndex *map_to_change(Value *home, const std::string &name, const char *method, ExpressionContext &context);
+
+// TAKE AN ENTRY OUT, keeping the insertion order of the rest, and the lookup table repaired with it.
+void take_entry_out(satelliteIndex &index, std::size_t at);
+
+// CAN EVERY KEY -- OR EVERY VALUE -- BE ORDERED AGAINST EVERY OTHER? .sort("key")'s and .sort("value")'s
+// question, asked where each sits in the entries: success, or compare's own code with `why` said.
+signed long long int entries_comparable(const satelliteIndex &held, bool by_key, std::string &why);
+
+} // namespace map_method_parts
+
+// A LIST'S AND A MAP'S REFUSALS, AND NOTHING ELSE SINCE 2026-10-11: each comes here only with a method it
+// does not have -- a list with .keys or .values, a map with .append or a position, either with anything not
+// a container's -- and is refused before anything runs; every method each has is its number
+// (run_list_number, run_map_number). `home` is the variable's own object when the receiver came straight
+// from a name, and nullptr otherwise.
 Value call_container_method(token::Code method, Value &receiver, Value *home, const std::vector<Value> &arguments,
                             bool had_parentheses, const std::string &name, ExpressionContext &context);
 
@@ -283,9 +330,9 @@ std::string container_word_refused(token::Code code, std::size_t given);
 Value call_container_word(token::Code code, const std::vector<Value> &arguments, ExpressionContext &context);
 
 // WHAT AN INDEX SAYS TO .sum .max .min .join AND .reserve, or "" for any other
-// method: which half to ask (`scores.values.sum`), or that room is a list's -- and
-// to .by_name() and .by_value(), that a map is put in order by .sort("key") and
-// .sort("value"). ONE
+// method: which half to ask (`scores.satellite.values.satellite.sum`), or that room is a list's -- and
+// to .by_name() and .by_value(), that a map is put in order by .satellite.sort("key") and
+// .satellite.sort("value"). ONE
 // SENTENCE FOR THE CHECKER AND THE WALKER, so a name declared an index is refused
 // before anything runs and a value that turns out to be one is refused in the same
 // words.

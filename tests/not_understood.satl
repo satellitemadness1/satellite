@@ -17,7 +17,7 @@
 // is the same one: move it to whatever is still unbuilt, not to delete the check.
 satellite.include(satellite)
 
-satellite.capsule satellite.main(satellite.container.list<satellite.variable.string> arguments)
+satellite.capsule satellite.main(satellite.variable.arguments arguments)
 {
     satellite.console.display("before")
     satellite.variable.network f = 1

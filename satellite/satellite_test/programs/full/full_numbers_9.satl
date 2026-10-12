@@ -38,43 +38,43 @@ satellite.capsule satellite.main()
     satellite.variable.string digits_seen = "every draw 0 to 99"
     satellite.statement.for(satellite.variable.number turn = 1; turn <= rounds; turn + 1)
     {
-        seeds = satellite.random.seed(7).string + " " + satellite.random.seed(10 ^ 30).string + " " + satellite.random.seed(-5).string
+        seeds = satellite.random.seed(7).satellite.string + " " + satellite.random.seed(10 ^ 30).satellite.string + " " + satellite.random.seed(-5).satellite.string
         satellite.random.seed(547311173)
         satellite.variable.number die = satellite.random.fast(1, 6)
         satellite.statement.if(die < 1)
         {
-            die_seen = die.string
+            die_seen = die.satellite.string
         }
         satellite.statement.if(die > 6)
         {
-            die_seen = die.string
+            die_seen = die.satellite.string
         }
         satellite.variable.number stepped = satellite.random.fast(0, 100, 5)
         satellite.statement.if(stepped < 0)
         {
-            step_seen = stepped.string
+            step_seen = stepped.satellite.string
         }
         satellite.statement.if(stepped > 100)
         {
-            step_seen = stepped.string
+            step_seen = stepped.satellite.string
         }
         satellite.statement.if(stepped % 5 != 0)
         {
-            step_seen = stepped.string
+            step_seen = stepped.satellite.string
         }
         satellite.variable.number big = satellite.random.normal(10 ^ 40, 10 ^ 40)
         satellite.statement.if(big != 10 ^ 40)
         {
-            big_seen = big.string
+            big_seen = big.satellite.string
         }
         satellite.variable.number two_digits = satellite.random.ultra(2)
         satellite.statement.if(two_digits < 0)
         {
-            digits_seen = two_digits.string
+            digits_seen = two_digits.satellite.string
         }
         satellite.statement.if(two_digits > 99)
         {
-            digits_seen = two_digits.string
+            digits_seen = two_digits.satellite.string
         }
     }
     satellite.variable.bool show = satellite.bool.true

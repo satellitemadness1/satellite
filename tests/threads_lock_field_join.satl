@@ -18,11 +18,11 @@ satellite.spacesuit counter()
         satellite.capsule call_begin()
         {
             worker = satellite.thread.new(call_add())
-            worker.start()
+            worker.satellite.start()
         }
         satellite.capsule call_finish()
         {
-            worker.join()
+            worker.satellite.join()
         }
         satellite.capsule call_total()
         {
@@ -39,7 +39,7 @@ satellite.capsule idle()
 satellite.capsule satellite.main()
 {
     counter c()
-    c.lock()
+    c.satellite.lock()
     c.call_begin()
     c.call_finish()
     satellite.console.display(c.call_total())

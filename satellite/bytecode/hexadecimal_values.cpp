@@ -13,6 +13,7 @@
 
 #include "file_calls.hpp"
 #include "program_walk.hpp"
+#include "scalar_calls.hpp"
 #include "word_codes.hpp"
 
 #include <string>
@@ -32,8 +33,10 @@ bool all_hex_digits(const std::string &text)
 }
 
 // WHAT A HEX HAS, said whole in every refusal of a method it has not got, so a
-// person reads the answer where they read the question.
-const char *const kWhatAHexHas = "a hex has .number, .string, .binary, .hex, .width, .add and .reverse()";
+// person reads the answer where they read the question -- each written as it is
+// written since 2026-10-11, under satellite (scalar_calls.hpp).
+const char *const kWhatAHexHas = "a hex has .satellite.number, .satellite.string, .satellite.binary, .satellite.hex, "
+                                 ".satellite.width, .satellite.add and .satellite.reverse()";
 
 // The hex a number would be written as, for a suggestion: 32 is x20, -31 is -x1F.
 std::string as_a_hex(const satellite_number &value)
@@ -139,13 +142,14 @@ signed long long int hexadecimal_is_written_right(const std::vector<std::bitset<
 }
 
 // THE CHECKER'S ANSWER IS FINAL FOR A HEX NAME (program_check.cpp's method_right_for),
-// so this is the whole list: the four conversions, `.width`, and `.add`, which is
-// `+` and reaches object_hexadecimal.cpp. `.reverse()` is allowed before this is
-// asked, as it is on every type with an order.
+// so this is the whole list: the words a hex runs a number for (scalar_calls.cpp's
+// hexadecimal_number_of, asked and never copied, since 2026-10-11) -- the four
+// conversions, `.width`, `.add`, which is `+` and reaches object_hexadecimal.cpp, and
+// `.reverse()`, which is also let through before this is asked, as on every type with
+// an order. The walker refuses a word it reaches that is not one of them in this sentence.
 signed long long int hexadecimal_method_check(token::Code method, const std::string &spelling, std::string &why)
 {
-    if (method == token::to_string_token || method == token::to_number_token || method == token::to_binary_token ||
-        method == token::to_hexadecimal_token || method == token::width_token || method == token::add_token)
+    if (hexadecimal_number_of(method) != 0)
         return success;
     why = spelling + " -- " + kWhatAHexHas;
     return types_do_not_meet;
@@ -175,54 +179,10 @@ signed long long int hexadecimal_on_store(token::Code holds, Value &value, std::
     return success;
 }
 
-// A HEX'S METHODS. The four conversions and `.width` are answered here and never
-// by the conversions every type shares, which know nothing of a width: `.hex` is
-// the digits as wide as written, as a binary's `.bin` is (object_hexadecimal.cpp).
-//
-// `.width` COUNTS BITS, FOUR TO THE DIGIT -- x00FF is 16 -- which is the author's
-// call in 003 (DESIGN 8.5, 2026-09-09: "width() COUNTS BITS ON BOTH AND digits()
-// COUNTS DIGITS"), so that a width means the same thing on a binary and a hex.
-// 004 has no `.digits` method token yet; `.hex`'s text is as long as the digits.
-Value hexadecimal_method(token::Code method, const Value &receiver, Value *, const std::vector<Value> &arguments,
-                         bool, const std::string &name, ExpressionContext &context, bool &answered)
-{
-    answered = false;
-    const satellite_hexadecimal_number *hex = receiver.as_hexadecimal();
-    if (hex == nullptr || method == token::add_token)
-        return Value();                      // `.add` IS `+`: the shared path asks the object model
-
-    const std::string spelled = name + "." + method_spelling(method);
-    const bool built = method == token::to_string_token || method == token::to_number_token ||
-                       method == token::to_binary_token || method == token::to_hexadecimal_token ||
-                       method == token::width_token;
-    if (!built) {
-        context.refuse(types_do_not_meet, spelled + " -- " + kWhatAHexHas);
-        return Value();
-    }
-    if (!arguments.empty()) {
-        context.refuse(satl_line_not_understood,
-                       spelled + " takes no argument, and was given " + std::to_string(arguments.size()));
-        return Value();
-    }
-
-    answered = true;
-    if (method == token::width_token)
-        return Value::of_number(satellite_number(hex->width) * satellite_number(4ull));
-    if (method == token::to_number_token)
-        return Value::of_number(hex->worth);
-
-    satellite_string text;
-    std::size_t bad_offset = 0;
-    const std::string written = method == token::to_string_token ? hex->written()
-                                : method == token::to_binary_token ? hex->bits()
-                                                                    : hex->digits();
-    const signed long long int made = satellite_string::from_utf8(written, text, bad_offset);
-    if (made != success) {
-        answered = false;
-        context.refuse(made, spelled + " could not be written as text");
-        return Value();
-    }
-    return Value::of_string(std::move(text));
-}
+// A HEX'S METHODS -- the four conversions and `.width`, answered by a hex's own code
+// and never by the conversions every type shares, which know nothing of a width --
+// are files under satellite-numbers/words/ since 2026-10-11, each run by its number
+// (scalar_calls.hpp): 1.6.11.2.cpp is `.width`, and says why it counts bits. They were
+// hexadecimal_method here; `.add` and `.reverse()` were the walker's shared ones.
 
 } // namespace satellite004

@@ -37,7 +37,7 @@ for p in $programs; do
     src="$root/SCRATCH.md/DISPLAY_THREADS/bench_$p.satl"
     [ -f "$src" ] || { echo "console_race.sh: no $src"; exit 1; }
     # The last line before satellite.return: the marker that the program reached its end.
-    awk -v done="$p.done" '/satellite.return\(satellite\)/ { print "    satellite.file.new(\"" done "\").append(\"printed every line\")" } { print }' \
+    awk -v done="$p.done" '/satellite.return\(satellite\)/ { print "    satellite.file.new(\"" done "\").satellite.append(\"printed every line\")" } { print }' \
         "$src" > "$work/$p.satl"
 done
 

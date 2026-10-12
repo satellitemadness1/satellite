@@ -52,9 +52,9 @@ satellite.capsule satellite.main()
     satellite.statement.for(satellite.variable.number pass = 0; pass < 10000; pass + 1)
     {
         // the 50 forward operations: the value goes away from 547311173
-        turned = bits.reverse()
+        turned = bits.satellite.reverse()
         worth = worth + turned
-        wide_turned = wide.reverse()
+        wide_turned = wide.satellite.reverse()
         worth = worth - wide_turned
         worth = worth * b1101
         bits = -turned
@@ -63,22 +63,22 @@ satellite.capsule satellite.main()
         worth = worth - -b0110
         worth = worth * -b11
         worth = b1010 * worth
-        worth = worth.add(b1011)
-        worth = bits.add(worth)
+        worth = worth.satellite.add(b1011)
+        worth = bits.satellite.add(worth)
         wide = -wide_turned
-        worth = worth + wide.binary
+        worth = worth + wide.satellite.binary
         worth = worth * b10000000000000000000000000000000000000000000000000000000000000000
         worth = worth + b11111111111111111111111111111111111111111111111111111111111111111111
-        turned = (-bits).reverse()
+        turned = (-bits).satellite.reverse()
         worth = worth - wide * b100
         worth = worth + (b1100 + xFF)
         worth = worth * (b10 + b1)
         worth = worth - xFF * b10
         worth = worth + (turned + wide)
-        wide_turned = (-wide).reverse()
-        worth = worth + wide_turned.bin
+        wide_turned = (-wide).satellite.reverse()
+        worth = worth + wide_turned.satellite.bin
         worth = worth * b0000000111
-        worth = worth + turned.reverse()
+        worth = worth + turned.satellite.reverse()
         worth = worth - -turned
         held = turned
         worth = worth + held % b1000
@@ -86,21 +86,21 @@ satellite.capsule satellite.main()
         worth = worth * (held % b10000000)
         wide_held = wide_turned
         worth = worth - held * wide_held
-        worth = worth + wide_held.number
-        bits = -held.reverse()
+        worth = worth + wide_held.satellite.number
+        bits = -held.satellite.reverse()
         worth = worth * b100000000000
         worth = worth + -b00000000000000000000000000000000000000000000000000000000000000000000000000000000111
-        wide = -wide_held.reverse()
+        wide = -wide_held.satellite.reverse()
         worth = worth + b11 * b101 * b111
         worth = worth * (b1 + xF)
         worth = worth + (wide - b1)
-        worth = worth.add(-b10011)
+        worth = worth.satellite.add(-b10011)
         worth = worth + xFFFF * b1111
         worth = worth * -b1001
         held = -bits
         worth = worth - (held + held) * b11
         wide_held = -wide
-        worth = worth + held.add(wide_held)
+        worth = worth + held.satellite.add(wide_held)
         worth = worth * (wide_held % b100000000 + b1)
         // THE MIDDLE, CHECKED: a .reverse() or a minus sign lost the same way going out and coming back, or a
         // value added and taken away just as wrong, would cancel itself -- so each value must already be what
@@ -140,7 +140,7 @@ satellite.capsule satellite.main()
         }
         // the 50 inverse operations, in the reverse order: the value comes back
         worth = worth / (wide_held % b100000000 + b1) + worth % (wide_held % b100000000 + b1) * far
-        worth = worth - held.add(wide_held)
+        worth = worth - held.satellite.add(wide_held)
         wide = -wide_held
         worth = worth + (held + held) * b11
         bits = -held
@@ -150,11 +150,11 @@ satellite.capsule satellite.main()
         worth = worth - (wide - b1)
         worth = worth / (b1 + xF) + worth % (b1 + xF) * far
         worth = worth - b11 * b101 * b111
-        wide_held = -wide.reverse()
+        wide_held = -wide.satellite.reverse()
         worth = worth - -b00000000000000000000000000000000000000000000000000000000000000000000000000000000111
         worth = worth / b100000000000 + worth % b100000000000 * far
-        held = -bits.reverse()
-        worth = worth - wide_held.number
+        held = -bits.satellite.reverse()
+        worth = worth - wide_held.satellite.number
         worth = worth + held * wide_held
         wide_turned = wide_held
         worth = worth / (held % b10000000) + worth % (held % b10000000) * far
@@ -162,21 +162,21 @@ satellite.capsule satellite.main()
         worth = worth - held % b1000
         turned = held
         worth = worth + -turned
-        worth = worth - turned.reverse()
+        worth = worth - turned.satellite.reverse()
         worth = worth / b0000000111 + worth % b0000000111 * far
-        worth = worth - wide_turned.bin.satellite.number
-        wide = -wide_turned.reverse()
+        worth = worth - wide_turned.satellite.bin.satellite.number
+        wide = -wide_turned.satellite.reverse()
         worth = worth - (turned + wide)
         worth = worth + xFF * b10
         worth = worth / (b10 + b1) + worth % (b10 + b1) * far
         worth = worth - (b1100 + xFF)
         worth = worth + wide * b100
-        bits = -turned.reverse()
+        bits = -turned.satellite.reverse()
         worth = worth - b11111111111111111111111111111111111111111111111111111111111111111111
         worth = worth / b10000000000000000000000000000000000000000000000000000000000000000 + worth % b10000000000000000000000000000000000000000000000000000000000000000 * far
-        worth = worth - wide.binary.satellite.number
+        worth = worth - wide.satellite.binary.satellite.number
         wide_turned = -wide
-        worth = worth - bits.number
+        worth = worth - bits.satellite.number
         worth = worth - b1011
         worth = worth / b1010 + worth % b1010 * far
         worth = worth / -b11 + worth % -b11 * far
@@ -186,9 +186,9 @@ satellite.capsule satellite.main()
         turned = -bits
         worth = worth / b1101 + worth % b1101 * far
         worth = worth + wide_turned
-        wide = wide_turned.reverse()
+        wide = wide_turned.satellite.reverse()
         worth = worth - turned
-        bits = turned.reverse()
+        bits = turned.satellite.reverse()
     }
 
     satellite.statement.if (seen != "")

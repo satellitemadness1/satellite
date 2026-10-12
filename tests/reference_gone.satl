@@ -21,11 +21,11 @@ satellite.spacesuit box()
 satellite.capsule satellite.main()
 {
     box a
-    box p = a.pointer()
+    box p = a.satellite.pointer()
     box other
     a = other
-    satellite.console.display(p.ok())
-    box r = p.reference()
+    satellite.console.display(p.satellite.ok())
+    box r = p.satellite.reference()
     satellite.console.display("THIS LINE MUST NOT RUN")
     satellite.return(satellite)
 }

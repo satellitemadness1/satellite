@@ -88,102 +88,102 @@ satellite.capsule satellite.main()
         s00 = !s00
         s01 = s01 != s29
         s02 = s02 == s28
-        s03 = s03 != (s29.string + s23.string == "truetrue")
-        s04 = s04 != (s05.string + s06.string != "falsefalse")
+        s03 = s03 != (s29.satellite.string + s23.satellite.string == "truetrue")
+        s04 = s04 != (s05.satellite.string + s06.satellite.string != "falsefalse")
         s05 = s05 != s20 != s19
-        s06 = s06 != (s07.string < s18.string)
+        s06 = s06 != (s07.satellite.string < s18.satellite.string)
         s07 = s07 != (s17 == s16)
         s08 = !s08
         s09 = s09 != s14
-        s10 = s10 != (s11.string + s09.string + s02.string == "truetruetrue")
+        s10 = s10 != (s11.satellite.string + s09.satellite.string + s02.satellite.string == "truetruetrue")
         s11 = s11 == s12
-        s12 = s12 != (s13.string + s14.string == "truetrue")
-        s13 = s13 != (s27.string + s26.string != "falsefalse")
+        s12 = s12 != (s13.satellite.string + s14.satellite.string == "truetrue")
+        s13 = s13 != (s27.satellite.string + s26.satellite.string != "falsefalse")
         s14 = s14 != s00
         s15 = s15 == satellite.bool.true
         s16 = s16 != s01 != s03
-        s17 = s17 != (s04.string < s10.string)
+        s17 = s17 != (s04.satellite.string < s10.satellite.string)
         s18 = s18 != (s25 == s24)
         s19 = !s19
         s20 = s20 != s21
         s21 = s21 == s22
-        s22 = s22 != (s20.string + s19.string == "truetrue")
-        s23 = s23 != (s08.string + s07.string != "falsefalse")
+        s22 = s22 != (s20.satellite.string + s19.satellite.string == "truetrue")
+        s23 = s23 != (s08.satellite.string + s07.satellite.string != "falsefalse")
         s24 = s24 != s29
-        s25 = s25 != (s06.string + s05.string + s04.string == "truetruetrue")
+        s25 = s25 != (s06.satellite.string + s05.satellite.string + s04.satellite.string == "truetruetrue")
         s26 = s26 == s15
-        s27 = s27 != (s28.string < s29.string)
+        s27 = s27 != (s28.satellite.string < s29.satellite.string)
         s28 = !s28
         s29 = s29 != s10
-        s00 = s00 != (s29.string + s28.string == "truetrue")
-        s01 = s01 != (s02.string + s03.string != "falsefalse")
+        s00 = s00 != (s29.satellite.string + s28.satellite.string == "truetrue")
+        s01 = s01 != (s02.satellite.string + s03.satellite.string != "falsefalse")
         s02 = s02 != s12 != s13
         s03 = s03 != (s21 == s20)
         s04 = s04 == s09
-        s05 = s05 != (s19.string < s18.string)
+        s05 = s05 != (s19.satellite.string < s18.satellite.string)
         s06 = s06 != s27
         s07 = !s07
-        s08 = s08 != (s01.string + s00.string == "truetrue")
+        s08 = s08 != (s01.satellite.string + s00.satellite.string == "truetrue")
         s09 = s09 != satellite.bool.false
-        s10 = s10 != (s26.string + s25.string != "falsefalse")
-        s11 = s11 != (s24.string + s23.string + s22.string == "truetruetrue")
+        s10 = s10 != (s26.satellite.string + s25.satellite.string != "falsefalse")
+        s11 = s11 != (s24.satellite.string + s23.satellite.string + s22.satellite.string == "truetruetrue")
         s12 = s12 != s11
         s13 = s13 == s14
-        s14 = s14 != (s15.string < s16.string)
+        s14 = s14 != (s15.satellite.string < s16.satellite.string)
         s15 = s15 != (s29 == s01)
         s16 = s16 != s17 != s18 != s19
         s17 = !s17
         s18 = s18 != (547311173 > 0)
-        s19 = s19 != (s20.string + s21.string == "truetrue")
+        s19 = s19 != (s20.satellite.string + s21.satellite.string == "truetrue")
 
         // BACK: the same 50 undone, last first, each spelled another way
-        s19 = (s21.string + s20.string != "truetrue") == s19
+        s19 = (s21.satellite.string + s20.satellite.string != "truetrue") == s19
         s18 = s18 == (547311173 < 0)
         s17 = s17 != satellite.bool.true
         s16 = s16 != s19 != s18 != s17
         s15 = s15 == (s29 != s01)
-        s14 = s14 == (s15.string >= s16.string)
+        s14 = s14 == (s15.satellite.string >= s16.satellite.string)
         s13 = s13 != !s14
         s12 = s12 == !s11
-        s11 = s11 == (s22.string + s23.string + s24.string != "truetruetrue")
-        s10 = s10 == (s25.string + s26.string == "falsefalse")
+        s11 = s11 == (s22.satellite.string + s23.satellite.string + s24.satellite.string != "truetruetrue")
+        s10 = s10 == (s25.satellite.string + s26.satellite.string == "falsefalse")
         s09 = satellite.bool.true == s09
-        s08 = s08 == (s01.string + s00.string != "truetrue")
+        s08 = s08 == (s01.satellite.string + s00.satellite.string != "truetrue")
         s07 = s07 == satellite.bool.false
         s06 = !(s06 == s27)
-        s05 = (s18.string > s19.string) != s05
+        s05 = (s18.satellite.string > s19.satellite.string) != s05
         s04 = !(s04 != s09)
-        s03 = s03 != (s21.string == s20.string)
+        s03 = s03 != (s21.satellite.string == s20.satellite.string)
         s02 = s02 == s12 == s13
-        s01 = (s02.string + s03.string == "falsefalse") == s01
-        s00 = (s28.string + s29.string != "truetrue") == s00
+        s01 = (s02.satellite.string + s03.satellite.string == "falsefalse") == s01
+        s00 = (s28.satellite.string + s29.satellite.string != "truetrue") == s00
         s29 = !s29 == s10
         s28 = satellite.bool.false == s28
-        s27 = s27 == (s28.string >= s29.string)
+        s27 = s27 == (s28.satellite.string >= s29.satellite.string)
         s26 = !s26 != s15
-        s25 = s25 == (s04.string + s05.string + s06.string != "truetruetrue")
+        s25 = s25 == (s04.satellite.string + s05.satellite.string + s06.satellite.string != "truetruetrue")
         s24 = s29 != s24
-        s23 = s23 == (s07.string + s08.string == "falsefalse")
-        s22 = s22 == (s20.string + s19.string != "truetrue")
+        s23 = s23 == (s07.satellite.string + s08.satellite.string == "falsefalse")
+        s22 = s22 == (s20.satellite.string + s19.satellite.string != "truetrue")
         s21 = s22 == s21
         s20 = !s21 == s20
         s19 = (6 < 5) == s19
         s18 = s18 == (s25 != s24)
-        s17 = (s10.string > s04.string) != s17
+        s17 = (s10.satellite.string > s04.satellite.string) != s17
         s16 = s16 != s03 != s01
         s15 = s15 != (547311173 < 0)
         s14 = s14 == !s00
-        s13 = (s27.string + s26.string == "falsefalse") == s13
-        s12 = (s14.string + s13.string != "truetrue") == s12
+        s13 = (s27.satellite.string + s26.satellite.string == "falsefalse") == s13
+        s12 = (s14.satellite.string + s13.satellite.string != "truetrue") == s12
         s11 = s11 != !s12
-        s10 = s10 == (s02.string + s09.string + s11.string != "truetruetrue")
+        s10 = s10 == (s02.satellite.string + s09.satellite.string + s11.satellite.string != "truetruetrue")
         s09 = !(s09 == s14)
         s08 = ! s08
-        s07 = s07 != (s17.string == s16.string)
-        s06 = s06 == (s07.string >= s18.string)
+        s07 = s07 != (s17.satellite.string == s16.satellite.string)
+        s06 = s06 == (s07.satellite.string >= s18.satellite.string)
         s05 = s05 == s20 == s19
-        s04 = s04 == (s06.string + s05.string == "falsefalse")
-        s03 = s03 == (s29.string + s23.string != "truetrue")
+        s04 = s04 == (s06.satellite.string + s05.satellite.string == "falsefalse")
+        s03 = s03 == (s29.satellite.string + s23.satellite.string != "truetrue")
         s02 = !(s02 != s28)
         s01 = !s01 == s29
         s00 = s00 != satellite.bool.true
@@ -193,7 +193,7 @@ satellite.capsule satellite.main()
         {
             satellite.statement.if (seen == "")
             {
-                seen = "pass " + pass.string + ": " + spelled({s29, s28, s27, s26, s25, s24, s23, s22, s21, s20, s19, s18, s17, s16, s15, s14, s13, s12, s11, s10, s09, s08, s07, s06, s05, s04, s03, s02, s01, s00}).string
+                seen = "pass " + pass.satellite.string + ": " + spelled({s29, s28, s27, s26, s25, s24, s23, s22, s21, s20, s19, s18, s17, s16, s15, s14, s13, s12, s11, s10, s09, s08, s07, s06, s05, s04, s03, s02, s01, s00}).satellite.string
             }
             satellite.statement.break
         }
@@ -202,7 +202,7 @@ satellite.capsule satellite.main()
     // 547311173, PUT BACK TOGETHER FROM THE 30 BOOLS -- or the first pass that did not come back
     satellite.statement.if (seen == "")
     {
-        seen = spelled({s29, s28, s27, s26, s25, s24, s23, s22, s21, s20, s19, s18, s17, s16, s15, s14, s13, s12, s11, s10, s09, s08, s07, s06, s05, s04, s03, s02, s01, s00}).string
+        seen = spelled({s29, s28, s27, s26, s25, s24, s23, s22, s21, s20, s19, s18, s17, s16, s15, s14, s13, s12, s11, s10, s09, s08, s07, s06, s05, s04, s03, s02, s01, s00}).satellite.string
     }
     satellite.console.display(seen)
     satellite.return(satellite)

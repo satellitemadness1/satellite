@@ -123,6 +123,15 @@ using ListCall = satelliteObject (*)(const satelliteObject &receiver, satelliteO
                                      const std::vector<satelliteObject> &arguments, bool had_parentheses,
                                      const std::string &name, ExpressionContext &context);
 
+// A METHOD OF EVERY OTHER TYPE AS satl RUNS IT (the author, 2026-10-11: "we still need to get the word
+// satellite onto everything ... everything builtin needs the word satellite still"). A list's shape, so a
+// type whose method must know what its name was declared to hold has it -- a map's .set into a
+// map<key, value> -- and every other type ignores `shape` as a string's method ignores nothing it is not
+// given. ONE SHAPE FOR EVERY TYPE NUMBERED AFTER THE LIST: the number says which type's word it is, and the
+// type's own run_<type>_number is the only thing that calls it, having refused what that type refuses
+// before its words run (a wrong count, a file that is not open). Nothing else may run one of these rows.
+using MethodCall = ListCall;
+
 struct Scenarios {
     // The most likely scenario: display a string.
     signed long long int (*text)(const std::string &text, bool endline) = nullptr;
@@ -171,6 +180,9 @@ struct Scenarios {
 
     // APPENDED LAST AGAIN -- A LIST'S METHOD AS satl RUNS IT, 2026-10-10 (ListCall, above).
     ListCall list_call = nullptr;
+
+    // APPENDED LAST AGAIN -- EVERY OTHER TYPE'S METHOD AS satl RUNS IT, 2026-10-11 (MethodCall, above).
+    MethodCall method_call = nullptr;
 };
 
 struct LibraryRow {

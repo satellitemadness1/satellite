@@ -8,7 +8,7 @@ satellite.capsule satellite.main()
 {
     satellite.variable.number passes = 1
     satellite.variable.program p = "true"
-    p.start("loud")
-    satellite.console.display(p.join())
+    p.satellite.start("loud")
+    satellite.console.display(p.satellite.join())
     satellite.return(satellite)
 }

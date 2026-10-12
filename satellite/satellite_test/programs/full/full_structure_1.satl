@@ -53,9 +53,9 @@ satellite.capsule label(satellite.variable.string word, satellite.variable.numbe
 {
     satellite.statement.if (loud)
     {
-        satellite.return(word + "!" + n.string())
+        satellite.return(word + "!" + n.satellite.string())
     }
-    satellite.return(word + n.string())
+    satellite.return(word + n.satellite.string())
 }
 
 satellite.capsule make_pair()
@@ -214,20 +214,20 @@ satellite.capsule capsule_checks()
 {
     satellite.container.list<satellite.variable.string> lines
     lines.satellite.append(check("satellite.include(satellite) makes this file a program", "runs", "runs"))
-    lines.satellite.append(check("capsule with no parameters", five().string(), "5"))
-    lines.satellite.append(check("capsule with one parameter", twice(21).string(), "42"))
+    lines.satellite.append(check("capsule with no parameters", five().satellite.string(), "5"))
+    lines.satellite.append(check("capsule with one parameter", twice(21).satellite.string(), "42"))
     lines.satellite.append(check("capsule with three parameters of three types", label("go", 7, 2 > 1), "go!7"))
     lines.satellite.append(check("capsule arguments worked out where the call is", label("a" + "b", 2 + 3, 1 > 2), "ab5"))
-    lines.satellite.append(check("capsule call inside a call", twice(twice(3)).string(), "12"))
-    lines.satellite.append(check("capsule answers inside a line", (five() + twice(10) * 2).string(), "45"))
-    lines.satellite.append(check("capsule declared after main is called from it", declared_below(6).string(), "36"))
-    lines.satellite.append(check("capsule in a satellite.namespace, called by its space", tools.triple(7).string(), "21"))
-    lines.satellite.append(check("a bare name in a space is found in its space, then in the file around it", tools.nine_plus_five().string(), "14"))
-    lines.satellite.append(check("one name in the file and in a space: each space's bare name finds its own", twice(1).string() + " " + tools.twice(1).string() + " " + tools.own_twice().string(), "2 1001 1001"))
+    lines.satellite.append(check("capsule call inside a call", twice(twice(3)).satellite.string(), "12"))
+    lines.satellite.append(check("capsule answers inside a line", (five() + twice(10) * 2).satellite.string(), "45"))
+    lines.satellite.append(check("capsule declared after main is called from it", declared_below(6).satellite.string(), "36"))
+    lines.satellite.append(check("capsule in a satellite.namespace, called by its space", tools.triple(7).satellite.string(), "21"))
+    lines.satellite.append(check("a bare name in a space is found in its space, then in the file around it", tools.nine_plus_five().satellite.string(), "14"))
+    lines.satellite.append(check("one name in the file and in a space: each space's bare name finds its own", twice(1).satellite.string() + " " + tools.twice(1).satellite.string() + " " + tools.own_twice().satellite.string(), "2 1001 1001"))
     lines.satellite.append(check("capsule answers a list", make_pair().satellite.join(","), "3,4"))
     satellite.container.list<satellite.variable.number> got = make_pair()
-    lines.satellite.append(check("capsule's list answer kept in a variable", got[2].string(), "4"))
-    lines.satellite.append(check("comment between a capsule's ) and {", commented(41).string(), "42"))
+    lines.satellite.append(check("capsule's list answer kept in a variable", got[2].satellite.string(), "4"))
+    lines.satellite.append(check("comment between a capsule's ) and {", commented(41).satellite.string(), "42"))
     satellite.return(lines.satellite.join("\n"))
 }
 
@@ -235,25 +235,25 @@ satellite.capsule return_checks()
 {
     satellite.container.list<satellite.variable.string> lines
     lines.satellite.append(check("several returns in one capsule: the first one reached ends it", sign_of(-5) + ", " + sign_of(0) + ", " + sign_of(7), "below zero, zero, above zero"))
-    lines.satellite.append(check("satellite.return inside an if inside a while ends the capsule", first_square_over(10).string(), "4"))
-    lines.satellite.append(check("satellite.return inside an if inside a for ends the capsule, or the one after the loop", place_of_seven({1, 7, 7, 3}).string() + " " + place_of_seven({1, 2}).string(), "2 0"))
+    lines.satellite.append(check("satellite.return inside an if inside a while ends the capsule", first_square_over(10).satellite.string(), "4"))
+    lines.satellite.append(check("satellite.return inside an if inside a for ends the capsule, or the one after the loop", place_of_seven({1, 7, 7, 3}).satellite.string() + " " + place_of_seven({1, 2}).satellite.string(), "2 0"))
     tally t
     add_once(t)
-    lines.satellite.append(check("satellite.return() hands back nothing and ends the capsule", t.call_count().string(), "1"))
+    lines.satellite.append(check("satellite.return() hands back nothing and ends the capsule", t.call_count().satellite.string(), "1"))
     add_twice(t)
-    lines.satellite.append(check("a capsule with no satellite.return ends at its }", t.call_count().string(), "3"))
+    lines.satellite.append(check("a capsule with no satellite.return ends at its }", t.call_count().satellite.string(), "3"))
     satellite.return(lines.satellite.join("\n"))
 }
 
 satellite.capsule recursion_checks()
 {
     satellite.container.list<satellite.variable.string> lines
-    lines.satellite.append(check("recursion: factorial(25), exact", factorial(25).string(), "15511210043330985984000000"))
-    lines.satellite.append(check("recursion with work after the call, 10,000 deep", depth(10000).string(), "10000"))
+    lines.satellite.append(check("recursion: factorial(25), exact", factorial(25).satellite.string(), "15511210043330985984000000"))
+    lines.satellite.append(check("recursion with work after the call, 10,000 deep", depth(10000).satellite.string(), "10000"))
     tally bottom
     walk_down(100000, bottom)
-    lines.satellite.append(check("recursion as the last act, 100,000 deep", bottom.call_count().string(), "1"))
-    lines.satellite.append(check("two capsules calling each other, 1,001 deep", is_even(1000).string() + " " + is_odd(1000).string(), "true false"))
+    lines.satellite.append(check("recursion as the last act, 100,000 deep", bottom.call_count().satellite.string(), "1"))
+    lines.satellite.append(check("two capsules calling each other, 1,001 deep", is_even(1000).satellite.string() + " " + is_odd(1000).satellite.string(), "true false"))
     satellite.return(lines.satellite.join("\n"))
 }
 
@@ -306,7 +306,7 @@ satellite.capsule statement_checks()
     {
         never = never + 1
     }
-    lines.satellite.append(check("satellite.statement.while runs until its condition is false, and not at all when it starts false", i.string() + " " + never.string(), "5 0"))
+    lines.satellite.append(check("satellite.statement.while runs until its condition is false, and not at all when it starts false", i.satellite.string() + " " + never.satellite.string(), "5 0"))
 
     // for, every step
     satellite.variable.number total = 0
@@ -314,21 +314,21 @@ satellite.capsule statement_checks()
     {
         total = total + a
     }
-    lines.satellite.append(check("satellite.statement.for with + 1, and a body that changes the capsule's name", total.string(), "10"))
+    lines.satellite.append(check("satellite.statement.for with + 1, and a body that changes the capsule's name", total.satellite.string(), "10"))
     satellite.variable.string order = ""
     satellite.statement.for (satellite.variable.number up = 0; up < 3; up++)
     {
-        order = order + up.string()
+        order = order + up.satellite.string()
     }
     satellite.statement.for (satellite.variable.number down = 3; down > 0; down--)
     {
-        order = order + down.string()
+        order = order + down.satellite.string()
     }
     lines.satellite.append(check("satellite.statement.for with ++ and --", order, "012321"))
     satellite.variable.string doubled = ""
     satellite.statement.for (satellite.variable.number d = 1; d < 20; d * 2)
     {
-        doubled = doubled + d.string() + " "
+        doubled = doubled + d.satellite.string() + " "
     }
     lines.satellite.append(check("satellite.statement.for with * 2", doubled, "1 2 4 8 16 "))
     satellite.variable.number walked = 0
@@ -337,19 +337,19 @@ satellite.capsule statement_checks()
         walked = walked + 1
         w = w + 2
     }
-    lines.satellite.append(check("satellite.statement.for with no step, the body moving the number", walked.string(), "2"))
+    lines.satellite.append(check("satellite.statement.for with no step, the body moving the number", walked.satellite.string(), "2"))
     satellite.variable.string steps = ""
     satellite.statement.for (satellite.variable.number h = 64; h > 1; h / 2)
     {
-        steps = steps + h.string() + " "
+        steps = steps + h.satellite.string() + " "
     }
     satellite.statement.for (satellite.variable.number t = 10; t > 0; t - 3)
     {
-        steps = steps + t.string() + " "
+        steps = steps + t.satellite.string() + " "
     }
     satellite.statement.for (satellite.variable.number e = 0; e < 10; e + 4)
     {
-        steps = steps + e.string() + " "
+        steps = steps + e.satellite.string() + " "
     }
     satellite.statement.for (satellite.variable.number z = 5; z < 5; z++)
     {
@@ -364,20 +364,20 @@ satellite.capsule statement_checks()
             cells = cells + 1
         }
     }
-    lines.satellite.append(check("satellite.statement.for inside a for", cells.string(), "12"))
+    lines.satellite.append(check("satellite.statement.for inside a for", cells.satellite.string(), "12"))
     satellite.variable.string letters = "abcd"
     satellite.variable.number spots = 0
     satellite.statement.for (satellite.variable.number s = 0; s < letters.satellite.size; s++)
     {
         spots = spots + 1
     }
-    lines.satellite.append(check("satellite.statement.for whose condition calls a method each pass", spots.string(), "4"))
+    lines.satellite.append(check("satellite.statement.for whose condition calls a method each pass", spots.satellite.string(), "4"))
     satellite.statement.for (satellite.variable.number again = 7; again < 8; again++)
     {
         total = again
     }
     satellite.variable.number again = 70
-    lines.satellite.append(check("a for's own number is a free name after its loop", (again + total).string(), "77"))
+    lines.satellite.append(check("a for's own number is a free name after its loop", (again + total).satellite.string(), "77"))
 
     // break and continue
     satellite.variable.number b = 0
@@ -389,7 +389,7 @@ satellite.capsule statement_checks()
             satellite.statement.break
         }
     }
-    lines.satellite.append(check("satellite.statement.break leaves a while", b.string(), "7"))
+    lines.satellite.append(check("satellite.statement.break leaves a while", b.satellite.string(), "7"))
     satellite.variable.number inner = 0
     satellite.statement.for (satellite.variable.number x = 0; x < 3; x++)
     {
@@ -402,7 +402,7 @@ satellite.capsule statement_checks()
             inner = inner + 1
         }
     }
-    lines.satellite.append(check("satellite.statement.break() leaves only the nearest loop", inner.string(), "6"))
+    lines.satellite.append(check("satellite.statement.break() leaves only the nearest loop", inner.satellite.string(), "6"))
     satellite.variable.number odd_sum = 0
     satellite.statement.for (satellite.variable.number k = 0; k < 10; k++)
     {
@@ -412,7 +412,7 @@ satellite.capsule statement_checks()
         }
         odd_sum = odd_sum + k
     }
-    lines.satellite.append(check("satellite.statement.continue starts a for's next pass", odd_sum.string(), "25"))
+    lines.satellite.append(check("satellite.statement.continue starts a for's next pass", odd_sum.satellite.string(), "25"))
     satellite.variable.number j = 0
     satellite.variable.number kept = 0
     satellite.statement.while (j < 10)
@@ -424,7 +424,7 @@ satellite.capsule statement_checks()
         }
         kept = kept + 1
     }
-    lines.satellite.append(check("satellite.statement.continue() starts a while's next pass", kept.string() + " " + j.string(), "3 10"))
+    lines.satellite.append(check("satellite.statement.continue() starts a while's next pass", kept.satellite.string() + " " + j.satellite.string(), "3 10"))
     satellite.variable.string branches = ""
     satellite.variable.number v = 0
     satellite.statement.while (v < 10)
@@ -454,9 +454,9 @@ satellite.capsule statement_checks()
         {
             satellite.statement.continue
         }
-        branches = branches + u.string()
+        branches = branches + u.satellite.string()
     }
-    lines.satellite.append(check("a break inside an else, and a continue inside an else-if", branches + " " + v.string(), "aabb 024 5"))
+    lines.satellite.append(check("a break inside an else, and a continue inside an else-if", branches + " " + v.satellite.string(), "aabb 024 5"))
 
     // a while inside an if, an if inside a while
     satellite.variable.string mixed = ""
@@ -474,7 +474,7 @@ satellite.capsule statement_checks()
         satellite.variable.number q = 0
         satellite.statement.while (q < 2)
         {
-            mixed = mixed + q.string()
+            mixed = mixed + q.satellite.string()
             q = q + 1
         }
     }
@@ -487,7 +487,7 @@ satellite.capsule statement_checks()
         satellite.variable.number fresh = p * 10
         fresh_total = fresh_total + fresh
     }
-    lines.satellite.append(check("a name declared in a loop's body is made again every pass", fresh_total.string(), "60"))
+    lines.satellite.append(check("a name declared in a loop's body is made again every pass", fresh_total.satellite.string(), "60"))
     satellite.return(lines.satellite.join("\n"))
 }
 
@@ -495,21 +495,21 @@ satellite.capsule comment_checks()
 {
     satellite.container.list<satellite.variable.string> lines
     satellite.variable.number n = 5 // a trailing comment ends the value: eight
-    lines.satellite.append(check("a trailing comment ends the line it follows", n.string(), "5"))
+    lines.satellite.append(check("a trailing comment ends the line it follows", n.satellite.string(), "5"))
     satellite.variable.string text = "a//b" // the // inside the quotes is text
-    lines.satellite.append(check("// inside quotes is text, not a comment", text.satellite.size.string(), "4"))
+    lines.satellite.append(check("// inside quotes is text, not a comment", text.satellite.size.satellite.string(), "4"))
     tally t
     // t.call_add()
     t.call_add() // t.call_add()
-    lines.satellite.append(check("a line written after // never runs", t.call_count().string(), "1"))
+    lines.satellite.append(check("a line written after // never runs", t.call_count().satellite.string(), "1"))
     satellite.variable.number loops = 0
     satellite.statement.while (loops < 2) // after a while's condition
     { // after an opening brace
         loops = loops + 1 // after a line in a body
     } // after a while's closing brace
-    lines.satellite.append(check("comments after a while, its braces and its lines", loops.string(), "2"))
+    lines.satellite.append(check("comments after a while, its braces and its lines", loops.satellite.string(), "2"))
     satellite.variable.string quoted = "// not a comment { } \" still text" // a comment "with" quotes
-    lines.satellite.append(check("a comment holding braces, quotes and code changes nothing", braces_in_comments().string() + " " + quoted, "2 // not a comment { } \" still text"))
+    lines.satellite.append(check("a comment holding braces, quotes and code changes nothing", braces_in_comments().satellite.string() + " " + quoted, "2 // not a comment { } \" still text"))
     satellite.return(lines.satellite.join("\n"))
 }
 
@@ -569,7 +569,7 @@ satellite.capsule satellite.main()
         }
     }
     satellite.console.display(first)
-    satellite.console.display(check("every pass answered alike", differ.string() + " passes differed", "0 passes differed"))
+    satellite.console.display(check("every pass answered alike", differ.satellite.string() + " passes differed", "0 passes differed"))
     end_from_deep(50)
     satellite.console.display("WRONG satellite.return(satellite) 50 deep: the program went on after it (expected it to end there)")
     satellite.return(satellite)

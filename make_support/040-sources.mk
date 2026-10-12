@@ -26,6 +26,11 @@ FRACTION_HEADERS = $(FRACTION_DIR)/satellite_fraction.hpp $(OBJECT)/object_fract
 # the interpreter"): one file a word under satellite-numbers/words/, named by its numbers, and
 # the table that calls each one. A new word is a new file, a row in word_table.cpp, and a line here.
 WORD_SOURCES = $(NUMBERS)/word_table.cpp \
+               $(NUMBERS)/words/1.4.1.1.cpp $(NUMBERS)/words/1.4.1.2.cpp $(NUMBERS)/words/1.4.1.3.cpp \
+               $(NUMBERS)/words/1.4.1.4.cpp $(NUMBERS)/words/1.4.1.5.cpp $(NUMBERS)/words/1.4.1.6.cpp \
+               $(NUMBERS)/words/1.4.1.7.cpp $(NUMBERS)/words/1.4.1.8.cpp $(NUMBERS)/words/1.4.1.9.cpp \
+               $(NUMBERS)/words/1.4.1.11.cpp $(NUMBERS)/words/1.4.1.12.cpp $(NUMBERS)/words/1.4.1.13.cpp \
+               $(NUMBERS)/words/1.4.1.14.cpp $(NUMBERS)/words/1.4.1.15.cpp $(NUMBERS)/words/1.4.1.16.cpp \
                $(NUMBERS)/words/1.4.2.1.cpp $(NUMBERS)/words/1.4.2.2.cpp $(NUMBERS)/words/1.4.2.3.cpp \
                $(NUMBERS)/words/1.4.2.8.cpp $(NUMBERS)/words/1.4.2.9.cpp $(NUMBERS)/words/1.4.2.10.cpp \
                $(NUMBERS)/words/1.4.2.11.cpp $(NUMBERS)/words/1.4.2.12.cpp $(NUMBERS)/words/1.4.2.13.cpp \
@@ -34,7 +39,8 @@ WORD_SOURCES = $(NUMBERS)/word_table.cpp \
                $(NUMBERS)/words/1.4.2.20.cpp $(NUMBERS)/words/1.4.2.21.cpp $(NUMBERS)/words/1.4.2.22.cpp \
                $(NUMBERS)/words/1.4.2.23.cpp $(NUMBERS)/words/1.4.2.24.cpp $(NUMBERS)/words/1.4.2.25.cpp \
                $(NUMBERS)/words/1.4.2.26.cpp $(NUMBERS)/words/1.4.2.27.cpp $(NUMBERS)/words/1.4.2.28.cpp \
-               $(NUMBERS)/words/1.5.1.cpp $(NUMBERS)/words/1.6.1.0.cpp $(NUMBERS)/words/1.6.1.1.cpp \
+               $(NUMBERS)/words/1.5.1.cpp $(NUMBERS)/words/1.5.1.1.cpp $(NUMBERS)/words/1.5.1.2.cpp \
+               $(NUMBERS)/words/1.6.1.0.cpp $(NUMBERS)/words/1.6.1.1.cpp \
                $(NUMBERS)/words/1.6.1.2.cpp $(NUMBERS)/words/1.6.1.3.cpp $(NUMBERS)/words/1.6.1.4.cpp \
                $(NUMBERS)/words/1.6.1.5.cpp $(NUMBERS)/words/1.6.1.6.cpp $(NUMBERS)/words/1.6.1.7.cpp \
                $(NUMBERS)/words/1.6.1.8.cpp $(NUMBERS)/words/1.6.1.9.cpp $(NUMBERS)/words/1.6.1.10.cpp \
@@ -44,6 +50,70 @@ WORD_SOURCES = $(NUMBERS)/word_table.cpp \
                $(NUMBERS)/words/1.6.1.20.cpp $(NUMBERS)/words/1.6.1.21.cpp $(NUMBERS)/words/1.6.1.22.cpp \
                $(NUMBERS)/words/1.6.1.23.cpp $(NUMBERS)/words/1.6.1.24.cpp $(NUMBERS)/words/1.6.1.25.cpp \
                $(NUMBERS)/words/1.6.1.26.cpp \
+               $(NUMBERS)/words/1.6.2.2.cpp $(NUMBERS)/words/1.6.2.5.cpp $(NUMBERS)/words/1.6.2.6.cpp \
+               $(NUMBERS)/words/1.6.2.7.cpp $(NUMBERS)/words/1.6.2.8.cpp $(NUMBERS)/words/1.6.2.9.cpp \
+               $(NUMBERS)/words/1.6.2.10.cpp $(NUMBERS)/words/1.6.2.12.cpp $(NUMBERS)/words/1.6.2.13.cpp \
+               $(NUMBERS)/words/1.6.2.14.cpp $(NUMBERS)/words/1.6.2.15.cpp $(NUMBERS)/words/1.6.2.16.cpp \
+               $(NUMBERS)/words/1.6.2.17.cpp $(NUMBERS)/words/1.6.2.18.cpp $(NUMBERS)/words/1.6.2.19.cpp \
+               $(NUMBERS)/words/1.6.2.20.cpp $(NUMBERS)/words/1.6.2.21.cpp $(NUMBERS)/words/1.6.2.22.cpp \
+               $(NUMBERS)/words/1.6.2.23.cpp $(NUMBERS)/words/1.6.2.24.cpp $(NUMBERS)/words/1.6.2.25.cpp \
+               $(NUMBERS)/words/1.6.2.26.cpp $(NUMBERS)/words/1.6.2.27.cpp $(NUMBERS)/words/1.6.2.28.cpp \
+               $(NUMBERS)/words/1.6.2.29.cpp $(NUMBERS)/words/1.6.2.30.cpp \
+               $(NUMBERS)/words/1.6.13.1.cpp $(NUMBERS)/words/1.6.13.2.cpp $(NUMBERS)/words/1.6.13.3.cpp \
+               $(NUMBERS)/words/1.6.13.4.cpp $(NUMBERS)/words/1.6.23.1.cpp $(NUMBERS)/words/1.6.23.2.cpp \
+               $(NUMBERS)/words/1.6.23.3.cpp $(NUMBERS)/words/1.6.23.4.cpp $(NUMBERS)/words/1.6.23.5.cpp \
+               $(NUMBERS)/words/1.6.23.6.cpp $(NUMBERS)/words/1.6.23.7.cpp $(NUMBERS)/words/1.6.23.8.cpp \
+               $(NUMBERS)/words/1.6.23.9.cpp $(NUMBERS)/words/1.6.23.10.cpp $(NUMBERS)/words/1.6.23.11.cpp \
+               $(NUMBERS)/words/1.6.23.12.cpp $(NUMBERS)/words/1.6.24.1.cpp $(NUMBERS)/words/1.6.24.2.cpp \
+               $(NUMBERS)/words/1.6.24.3.cpp $(NUMBERS)/words/1.6.24.4.cpp $(NUMBERS)/words/1.6.24.5.cpp \
+               $(NUMBERS)/words/1.6.24.6.cpp $(NUMBERS)/words/1.6.24.7.cpp $(NUMBERS)/words/1.6.24.8.cpp \
+               $(NUMBERS)/words/1.6.24.9.cpp $(NUMBERS)/words/1.6.24.10.cpp $(NUMBERS)/words/1.6.24.11.cpp \
+               $(NUMBERS)/words/1.6.24.12.cpp \
+               $(NUMBERS)/words/1.10.1.cpp $(NUMBERS)/words/1.10.2.cpp $(NUMBERS)/words/1.10.3.cpp \
+               $(NUMBERS)/words/1.10.4.cpp $(NUMBERS)/words/1.10.5.cpp \
+               $(NUMBERS)/words/1.6.18.1.cpp $(NUMBERS)/words/1.6.18.2.cpp $(NUMBERS)/words/1.6.18.3.cpp \
+               $(NUMBERS)/words/1.6.18.4.cpp $(NUMBERS)/words/1.6.18.5.cpp $(NUMBERS)/words/1.6.18.6.cpp \
+               $(NUMBERS)/words/1.6.18.7.cpp $(NUMBERS)/words/1.6.18.8.cpp $(NUMBERS)/words/1.6.18.9.cpp \
+               $(NUMBERS)/words/1.6.18.10.cpp $(NUMBERS)/words/1.6.18.11.cpp $(NUMBERS)/words/1.6.18.12.cpp \
+               $(NUMBERS)/words/1.6.18.13.cpp $(NUMBERS)/words/1.6.18.14.cpp $(NUMBERS)/words/1.6.18.15.cpp \
+               $(NUMBERS)/words/1.6.18.16.cpp $(NUMBERS)/words/1.6.18.17.cpp $(NUMBERS)/words/1.6.18.18.cpp \
+               $(NUMBERS)/words/1.6.18.19.cpp $(NUMBERS)/words/1.6.18.20.cpp $(NUMBERS)/words/1.6.18.21.cpp \
+               $(NUMBERS)/words/1.6.18.22.cpp $(NUMBERS)/words/1.6.18.23.cpp $(NUMBERS)/words/1.6.18.24.cpp \
+               $(NUMBERS)/words/1.6.18.25.cpp $(NUMBERS)/words/1.6.18.26.cpp $(NUMBERS)/words/1.6.18.27.cpp \
+               $(NUMBERS)/words/1.6.18.28.cpp $(NUMBERS)/words/1.6.18.29.cpp $(NUMBERS)/words/1.6.18.30.cpp \
+               $(NUMBERS)/words/1.6.18.31.cpp $(NUMBERS)/words/1.6.18.32.cpp $(NUMBERS)/words/1.6.18.33.cpp \
+               $(NUMBERS)/words/1.6.18.34.cpp $(NUMBERS)/words/1.6.18.35.cpp $(NUMBERS)/words/1.6.18.36.cpp \
+               $(NUMBERS)/words/1.6.18.37.cpp $(NUMBERS)/words/1.6.18.38.cpp $(NUMBERS)/words/1.6.18.39.cpp \
+               $(NUMBERS)/words/1.6.18.40.cpp $(NUMBERS)/words/1.6.18.41.cpp $(NUMBERS)/words/1.6.18.42.cpp \
+               $(NUMBERS)/words/1.6.18.43.cpp $(NUMBERS)/words/1.6.18.44.cpp $(NUMBERS)/words/1.6.18.45.cpp \
+               $(NUMBERS)/words/1.6.18.46.cpp $(NUMBERS)/words/1.6.18.47.cpp $(NUMBERS)/words/1.6.18.48.1.cpp \
+               $(NUMBERS)/words/1.6.18.48.2.cpp $(NUMBERS)/words/1.6.18.49.1.1.cpp $(NUMBERS)/words/1.6.18.49.1.2.cpp \
+               $(NUMBERS)/words/1.6.18.50.cpp $(NUMBERS)/words/1.6.18.51.cpp $(NUMBERS)/words/1.6.18.52.cpp \
+               $(NUMBERS)/words/1.6.18.53.cpp \
+               $(NUMBERS)/words/1.6.3.1.cpp $(NUMBERS)/words/1.6.5.1.cpp $(NUMBERS)/words/1.6.5.2.cpp \
+               $(NUMBERS)/words/1.6.5.3.cpp $(NUMBERS)/words/1.6.5.4.cpp $(NUMBERS)/words/1.6.5.5.cpp \
+               $(NUMBERS)/words/1.6.5.6.cpp $(NUMBERS)/words/1.6.5.8.cpp $(NUMBERS)/words/1.6.5.9.cpp \
+               $(NUMBERS)/words/1.6.5.10.cpp $(NUMBERS)/words/1.6.5.11.cpp $(NUMBERS)/words/1.6.5.12.cpp \
+               $(NUMBERS)/words/1.6.5.13.cpp $(NUMBERS)/words/1.6.5.14.cpp $(NUMBERS)/words/1.6.6.1.cpp \
+               $(NUMBERS)/words/1.6.6.2.cpp $(NUMBERS)/words/1.6.10.6.cpp $(NUMBERS)/words/1.6.20.4.cpp \
+               $(NUMBERS)/words/1.6.10.1.cpp $(NUMBERS)/words/1.6.10.2.cpp $(NUMBERS)/words/1.6.10.3.cpp \
+               $(NUMBERS)/words/1.6.10.4.cpp $(NUMBERS)/words/1.6.10.5.cpp $(NUMBERS)/words/1.6.11.1.cpp \
+               $(NUMBERS)/words/1.6.11.2.cpp $(NUMBERS)/words/1.6.11.3.cpp $(NUMBERS)/words/1.6.11.4.cpp \
+               $(NUMBERS)/words/1.6.11.5.cpp $(NUMBERS)/words/1.6.11.7.cpp $(NUMBERS)/words/1.6.11.8.cpp \
+               $(NUMBERS)/words/1.6.11.9.cpp $(NUMBERS)/words/1.6.11.10.cpp $(NUMBERS)/words/1.6.11.11.cpp \
+               $(NUMBERS)/words/1.6.11.12.cpp $(NUMBERS)/words/1.6.16.1.cpp $(NUMBERS)/words/1.6.16.2.cpp \
+               $(NUMBERS)/words/1.6.19.1.cpp $(NUMBERS)/words/1.6.19.2.cpp $(NUMBERS)/words/1.6.19.3.cpp \
+               $(NUMBERS)/words/1.6.19.4.cpp $(NUMBERS)/words/1.6.19.5.cpp $(NUMBERS)/words/1.6.20.1.cpp \
+               $(NUMBERS)/words/1.6.20.2.cpp $(NUMBERS)/words/1.6.20.3.cpp \
+               $(NUMBERS)/words/1.6.4.1.cpp $(NUMBERS)/words/1.6.4.2.cpp $(NUMBERS)/words/1.6.4.3.cpp \
+               $(NUMBERS)/words/1.6.4.4.cpp $(NUMBERS)/words/1.6.4.5.cpp $(NUMBERS)/words/1.6.4.6.cpp \
+               $(NUMBERS)/words/1.6.4.7.cpp $(NUMBERS)/words/1.6.4.8.cpp $(NUMBERS)/words/1.6.4.9.cpp \
+               $(NUMBERS)/words/1.6.4.10.cpp $(NUMBERS)/words/1.6.4.11.cpp $(NUMBERS)/words/1.6.4.12.cpp \
+               $(NUMBERS)/words/1.6.4.13.cpp $(NUMBERS)/words/1.6.4.14.cpp $(NUMBERS)/words/1.6.4.15.cpp \
+               $(NUMBERS)/words/1.6.4.17.cpp $(NUMBERS)/words/1.6.4.18.cpp $(NUMBERS)/words/1.6.4.19.cpp \
+               $(NUMBERS)/words/1.6.4.20.cpp $(NUMBERS)/words/1.6.4.21.cpp $(NUMBERS)/words/1.6.4.22.cpp \
+               $(NUMBERS)/words/1.6.4.23.cpp $(NUMBERS)/words/1.6.17.1.cpp $(NUMBERS)/words/1.6.17.2.cpp \
+               $(NUMBERS)/words/1.6.17.3.cpp $(NUMBERS)/words/1.6.17.4.cpp \
                $(NUMBERS)/words/1.18.1.cpp $(NUMBERS)/words/1.18.4.cpp $(NUMBERS)/words/1.18.5.cpp \
                $(NUMBERS)/words/1.18.6.cpp $(NUMBERS)/words/1.25.cpp $(NUMBERS)/words/1.25.1.cpp
 
@@ -68,7 +138,8 @@ INTERPRETER_SOURCES = $(SATELLITE)/structured-library.cpp \
                       $(BYTECODE)/argument_switches.cpp $(BYTECODE)/setting_writes.cpp \
                       $(BYTECODE)/expression.cpp \
                       $(BYTECODE)/file_calls.cpp $(BYTECODE)/info_calls.cpp $(BYTECODE)/access_calls.cpp $(BYTECODE)/access_words.cpp $(BYTECODE)/delete_calls.cpp $(BYTECODE)/satellite_legal.cpp $(BYTECODE)/container_calls.cpp \
-                      $(BYTECODE)/string_calls.cpp $(BYTECODE)/string_check.cpp \
+                      $(BYTECODE)/string_calls.cpp $(BYTECODE)/string_check.cpp $(BYTECODE)/number_calls.cpp \
+                      $(BYTECODE)/scalar_calls.cpp \
                       $(BYTECODE)/console_style.cpp $(BYTECODE)/console_calls.cpp $(SATELLITE)/satellite_variable_file/satellite_file.cpp \
                       $(BYTECODE)/infinity_calls.cpp $(INFINITY)/satellite_infinity.cpp \
                       $(BYTECODE)/thread_calls.cpp $(OBJECT)/object_lock.cpp \
@@ -82,7 +153,7 @@ INTERPRETER_SOURCES = $(SATELLITE)/structured-library.cpp \
                       $(SATELLITE)/satellite_test/test_programs.cpp \
                       $(SATELLITE)/satellite_test/speed_objects_twins.cpp $(SATELLITE)/satellite_test/speed_values_twins.cpp \
                       $(BYTECODE)/window_calls.cpp $(BYTECODE)/window_readers.cpp $(BYTECODE)/window_shapes.cpp \
-                      $(BYTECODE)/window_questions.cpp $(BYTECODE)/window_methods.cpp $(BYTECODE)/window_run.cpp \
+                      $(BYTECODE)/window_methods.cpp $(BYTECODE)/window_run.cpp \
                       $(OBJECT)/satellite_object.cpp $(OBJECT)/object_copy.cpp \
                       $(OBJECT)/str_add_str.cpp $(OBJECT)/str_minus_str.cpp $(OBJECT)/str_find_str.cpp \
                       $(OBJECT)/num_add_num.cpp $(OBJECT)/num_sub_num.cpp $(OBJECT)/num_div_num.cpp \
@@ -136,7 +207,8 @@ HEADERS = $(ARGUMENTS)/arguments.hpp $(ARGUMENTS)/argument_words.hpp $(ARGUMENTS
           $(RANDOM_DIR)/pcg_512.hpp $(RANDOM_DIR)/wide_unsigned.hpp $(RANDOM_DIR)/random_constants.hpp \
           $(MACHINE)/console_lock.hpp $(MACHINE)/thread_stop.hpp $(OBJECT)/object_lock.hpp \
           $(BYTECODE)/file_calls.hpp $(BYTECODE)/info_calls.hpp $(BYTECODE)/access_calls.hpp $(BYTECODE)/access_words.hpp $(BYTECODE)/delete_calls.hpp $(BYTECODE)/satellite_legal.hpp $(BYTECODE)/container_calls.hpp \
-          $(BYTECODE)/string_calls.hpp $(BYTECODE)/method_periods.hpp $(OBJECT)/string_pieces.hpp \
+          $(BYTECODE)/string_calls.hpp $(BYTECODE)/number_calls.hpp $(BYTECODE)/method_periods.hpp $(OBJECT)/string_pieces.hpp \
+          $(BYTECODE)/scalar_calls.hpp \
           $(BYTECODE)/console_style.hpp $(BYTECODE)/console_calls.hpp $(SATELLITE)/satellite_variable_file/satellite_file.hpp \
           $(BYTECODE)/infinity_calls.hpp $(INFINITY)/satellite_infinity.hpp \
           $(BYTECODE)/window_calls.hpp $(BYTECODE)/window_readers.hpp \

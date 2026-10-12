@@ -11,16 +11,22 @@ number, and (-infinity) is smaller than every number, so it orders with == !=
 holds infinities sorts by value.
 
 What is built is INF-1 and INF-2 of SATELLITE_INFINITY.md: the constructor,
-the display and the order. An infinity name also takes a plain number, and it
-refuses a string, a binary and a percentage; a satellite.variable.number name
-refuses an infinity. .string is its display. .number, .binary and .hex are
-refused, because an infinity is larger than every number, and .reverse() is
+the display and the order. An infinity name holds a minimum of infinity, so it
+refuses a plain number (satellite.variable.infinity x = 5 is an error), a
+string, a binary and a percentage. A name that holds a number at one time and
+an infinity at another is declared
+satellite.container.multiple<satellite.variable.number, satellite.variable.infinity>
+and a satellite.variable.number name refuses an infinity. Its methods are
+written under satellite: i.satellite.string is its display.
+i.satellite.number, .satellite.binary and .satellite.hex are refused,
+because an infinity is larger than every number, and i.satellite.reverse() is
 refused because it has no digits to turn round.
 
 The arithmetic is not built yet. Each piece is refused by name, with the
 milestone that builds it (S210): + and - name INF-3, * and / name INF-3 and
-INF-4, ^ and ** name INF-4 and INF-5, .power_of(x) names INF-4 and INF-5,
-.resize(n) and .nines() name INF-7, and satellite.infinity(x) names INF-5.
+INF-4, ^ and ** name INF-4 and INF-5, i.satellite.power_of(x) names INF-4 and
+INF-5, i.satellite.resize(n) and i.satellite.nines() name INF-7, and
+satellite.infinity(x) names INF-5.
 
 What is planned, in short: every value of the family is one list of terms,
 largest first, each a count and a unit, and every result is put together by
@@ -33,7 +39,7 @@ example:
 
 satellite.include(satellite)
 
-satellite.capsule satellite.main(satellite.container.list<satellite.variable.string> arguments)
+satellite.capsule satellite.main(satellite.variable.arguments arguments)
 {
     satellite.variable.infinity my_inf = satellite.infinity()
     satellite.console.display(my_inf)                   // (infinity)

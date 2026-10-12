@@ -2,7 +2,7 @@ satellite.include(satellite)
 // full_structure_17 -- REFUSED by satellite.test.full(): satellite.legal: a name used after the } of its block.
 // The rule: satellite.legal: a line after the block that names it is refused before anything runs (S201).
 // satl refuses it: exit 25, and its report on stderr says "x is not legal here". It prints nothing.
-arguments.access = true
+satellite.arguments.access = satellite.bool.true
 
 satellite.capsule satellite.main()
 {

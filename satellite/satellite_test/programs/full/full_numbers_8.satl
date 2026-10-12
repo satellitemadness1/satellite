@@ -36,32 +36,32 @@ satellite.capsule satellite.main()
         satellite.variable.color black = 000000
         satellite.variable.color also_black = x000000
         satellite.variable.color white = FFFFFF
-        check(show, "color six digits without the x show in upper case with the x, and .string is that", sky.string + " " + black.string + " " + white.string, "x87CEEB x000000 xFFFFFF")
-        check(show, "color the x is optional on the line that declares it", also_black.string + " " + (black == also_black).string, "x000000 true")
+        check(show, "color six digits without the x show in upper case with the x, and .satellite.string is that", sky.satellite.string + " " + black.satellite.string + " " + white.satellite.string, "x87CEEB x000000 xFFFFFF")
+        check(show, "color the x is optional on the line that declares it", also_black.satellite.string + " " + (black == also_black).satellite.string, "x000000 true")
         satellite.variable.colour ink = x000000, 50
-        check(show, "color colour is its second spelling, a comma gives a transparency, and .transparency reads it back", ink.string + " " + ink.transparency.string + " " + ink.transparency().string, "x000000, 50 50 50")
-        sky.transparency(40)
-        check(show, "color .transparency(n) sets it, and it shows after a comma", sky.string + " " + sky.transparency.string, "x87CEEB, 40 40")
+        check(show, "color colour is its second spelling, a comma gives a transparency, and .satellite.transparency reads it back", ink.satellite.string + " " + ink.satellite.transparency.satellite.string + " " + ink.satellite.transparency().satellite.string, "x000000, 50 50 50")
+        sky.satellite.transparency(40)
+        check(show, "color .satellite.transparency(n) sets it, and it shows after a comma", sky.satellite.string + " " + sky.satellite.transparency.satellite.string, "x87CEEB, 40 40")
         satellite.variable.color green = 00ff00
-        check(show, "color .number is what the six digits are worth, .hex the digits, .binary its 24 bits", sky.number.string + " " + white.number.string + " " + black.number.string + " " + sky.hex + " " + green.binary, "8900331 16777215 0 87CEEB 000000001111111100000000")
+        check(show, "color .satellite.number is what the six digits are worth, .satellite.hex the digits, .satellite.binary its 24 bits", sky.satellite.number.satellite.string + " " + white.satellite.number.satellite.string + " " + black.satellite.number.satellite.string + " " + sky.satellite.hex + " " + green.satellite.binary, "8900331 16777215 0 87CEEB 000000001111111100000000")
         satellite.variable.color also_green = x00FF00
-        satellite.variable.string solid = (green == also_green).string
-        also_green.transparency(50)
-        check(show, "color == and != compare the digits and the transparency", solid + " " + (green == also_green).string + " " + (green != also_green).string, "true false true")
-        also_green.transparency(0)
-        check(show, "color a transparency of 0 is solid, shown without it", also_green.string + " " + (green == also_green).string, "x00FF00 true")
+        satellite.variable.string solid = (green == also_green).satellite.string
+        also_green.satellite.transparency(50)
+        check(show, "color == and != compare the digits and the transparency", solid + " " + (green == also_green).satellite.string + " " + (green != also_green).satellite.string, "true false true")
+        also_green.satellite.transparency(0)
+        check(show, "color a transparency of 0 is solid, shown without it", also_green.satellite.string + " " + (green == also_green).satellite.string, "x00FF00 true")
         satellite.variable.color c = x000000
         c = 123456
-        satellite.variable.string later = c.string
+        satellite.variable.string later = c.satellite.string
         c = abcdef
-        later = later + " " + c.string
+        later = later + " " + c.satellite.string
         c = x00ff00
-        check(show, "color a later line takes six digits, all numbers, all letters, or with the x", later + " " + c.string, "x123456 xABCDEF x00FF00")
+        check(show, "color a later line takes six digits, all numbers, all letters, or with the x", later + " " + c.satellite.string, "x123456 xABCDEF x00FF00")
         c = ff00aa, 5
-        later = c.string + " " + c.transparency.string
+        later = c.satellite.string + " " + c.satellite.transparency.satellite.string
         c = x00ff00, 99
-        check(show, "color a later line takes a transparency after a comma, 99 the most see-through", later + " " + c.string, "xFF00AA, 5 5 x00FF00, 99")
-        check(show, "color a string joins a color by its .string", "c " + green.string, "c x00FF00")
+        check(show, "color a later line takes a transparency after a comma, 99 the most see-through", later + " " + c.satellite.string, "xFF00AA, 5 5 x00FF00, 99")
+        check(show, "color a string joins a color by its .satellite.string", "c " + green.satellite.string, "c x00FF00")
     }
     satellite.return(satellite)
 }

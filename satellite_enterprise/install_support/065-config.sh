@@ -52,8 +52,9 @@ else
 # One `key = value` a line. `#` starts a comment, and anything this file does not
 # name takes satl's built-in default, so a key you delete is not a key you break.
 #
-# THE PROMPT WRITES THIS FILE TOO. A setting typed there -- `arguments.access(false)`,
-# `arguments.missing = false` -- rewrites its row below, or adds it, and leaves every
+# THE PROMPT WRITES THIS FILE TOO. A setting typed there --
+# `satellite.arguments.access(satellite.bool.false)`, `satellite.arguments.missing =
+# satellite.bool.false` -- rewrites its row below, or adds it, and leaves every
 # other line -- these comments included -- exactly where it found them. The same line
 # in a program changes that run alone, and never this file.
 

@@ -29,7 +29,7 @@ satellite.capsule satellite.main()
 {
     satellite.variable.number passes = 1
     box a
-    box p = a.pointer()
+    box p = a.satellite.pointer()
     box other
     a = other
     satellite.console.display(p.call_take())

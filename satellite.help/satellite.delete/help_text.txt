@@ -23,7 +23,8 @@ What goes with the name:
     an object        a spacesuit's object is a reference, so b = a is a
                      second name for ONE object: it goes with the last thing
                      that held it -- a name, a list, a thread it was handed
-                     to -- and a .pointer() at it then reads as gone
+                     to -- and a .satellite.pointer() at it then reads as
+                     gone
     a program        one started under the name forgets that name
     at the prompt    the name is gone for every line typed after it
 
@@ -39,7 +40,7 @@ in the same block as the line that declared the name: inside an if or a loop it
 deletes only a name declared inside that if or loop, because the lines after the
 block could not know whether the name was still there. A name declared inside a
 block ends at its } anyway (satellite.help(legal)), so the else beside it, or a
-line after it, may declare it again -- unless the file says arguments.access =
+line after it, may declare it again -- unless the file says satellite.arguments.access =
 false, when a name deleted inside a block is free again only inside that block.
 A field of an object, satellite.statement.for's own number, and arguments are
 not deleted.

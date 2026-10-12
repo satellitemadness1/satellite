@@ -289,7 +289,7 @@ signed long long int Arguments::gather_config()
         if (buffer == nullptr)
             add_number("arguments.display.buffer", satellite_number(131072ull));
         else if (buffer->kind != ArgumentKind::number || buffer->number.negative() || buffer->number.is_zero())
-            return refuse("arguments.display.buffer is a number row of at least 1 display");
+            return refuse("satellite.arguments.display.buffer is a number row of at least 1 display");
         std::string said;
         if (config_file::read_value("display.buffer", said) && !said.empty()) {
             satellite_number value;
@@ -325,9 +325,11 @@ signed long long int Arguments::gather_config()
         const std::string key = setting.key;
         const std::string name = "arguments." + key;
         if (setting.kind == SettingKind::flag && find(name) == nullptr)
-            // scroll.horizontal is the one flag OFF unless written (2026-10-07): wide lines wrap
-            // and the console grows downward, which is what "scroll vertically" asked for.
-            add_flag(name, key == "access" ? kAccessOnByDefault : key != "scroll.horizontal");
+            // EVERY FLAG IS ON UNLESS WRITTEN, scroll.horizontal too since 2026-10-11 (the author: "I want them
+            // to scroll both ways, vertically and horizontally", "there needs to be two scrollbars"): wide
+            // lines stay one line and a bar runs along the bottom. Until then it was the one flag off, so
+            // wide lines wrapped (his Q9 of 2026-10-09).
+            add_flag(name, key == "access" ? kAccessOnByDefault : true);
         std::string said;
         if (!config_file::read_value(key, said) || said.empty())
             continue;

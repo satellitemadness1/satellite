@@ -7,6 +7,6 @@ satellite.include(satellite)
 satellite.capsule satellite.main()
 {
     satellite.variable.number passes = 1
-    satellite.console.display("never shown", foreground=xFFF)
+    satellite.console.display("never shown", satellite.foreground=xFFF)
     satellite.return(satellite)
 }

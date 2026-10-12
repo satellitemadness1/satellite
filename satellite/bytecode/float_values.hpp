@@ -38,8 +38,9 @@ signed long long int float_is_written_right(const std::vector<std::bitset<16>> &
                                             const LegalNames &declared,
                                             std::string &why);
 
-// THE CHECKER: the first method written on a name declared satellite.variable.float. `spelling`
-// is `name.method`, for the sentence.
+// THE CHECKER: the first method written on a name declared satellite.variable.float -- and
+// THE WALKER, for a method a float has no number for (expression.cpp refuses it in this
+// sentence). `spelling` is `name.method`, for the sentence.
 signed long long int float_method_check(token::Code method, const std::string &spelling, std::string &why);
 
 // THE WALKER: a value arriving in a name declared `holds` -- ANY name, so this
@@ -47,11 +48,7 @@ signed long long int float_method_check(token::Code method, const std::string &s
 // change `value` (a number given to a float name becomes a float).
 signed long long int float_on_store(token::Code holds, Value &value, std::string &why);
 
-// THE WALKER: a method on a value of this type. `slot` is the variable itself when
-// the method is written straight on a name (a method that changes the value writes
-// through it), and nullptr otherwise. `answered` false leaves the method to the
-// conversions every type shares (.string, .number, .binary, .hex).
-Value float_method(token::Code method, const Value &receiver, Value *slot, const std::vector<Value> &arguments,
-                   bool had_parentheses, const std::string &name, ExpressionContext &context, bool &answered);
+// A FLOAT'S METHODS RUN BY THEIR NUMBERS since 2026-10-11 (scalar_calls.hpp): each one's
+// code is a file under satellite-numbers/words/, 1 6 10 n. It was float_method here.
 
 } // namespace satellite004

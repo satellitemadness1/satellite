@@ -2,11 +2,11 @@ satellite.include(satellite)
 
 // The program rewrites line 10 of its own file and then runs line 10 as it was
 // LOADED. The report must quote the loaded line, not the rewritten one.
-satellite.capsule satellite.main(satellite.container.list<satellite.variable.string> arguments)
+satellite.capsule satellite.main(satellite.variable.arguments arguments)
 {
     satellite.variable.file me = satellite.file.open("file_snapshot.satl")
-    me.replace(10, "    satellite.console.display(2)")
-    satellite.console.display(me.close())
+    me.satellite.replace(10, "    satellite.console.display(2)")
+    satellite.console.display(me.satellite.close())
     satellite.console.display(1 / 0)
     satellite.return(satellite)
 }

@@ -17,6 +17,11 @@
 //   window_run.cpp        the run: events off the desk's queue into capsules
 //   window_readers.cpp    these readers
 //
+// AND ON 2026-10-11 (NM-8) THE METHODS BECAME THEIR NUMBERS: every one a window has is a file of its own,
+// satellite-numbers/words/1.6.18.<n>.cpp, holding its bare read from window_questions.cpp and its doing from
+// call_window_method, moved whole; window_questions.cpp went with them, and window_methods.cpp is what runs a
+// number now (run_window_number). Those files share these readers and window_method_parts below.
+//
 // THE #if IS IN EVERY FILE THAT DRAWS, AND EACH FILE'S TWO HALVES ANSWER THE
 // SAME SHAPES. The old file kept both halves under one #if "rather than in two
 // files that could drift apart"; that rule is kept per FUNCTION now -- a
@@ -32,6 +37,7 @@
 #include "../satellite_variable_window/satellite_window.hpp"
 
 #include <string>
+#include <vector>
 
 #ifndef SATELLITE_HAS_WINDOW
 #define SATELLITE_HAS_WINDOW 0
@@ -66,13 +72,40 @@ std::string the_words_that_make_a_piece();
 #if SATELLITE_HAS_WINDOW == 0
 // THE ONE SENTENCE THIS satl SAYS WHEN IT WAS BUILT WITHOUT A WINDOW.
 Value no_window_here(const std::string &what, ExpressionContext &context);
-#else
-// A METHOD READ BARE, OR A QUESTION READ EITHER WAY, ANSWERED (window_questions.cpp).
-// True when it was one of those and `answered` holds the answer -- or the
-// refusal, in which case context.code says so; false when the method is a doing
-// and window_methods.cpp carries on.
-bool answer_a_question(token::Code method, const WindowHandle &which, bool had_parentheses,
-                       const std::string &name, ExpressionContext &context, Value &answered);
 #endif
+
+// WHAT EVERY ONE OF A WINDOW'S NUMBERS SHARES (NM-8, 2026-10-11) -- satellite-numbers/words/1.6.18.<n>.cpp. They
+// were the cases of one function, call_window_method, and these are the steps that function took for every
+// doing, in its order, so each number refuses as it always did (window_methods.cpp).
+namespace window_method_parts {
+
+#if SATELLITE_HAS_WINDOW
+// A DOING'S THREE CHECKS, taken after its bare read has had its turn: a doing that takes nothing is written with
+// its brackets, it was given a count it takes, and the window is still there. The window -- or nullptr, with the
+// refusal made. `what` is the call as a refusal says it, `main_window.satellite.title`.
+satellite_window *ready_to_do(token::Code method, const WindowHandle &which, const std::vector<Value> &arguments,
+                              bool had_parentheses, const std::string &what, ExpressionContext &context);
+
+// AND A DOING'S TAIL: the window, so `w.satellite.title("x").satellite.focus()` goes on -- or, when it did not
+// go, the refusal by the code that says what happened: S505 when the window had gone, and a kind that does not
+// meet when it is still open.
+Value done(bool went, const std::string &why, const satellite_window &window, const WindowHandle &which,
+           const std::string &what, ExpressionContext &context);
+
+// A PIECE MADE, AND ANSWERED SO A CHAIN GOES ON WITH IT: .satellite.widgets.display.file("a_name"),
+// .satellite.widgets.display.input("a_name") and .satellite.section("a_name", 100%, 50%) -- ONE case of
+// call_window_method's for the three, moved here whole for the three numbers that ran it: the name, a size when
+// there is one, and the refusal when the desk would not make it.
+Value a_piece_made(satellite_window::Piece kind, satellite_window &window, const std::vector<Value> &arguments,
+                   const std::string &what, ExpressionContext &context);
+#else
+// IN A satl BUILT WITHOUT A WINDOW, EVERY NUMBER'S FUNCTION IS THIS ONE. run_window_number says no window was
+// built before a number could run, so it is never reached; it is in the row so the row is a method's, which no
+// program calls by the word's name (function_table.cpp) -- the same in both builds.
+Value no_window(const Value &receiver, Value *home, const TypeShape *shape, const std::vector<Value> &arguments,
+                bool had_parentheses, const std::string &name, ExpressionContext &context);
+#endif
+
+} // namespace window_method_parts
 
 } // namespace satellite004

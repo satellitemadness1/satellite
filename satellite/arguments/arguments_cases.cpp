@@ -86,7 +86,7 @@ int main()
     check(arguments.flag("arguments.missing"), "arguments.missing is true by default");
     check(arguments.the_program_sets("arguments.missing", false) && !arguments.flag("arguments.missing") &&
               arguments.find("arguments.missing")->kind == ArgumentKind::flag,
-          "the program's arguments.missing = false makes the row false, and it is still a true/false row");
+          "the program's satellite.arguments.missing = satellite.bool.false makes the row false, and it is still a true/false row");
     check(!arguments.the_program_sets("arguments.no_such_row", false) && arguments.find("arguments.no_such_row") == nullptr,
           "a row that is not there is not made by the program's switch");
     check(!arguments.the_program_sets("arguments.infinity", false) &&

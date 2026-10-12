@@ -23,10 +23,10 @@ satellite.capsule check(satellite.variable.number round, satellite.variable.stri
     }
     satellite.statement.if (round == 1)
     {
-        satellite.console.display("WRONG " + what + ": ", end="")
-        satellite.console.display(got, end="")
-        satellite.console.display(" (expected ", end="")
-        satellite.console.display(want, end="")
+        satellite.console.display("WRONG " + what + ": ", satellite.end="")
+        satellite.console.display(got, satellite.end="")
+        satellite.console.display(" (expected ", satellite.end="")
+        satellite.console.display(want, satellite.end="")
         satellite.console.display(")")
     }
     satellite.return(1)
@@ -53,20 +53,20 @@ satellite.capsule satellite.main()
 
         // a multiple holds an ordinary value and behaves as one declared the plain way
         satellite.container.multiple<satellite.variable.string, satellite.variable.number> either = "abc"
-        wrong = wrong + check(p, "multiple holding text .reverse()", either.satellite.reverse(), "cba")
-        wrong = wrong + check(p, "multiple holding text .size", either.satellite.size, 3)
+        wrong = wrong + check(p, "multiple holding text .satellite.reverse()", either.satellite.reverse(), "cba")
+        wrong = wrong + check(p, "multiple holding text .satellite.size", either.satellite.size, 3)
         wrong = wrong + check(p, "multiple holding text +", either + "d", "abcd")
-        wrong = wrong + check(p, "multiple holding text .find", either.satellite.find("c"), 2)
+        wrong = wrong + check(p, "multiple holding text .satellite.find", either.satellite.find("c"), 3)
         wrong = wrong + check(p, "multiple holding text [1]", either[1], "a")
         either = 7
         wrong = wrong + check(p, "multiple given a number adds", either + 1, 8)
         wrong = wrong + check(p, "multiple holding a number multiplies", either * 6, 42)
-        wrong = wrong + check(p, "multiple holding a number .binary", either.binary, "111")
+        wrong = wrong + check(p, "multiple holding a number .satellite.binary", either.satellite.binary, "111")
         satellite.container.multiple<satellite.variable.string, satellite.variable.number> bits = b101
         satellite.variable.number plain = b101
-        wrong = wrong + check(p, "multiple with a number on its list keeps a binary", bits.string, "b101")
+        wrong = wrong + check(p, "multiple with a number on its list keeps a binary", bits.satellite.string, "b101")
         wrong = wrong + check(p, "multiple binary counts by its worth in a sum", bits + 1, 6)
-        wrong = wrong + check(p, "multiple a plain number name makes the binary a number", plain.string, "5")
+        wrong = wrong + check(p, "multiple a plain number name makes the binary a number", plain.satellite.string, "5")
         satellite.container.multiple anything = 5
         anything = "text"
         anything = {1, 2}
@@ -93,21 +93,21 @@ satellite.capsule satellite.main()
         wrong = wrong + check(p, "nested list [x][y] = v", grid, {{1, 2}, {99, 4}})
         wrong = wrong + check(p, "nested list [x][y] read", grid[2][1], 99)
         grid[1].satellite.append(5)
-        wrong = wrong + check(p, "nested list [x].append", grid[1], {1, 2, 5})
+        wrong = wrong + check(p, "nested list [x].satellite.append", grid[1], {1, 2, 5})
         satellite.variable.number x = 2
         satellite.variable.number y = 2
         wrong = wrong + check(p, "nested list [x][y] by names", grid[x - 1][y] + grid[x][y - 1], 101)
-        wrong = wrong + check(p, "nested list .contains a list", grid.satellite.contains({1, 2, 5}), satellite.bool.true)
-        wrong = wrong + check(p, "nested list .index_of a list", grid.satellite.index_of({99, 4}), 2)
+        wrong = wrong + check(p, "nested list .satellite.contains a list", grid.satellite.contains({1, 2, 5}), satellite.bool.true)
+        wrong = wrong + check(p, "nested list .satellite.index_of a list", grid.satellite.index_of({99, 4}), 2)
         wrong = wrong + check(p, "nested list a method on an inner list", grid[2].satellite.sum, 103)
 
         // a map of lists, a list of maps, a map of maps of lists
         satellite.container.index<satellite.variable.string, satellite.container.list> teams
         teams["red"] = {"ann", "bo"}
         teams["red"].satellite.append("cy")
-        wrong = wrong + check(p, "nested map of lists [k].append", teams, {"red": {"ann", "bo", "cy"}})
+        wrong = wrong + check(p, "nested map of lists [k].satellite.append", teams, {"red": {"ann", "bo", "cy"}})
         wrong = wrong + check(p, "nested map of lists [k][n]", teams["red"][2], "bo")
-        wrong = wrong + check(p, "nested map of lists [k].join", teams["red"].satellite.join("+"), "ann+bo+cy")
+        wrong = wrong + check(p, "nested map of lists [k].satellite.join", teams["red"].satellite.join("+"), "ann+bo+cy")
         satellite.container.list<satellite.container.map<satellite.variable.string, satellite.variable.number>> rows = {{"a": 1}, {"b": 2}}
         wrong = wrong + check(p, "nested list of maps [n][k]", rows[2]["b"], 2)
         satellite.container.map<satellite.variable.string, satellite.container.map<satellite.variable.string, satellite.container.list<satellite.variable.number>>> tree
@@ -115,7 +115,7 @@ satellite.capsule satellite.main()
         tree["x"]["y"].satellite.append(3)
         tree["x"]["z"] = {}
         wrong = wrong + check(p, "nested map of maps of lists written at every depth", tree, {"x": {"y": {1, 2, 3}, "z": {}}})
-        wrong = wrong + check(p, "nested map of maps of lists .sum at the bottom", tree["x"]["y"].satellite.sum, 6)
+        wrong = wrong + check(p, "nested map of maps of lists .satellite.sum at the bottom", tree["x"]["y"].satellite.sum, 6)
 
         // with no <> a container holds anything, to any depth: a[1]["k"][2]
         satellite.container.list deep = {{"k": {10, 20, 30}}, 5}
@@ -123,7 +123,7 @@ satellite.capsule satellite.main()
         deep[1]["k"][2] = 21
         wrong = wrong + check(p, "nested a[1][k][2] = v", deep[1]["k"], {10, 21, 30})
         deep[1]["k"].satellite.append(40)
-        wrong = wrong + check(p, "nested a[1][k].append", deep[1]["k"].satellite.size, 4)
+        wrong = wrong + check(p, "nested a[1][k].satellite.append", deep[1]["k"].satellite.size, 4)
         deep[1]["new"] = {"x": {1}}
         wrong = wrong + check(p, "nested a new key three deep", deep[1]["new"]["x"][1], 1)
         satellite.container.list copy = deep

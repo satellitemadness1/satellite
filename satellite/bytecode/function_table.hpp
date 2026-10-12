@@ -43,8 +43,9 @@ public:
     // list, through run_list_number and method() below, and never by the word's name. So
     // `satellite.container.list.append(3)` written as a call still finds nothing here, and is
     // refused before anything runs as "has no library built for it yet", as it was before the
-    // row existed (the list step's review). A string's methods had rows before that day, and
-    // keep the answer they had.
+    // row existed (the list step's review). Every type numbered after the list is the same
+    // (its rows hold a method_call). A string's methods had rows before that day, and keep the
+    // answer they had.
     const NumberRow *operator[](token::Code code) const
     {
         if (!word::is_word_code(code)) return nullptr;
@@ -52,8 +53,9 @@ public:
         return slot < rows_.size() ? rows_[slot] : nullptr;
     }
 
-    // THE ROW A METHOD'S NUMBER RUNS, whatever it holds -- what run_string_number and
-    // run_list_number call through. One subtraction and one load, as above.
+    // THE ROW A METHOD'S NUMBER RUNS, whatever it holds -- what run_string_number,
+    // run_list_number and every other type's run_<type>_number call through. One subtraction
+    // and one load, as above.
     const NumberRow *method(token::Code code) const
     {
         if (!word::is_word_code(code)) return nullptr;
@@ -65,7 +67,7 @@ public:
 
 private:
     std::vector<const NumberRow *> rows_;        // a word called by its name
-    std::vector<const NumberRow *> every_row_;   // every row, a list's methods' included
+    std::vector<const NumberRow *> every_row_;   // every row, every type's methods' included
     unsigned long long int filled_ = 0;
 };
 

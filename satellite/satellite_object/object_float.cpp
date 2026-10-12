@@ -71,7 +71,7 @@ signed long long int refuse_meeting(const std::string &what, const satelliteObje
     }
     if (what == "+" && other.is_string()) {
         why = both + " -- with a number first, + adds; to join them, put the text first (\"total: \" + n) or "
-                     "write n.string";
+                     "write n.satellite.string";
         return types_do_not_meet;
     }
     why = both + ", and there is no scenario for that pair";

@@ -2,10 +2,11 @@ satellite.include(satellite)
 
 // A SPACESUIT WITH ITS OWN CAPSULE NAMED pointer -- the shape of four of the author's programs
 // (the_death_korps, terran, force_energy, infinity_data), written before the language had the
-// word: it answers a field that holds the object itself. From outside, x.pointer() is the
-// language's, as x.lock() is (bytecode/pointer_calls.hpp); inside, the bare name still calls the
-// spacesuit's own. And a pointer handed to a thread reaches its object there. check.sh compares
-// every line.
+// word: it answers a field that holds the object itself. Since 2026-10-11 (NM-8) the language's is
+// x.satellite.pointer(), from anywhere, and x.pointer() with a bare `.` is the spacesuit's own, from
+// outside as from inside (his C of 2026-10-10: his own spacesuit's methods stay as he writes them;
+// bytecode/pointer_calls.hpp). And a pointer handed to a thread reaches its object there. check.sh
+// compares every line.
 
 satellite.spacesuit store()
 {
@@ -46,11 +47,13 @@ satellite.capsule satellite.main()
 {
     store data
     data.set_this(data)
-    store data_pointer = data.pointer()
-    satellite.console.display(data_pointer.ok())
+    store data_pointer = data.satellite.pointer()
+    satellite.console.display(data_pointer.satellite.ok())
+    store his = data.pointer()
+    satellite.console.display(his.call_total())
     satellite.console.display(data.call_own_pointer())
     satellite.variable.thread worker = satellite.thread.new(shard(data_pointer))
-    worker.start()
-    satellite.console.display(worker.join())
+    worker.satellite.start()
+    satellite.console.display(worker.satellite.join())
     satellite.return(satellite)
 }

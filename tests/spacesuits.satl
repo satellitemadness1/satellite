@@ -108,7 +108,7 @@ satellite.spacesuit ship()
             log fresh
             fresh.call_write()
             satellite.variable.number times = fresh.call_write()
-            satellite.return(name + " has " + the_hull.call_plates().to_string() + " plates, logged " + times.to_string())
+            satellite.return(name + " has " + the_hull.call_plates().satellite.to_string() + " plates, logged " + times.satellite.to_string())
         }
 
         satellite.capsule call_set_hull(hull given)
@@ -177,7 +177,7 @@ satellite.spacesuit eclipse(view)
     {
         satellite.capsule call_show()
         {
-            satellite.return(banner("depth " + depth.to_string()) + " " + spacesuit_name)
+            satellite.return(banner("depth " + depth.satellite.to_string()) + " " + spacesuit_name)
         }
     }
 }
@@ -234,7 +234,7 @@ satellite.capsule satellite.main()
     // an object, its constructor, its protected capsule, its answers
     counter a(2)
     a.call_bump()
-    satellite.console.display(a.call_name() + " " + a.call_count().to_string())
+    satellite.console.display(a.call_name() + " " + a.call_count().satellite.to_string())
     // an object is a reference: a capsule changes the caller's, and = shares it
     bump_three(a)
     satellite.console.display(a.call_count())
@@ -252,7 +252,7 @@ satellite.capsule satellite.main()
     all.satellite.append(c)
     counter c(5)
     all.satellite.append(c)
-    satellite.console.display(all[1].call_count().to_string() + " " + all[2].call_count().to_string())
+    satellite.console.display(all[1].call_count().satellite.to_string() + " " + all[2].call_count().satellite.to_string())
     // spacesuits inside a spacesuit
     ship.hull h(7)
     satellite.console.display(h.call_plates())

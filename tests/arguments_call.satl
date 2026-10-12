@@ -6,23 +6,23 @@
 // runs it in a home of its own and asserts every line in order, and that config.ini gained nothing.
 
 satellite.include(satellite)
-arguments.missing(false)
-arguments.float.decimal = 10
+satellite.arguments.missing(satellite.bool.false)
+satellite.arguments.float.decimal = 10
 
 satellite.capsule elsewhere()
 {
-    satellite.console.display(arguments.missing)
-    satellite.console.display(arguments.infinity)
-    arguments.infinity(64)
-    satellite.console.display(arguments.infinity)
+    satellite.console.display(satellite.arguments.missing)
+    satellite.console.display(satellite.arguments.infinity)
+    satellite.arguments.infinity(64)
+    satellite.console.display(satellite.arguments.infinity)
 }
 
 satellite.capsule satellite.main(satellite.variable.arguments args)
 {
     satellite.console.display(args.missing)
-    args.access(false)
+    args.access(satellite.bool.false)
     satellite.console.display(args.access)
-    args.access = true
+    args.access = satellite.bool.true
     satellite.console.display(satellite.library.arguments.access)
     elsewhere()
     satellite.console.display(args.infinity)

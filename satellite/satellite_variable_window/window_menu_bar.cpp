@@ -59,7 +59,7 @@ bool window_menu(satellite_window &which, const WindowHandle &menu, std::string 
         return false;
     }
     if (menu == nullptr || menu->piece != satellite_window::menu) {
-        why = ".menu takes a menu, and was given " +
+        why = ".satellite.menu takes a menu, and was given " +
               std::string(menu == nullptr ? "nothing" : menu->piece_name()) +
               " -- satellite.window.menu(\"File\") makes one";
         return false;

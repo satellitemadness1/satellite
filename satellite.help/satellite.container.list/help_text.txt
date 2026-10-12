@@ -46,10 +46,11 @@ loop yet, so walk a list with satellite.statement.for and a[i].
 The old .satellite.sort("down"), .satellite.sort_down() and
 .satellite.sort_up() are refused:
 .satellite.sort().satellite.by_name().satellite.reverse() replaced them.
-.sort("key") and .sort("value") are a map's, and a map refuses
-.satellite.by_name() and .satellite.by_value(). On an index, .sum .max .min and
-.join ask you to say which half -- scores.values.satellite.sum,
-scores.keys.satellite.join(", ").
+.satellite.sort("key") and .satellite.sort("value") are a map's, and a map
+refuses
+.satellite.by_name() and .satellite.by_value(). On an index, .satellite.sum
+.satellite.max .satellite.min and .satellite.join ask you to say which half -- scores.satellite.values.satellite.sum,
+scores.satellite.keys.satellite.join(", ").
 
 example:
 

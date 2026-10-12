@@ -21,10 +21,11 @@ expect "1/3 is a fraction shown 1/3; 2/4 stays 2/4 and == 1/2; 1/3 < 1/2; 4 / 3 
        "1/3|2/4|true|true|false|1.5/2|1/3|-1/3|1/3|1|false|true|true" \
        "$(fraction_lines "$interpreter" tests/fraction_literal.satl)"
 
-# A NAME: .numerator and .denominator are the whole numbers when they are whole (so
-# f.numerator + 1 is 3) and the float when not (1.5); 3 given to a fraction name is
+# A NAME: .satellite.numerator and .satellite.denominator (written .satellite. since
+# 2026-10-11, NM-8) are the whole numbers when they are whole (so f.satellite.numerator + 1
+# is 3) and the float when not (1.5); 3 given to a fraction name is
 # 3/1; a list holding 2/4 contains 1/2, because sameness is by value too.
-expect "a fraction name: .numerator, .denominator, a number given to it is over 1, and its sign is the numerator's" \
+expect "a fraction name: .satellite.numerator, .denominator, a number given to it is over 1, and its sign is the numerator's" \
        "2/4|2|4|3|true|1.5|3/1|5/7|-5/7|-5|true" \
        "$(fraction_lines "$interpreter" tests/fraction_store.satl)"
 

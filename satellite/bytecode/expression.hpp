@@ -143,6 +143,15 @@ signed long long int write_through_index(Value &root, const std::vector<Value> &
                                          const std::string &name, std::size_t where, const TypeShape &shape,
                                          ExpressionContext &context);
 
+// A MAP'S .get(k) AND .set(k, v) (satellite.container.map.get(k) and .set(k, v), 1 4 1 2 and 1 4 1 1): `m[k]`
+// and `m[k] = v` said in a word, THROUGH THE SAME TWO FUNCTIONS the brackets are read and written by, so a
+// missing key and a value that does not fit are refused in the same words. `map` for .set is the variable's
+// own object, never a copy. Their refusals are not placed: a numbered method's refusal stands at the start of
+// its statement, as every other's does (run_map_number has no place in the line to give them).
+Value read_under_a_key(const Value &map, const Value &key, const std::string &name, ExpressionContext &context);
+signed long long int write_under_a_key(Value &map, const Value &key, Value value, const std::string &name,
+                                       const TypeShape &shape, ExpressionContext &context);
+
 // ONE LINK OF A METHOD CHAIN AS IT WAS WRITTEN, from its `.`: `.trim`, `.size()` or
 // `.split(...)`, so a refusal can name the piece it refused -- `s.trim.append`, not
 // `s.append` (the M16 review). What was inside the brackets is not spelled out, as

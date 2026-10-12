@@ -24,6 +24,6 @@ satellite.capsule satellite.main()
             count = count + 1
         }
     }
-    satellite.console.display(count.string + " " + odd.string + " " + flip.string + " " + run.string)
+    satellite.console.display(count.satellite.string + " " + odd.satellite.string + " " + flip.satellite.string + " " + run.satellite.string)
     satellite.return(satellite)
 }

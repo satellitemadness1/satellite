@@ -27,6 +27,19 @@ bool within(const CapsuleTable &table, std::size_t scope, std::size_t outer)
     return false;
 }
 
+// WHETHER A LINE IN `from` REACHES `site`, a capsule of the spacesuit `each` -- 003's S0516: a protected
+// capsule, called with a dot, only from its spacesuit's own capsules -- on this object or another of its kind
+// -- and from a spacesuit that extends it, or one declared inside it (both new in 004: a spacesuit's
+// supertype's capsules are its own, and one inside it is part of its body). member() refuses by it, and
+// declares() asks it (2026-10-11), so the two can never disagree about what a line reaches.
+bool reaches(const CapsuleTable &table, const CapsuleSite &site, std::size_t each, std::size_t from)
+{
+    const std::size_t caller = table.suit_around(from);
+    const bool extends_it = caller != kNoScope && table.scopes[caller].layout != nullptr &&
+                            table.scopes[caller].layout->is_a(each);
+    return site.is_public || within(table, from, each) || extends_it;
+}
+
 std::string named(const CapsuleTable &table, std::size_t scope)
 {
     const CapsuleScope &it = table.scopes[scope];
@@ -188,14 +201,7 @@ const CapsuleSite *CapsuleTable::member(std::size_t suit, const std::string &nam
         if (found == scopes[each].capsules.end())
             continue;
         const CapsuleSite &site = sites[found->second];
-        // 003's S0516: a protected capsule, called with a dot, only from its spacesuit's
-        // own capsules -- on this object or another of its kind -- and from a spacesuit
-        // that extends it, or one declared inside it (both new in 004: a spacesuit's
-        // supertype's capsules are its own, and one inside it is part of its body).
-        const std::size_t caller = suit_around(from);
-        const bool extends_it = caller != kNoScope && scopes[caller].layout != nullptr &&
-                                scopes[caller].layout->is_a(each);
-        if (!site.is_public && !within(*this, from, each) && !extends_it) {
+        if (!reaches(*this, site, each, from)) {
             const std::string declaring = scopes[each].layout != nullptr ? scopes[each].layout->shown : shown;
             code = member_is_protected;
             why = name + " is inside the satellite.protected part of " + declaring + ", so only " + declaring +
@@ -220,6 +226,33 @@ const CapsuleSite *CapsuleTable::member(std::size_t suit, const std::string &nam
                 "does -- it is a type: " + shown + "." + name + " a_name"
               : shown + " has no " + name + " -- a spacesuit answers only what its own capsules are called";
     return nullptr;
+}
+
+bool CapsuleTable::declares(std::size_t suit, const std::string &name, std::size_t from) const
+{
+    if (suit >= scopes.size())
+        return false;
+    const CapsuleScope &of = scopes[suit];
+    // ITS OWN CAPSULES AND ITS SUPERTYPES', AS member() WALKS THEM, by the name and by a method word's
+    // other spelling: a capsule declared `to_number` is reached by `.to_number()`, which lexes as number.
+    const std::vector<std::size_t> own{suit};
+    const std::vector<std::size_t> &lineage =
+        of.layout != nullptr && !of.layout->lineage.empty() ? of.layout->lineage : own;
+    const token::Code as_a_method = token::method_code_of(name);
+    for (const std::size_t each : lineage) {
+        auto found = scopes[each].capsules.find(name);
+        if (found == scopes[each].capsules.end() && as_a_method != 0)
+            for (auto spelled = scopes[each].capsules.begin(); spelled != scopes[each].capsules.end(); ++spelled)
+                if (token::method_code_of(spelled->first) == as_a_method) {
+                    found = spelled;
+                    break;
+                }
+        if (found == scopes[each].capsules.end())
+            continue;
+        // THE FIRST ONE FOUND IS THE ONE member() WOULD RUN, so it alone says whether the line reaches his.
+        return from == kNoScope || reaches(*this, sites[found->second], each, from);
+    }
+    return false;
 }
 
 bool resolve_shape(const CapsuleTable &table, std::size_t scope, TypeShape &shape, std::string &why)

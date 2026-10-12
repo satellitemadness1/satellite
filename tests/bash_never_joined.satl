@@ -5,7 +5,7 @@ satellite.include(satellite)
 satellite.capsule satellite.main(satellite.variable.arguments args)
 {
     satellite.variable.bash c = "sleep 7.67; echo never"
-    c.start()
+    c.satellite.start()
     satellite.console.display("main ends")
     satellite.return(satellite)
 }

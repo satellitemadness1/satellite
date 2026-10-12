@@ -19,6 +19,12 @@
 # beside it as org.satellite.terminal.desktop.bak-<date>, which no menu reads, the
 # way 060 keeps 003's satl. One this installer wrote carries its first comment
 # line, and is simply replaced.
+#
+# REPLACED ON EVERY INSTALL, so on every build (the author, 2026-10-11: "always run
+# install over ~/.satl/satl and replace what is in apps every single build"): written
+# and put in place even when it would come out the same, and the menu's database
+# updated, as ~/.satl/satl is copied in fresh each time. Until then a launcher that
+# compared equal was left as it was.
 
 if [ "$home_root" = yes ]; then
     _apps=${XDG_DATA_HOME:-$HOME/.local/share}/applications
@@ -33,8 +39,6 @@ if [ "$home_root" = yes ]; then
                     "$here/icons/org.satellite.terminal.desktop" > "$_launcher.installing" 2> /dev/null; then
                 rm -f -- "$_launcher.installing"
                 step "could not write the launcher in $_apps; satl still runs by its path"
-            elif cmp -s -- "$_launcher.installing" "$_launcher"; then
-                rm -f -- "$_launcher.installing"
             else
                 if [ -f "$_launcher" ] &&
                     ! head -n 1 -- "$_launcher" | grep -qxF '# Desktop entry for satl, which opens its own console (GTK_AND_NO_DEPENDENCIES.md'; then

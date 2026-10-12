@@ -114,10 +114,10 @@ std::string why_a_file_line_is_too_late(const Setting &setting, const std::strin
     if (setting.read == SettingRead::as_satl_starts)
         return written + " is read as satl starts, before it reads any file, so a line in a file comes too late to "
                          "change it for its own run. Typed at the prompt it is saved for every run after: "
-                         "arguments." + key + "(value)";
+                         "satellite.arguments." + key + "(value)";
     if (setting.read == SettingRead::at_the_top_of_the_file && !at_the_top)
-        return a_switch_written_too_late(written, key) + ". Typed at the prompt, arguments." + key +
-               "(false) is saved for every run";
+        return a_switch_written_too_late(written, key) + ". Typed at the prompt, satellite.arguments." + key +
+               "(satellite.bool.false) is saved for every run";
     return std::string();
 }
 

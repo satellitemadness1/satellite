@@ -1,10 +1,10 @@
 satellite.include(satellite)
-arguments.infinity(128)
-arguments.infinity_display(32)
+satellite.arguments.infinity(128)
+satellite.arguments.infinity_display(32)
 
 // full_numbers_3 -- satellite.test.full(): satellite.variable.infinity and satellite.infinity(),
 // what INF-1 and INF-2 built: the constructor, the display and the order (against a number, a
-// binary and another infinity), a name that takes a plain number, and a list that sorts them.
+// binary and another infinity), a name that holds a minimum of infinity, and a list that sorts them.
 // Its arithmetic is not built yet (S210) -- the refused programs hold that.
 // The checks run `passes` times and print on the last pass only, so the lines never change.
 
@@ -35,21 +35,21 @@ satellite.capsule satellite.main()
     {
         satellite.variable.bool show = turn == rounds
         satellite.variable.infinity my_inf = satellite.infinity()
-        check(show, "infinity satellite.infinity() shows (infinity), and .string is that", my_inf.string, "(infinity)")
-        check(show, "infinity a minus in front turns it over, and a second turns it back", (-my_inf).string + " " + (-(-my_inf)).string, "(-infinity) (infinity)")
-        check(show, "infinity is larger than every number, and (-infinity) smaller", (my_inf > 10 ^ 100).string + " " + (5 < my_inf).string + " " + (-my_inf < 0 - 10 ^ 300).string + " " + (5 > -my_inf).string, "true true true true")
-        check(show, "infinity orders against a binary", (b1010 < my_inf).string + " " + (-my_inf <= b0000).string, "true true")
-        check(show, "infinity == != < > <= >= against an infinity", (my_inf == satellite.infinity()).string + " " + (my_inf == -my_inf).string + " " + (my_inf != -my_inf).string + " " + (my_inf < my_inf).string + " " + (-my_inf > my_inf).string + " " + (my_inf <= my_inf).string + " " + (my_inf >= my_inf).string, "true false true false false true true")
-        check(show, "infinity is no number, however large", (my_inf == 10 ^ 1000).string, "false")
+        check(show, "infinity satellite.infinity() shows (infinity), and .satellite.string is that", my_inf.satellite.string, "(infinity)")
+        check(show, "infinity a minus in front turns it over, and a second turns it back", (-my_inf).satellite.string + " " + (-(-my_inf)).satellite.string, "(-infinity) (infinity)")
+        check(show, "infinity is larger than every number, and (-infinity) smaller", (my_inf > 10 ^ 100).satellite.string + " " + (5 < my_inf).satellite.string + " " + (-my_inf < 0 - 10 ^ 300).satellite.string + " " + (5 > -my_inf).satellite.string, "true true true true")
+        check(show, "infinity orders against a binary", (b1010 < my_inf).satellite.string + " " + (-my_inf <= b0000).satellite.string, "true true")
+        check(show, "infinity == != < > <= >= against an infinity", (my_inf == satellite.infinity()).satellite.string + " " + (my_inf == -my_inf).satellite.string + " " + (my_inf != -my_inf).satellite.string + " " + (my_inf < my_inf).satellite.string + " " + (-my_inf > my_inf).satellite.string + " " + (my_inf <= my_inf).satellite.string + " " + (my_inf >= my_inf).satellite.string, "true false true false false true true")
+        check(show, "infinity is no number, however large", (my_inf == 10 ^ 1000).satellite.string, "false")
         satellite.variable.infinity copied = my_inf
-        check(show, "infinity a copy is equal to it", (copied == my_inf).string, "true")
-        satellite.variable.infinity left = 5
-        satellite.variable.string held = left.string + " " + (left < my_inf).string
+        check(show, "infinity a copy is equal to it", (copied == my_inf).satellite.string, "true")
+        satellite.variable.infinity left = -my_inf
+        satellite.variable.string held = left.satellite.string + " " + (left < my_inf).satellite.string
         left = my_inf
-        check(show, "infinity an infinity name takes a plain number, then an infinity", held + " " + left.string, "5 true (infinity)")
+        check(show, "infinity an infinity name holds a minimum of infinity: one infinity, then another", held + " " + left.satellite.string, "(-infinity) true (infinity)")
         satellite.container.list numbers = {5, my_inf, -my_inf, 0}
         satellite.container.list sorted = numbers.satellite.sort().satellite.by_value()
-        check(show, "infinity a list holds infinities and sorts them by value", sorted.satellite.join(", ") + " " + numbers.satellite.contains(-my_inf).string, "(-infinity), 0, 5, (infinity) true")
+        check(show, "infinity a list holds infinities and sorts them by value", sorted.satellite.join(", ") + " " + numbers.satellite.contains(-my_inf).satellite.string, "(-infinity), 0, 5, (infinity) true")
     }
     satellite.return(satellite)
 }

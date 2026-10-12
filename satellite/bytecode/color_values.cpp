@@ -30,9 +30,12 @@ using namespace color_reading;
 
 bool a_color_name(token::Code holds) { return holds == word::code_of(1, 6, 19); }
 
+} // namespace
+
 // A TRANSPARENCY IS A WHOLE NUMBER FROM 0 TO 99, the author's "0 - 99", both ends
 // in. Said the same way from his two ways of writing one, so a person meets one
-// sentence for one rule.
+// sentence for one rule -- which is why it is here, for color_reads_its_value below
+// and for .satellite.transparency(n), 1.6.19.1.cpp, both.
 bool a_transparency(const Value &given, unsigned int &out, std::string &why)
 {
     const satellite_number *number = given.as_number();
@@ -46,20 +49,6 @@ bool a_transparency(const Value &given, unsigned int &out, std::string &why)
     out = static_cast<unsigned int>(number->limb(0));
     return true;
 }
-
-Value text_value(const std::string &written, const std::string &spelled, ExpressionContext &context)
-{
-    satellite_string text;
-    std::size_t bad_offset = 0;
-    const signed long long int made = satellite_string::from_utf8(written, text, bad_offset);
-    if (made != success) {
-        context.refuse(made, spelled + " could not be written as text");
-        return Value();
-    }
-    return Value::of_string(std::move(text));
-}
-
-} // namespace
 
 // SIX DIGITS WITHOUT THE x, AND THEN THE COMMA. On the line that declares a colour
 // the lexer has already made the digits a hex, so this only ever reads them itself
@@ -133,7 +122,7 @@ signed long long int color_on_store(token::Code holds, Value &value, std::string
     // where the worth is. Every other name judges a colour for itself.
     if (holds == word::code_of(1, 6, 4) && value.is_color()) {
         why = "it was given the color " + value.as_color()->written() +
-              " -- a color is not a number, and .number on it is what its six digits are worth";
+              " -- a color is not a number, and .satellite.number on it is what its six digits are worth";
         return types_do_not_meet;
     }
     if (!a_color_name(holds) || value.is_color())
@@ -164,75 +153,11 @@ signed long long int color_on_store(token::Code holds, Value &value, std::string
     return types_do_not_meet;
 }
 
-// A COLOUR'S METHODS. `.transparency` reads how see-through it is and
-// `.transparency(50)` sets it; the four conversions are answered here and never
-// by the ones every type shares, which reach a number first and would lose the
-// six-digit width (`.hex` on x00FF00 is "00FF00", not "FF00").
-//
-// `.transparency(50)` CHANGES THE VARIABLE, through `slot`, and answers the colour
-// it made, as a window's methods answer the window. On a colour that is NOT a
-// name's own -- an item of a list, a value in brackets -- there is nothing to
-// change but a copy, and a statement that changed a copy would do nothing without
-// a word said; so that is refused, naming the way that works.
-Value color_method(token::Code method, const Value &receiver, Value *slot, const std::vector<Value> &arguments,
-                   bool, const std::string &name, ExpressionContext &context, bool &answered)
-{
-    answered = false;
-    const satellite_color *color = receiver.as_color();
-    if (color == nullptr)
-        return Value();
-    const std::string spelled = name + "." + method_spelling(method);
-
-    if (method == token::transparency_token) {
-        if (arguments.size() > 1) {
-            context.refuse(satl_line_not_understood, spelled + " takes one number, 0 to 99, and was given " +
-                                                         std::to_string(arguments.size()));
-            return Value();
-        }
-        if (arguments.empty()) {
-            answered = true;
-            return Value::of_number(satellite_number(static_cast<unsigned long long int>(color->transparency)));
-        }
-        unsigned int transparency = satellite_color::kSolid;
-        std::string why;
-        if (!a_transparency(arguments.front(), transparency, why)) {
-            context.refuse(types_do_not_meet, spelled + "(...) -- " + why);
-            return Value();
-        }
-        satellite_color *held = slot == nullptr ? nullptr : slot->as_color();
-        if (held == nullptr) {
-            const std::string written = ".transparency(" + std::to_string(transparency) + ")";
-            context.refuse(not_built_yet, written + " on a color reached through " + name +
-                                              " would change a copy and leave " + name +
-                                              " as it was -- write it on a color's own name: "
-                                              "satellite.variable.color c = ..., and then c" + written);
-            return Value();
-        }
-        held->transparency = transparency;
-        answered = true;
-        return *slot;
-    }
-
-    const bool a_conversion = method == token::to_string_token || method == token::to_number_token ||
-                              method == token::to_binary_token || method == token::to_hexadecimal_token;
-    if (!a_conversion) {
-        context.refuse(types_do_not_meet, spelled + " -- " + kWhatAColorHas);
-        return Value();
-    }
-    if (!arguments.empty()) {
-        context.refuse(satl_line_not_understood,
-                       spelled + " takes no argument, and was given " + std::to_string(arguments.size()));
-        return Value();
-    }
-    answered = true;
-    if (method == token::to_number_token)
-        return Value::of_number(satellite_number(static_cast<unsigned long long int>(color->rgb)));
-    const std::string written = method == token::to_string_token ? color->written()
-                                : method == token::to_binary_token ? color->bits()
-                                                                    : color->digits();
-    Value text = text_value(written, spelled, context);
-    answered = context.code == success;
-    return text;
-}
+// A COLOUR'S METHODS -- `.transparency` and `.transparency(50)`, and the four
+// conversions, answered by a colour's own code and never by the ones every type
+// shares, which reach a number first and would lose the six-digit width -- are files
+// under satellite-numbers/words/ since 2026-10-11, each run by its number
+// (scalar_calls.hpp): 1.6.19.1.cpp is `.transparency`, and says why it writes through
+// the name. They were color_method here.
 
 } // namespace satellite004

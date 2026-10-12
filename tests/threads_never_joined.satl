@@ -13,7 +13,7 @@ satellite.capsule forever()
 satellite.capsule satellite.main()
 {
     satellite.variable.thread t = satellite.thread.new(forever())
-    t.start()
+    t.satellite.start()
     satellite.console.display("main ends, and the thread is stopped for it")
     satellite.return(satellite)
 }

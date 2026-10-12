@@ -144,11 +144,11 @@ int main()
     quiet.name = kMissingCapsule.name;
     quiet.description = "open() -- my_window is declared on line 5 and never opened";
     quiet.corrected = {"satellite.variable.window my_window = satellite.window.new(\"gtkcar\", 450, 250)", "",
-                       "my_window.open()"};
+                       "my_window.satellite.open()"};
     const std::string wanted = std::string("[satellite] S034 MISSING_CAPSULE: open() -- my_window is declared on "
                                            "line 5 and never opened\n    ") +
                                kCorrectedHeading + "\n\n        satellite.variable.window my_window = "
-                               "satellite.window.new(\"gtkcar\", 450, 250)\n\n        my_window.open()";
+                               "satellite.window.new(\"gtkcar\", 450, 250)\n\n        my_window.satellite.open()";
     check(notice_text(quiet) == wanted, "the quiet shape: the notice, then the lines, corrected, under it");
     quiet.corrected.clear();
     check(notice_text(quiet) == notice_line(quiet), "a notice with no corrected lines is one line, as it was");
@@ -179,7 +179,7 @@ int main()
     said.description = "open() -- my_window is declared on line 5 and never opened";
     said.directory = "prog.satl:5";
     said.corrected = {"satellite.variable.window my_window = satellite.window.new(\"gtkcar\", 450, 250)", "",
-                      "my_window.open()"};
+                      "my_window.satellite.open()"};
     std::ostringstream screen;
     std::streambuf *const was = std::cerr.rdbuf(screen.rdbuf());
     print_notice(said);
@@ -189,7 +189,7 @@ int main()
     one.directory.clear();
     other.directory.clear();
     other.description = "open() -- other_window is declared on line 9 and never opened";
-    other.corrected = {"other_window.open()"};
+    other.corrected = {"other_window.satellite.open()"};
     print_notice(one);
     print_notice(other);
     print_notice(other);
@@ -204,7 +204,7 @@ int main()
     std::size_t entries = 0;
     for (std::size_t at = log.find("[entry]"); at != std::string::npos; at = log.find("[entry]", at + 1))
         ++entries;
-    check(entries == 3 && screen.str().find("other_window.open()") != std::string::npos &&
+    check(entries == 3 && screen.str().find("other_window.satellite.open()") != std::string::npos &&
               screen.str().find(notice_text(one)) != std::string::npos,
           "two notices of one code and no place, missing different lines, are both said; the same one again "
           "is counted, not said (" + std::to_string(entries) + " entries)");

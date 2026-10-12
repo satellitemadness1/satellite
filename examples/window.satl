@@ -44,7 +44,7 @@ satellite.include(satellite)
 satellite.capsule when_pressed(satellite.variable.window the_piece, satellite.variable.window its_window)
 {
     satellite.console.display("the button was pressed, and this closes the window it is in")
-    its_window.close()
+    its_window.satellite.close()
 }
 
 satellite.capsule satellite.main()
@@ -52,9 +52,9 @@ satellite.capsule satellite.main()
     satellite.variable.window my_window = satellite.window.new("window_title", 800, 600)
 
     satellite.variable.window my_button = satellite.window.button("text")
-    my_button.pressed(when_pressed)
+    my_button.satellite.pressed(when_pressed)
 
-    my_window.append(my_button, 400, 300)
+    my_window.satellite.append(my_button, 400, 300)
 
     satellite.console.display("the window is open, and this line already ran")
     satellite.console.display(my_window)

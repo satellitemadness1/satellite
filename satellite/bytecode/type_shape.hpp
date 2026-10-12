@@ -154,6 +154,11 @@ inline int parameters_wanted(token::Code word)
 // have made every list declaration longer to say nothing new.
 bool value_fits(const TypeShape &shape, const satelliteObject &value, std::string &why);
 
+// WHAT AN INFINITY NAME TAKES, said after "x was declared satellite.variable.infinity, and it holds ..." by the checker
+// (program_check.cpp's literal_fits_the_name) and the walker (value_fits) alike -- the author's H of 2026-10-11:
+// "= 5 is an error, the correct syntax should be a minimum of infinity".
+inline constexpr const char *kAMinimumOfInfinity = " -- an infinity name holds a minimum of infinity, satellite.infinity()";
+
 inline bool any_of_fits(const std::vector<TypeShape> &shapes, const satelliteObject &value, std::string &why)
 {
     for (const TypeShape &one : shapes) {

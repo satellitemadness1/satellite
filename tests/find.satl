@@ -3,7 +3,7 @@
 // literal, and a name that has to be looked up as an object.
 satellite.include(satellite)
 
-satellite.capsule satellite.main(satellite.container.list<satellite.variable.string> arguments)
+satellite.capsule satellite.main(satellite.variable.arguments arguments)
 {
     satellite.variable.string s = "hello world"
     satellite.variable.string needle = "world"

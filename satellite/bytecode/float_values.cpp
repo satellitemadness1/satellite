@@ -5,6 +5,7 @@
 
 #include "float_values.hpp"
 
+#include "scalar_calls.hpp"
 #include "word_codes.hpp"
 #include "../arguments/arguments.hpp"
 #include "../satellite_object/object_float.hpp"
@@ -74,17 +75,19 @@ signed long long int float_is_written_right(const std::vector<std::bitset<16>> &
     return success;
 }
 
-// THE FOUR CONVERSIONS EVERY NUMBER-LIKE TYPE SHARES, and nothing else yet. This
-// answer is final for a float name (program_check.cpp's method_right_for), so a
-// method not listed here is refused before a line runs. .binary and .hex pass the
-// checker as every type's conversions do, and are refused where they are reached
-// -- they wait for the finale.
+// THE FOUR CONVERSIONS EVERY NUMBER-LIKE TYPE SHARES, and nothing else yet -- the
+// words a float runs a number for (scalar_calls.cpp's float_number_of, asked and
+// never copied, since 2026-10-11). This answer is final for a float name
+// (program_check.cpp's method_right_for), so a method with no number on a float is
+// refused before a line runs, and the walker refuses one it reaches in the same
+// sentence. .satellite.binary and .satellite.hex pass the checker as every type's
+// conversions do, and are refused where they are reached -- they wait for the finale.
 signed long long int float_method_check(token::Code method, const std::string &spelling, std::string &why)
 {
-    if (method == token::to_string_token || method == token::to_number_token ||
-        method == token::to_binary_token || method == token::to_hexadecimal_token)
+    if (float_number_of(method) != 0)
         return success;
-    why = spelling + " is not built for satellite.variable.float yet -- a float has .string and .number so far";
+    why = spelling + " is not built for satellite.variable.float yet -- a float has .satellite.string and "
+                     ".satellite.number so far";
     return not_built_yet;
 }
 
@@ -99,44 +102,10 @@ signed long long int float_on_store(token::Code holds, Value &value, std::string
     return success;
 }
 
-// A FLOAT'S METHODS ARE THE CONVERSIONS, answered here rather than by the shared
-// ones, so the sentence a refusal carries -- `12.5 is not a whole number` -- reaches
-// the person instead of "there is no conversion from that".
-Value float_method(token::Code method, const Value &receiver, Value *, const std::vector<Value> &arguments,
-                   bool, const std::string &name, ExpressionContext &context, bool &answered)
-{
-    answered = true;
-    const satellite_float &value = *receiver.as_float();
-    const std::string spelling = name + "." + token::method_name_of(method);
-    std::string why;
-    if (!arguments.empty() &&
-        (method == token::to_string_token || method == token::to_number_token ||
-         method == token::to_binary_token || method == token::to_hexadecimal_token)) {
-        context.refuse(satl_line_not_understood, spelling + " is a conversion and takes no argument");
-        return Value();
-    }
-    if (method == token::to_string_token) {
-        satellite_string text;
-        float_to_string(value, text, why);
-        return Value::of_string(std::move(text));
-    }
-    signed long long int code = not_built_yet;
-    if (method == token::to_number_token) {
-        satellite_number whole;
-        code = float_to_number(value, whole, why);
-        if (code == success)
-            return Value::of_number(std::move(whole));
-        why = spelling + ": " + why;
-    } else if (method == token::to_binary_token || method == token::to_hexadecimal_token) {
-        satellite_string ignored;
-        code = method == token::to_binary_token ? float_to_binary(value, ignored, why)
-                                                : float_to_hexadecimal(value, ignored, why);
-        why = spelling + ": " + why;
-    } else {
-        float_method_check(method, spelling, why);
-    }
-    context.refuse(code, why);
-    return Value();
-}
+// A FLOAT'S METHODS -- the conversions, answered by a float's own code rather than
+// the shared one, so the sentence a refusal carries (`12.5 is not a whole number`)
+// reaches the person instead of "there is no conversion from that" -- are files
+// under satellite-numbers/words/ since 2026-10-11, 1.6.10.2.cpp to 1.6.10.5.cpp,
+// each run by its number (scalar_calls.hpp). They were float_method here.
 
 } // namespace satellite004

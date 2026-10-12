@@ -49,7 +49,7 @@ satellite.spacesuit madness()
 
         satellite.capsule call_report()
         {
-            satellite.return(type_dna.satellite.size.to_string() + " dna, grid[2][1] = " + grid[2][1].to_string() + ", total " + grid[2].satellite.sum.to_string())
+            satellite.return(type_dna.satellite.size.satellite.to_string() + " dna, grid[2][1] = " + grid[2][1].satellite.to_string() + ", total " + grid[2].satellite.sum.satellite.to_string())
         }
     }
 }
@@ -107,8 +107,8 @@ satellite.capsule satellite.main()
     satellite.container.index<satellite.variable.string, satellite.variable.number> scores
     scores["zoe"] = 1
     scores["al"] = 41
-    satellite.console.display(scores.values.satellite.sum)
-    satellite.console.display(scores.keys.satellite.join(","))
+    satellite.console.display(scores.satellite.values.satellite.sum)
+    satellite.console.display(scores.satellite.keys.satellite.join(","))
 
     // a spacesuit whose fields were made by the constructor.
     madness m

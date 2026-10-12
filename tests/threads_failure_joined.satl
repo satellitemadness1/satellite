@@ -9,8 +9,8 @@ satellite.capsule divide(satellite.variable.number by)
 satellite.capsule satellite.main()
 {
     satellite.variable.thread t = satellite.thread.new(divide(0))
-    t.start()
-    satellite.variable.number never = t.join()
+    t.satellite.start()
+    satellite.variable.number never = t.satellite.join()
     satellite.console.display("never printed")
     satellite.return(satellite)
 }

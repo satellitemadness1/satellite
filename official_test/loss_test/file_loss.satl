@@ -33,31 +33,31 @@ satellite.capsule satellite.main()
 {
     satellite.variable.string name = "file_loss_547311173.se"
     satellite.variable.file f = satellite.file.new(name, "text")
-    satellite.statement.if (!f.ok)
+    satellite.statement.if (!f.satellite.ok)
     {
         // a run that was stopped left the file behind: it is opened and emptied, never added to
-        f.open()
-        f.clear()
+        f.satellite.open()
+        f.satellite.clear()
     }
 
     // THE FILE AT THE START: 14 lines, written and put on the disk
-    f.append("547311173")
-    f.append("b100000100111110100111001000101")
-    f.append("x209F4E45")
-    f.append("547311173.0")
-    f.append("satellite")
-    f.append("5")
-    f.append("4")
-    f.append("7")
-    f.append("3")
-    f.append("1")
-    f.append("1")
-    f.append("1")
-    f.append("7")
-    f.append("3")
-    f.close()
-    f.open()
-    satellite.variable.string begun = f.read_all
+    f.satellite.append("547311173")
+    f.satellite.append("b100000100111110100111001000101")
+    f.satellite.append("x209F4E45")
+    f.satellite.append("547311173.0")
+    f.satellite.append("satellite")
+    f.satellite.append("5")
+    f.satellite.append("4")
+    f.satellite.append("7")
+    f.satellite.append("3")
+    f.satellite.append("1")
+    f.satellite.append("1")
+    f.satellite.append("1")
+    f.satellite.append("7")
+    f.satellite.append("3")
+    f.satellite.close()
+    f.satellite.open()
+    satellite.variable.string begun = f.satellite.read_all
 
     // what the passes read out of the file
     satellite.variable.string a = ""
@@ -80,118 +80,118 @@ satellite.capsule satellite.main()
     satellite.statement.for(satellite.variable.number pass = 0; pass < 10000; pass + 1)
     {
         // FORWARD: 59 operations
-        f.append("547311173 is satellite")
-        f.insert(1, "S A T E L L I T E")
-        f.replace("x209F4E45", "x209F4E45 is hex")
+        f.satellite.append("547311173 is satellite")
+        f.satellite.insert(1, "S A T E L L I T E")
+        f.satellite.replace("x209F4E45", "x209F4E45 is hex")
         a = f[3]
-        f.replace(3, "thirty bits")
-        at = f.index_of("satellite")
+        f.satellite.replace(3, "thirty bits")
+        at = f.satellite.index_of("satellite")
         b = f[at]
-        f.remove_at(at)
-        f.insert(13, b)
-        f.remove("7")
-        f.replace("547311173.0", "547311173.5")
-        hx = f.search("is hex")
+        f.satellite.remove_at(at)
+        f.satellite.insert(13, b)
+        f.satellite.remove("7")
+        f.satellite.replace("547311173.0", "547311173.5")
+        hx = f.satellite.search("is hex")
         c = f[hx]
-        f.replace(hx, a)
-        d = f.first
-        f.remove_first()
-        e = f.last
-        f.remove_last()
-        f.append(c)
-        f.insert(1, e)
-        n = f.size
-        f.insert(n, "second to last")
-        f.replace("1", "one")
-        f.replace("3", "three")
-        f.replace("5", "five")
-        f.replace("7", "seven")
-        f.replace("4", "four")
+        f.satellite.replace(hx, a)
+        d = f.satellite.first
+        f.satellite.remove_first()
+        e = f.satellite.last
+        f.satellite.remove_last()
+        f.satellite.append(c)
+        f.satellite.insert(1, e)
+        n = f.satellite.size
+        f.satellite.insert(n, "second to last")
+        f.satellite.replace("1", "one")
+        f.satellite.replace("3", "three")
+        f.satellite.replace("5", "five")
+        f.satellite.replace("7", "seven")
+        f.satellite.replace("4", "four")
         g = f[15]
         h = f[16]
-        f.truncate(14)
-        f.append("a\nb\nc")
-        f.insert(2, "five four seven three one one one seven three")
-        at2 = f.index_of("thirty bits")
+        f.satellite.truncate(14)
+        f.satellite.append("a\nb\nc")
+        f.satellite.insert(2, "five four seven three one one one seven three")
+        at2 = f.satellite.index_of("thirty bits")
         k = f[at2]
-        f.remove_at(at2)
-        f.append(k)
-        f.replace("thirty bits", "30 bits")
+        f.satellite.remove_at(at2)
+        f.satellite.append(k)
+        f.satellite.replace("thirty bits", "30 bits")
         // the whole file through a string and back
-        all = f.read_all
-        f.clear()
-        f.append("cleared")
-        f.append(all)
-        f.remove("cleared")
-        f.replace("b100000100111110100111001000101", "binary 547311173")
-        f.replace("is satellite", "IS SATELLITE")
-        f.insert(4, "")
-        f.insert(3, "547311173 547311173 547311173")
-        f.replace("seven", "SEVEN")
-        f.append("x209F4E45")
-        f.replace("binary 547311173", "binary 547311173 (30 bits)")
-        f.insert(7, "547311173.0 is a float")
-        f.replace("SATELLITE", "satellite 547311173")
-        f.remove("3")
-        f.append("the end")
-        f.insert(1, "547311173")
-        dot = f.search(".5")
+        all = f.satellite.read_all
+        f.satellite.clear()
+        f.satellite.append("cleared")
+        f.satellite.append(all)
+        f.satellite.remove("cleared")
+        f.satellite.replace("b100000100111110100111001000101", "binary 547311173")
+        f.satellite.replace("is satellite", "IS SATELLITE")
+        f.satellite.insert(4, "")
+        f.satellite.insert(3, "547311173 547311173 547311173")
+        f.satellite.replace("seven", "SEVEN")
+        f.satellite.append("x209F4E45")
+        f.satellite.replace("binary 547311173", "binary 547311173 (30 bits)")
+        f.satellite.insert(7, "547311173.0 is a float")
+        f.satellite.replace("SATELLITE", "satellite 547311173")
+        f.satellite.remove("3")
+        f.satellite.append("the end")
+        f.satellite.insert(1, "547311173")
+        dot = f.satellite.search(".5")
         m = f[dot]
-        f.replace(dot, "547,311,173")
+        f.satellite.replace(dot, "547,311,173")
         // the file as it is now, written to the disk and read back
-        f.close()
-        f.open()
+        f.satellite.close()
+        f.satellite.open()
 
         // BACK: 41 operations, last first
-        f.replace("547,311,173", m)
-        f.remove("547311173")
-        f.remove("the end")
-        f.insert(11, "3")
-        f.replace("satellite 547311173", "SATELLITE")
-        f.remove("547311173.0 is a float")
-        f.replace("binary 547311173 (30 bits)", "binary 547311173")
-        f.remove("x209F4E45")
-        f.replace("SEVEN", "seven")
-        f.remove("547311173 547311173 547311173")
-        f.remove("")
-        f.replace("IS SATELLITE", "is satellite")
-        f.replace("binary 547311173", "b100000100111110100111001000101")
-        f.replace("30 bits", "thirty bits")
-        f.remove(k)
-        f.insert(at2, k)
-        f.remove("five four seven three one one one seven three")
-        f.remove("c")
-        f.remove("b")
-        f.remove("a")
-        f.append(g)
-        f.append(h)
-        f.replace("four", "4")
-        f.replace("seven", "7")
-        f.replace("five", "5")
-        f.replace("three", "3")
-        f.replace("one", "1")
-        f.remove("second to last")
-        f.remove(e)
-        f.remove(c)
-        f.append(e)
-        f.insert(1, d)
-        f.replace(a, c)
-        f.replace("547311173.5", "547311173.0")
-        f.insert(8, "7")
-        f.remove(b)
-        f.insert(at, b)
-        f.replace("thirty bits", a)
-        f.replace("x209F4E45 is hex", "x209F4E45")
-        f.remove("S A T E L L I T E")
-        f.remove("547311173 is satellite")
+        f.satellite.replace("547,311,173", m)
+        f.satellite.remove("547311173")
+        f.satellite.remove("the end")
+        f.satellite.insert(11, "3")
+        f.satellite.replace("satellite 547311173", "SATELLITE")
+        f.satellite.remove("547311173.0 is a float")
+        f.satellite.replace("binary 547311173 (30 bits)", "binary 547311173")
+        f.satellite.remove("x209F4E45")
+        f.satellite.replace("SEVEN", "seven")
+        f.satellite.remove("547311173 547311173 547311173")
+        f.satellite.remove("")
+        f.satellite.replace("IS SATELLITE", "is satellite")
+        f.satellite.replace("binary 547311173", "b100000100111110100111001000101")
+        f.satellite.replace("30 bits", "thirty bits")
+        f.satellite.remove(k)
+        f.satellite.insert(at2, k)
+        f.satellite.remove("five four seven three one one one seven three")
+        f.satellite.remove("c")
+        f.satellite.remove("b")
+        f.satellite.remove("a")
+        f.satellite.append(g)
+        f.satellite.append(h)
+        f.satellite.replace("four", "4")
+        f.satellite.replace("seven", "7")
+        f.satellite.replace("five", "5")
+        f.satellite.replace("three", "3")
+        f.satellite.replace("one", "1")
+        f.satellite.remove("second to last")
+        f.satellite.remove(e)
+        f.satellite.remove(c)
+        f.satellite.append(e)
+        f.satellite.insert(1, d)
+        f.satellite.replace(a, c)
+        f.satellite.replace("547311173.5", "547311173.0")
+        f.satellite.insert(8, "7")
+        f.satellite.remove(b)
+        f.satellite.insert(at, b)
+        f.satellite.replace("thirty bits", a)
+        f.satellite.replace("x209F4E45 is hex", "x209F4E45")
+        f.satellite.remove("S A T E L L I T E")
+        f.satellite.remove("547311173 is satellite")
 
         // THE PASS ENDS WHERE IT BEGAN -- or the run stops at the first pass that does not, and says so
-        satellite.statement.if (f.read_all != begun)
+        satellite.statement.if (f.satellite.read_all != begun)
         {
             satellite.statement.if (seen == "")
             {
-                seen = "pass " + pass.string + ":"
-                satellite.statement.for(satellite.variable.number i = 1; i < f.size + 1; i + 1)
+                seen = "pass " + pass.satellite.string + ":"
+                satellite.statement.for(satellite.variable.number i = 1; i < f.satellite.size + 1; i + 1)
                 {
                     seen = seen + " | " + f[i]
                 }
@@ -201,18 +201,18 @@ satellite.capsule satellite.main()
     }
 
     // THE ROUND TRIP THROUGH THE DISK: closed, opened again under a new name, read back
-    f.close()
+    f.satellite.close()
     satellite.variable.file disk = satellite.file.open(name)
     satellite.statement.if (seen == "")
     {
-        satellite.statement.if (disk.read_all == begun)
+        satellite.statement.if (disk.satellite.read_all == begun)
         {
-            seen = disk.first
+            seen = disk.satellite.first
         }
         satellite.statement.else
         {
             seen = "on the disk:"
-            satellite.statement.for(satellite.variable.number i = 1; i < disk.size + 1; i + 1)
+            satellite.statement.for(satellite.variable.number i = 1; i < disk.satellite.size + 1; i + 1)
             {
                 seen = seen + " | " + disk[i]
             }
@@ -220,11 +220,11 @@ satellite.capsule satellite.main()
     }
 
     // NOTHING LEFT BEHIND
-    satellite.variable.string where = disk.path
-    disk.close()
+    satellite.variable.string where = disk.satellite.path
+    disk.satellite.close()
     satellite.variable.bash gone = "rm -f -- '" + where + "'"
-    gone.start()
-    gone.join()
+    gone.satellite.start()
+    gone.satellite.join()
 
     satellite.console.display(seen)
     satellite.return(satellite)

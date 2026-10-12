@@ -9,9 +9,9 @@ satellite.capsule twice(satellite.variable.number n)
 satellite.capsule satellite.main()
 {
     satellite.variable.thread t = satellite.thread.new(twice(4))
-    t.start()
-    satellite.console.display(t.join())
-    satellite.console.display(t.join())
-    satellite.console.display(t.wait())
+    t.satellite.start()
+    satellite.console.display(t.satellite.join())
+    satellite.console.display(t.satellite.join())
+    satellite.console.display(t.satellite.wait())
     satellite.return(satellite)
 }

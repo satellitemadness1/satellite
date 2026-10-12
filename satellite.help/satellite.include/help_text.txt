@@ -18,7 +18,7 @@ satellite.include("file_name_inside_sub_dir.satl")
 
 // ".." and "./" is also available
 
-satellite.capsule satellite.main(satellite.container.list<satellite.variable.string> arguments)
+satellite.capsule satellite.main(satellite.variable.arguments arguments)
 {
     satellite.return(satellite)
 }

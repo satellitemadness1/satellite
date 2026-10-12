@@ -7,7 +7,7 @@
 // of satl's own.
 //
 // Positions: satl counts a list's items and a string's characters from 1, C++ from 0, so a satl a[1 + k]
-// is a C++ a[k]. .find counts from 0 in both.
+// is a C++ a[k]. .find counts from 1 in satl (the author's 7 of 2026-10-11), so the twin adds 1 to std::string::find.
 
 #include "speed_objects_twins.hpp"
 
@@ -467,14 +467,14 @@ std::string speed_string_methods(long long passes)
 
     for (long long i = 0; i < passes; i = i + 1) {
         piece = base.substr(i % 40, 9);
-        total = total + static_cast<long long>(base.find(piece));
+        total = total + static_cast<long long>(base.find(piece)) + 1;
         shouted = upper_case(piece);
-        total = total + static_cast<long long>(base_upper.find(shouted));
-        total = total + static_cast<long long>(base.find(lower_case(shouted)));
+        total = total + static_cast<long long>(base_upper.find(shouted)) + 1;
+        total = total + static_cast<long long>(base.find(lower_case(shouted))) + 1;
         swapped = replace_all(base, piece.substr(0, 1), "##");
         total = total + static_cast<long long>(swapped.size());
         turned = std::string(piece.rbegin(), piece.rend());
-        total = total + static_cast<long long>(base_turned.find(turned));
+        total = total + static_cast<long long>(base_turned.find(turned)) + 1;
         if (base[i % static_cast<long long>(base.size())] == 'e') {
             total = total + 1;
         }

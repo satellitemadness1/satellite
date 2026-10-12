@@ -6,10 +6,10 @@ satellite.include(satellite)
 satellite.capsule satellite.main()
 {
     satellite.variable.file notes = satellite.file.new("deleted_notes.se", "text")
-    notes.append("written before the delete")
+    notes.satellite.append("written before the delete")
     satellite.delete(notes)
     satellite.variable.file again = satellite.file.open("deleted_notes.se")
-    satellite.console.display(again.size)
+    satellite.console.display(again.satellite.size)
     satellite.console.display(again[1])
     satellite.return(satellite)
 }

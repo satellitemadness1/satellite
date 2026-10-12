@@ -8,12 +8,12 @@ satellite.include(satellite)
 satellite.capsule satellite.main()
 {
     satellite.variable.file f = satellite.file.new("numbers.se")
-    f.append("first")
+    f.satellite.append("first")
     satellite.statement.for(satellite.variable.number i = 0; i < 3; i++)
     {
-        f.append(i)
+        f.satellite.append(i)
     }
-    f.append(12345)
-    satellite.console.display(f.size)
+    f.satellite.append(12345)
+    satellite.console.display(f.satellite.size)
     satellite.return(satellite)
 }

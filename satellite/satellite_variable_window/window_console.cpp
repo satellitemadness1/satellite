@@ -38,6 +38,7 @@
 
 #include "window_desk.hpp"
 
+#include <cmath>
 #include <string>
 
 namespace satellite004 {
@@ -86,7 +87,7 @@ std::atomic<bool> &console_scrolls_vertically()
 
 std::atomic<bool> &console_scrolls_horizontally()
 {
-    static std::atomic<bool> on{false};   // off unless written: wide lines wrap, and the console grows downward
+    static std::atomic<bool> on{true};    // on unless written (2026-10-11, "scroll both ways"): wide lines stay one line
     return on;
 }
 
@@ -140,6 +141,10 @@ void dress_the_terminal(VteTerminal *terminal)
     vte_terminal_set_scrollback_lines(terminal, -1);
 }
 
+// THE CONSOLE AS WIDE AS ITS WIDEST LINE -- defined below, beside apply_console_scrolling, and reached from
+// the look and the window's width inside the namespace.
+void fit_the_columns(satellite_window &console);
+
 namespace {
 
 // WHY THE PTY COULD NOT BE MADE, carried out of the desk's lambda. Written ON
@@ -191,6 +196,10 @@ void the_console_went_away(GtkWidget *, gpointer user_data)
     if (console->typed_watch != 0) {
         g_source_remove(console->typed_watch);
         console->typed_watch = 0;
+    }
+    if (console->width_look != 0) {
+        g_source_remove(console->width_look);
+        console->width_look = 0;
     }
     // THE SLAVE IS NOT CLOSED HERE -- satellite_window.hpp says why: it goes
     // with the handle, so a write the interpreter is about to make cannot
@@ -256,6 +265,78 @@ gboolean a_line_was_finished(gint fd, GIOCondition condition, gpointer user_data
     return G_SOURCE_CONTINUE;
 }
 
+// THE ROWS PRINTED SINCE THE LAST LOOK, read back as VTE holds them -- a line that wrapped is one line in
+// its text -- for one wider than any before it; the console is then made that wide and VTE puts the line
+// back on one row. At most the last 4096 rows a look, so a flood of printing costs a bounded read: a wide
+// line further back than that in one burst stays wrapped, and nothing of it is lost. ON THE DESK.
+gboolean the_widest_line_so_far(gpointer user_data)
+{
+    satellite_window *console = static_cast<satellite_window *>(user_data);
+    console->width_look = 0;
+    if (console->terminal == nullptr)
+        return G_SOURCE_REMOVE;
+    VteTerminal *terminal = terminal_of(*console);
+    glong column = 0, row = 0;
+    vte_terminal_get_cursor_position(terminal, &column, &row);
+    long from = console->looked_to_row < row ? console->looked_to_row : row;
+    if (row - from > 4096)
+        from = row - 4096;
+    console->looked_to_row = row;
+    gsize length = 0;
+    char *text = vte_terminal_get_text_range_format(terminal, VTE_FORMAT_TEXT, from, 0, row,
+                                                    vte_terminal_get_column_count(terminal), &length);
+    if (text == nullptr)
+        return G_SOURCE_REMOVE;
+    long wide = 0, line = 0;
+    for (const char *at = text; *at != '\0'; at = g_utf8_next_char(at)) {
+        const gunichar character = g_utf8_get_char(at);
+        line = character == '\n' ? 0 : line + (g_unichar_iswide(character) ? 2 : 1);
+        if (line > wide)
+            wide = line;
+    }
+    g_free(text);
+    if (wide > console->widest) {
+        console->widest = wide;
+        fit_the_columns(*console);
+    }
+    return G_SOURCE_REMOVE;
+}
+
+// SOMETHING WAS PRINTED: a look is waited for, a tenth of a second, so a flood of lines is one look.
+void a_line_may_be_wider(VteTerminal *, gpointer user_data)
+{
+    satellite_window *console = static_cast<satellite_window *>(user_data);
+    if (console->width_look == 0 && window_scrolls(*console, false))
+        console->width_look = g_timeout_add(100, the_widest_line_so_far, console);
+}
+
+// THE WINDOW CHANGED ITS WIDTH: the console is the widest line or the window, whichever is wider.
+void the_window_changed_width(GObject *, GParamSpec *, gpointer user_data)
+{
+    fit_the_columns(*static_cast<satellite_window *>(user_data));
+}
+
+// SIDEWAYS BY THE WHEEL (the author, 2026-10-11: "i'm talking about scrolling both ways"). VTE takes every
+// wheel event for its history -- a sideways one too, which it drops -- so a sideways swipe, and Shift with the
+// wheel, are taken here on their way down to it and move the bar along the bottom, as GTK's own scroller
+// moves it: a notch by the page to the 2/3, a touchpad by its pixels. Up and down go on to VTE's history.
+gboolean a_sideways_wheel(GtkEventControllerScroll *controller, double dx, double dy, gpointer scroller)
+{
+    if ((gtk_event_controller_get_current_event_state(GTK_EVENT_CONTROLLER(controller)) & GDK_SHIFT_MASK) != 0) {
+        dx = dx != 0 ? dx : dy;
+        dy = 0;
+    }
+    if (dx == 0 || (dy < 0 ? -dy : dy) > (dx < 0 ? -dx : dx))
+        return GDK_EVENT_PROPAGATE;
+    GtkAdjustment *across = gtk_scrolled_window_get_hadjustment(GTK_SCROLLED_WINDOW(scroller));
+    const double page = gtk_adjustment_get_page_size(across);
+    const double by = gtk_event_controller_scroll_get_unit(controller) == GDK_SCROLL_UNIT_WHEEL
+                          ? dx * std::pow(page, 2.0 / 3.0)
+                          : dx;
+    gtk_adjustment_set_value(across, gtk_adjustment_get_value(across) + by);
+    return GDK_EVENT_STOP;
+}
+
 // WHAT GOES IN A CONSOLE'S FRAME: the terminal, with a pty of its own. ON THE
 // DESK, from frame_new, with the column that fills the window.
 void a_terminal_to_type_in(satellite_window &made, GtkWidget *window, GtkWidget *column)
@@ -279,8 +360,8 @@ void a_terminal_to_type_in(satellite_window &made, GtkWidget *window, GtkWidget 
     }
     // THE GROUND IN A VIEWPORT OF ITS OWN, IN A SCROLLER: the viewport is what lets the terminal be
     // WIDER than the window when sideways scrolling is on (apply_console_scrolling sets its policy
-    // to the terminal's natural width, 2048 cells), and what hands it the window's width when it
-    // is off. The bar beside it is the terminal's own; the scroller's bar runs along the bottom.
+    // to the terminal's natural width, its widest line so far), and what hands it the window's width
+    // when it is off. The bar beside it is the terminal's own; the scroller's bar runs along the bottom.
     GtkWidget *viewport = gtk_viewport_new(nullptr, nullptr);
     gtk_viewport_set_child(GTK_VIEWPORT(viewport), a_ground_under(terminal));
     // AND IT NEVER SCROLLS TO THE FOCUS (a fresh reader, 2026-10-09). GtkViewport scrolls a child
@@ -293,6 +374,19 @@ void a_terminal_to_type_in(satellite_window &made, GtkWidget *window, GtkWidget 
     gtk_scrolled_window_set_child(GTK_SCROLLED_WINDOW(scroller), viewport);
     gtk_widget_set_hexpand(scroller, TRUE);
     gtk_widget_set_vexpand(scroller, TRUE);
+    // TWO BARS THAT ARE ALWAYS THERE (the author, 2026-10-11: "there needs to be two scrollbars"): the one
+    // along the bottom is drawn whole, in a row of its own, as the one down the side is -- not GTK's overlay
+    // line that shows only while the pointer moves.
+    gtk_scrolled_window_set_overlay_scrolling(GTK_SCROLLED_WINDOW(scroller), FALSE);
+    GtkEventController *wheel = gtk_event_controller_scroll_new(GTK_EVENT_CONTROLLER_SCROLL_BOTH_AXES);
+    gtk_event_controller_set_propagation_phase(wheel, GTK_PHASE_CAPTURE);
+    g_signal_connect(wheel, "scroll", G_CALLBACK(a_sideways_wheel), scroller);
+    gtk_widget_add_controller(scroller, wheel);
+    // AS WIDE AS WHAT IT PRINTED: a wider line is looked for after what was printed (a_line_may_be_wider), and
+    // the window's width is taken again whenever the window changes it (fit_the_columns).
+    g_signal_connect(terminal, "contents-changed", G_CALLBACK(a_line_may_be_wider), &made);
+    g_signal_connect(gtk_scrolled_window_get_hadjustment(GTK_SCROLLED_WINDOW(scroller)), "notify::page-size",
+                     G_CALLBACK(the_window_changed_width), &made);
     GtkWidget *bar = gtk_scrollbar_new(GTK_ORIENTATION_VERTICAL, scrolls);
     GtkWidget *across = gtk_box_new(GTK_ORIENTATION_HORIZONTAL, 0);
     gtk_widget_set_hexpand(across, TRUE);
@@ -338,14 +432,27 @@ void a_terminal_to_type_in(satellite_window &made, GtkWidget *window, GtkWidget 
 
 } // namespace
 
-// HOW WIDE A CONSOLE IS WHEN IT SCROLLS SIDEWAYS (the author, 2026-10-07): a table of a hundred
-// percent columns is under a thousand characters, and VTE keeps only what a line holds.
-constexpr long kWideConsoleColumns = 2048;
+// HOW WIDE A CONSOLE IS WHEN IT SCROLLS SIDEWAYS: as wide as the widest line it has printed, or the
+// window's width when that is wider (the author, 2026-10-11: "you can only scroll to 1000 chars, you
+// have alot of extra space there" -- 2048 columns since 2026-10-07). Only when it differs, so the
+// window's own width coming back here changes nothing twice. ON THE DESK.
+void fit_the_columns(satellite_window &console)
+{
+    if (console.terminal == nullptr || console.scroller == nullptr || !window_scrolls(console, false))
+        return;
+    VteTerminal *terminal = terminal_of(console);
+    const long cell = vte_terminal_get_char_width(terminal);
+    const int view = gtk_widget_get_width(static_cast<GtkWidget *>(console.scroller));
+    const long fits = cell > 0 && view > 0 ? view / cell : 0;
+    const long wide = console.widest > fits ? console.widest : fits;
+    if (wide > 0 && wide != vte_terminal_get_column_count(terminal))
+        vte_terminal_set_size(terminal, wide, vte_terminal_get_row_count(terminal));
+}
 
 // WHAT THE SWITCHES DO TO A CONSOLE, ON THE DESK. Up and down: its bar and its scrollback, every
 // line or none. Sideways: the viewport allocates the terminal its NATURAL width, which is its
-// column count, set to 2048 -- or, off, the window's width, from which VTE counts its columns as
-// it always did; the scroller's bar along the bottom appears only when there is more to see.
+// column count, its widest line so far (fit_the_columns) -- or, off, the window's width, from which VTE counts its columns as
+// it always did; the scroller's bar along the bottom is always there while sideways is on (2026-10-11).
 void apply_console_scrolling(satellite_window &console)
 {
     if (console.terminal == nullptr || console.scroller == nullptr)
@@ -357,14 +464,14 @@ void apply_console_scrolling(satellite_window &console)
     if (console.vertical_bar != nullptr)
         gtk_widget_set_visible(static_cast<GtkWidget *>(console.vertical_bar), up_and_down);
     GtkWidget *scroller = static_cast<GtkWidget *>(console.scroller);
-    gtk_scrolled_window_set_policy(GTK_SCROLLED_WINDOW(scroller), sideways ? GTK_POLICY_AUTOMATIC : GTK_POLICY_NEVER,
+    gtk_scrolled_window_set_policy(GTK_SCROLLED_WINDOW(scroller), sideways ? GTK_POLICY_ALWAYS : GTK_POLICY_NEVER,
                                    GTK_POLICY_NEVER);
     GtkWidget *viewport = gtk_scrolled_window_get_child(GTK_SCROLLED_WINDOW(scroller));
     if (GTK_IS_VIEWPORT(viewport))
         gtk_scrollable_set_hscroll_policy(GTK_SCROLLABLE(viewport), sideways ? GTK_SCROLL_NATURAL : GTK_SCROLL_MINIMUM);
     const long rows = vte_terminal_get_row_count(terminal);
     if (sideways) {
-        vte_terminal_set_size(terminal, kWideConsoleColumns, rows);
+        fit_the_columns(console);
     } else {
         const long cell = vte_terminal_get_char_width(terminal);
         const int wide = gtk_widget_get_width(scroller);

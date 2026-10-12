@@ -28,8 +28,8 @@ satellite.spacesuit counter()
         satellite.capsule call_join_reader()
         {
             satellite.variable.thread w = satellite.thread.new(call_read())
-            w.start()
-            satellite.variable.number x = total + w.join()
+            w.satellite.start()
+            satellite.variable.number x = total + w.satellite.join()
             satellite.console.display("joined")
         }
     }
@@ -48,11 +48,11 @@ satellite.capsule pound(counter c)
 satellite.capsule satellite.main()
 {
     counter c()
-    c.lock()
+    c.satellite.lock()
     satellite.variable.thread p = satellite.thread.new(pound(c))
-    p.start()
+    p.satellite.start()
     c.call_join_reader()
-    p.join()
+    p.satellite.join()
     satellite.console.display("ended")
     satellite.return(satellite)
 }

@@ -16,11 +16,15 @@ mandatory"). A binary name given 1010 is refused before anything runs, with
 -b0101 is a binary, shown as -b0101, worth -5, width kept, and not equal to
 b0101. -b0000 is b0000, because zero has no sign.
 
-Its methods: .number (also .to_number and .as_number) is what the bits are
-worth; .string is the binary as text, b and all; .binary (also .bin) is the
-digits without the b; .hex is its worth as base 16 text; .reverse() turns the
-bits round and keeps the width, so b1000 gives b0001; and .add(x) is +. .width,
-.digits and .clear are numbered and not built yet.
+Its methods, written with satellite. in front of them since 2026-10-11 as every
+word built into the language is: .satellite.number (also .satellite.to_number
+and .satellite.as_number) is what the bits are worth; .satellite.string is the
+binary as text, b and all; .satellite.binary (also .satellite.bin) is the digits
+without the b; .satellite.hex is its worth as base 16 text; .satellite.reverse()
+turns the bits round and keeps the width, so b1000 gives b0001; and
+.satellite.add(x) is +. .satellite.width, .satellite.clear and
+.satellite.digits are numbered and not built yet. The old flags.number is refused before anything
+runs, naming the new spelling.
 
 Arithmetic reads a binary by what it is worth, and today it answers a NUMBER:
 b1000 + b0101 is 13, not b1101. A binary meets a number the same way, so
@@ -33,20 +37,20 @@ example:
 
 satellite.include(satellite)
 
-satellite.capsule satellite.main(satellite.container.list<satellite.variable.string> arguments)
+satellite.capsule satellite.main(satellite.variable.arguments arguments)
 {
     satellite.variable.binary flags = b0010
     satellite.console.display(flags)                // b0010
     satellite.console.display(flags == b10)         // false
-    satellite.console.display(flags.number)         // 2
-    satellite.console.display(flags.string)         // b0010
-    satellite.console.display(flags.bin)            // 0010
-    satellite.console.display(b10101010.hex)        // AA
-    satellite.console.display(b1000.reverse())      // b0001
+    satellite.console.display(flags.satellite.number)         // 2
+    satellite.console.display(flags.satellite.string)         // b0010
+    satellite.console.display(flags.satellite.bin)            // 0010
+    satellite.console.display(b10101010.satellite.hex)        // AA
+    satellite.console.display(b1000.satellite.reverse())      // b0001
     satellite.console.display(b1000 + b0101)        // 13
     satellite.variable.bin below = -b0101
     satellite.console.display(below)                // -b0101
-    satellite.console.display(below.number)         // -5
+    satellite.console.display(below.satellite.number)         // -5
     satellite.console.display(below < b0001)        // true
     satellite.return(satellite)
 }

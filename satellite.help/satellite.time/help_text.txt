@@ -37,11 +37,12 @@ example:
         satellite.return(satellite)
     }
 
-A sleep can always be stopped: a thread asked to stop with .stop(), and
-satellite.return(satellite) reached on any thread, end it within a tenth of a
-second, and so does Ctrl-C at the prompt. Ctrl-C while a file runs ends satl
-itself, as it always does. A sleep in a capsule of a .lock()ed object lets go
-of the lock while it waits, as join() does, and takes it back after.
+A sleep can always be stopped: a thread asked to stop with .satellite.stop(),
+and satellite.return(satellite) reached on any thread, end it within a tenth of
+a second, and so does Ctrl-C at the prompt. Ctrl-C while a file runs ends satl
+itself, as it always does. A sleep in a capsule of an object whose
+.satellite.lock() is on lets go of the lock while it waits, as
+.satellite.join() does, and takes it back after.
 
 A bare number names no unit -- 5 seconds and 5 nanoseconds are a billion times
 apart -- so the unit is always written: 5s, 5ms or 5ns. Before anything runs,

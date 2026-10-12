@@ -1,45 +1,45 @@
-ok string .split
-ok string .split keeps an empty piece
-ok string .split keeps empty pieces at both ends
-ok string .split of a separator not there is one piece
-ok string .split of empty text is every character
-ok string .split read through a name
-ok string .replace swaps every one
-ok string .replace does not swap its own answer again
-ok string .replace goes left to right
-ok string .replace of text not there
-ok string .replace leaves the name as it was
-ok string .trim() of spaces
-ok string .trim of tabs returns and newlines
-ok string .trim keeps the space inside
-ok string .resolved answers the string as it is
-ok string .append(x) changes the name
-ok string .append twice
-ok string .clear empties the name
-ok string .clear() with brackets
-ok string .string
-ok string .str
-ok string .to_string()
-ok string .number
-ok string .as_number
-ok string .to_number()
-ok string .number of a negative
-ok string .number has no size limit
-ok string .number of a substring
-ok string .bin is the bits of the number
-ok string .binary
-ok string .as_binary
-ok string .hex
-ok string .as_hex
-ok string .to_hex
-ok string .find counts characters not bytes
+ok string .satellite.split
+ok string .satellite.split keeps an empty piece
+ok string .satellite.split keeps empty pieces at both ends
+ok string .satellite.split of a separator not there is one piece
+ok string .satellite.split of empty text is every character
+ok string .satellite.split read through a name
+ok string .satellite.replace swaps every one
+ok string .satellite.replace does not swap its own answer again
+ok string .satellite.replace goes left to right
+ok string .satellite.replace of text not there
+ok string .satellite.replace leaves the name as it was
+ok string .satellite.trim() of spaces
+ok string .satellite.trim of tabs returns and newlines
+ok string .satellite.trim keeps the space inside
+ok string .satellite.resolved answers the string as it is
+ok string .satellite.append(x) changes the name
+ok string .satellite.append twice
+ok string .satellite.clear empties the name
+ok string .satellite.clear() with brackets
+ok string .satellite.string
+ok string .satellite.str
+ok string .satellite.to_string()
+ok string .satellite.number
+ok string .satellite.as_number
+ok string .satellite.to_number()
+ok string .satellite.number of a negative
+ok string .satellite.number has no size limit
+ok string .satellite.number of a substring
+ok string .satellite.bin is the bits of the number
+ok string .satellite.binary
+ok string .satellite.as_binary
+ok string .satellite.hex
+ok string .satellite.as_hex
+ok string .satellite.to_hex
+ok string .satellite.find counts characters not bytes
 ok string - takes away a wide character
-ok string .foreground is part of the string
-ok string .foreground keeps the text
-ok string .find sees the colour
-ok string .foreground takes a satellite.variable.color
-ok string .background is part of the string
-ok string .background keeps the text
+ok string .satellite.foreground is part of the string
+ok string .satellite.foreground keeps the text
+ok string .satellite.find sees the colour
+ok string .satellite.foreground takes a satellite.variable.color
+ok string .satellite.background is part of the string
+ok string .satellite.background keeps the text
 ok string colour put round a colour has a code
 ok string colour put round a colour comes back after it
 ok string display writes a coloured string plain into a pipe

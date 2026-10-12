@@ -27,7 +27,7 @@ way to put one in, and how many there are:
       rows[n]["key"] = {1}                 puts a list of numbers under "key"
       rows[n]["key"].satellite.append(1)   adds a number
       rows.satellite.size                  how many maps it holds
-      rows[n].keys                         the keys of a map, as a list
+      rows[n].satellite.keys               the keys of a map, as a list
 
 legal is where the name is legal: its place in satellite.legal, the one master
 list of places -- satellite.legal.main, satellite.legal.greet -- that
@@ -56,16 +56,18 @@ says.
 
 Spell the switch in full anywhere, or read it short as a row of the arguments
 variable when main declares one -- satellite.main(satellite.variable.arguments
-arguments), then arguments.access (satellite.help(arguments)) -- and as the
-bare name arguments.access in any capsule. You read it with no brackets and
-write it with = or arguments.access(false). Typed at the prompt it lasts:
-writing it rewrites the row access = true or access = false in
-~/.satl/config.ini, adds the row when there is none, and leaves every other line
-of that file as it was. In a file it is that run's alone, and config.ini is not
-touched. With no row it reads true -- the author: "arguments.access will always
-be on, on this machine, as we are testing it". It takes satellite.bool.true or
-satellite.bool.false (or a bare true or false) and nothing else; = 5 stops the
-program with machine code 34 setting_is_not_a_flag.
+arguments), then arguments.access (satellite.help(arguments)) -- and as
+satellite.arguments.access in any capsule. You read it with no brackets and
+write it with = or satellite.arguments.access(satellite.bool.false). Typed at
+the prompt it lasts: writing it rewrites the row access = true or access = false
+in ~/.satl/config.ini, adds the row when there is none, and leaves every other
+line of that file as it was. In a file it is that run's alone, and config.ini
+is not touched. With no row it reads true -- the author: "arguments.access will
+always be on, on this machine, as we are testing it". It takes
+satellite.bool.true or satellite.bool.false and nothing else: a bare true or
+false is refused before anything runs, naming satellite.bool.true or
+satellite.bool.false, and = 5 stops the program with machine code 34
+setting_is_not_a_flag.
 
 What satl reads at start-up is not that row but bit 0 of "features = b..." in
 the same file, which satl --rebuild composes from the rows. When a row and the

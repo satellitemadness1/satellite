@@ -6,9 +6,9 @@ satellite.include(satellite)
 satellite.capsule satellite.main(satellite.variable.arguments args)
 {
     satellite.variable.program left = {"sleep", "30"}
-    left.start()
+    left.satellite.start()
     satellite.variable.program nowhere = "no-such-program-for-satl"
-    nowhere.start()
+    nowhere.satellite.start()
     satellite.console.display("main ends")
     satellite.return(satellite)
 }

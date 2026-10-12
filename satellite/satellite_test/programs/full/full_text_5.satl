@@ -23,10 +23,10 @@ satellite.capsule check(satellite.variable.number round, satellite.variable.stri
     }
     satellite.statement.if (round == 1)
     {
-        satellite.console.display("WRONG " + what + ": ", end="")
-        satellite.console.display(got, end="")
-        satellite.console.display(" (expected ", end="")
-        satellite.console.display(want, end="")
+        satellite.console.display("WRONG " + what + ": ", satellite.end="")
+        satellite.console.display(got, satellite.end="")
+        satellite.console.display(" (expected ", satellite.end="")
+        satellite.console.display(want, satellite.end="")
         satellite.console.display(")")
     }
     satellite.return(1)
@@ -49,8 +49,8 @@ satellite.capsule satellite.main()
         // declared empty, or made empty with satellite.container.map()
         satellite.container.map<satellite.variable.string, satellite.variable.number> age
         satellite.container.map made = satellite.container.map()
-        wrong = wrong + check(p, "map declared with <> starts empty", age.size, 0)
-        wrong = wrong + check(p, "map satellite.container.map() is empty", made.empty, satellite.bool.true)
+        wrong = wrong + check(p, "map declared with <> starts empty", age.satellite.size, 0)
+        wrong = wrong + check(p, "map satellite.container.map() is empty", made.satellite.empty, satellite.bool.true)
 
         // [k] = v puts a key in, or changes its value without moving it
         age["zoe"] = 30
@@ -58,32 +58,32 @@ satellite.capsule satellite.main()
         age["bo"] = 100
         age["zoe"] = 31
         wrong = wrong + check(p, "map [k] = v and [k] read", age["al"], 4)
-        wrong = wrong + check(p, "map keys come back in the order they went in", age.keys, {"zoe", "al", "bo"})
-        wrong = wrong + check(p, "map a changed value keeps its place", age.values, {31, 4, 100})
+        wrong = wrong + check(p, "map keys come back in the order they went in", age.satellite.keys, {"zoe", "al", "bo"})
+        wrong = wrong + check(p, "map a changed value keeps its place", age.satellite.values, {31, 4, 100})
         wrong = wrong + check(p, "map written whole is the same map", age, {"zoe": 31, "al": 4, "bo": 100})
-        wrong = wrong + check(p, "map .contains", age.contains("bo"), satellite.bool.true)
-        wrong = wrong + check(p, "map .has is .contains", age.has("bo"), satellite.bool.true)
-        wrong = wrong + check(p, "map .has of a key not there", age.has("cy"), satellite.bool.false)
-        wrong = wrong + check(p, "map .get(k) is [k]", age.get("zoe"), 31)
-        age.set("cy", 7)
-        wrong = wrong + check(p, "map .set(k, v) puts a new key last", age.keys, {"zoe", "al", "bo", "cy"})
-        wrong = wrong + check(p, "map .first is the first key", age.first, "zoe")
-        wrong = wrong + check(p, "map .last is the last key", age.last, "cy")
-        wrong = wrong + check(p, "map .size", age.size, 4)
-        wrong = wrong + check(p, "map .empty of a map with keys", age.empty, satellite.bool.false)
-        age.remove("al")
-        wrong = wrong + check(p, "map .remove(k)", age.keys, {"zoe", "bo", "cy"})
-        age.remove_first()
-        wrong = wrong + check(p, "map .remove_first() takes out the oldest entry", age.keys, {"bo", "cy"})
-        age.remove_last()
-        wrong = wrong + check(p, "map .remove_last() takes out the newest entry", age, {"bo": 100})
-        age.clear
-        wrong = wrong + check(p, "map .clear empties it", age.empty, satellite.bool.true)
+        wrong = wrong + check(p, "map .satellite.contains", age.satellite.contains("bo"), satellite.bool.true)
+        wrong = wrong + check(p, "map .satellite.has is .satellite.contains", age.satellite.has("bo"), satellite.bool.true)
+        wrong = wrong + check(p, "map .satellite.has of a key not there", age.satellite.has("cy"), satellite.bool.false)
+        wrong = wrong + check(p, "map .satellite.get(k) is [k]", age.satellite.get("zoe"), 31)
+        age.satellite.set("cy", 7)
+        wrong = wrong + check(p, "map .satellite.set(k, v) puts a new key last", age.satellite.keys, {"zoe", "al", "bo", "cy"})
+        wrong = wrong + check(p, "map .satellite.first is the first key", age.satellite.first, "zoe")
+        wrong = wrong + check(p, "map .satellite.last is the last key", age.satellite.last, "cy")
+        wrong = wrong + check(p, "map .satellite.size", age.satellite.size, 4)
+        wrong = wrong + check(p, "map .satellite.empty of a map with keys", age.satellite.empty, satellite.bool.false)
+        age.satellite.remove("al")
+        wrong = wrong + check(p, "map .satellite.remove(k)", age.satellite.keys, {"zoe", "bo", "cy"})
+        age.satellite.remove_first()
+        wrong = wrong + check(p, "map .satellite.remove_first() takes out the oldest entry", age.satellite.keys, {"bo", "cy"})
+        age.satellite.remove_last()
+        wrong = wrong + check(p, "map .satellite.remove_last() takes out the newest entry", age, {"bo": 100})
+        age.satellite.clear
+        wrong = wrong + check(p, "map .satellite.clear empties it", age.satellite.empty, satellite.bool.true)
 
         // written whole: a key written twice keeps its first place and its last value
         satellite.container.map twice = {"a": 1, "b": 2, "a": 3}
-        wrong = wrong + check(p, "map a key written twice keeps its first place", twice.keys, {"a", "b"})
-        wrong = wrong + check(p, "map a key written twice keeps its last value", twice.values, {3, 2})
+        wrong = wrong + check(p, "map a key written twice keeps its first place", twice.satellite.keys, {"a", "b"})
+        wrong = wrong + check(p, "map a key written twice keeps its last value", twice.satellite.values, {3, 2})
 
         // a key is a number, a string, a bool, a binary or a percentage; 1 and "1" differ
         satellite.container.map kinds = {satellite.bool.true: "t", b101: "b", 50%: "p", -3: "n", "s": "str"}
@@ -92,7 +92,7 @@ satellite.capsule satellite.main()
         wrong = wrong + check(p, "map a negative number key", kinds[-3], "n")
         wrong = wrong + check(p, "map a bool key", kinds[satellite.bool.true], "t")
         satellite.container.map one = {1: "number", "1": "string"}
-        wrong = wrong + check(p, "map 1 and text 1 are two keys", one.size, 2)
+        wrong = wrong + check(p, "map 1 and text 1 are two keys", one.satellite.size, 2)
         wrong = wrong + check(p, "map the number key 1", one[1], "number")
         wrong = wrong + check(p, "map the text key 1", one["1"], "string")
 
@@ -108,35 +108,35 @@ satellite.capsule satellite.main()
 
         // .sort() is .sort("key"), .sort("value") by values, both leave the name alone
         satellite.container.map<satellite.variable.string, satellite.variable.number> count = {"to": 4, "be": 2, "or": 1, "not": 3}
-        wrong = wrong + check(p, "map .sort() orders the keys by width first", count.sort().keys, {"be", "or", "to", "not"})
-        wrong = wrong + check(p, "map .sort(key) is .sort()", count.sort("key").keys, {"be", "or", "to", "not"})
-        wrong = wrong + check(p, "map .sort(value) orders by the values", count.sort("value").keys, {"or", "be", "not", "to"})
-        wrong = wrong + check(p, "map .sort(value).last", count.sort("value").last, "to")
-        wrong = wrong + check(p, "map .sort() leaves the name as it was", count.keys, {"to", "be", "or", "not"})
-        count = count.sort("value")
-        wrong = wrong + check(p, "map name = name.sort(value) keeps the order", count.values, {1, 2, 3, 4})
+        wrong = wrong + check(p, "map .satellite.sort() orders the keys by width first", count.satellite.sort().satellite.keys, {"be", "or", "to", "not"})
+        wrong = wrong + check(p, "map .satellite.sort(key) is .satellite.sort()", count.satellite.sort("key").satellite.keys, {"be", "or", "to", "not"})
+        wrong = wrong + check(p, "map .satellite.sort(value) orders by the values", count.satellite.sort("value").satellite.keys, {"or", "be", "not", "to"})
+        wrong = wrong + check(p, "map .satellite.sort(value).satellite.last", count.satellite.sort("value").satellite.last, "to")
+        wrong = wrong + check(p, "map .satellite.sort() leaves the name as it was", count.satellite.keys, {"to", "be", "or", "not"})
+        count = count.satellite.sort("value")
+        wrong = wrong + check(p, "map name = name.satellite.sort(value) keeps the order", count.satellite.values, {1, 2, 3, 4})
         satellite.container.map numbers = {100: "c", 9: "a", 10: "b", -5: "n", 0: "z"}
-        wrong = wrong + check(p, "map .sort() of number keys, a negative before 0", numbers.sort().values, {"n", "z", "a", "b", "c"})
+        wrong = wrong + check(p, "map .satellite.sort() of number keys, a negative before 0", numbers.satellite.sort().satellite.values, {"n", "z", "a", "b", "c"})
         satellite.container.map files = {"file10": 1, "file2": 2, "alice": 3, "zoe": 4, "bo": 5}
-        wrong = wrong + check(p, "map .sort() of text keys, width first", files.sort().keys, {"bo", "zoe", "alice", "file2", "file10"})
+        wrong = wrong + check(p, "map .satellite.sort() of text keys, width first", files.satellite.sort().satellite.keys, {"bo", "zoe", "alice", "file2", "file10"})
         satellite.container.map table = {"B": 1, "1": 2, "b": 3}
-        wrong = wrong + check(p, "map .sort() of one width follows the character table", table.sort().keys, {"b", "B", "1"})
+        wrong = wrong + check(p, "map .satellite.sort() of one width follows the character table", table.satellite.sort().satellite.keys, {"b", "B", "1"})
         satellite.container.map ties = {"x": 2, "y": 1, "z": 2, "w": 1}
-        wrong = wrong + check(p, "map .sort(value) keeps ties in the order they went in", ties.sort("value").keys, {"y", "w", "x", "z"})
+        wrong = wrong + check(p, "map .satellite.sort(value) keeps ties in the order they went in", ties.satellite.sort("value").satellite.keys, {"y", "w", "x", "z"})
         satellite.container.map words = {"a": "zoe", "b": "al", "c": "bo"}
-        wrong = wrong + check(p, "map .sort(value) of text values, width first", words.sort("value").keys, {"b", "c", "a"})
+        wrong = wrong + check(p, "map .satellite.sort(value) of text values, width first", words.satellite.sort("value").satellite.keys, {"b", "c", "a"})
         satellite.container.map worth = {"a": 2.5, "b": 1.25, "c": 10.0}
-        wrong = wrong + check(p, "map .sort(value) of floats by what each is worth", worth.sort("value").keys, {"b", "a", "c"})
-        wrong = wrong + check(p, "map .keys.sort().by_name() orders the keys alone", count.keys.satellite.sort().satellite.by_name(), {"be", "not", "or", "to"})
+        wrong = wrong + check(p, "map .satellite.sort(value) of floats by what each is worth", worth.satellite.sort("value").satellite.keys, {"b", "a", "c"})
+        wrong = wrong + check(p, "map .satellite.keys.satellite.sort().satellite.by_name() orders the keys alone", count.satellite.keys.satellite.sort().satellite.by_name(), {"be", "not", "or", "to"})
 
         // satellite.container.index is the same container; .sum .join ask which half
         satellite.container.index<satellite.variable.string, satellite.variable.number> scores
         scores["zoe"] = 1
         scores["al"] = 41
         wrong = wrong + check(p, "map index is the same container", scores, {"zoe": 1, "al": 41})
-        wrong = wrong + check(p, "map .values.sum", scores.values.satellite.sum, 42)
-        wrong = wrong + check(p, "map .keys.join", scores.keys.satellite.join(","), "zoe,al")
-        wrong = wrong + check(p, "map .values.max", scores.values.satellite.max, 41)
+        wrong = wrong + check(p, "map .satellite.values.satellite.sum", scores.satellite.values.satellite.sum, 42)
+        wrong = wrong + check(p, "map .satellite.keys.satellite.join", scores.satellite.keys.satellite.join(","), "zoe,al")
+        wrong = wrong + check(p, "map .satellite.values.satellite.max", scores.satellite.values.satellite.max, 41)
         satellite.statement.if (p == 1)
         {
             first_wrong = wrong

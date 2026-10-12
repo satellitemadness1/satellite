@@ -4,7 +4,7 @@ satellite.include(satellite)
 satellite.capsule satellite.main(satellite.variable.arguments args)
 {
     satellite.variable.program sleeper = {"sleep", "30"}
-    sleeper.start()
-    sleeper.start()
+    sleeper.satellite.start()
+    sleeper.satellite.start()
     satellite.return(satellite)
 }

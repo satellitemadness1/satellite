@@ -27,13 +27,13 @@ satellite.capsule satellite.main()
 {
     box a
     box b
-    satellite.container.list<box> watching = {a.pointer(), b.pointer()}
+    satellite.container.list<box> watching = {a.satellite.pointer(), b.satellite.pointer()}
     satellite.console.display(watching.satellite.contains(a))
     satellite.console.display(watching.satellite.index_of(b))
     watching.satellite.remove(a)
     satellite.console.display(watching.satellite.size)
     satellite.container.list<box> objects = {a}
-    satellite.console.display(objects.satellite.contains(a.pointer()))
-    satellite.console.display(objects.satellite.contains(b.pointer()))
+    satellite.console.display(objects.satellite.contains(a.satellite.pointer()))
+    satellite.console.display(objects.satellite.contains(b.satellite.pointer()))
     satellite.return(satellite)
 }

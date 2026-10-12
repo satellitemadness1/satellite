@@ -8,6 +8,6 @@ satellite.capsule satellite.main()
 {
     satellite.variable.number passes = 1
     satellite.variable.file f = satellite.file.open("full_objects_12_never_made.se")
-    satellite.console.display(f.size)
+    satellite.console.display(f.satellite.size)
     satellite.return(satellite)
 }

@@ -36,7 +36,7 @@ satellite.capsule satellite.main()
     }
     box a
     a.call_set(x)
-    box r = a.reference()
+    box r = a.satellite.reference()
     satellite.console.display(r.call_size())
     satellite.return(satellite)
 }

@@ -5,7 +5,6 @@
 
 #include "../satellite_object/satellite_index.hpp"
 #include "../satellite_object/satellite_list.hpp"
-#include "../satellite_object/satellite_map_sort.hpp"
 #include "../satellite_object/string_and_string_compare.hpp"
 #include "../satellite_object/fast_paths.hpp"
 #include "type_shape.hpp"
@@ -106,6 +105,31 @@ bool a_position_method(token::Code method)
            method == token::search_token || method == token::append_token;
 }
 
+} // namespace
+
+// THE PIECES A MAP'S NUMBERED METHODS SHARE (container_calls.hpp), 2026-10-11.
+namespace map_method_parts {
+
+satelliteIndex *map_to_change(Value *home, const std::string &name, const char *method, ExpressionContext &context)
+{
+    // A METHOD THAT CHANGES SOMETHING NEEDS SOMETHING TO CHANGE.
+    // `{1, 2}.append(3)` is a list nothing is holding: the append would be
+    // perfectly correct and then thrown away, which is a line that does
+    // nothing -- the worst thing a language can let a person write.
+    if (home == nullptr) {
+        context.refuse(satl_line_not_understood,
+                       name + ".satellite." + method + " changes a container, and this one has no name to change");
+        return nullptr;
+    }
+    IndexHandle *keys = home->as_index();
+    if (keys == nullptr) {
+        context.refuse(types_do_not_meet,
+                       name + ".satellite." + method + " is a container's, and " + name + " is " + home->kind_name());
+        return nullptr;
+    }
+    return &about_to_change(*keys);
+}
+
 // TAKE AN ENTRY OUT OF AN INDEX, keeping the insertion order of the rest.
 //
 // THE POSITIONS AFTER IT ALL MOVE, so the lookup table has to be repaired --
@@ -123,7 +147,17 @@ void take_entry_out(satelliteIndex &index, std::size_t at)
         if (row.second > at) --row.second;
 }
 
-} // namespace
+signed long long int entries_comparable(const satelliteIndex &held, bool by_key, std::string &why)
+{
+    return all_comparable_by(
+        held.entries.size(),
+        [&held, by_key](std::size_t at) -> const satelliteObject & {
+            return by_key ? held.entries[at].key : held.entries[at].value;
+        },
+        std::string("it puts the entries in order by their ") + (by_key ? "keys" : "values"), "entry", why);
+}
+
+} // namespace map_method_parts
 
 // THE PIECES A LIST'S NUMBERED METHODS SHARE WITH WHAT IS LEFT HERE (container_calls.hpp).
 namespace container_parts {
@@ -244,15 +278,16 @@ const char *what_containers_have()
 {
     return "a list has .satellite.append, .satellite.size, .satellite.contains, .satellite.sort().satellite.by_name(), "
            ".satellite.sort().satellite.by_value(), .satellite.reverse() and the rest of its own words under satellite, "
-           "and a map has .size, .contains, .keys, .values, .sort(\"key\") and .sort(\"value\")";
+           "and a map has .satellite.size, .satellite.contains, .satellite.get, .satellite.set, .satellite.keys, "
+           ".satellite.values, .satellite.sort(\"key\") and .satellite.sort(\"value\")";
 }
 
 std::string index_refuses(token::Code method, const std::string &name)
 {
     if (asks_what_it_holds(method)) {
         const std::string called = std::string(name_of(method)) + (method == token::join_token ? "(separator)" : "");
-        return "an index holds keys and values, so say which: " + name + ".values.satellite." + called + " or " +
-               name + ".keys.satellite." + called;
+        return "an index holds keys and values, so say which: " + name + ".satellite.values.satellite." + called +
+               " or " + name + ".satellite.keys.satellite." + called;
     }
     if (method == token::reserve_token)
         return "an index makes its room as keys arrive; .satellite.reserve(n) is a list's";
@@ -262,8 +297,8 @@ std::string index_refuses(token::Code method, const std::string &name)
     // after `scores.sort()` the name is "scores.sort()", and the sentence read
     // scores.sort().sort("key").
     if (method == token::by_name_token || method == token::by_value_token)
-        return std::string("a map is put in order by .sort(\"key\") or .sort(\"value\"), which answer the map "
-                           "-- its keys alone are .keys.satellite.sort().satellite.") +
+        return std::string("a map is put in order by .satellite.sort(\"key\") or .satellite.sort(\"value\"), which "
+                           "answer the map -- its keys alone are .satellite.keys.satellite.sort().satellite.") +
                name_of(method) + "()";
     return "";
 }
@@ -276,7 +311,7 @@ std::string sort_word_refused(const std::string &word, bool on_a_map, const std:
                ".satellite.reverse() after either goes the other way; \"key\" and \"value\" are a map's";
     if (word == "key" || word == "value")
         return "";
-    return name + ".sort(\"" + word + "\") -- a map is put in order by \"key\" or by \"value\"";
+    return name + ".satellite.sort(\"" + word + "\") -- a map is put in order by \"key\" or by \"value\"";
 }
 
 // ---------------------------------------------------------------------------
@@ -400,7 +435,7 @@ Value reverse_of(const Value &receiver, bool &handled, std::string &why)
     // `12.34.reverse()` is 34.12), so it says so rather than that a float has no
     // order to reverse -- which would be untrue (2026-09-22).
     if (receiver.is_float()) {
-        why = "a float's .reverse() is not built yet (SATELLITE_INFINITY.md FLT-4)";
+        why = "a float's .satellite.reverse() is not built yet (SATELLITE_INFINITY.md FLT-4)";
         handled = false;
         return Value();
     }
@@ -409,7 +444,8 @@ Value reverse_of(const Value &receiver, bool &handled, std::string &why)
     // untrue of one too (satellite.variable.fraction, 2026-09-22). Whether its
     // .reverse() turns 1/3 into 3/1 is not decided, and it is not built.
     if (receiver.is_fraction()) {
-        why = "a fraction's .reverse() is not built yet -- a fraction has .numerator, .denominator and .string so far";
+        why = "a fraction's .satellite.reverse() is not built yet -- a fraction has .satellite.numerator, .satellite.denominator "
+              "and .satellite.string so far";
         handled = false;
         return Value();
     }
@@ -519,12 +555,80 @@ Value run_list_number(token::Code method, token::Code number, const Value &recei
 }
 
 // ---------------------------------------------------------------------------
-// AN INDEX'S METHODS -- and a list's refusals: a list reaches this only with a method it does
-// not have, and is refused below before anything runs. Every method it has is its number above.
+// A MAP'S METHODS RUN BY THEIR NUMBERS (the author, 2026-10-11: "we still need to get the word satellite
+// onto everything ... everything builtin needs the word satellite still"). Each is
+// satellite.container.map.<it>, 1 4 1 n, whose code is a file under satellite-numbers/words/ -- .first,
+// .last, .sort, .reverse, .remove_first() and .remove_last() took 11 to 16 that day, and .get and .set,
+// matched by name since 2026-09-26, were given tokens to run 2 and 1 by.
+// ---------------------------------------------------------------------------
+
+// EVERY NUMBER BELOW IS IN words/words.tsv, OR THIS FILE DOES NOT COMPILE: a fixed_code of 0
+// would quietly send that method to call_container_method's refusals instead of to its number.
+template <int... Last>
+inline constexpr bool every_map_word_numbered = ((word::fixed_code<1, 4, 1, Last> != 0) && ...);
+static_assert(every_map_word_numbered<1, 2, 3, 4, 5, 6, 7, 8, 9, 11, 12, 13, 14, 15, 16>,
+              "a map method's number is missing from words/words.tsv");
+
+token::Code map_number_of(token::Code method)
+{
+    // 1 4 1 10 -- search(pattern) -- is 003's word, and a map is not searched along: it has keys and not
+    // positions, so .search is refused on one (call_container_method, a_position_method) and the number
+    // keeps no code, as a list's 1 4 2 4 to 7 keep none.
+    switch (method) {
+    case token::set_token: return word::fixed_code<1, 4, 1, 1>;
+    case token::get_token: return word::fixed_code<1, 4, 1, 2>;
+    case token::contains_token: return word::fixed_code<1, 4, 1, 3>;   // has(k): .contains, .contain and .has
+    case token::size_token: return word::fixed_code<1, 4, 1, 4>;
+    case token::empty_token: return word::fixed_code<1, 4, 1, 5>;
+    case token::clear_token: return word::fixed_code<1, 4, 1, 6>;
+    case token::remove_token: return word::fixed_code<1, 4, 1, 7>;
+    case token::keys_token: return word::fixed_code<1, 4, 1, 8>;
+    case token::values_token: return word::fixed_code<1, 4, 1, 9>;
+    case token::first_token: return word::fixed_code<1, 4, 1, 11>;
+    case token::last_token: return word::fixed_code<1, 4, 1, 12>;
+    case token::sort_token: return word::fixed_code<1, 4, 1, 13>;
+    case token::reverse_token: return word::fixed_code<1, 4, 1, 14>;
+    case token::remove_first_token: return word::fixed_code<1, 4, 1, 15>;
+    case token::remove_last_token: return word::fixed_code<1, 4, 1, 16>;
+    default: return 0;
+    }
+}
+
+Value run_map_number(token::Code method, token::Code number, const Value &receiver, Value *home,
+                     const TypeShape *shape, const std::vector<Value> &arguments, bool had_parentheses,
+                     const std::string &name, ExpressionContext &context)
+{
+    // HOW MANY ARGUMENTS, said before anything is done with them -- call_container_method's own
+    // two refusals, in its words, for every one of a map's methods.
+    const int arity = container_arity(method);
+    if (!container_given_fits(method, arguments.size())) {
+        context.refuse(satl_line_not_understood, name + ".satellite." + name_of(method) + container_takes(method, arity) +
+                                                     ", and was given " + std::to_string(arguments.size()));
+        return Value();
+    }
+    if (arity > 0 && !had_parentheses) {
+        context.refuse(satl_line_not_understood, name + ".satellite." + name_of(method) + " takes an argument and needs a ( after it");
+        return Value();
+    }
+
+    // THE NUMBER RUNS: table[code], one subtraction and one load (function_table.hpp), and the
+    // function its file under satellite-numbers/words/ put in the row at start-up.
+    const NumberRow *row = context.functions.method(number);
+    if (row == nullptr || row->scenarios.method_call == nullptr) {
+        context.refuse(not_built_yet, name + ".satellite." + name_of(method) + " is not built for a map yet");
+        return Value();
+    }
+    return row->scenarios.method_call(receiver, home, shape, arguments, had_parentheses, name, context);
+}
+
+// ---------------------------------------------------------------------------
+// A LIST'S AND A MAP'S REFUSALS: each reaches this only with a method it does not have, and is refused
+// below before anything runs. Every method either has is its number above.
 // ---------------------------------------------------------------------------
 Value call_container_method(token::Code method, Value &receiver, Value *home, const std::vector<Value> &arguments,
                             bool had_parentheses, const std::string &name, ExpressionContext &context)
 {
+    (void)home;   // A REFUSAL CHANGES NOTHING: every method that changes a container is its number now
     const std::string what = name + "." + name_of(method);
     const bool is_index = receiver.is_index();
 
@@ -543,7 +647,7 @@ Value call_container_method(token::Code method, Value &receiver, Value *home, co
                            (method == token::append_token
                                 ? std::string(": write ") + name + "[key] = value"
                                 : std::string(", so nothing counts along it. Take its keys first: ") + name +
-                                      ".keys.satellite." + name_of(method) + "(...)"));
+                                      ".satellite.keys.satellite." + name_of(method) + "(...)"));
         return Value();
     }
     {
@@ -555,7 +659,7 @@ Value call_container_method(token::Code method, Value &receiver, Value *home, co
     }
     if ((method == token::keys_token || method == token::values_token) && !is_index) {
         context.refuse(types_do_not_meet,
-                       what + " -- .keys and .values are an index's; a list already IS its items");
+                       what + " -- .satellite.keys and .satellite.values are an index's; a list already IS its items");
         return Value();
     }
     const std::size_t wanted = static_cast<std::size_t>(arity);
@@ -577,190 +681,9 @@ Value call_container_method(token::Code method, Value &receiver, Value *home, co
         return Value();
     }
 
-    switch (method) {
-    // -----------------------------------------------------------------------
-    // THE ONES THAT CHANGE THE NAME -- an index's .clear, .remove(key), .remove_first and
-    // .remove_last; the others are a list's, refused an index above, and a list's own are its
-    // numbers (satellite-numbers/words/1.4.2.n.cpp).
-    // -----------------------------------------------------------------------
-    case token::append_token:
-    case token::clear_token:
-    case token::insert_token:
-    case token::remove_token:
-    case token::remove_at_token:
-    case token::remove_first_token:
-    case token::remove_last_token:
-    case token::reserve_token:
-    case token::truncate_token: {
-        // A METHOD THAT CHANGES SOMETHING NEEDS SOMETHING TO CHANGE.
-        // `{1, 2}.append(3)` is a list nothing is holding: the append would be
-        // perfectly correct and then thrown away, which is a line that does
-        // nothing -- the worst thing a language can let a person write.
-        if (home == nullptr) {
-            context.refuse(satl_line_not_understood,
-                           what + " changes a container, and this one has no name to change");
-            return Value();
-        }
-
-        // AN INDEX'S MUTATORS, on its entries in insertion order.
-        if (IndexHandle *keys = home->as_index()) {
-            satelliteIndex &body = about_to_change(*keys);
-            const std::size_t held = body.entries.size();
-            if (method == token::clear_token) {
-                body.entries.clear();
-                body.where.clear();
-                return *home;
-            }
-            if (held == 0) {
-                context.refuse(line_past_the_end, what + ": the index is empty");
-                return Value();
-            }
-            if (method == token::remove_first_token) { take_entry_out(body, 0); return *home; }
-            if (method == token::remove_last_token) { take_entry_out(body, held - 1); return *home; }
-            // `.remove(key)` -- BY KEY, because that is the only thing an index
-            // is asked about. `.contains` reads the keys too, so the pair agree.
-            std::string key_name;
-            if (!key_name_of(arguments.front(), key_name)) {
-                context.refuse(types_do_not_meet,
-                               what + " was given " + arguments.front().kind_name() +
-                                   " as a key, and a key must be a number, a string, a bool, a binary or a percentage");
-                return Value();
-            }
-            for (std::size_t at = 0; at < body.entries.size(); ++at) {
-                std::string here;
-                if (key_name_of(body.entries[at].key, here) && here == key_name) {
-                    take_entry_out(body, at);
-                    return *home;
-                }
-            }
-            context.refuse(text_not_found, what + ": there is no such key in it");
-            return Value();
-        }
-
-        context.refuse(types_do_not_meet, what + " is a container's, and " + name + " is " + home->kind_name());
-        return Value();
-    }
-
-    // -----------------------------------------------------------------------
-    // THE ONES THAT ANSWER A VALUE.
-    // -----------------------------------------------------------------------
-    // AN INDEX ANSWERS FROM ITS OWN COUNT, never by copying every key out to
-    // measure the copy. items_of() builds a vector for the methods that walk one,
-    // and `.size` does not walk anything.
-    case token::size_token: {
-        if (const IndexHandle *keys = receiver.as_index()) {
-            const satelliteIndex *held = keys->get();
-            return a_count(held == nullptr ? 0 : held->entries.size());
-        }
-        break;
-    }
-
-    case token::empty_token: {
-        std::vector<satelliteObject> borrowed;
-        return Value::of_bool(items_of(receiver, borrowed)->empty());
-    }
-
-    // `.first` AND `.last` ARE `a[1]` AND `a[a.size]`, said in a word (a list's are
-    // 1 4 2 12 and 13). On an index they are the first and last KEY IN INSERTION ORDER, which is the
-    // only order a dict has -- and the order it prints in, so what you read here
-    // is what you saw.
-    case token::first_token:
-    case token::last_token: {
-        std::vector<satelliteObject> borrowed;
-        const std::vector<satelliteObject> *items = items_of(receiver, borrowed);
-        if (items->empty()) {
-            context.refuse(line_past_the_end,
-                           what + ": " + (is_index ? "the index is empty" : "the list is empty"));
-            return Value();
-        }
-        return method == token::first_token ? items->front() : items->back();
-    }
-
-    // `.keys` AND `.values`, AS LISTS, IN INSERTION ORDER -- and the two line up
-    // index for index, so `k.keys[2]` and `k.values[2]` are one entry. That is
-    // the whole reason they are not two independently-ordered answers.
-    case token::keys_token:
-    case token::values_token: {
-        std::vector<satelliteObject> out;
-        const satelliteIndex *held = receiver.as_index()->get();
-        if (held != nullptr) {
-            out.reserve(held->entries.size());
-            for (const satelliteMapEntry &entry : held->entries)
-                out.push_back(method == token::keys_token ? entry.key : entry.value);
-        }
-        return Value::of_list(make_list(std::move(out)));
-    }
-
-    case token::contains_token: {
-        // AN INDEX ASKS ITS HASH TABLE, which is the entire reason it has one.
-        // Copying every key into a vector and walking it made a hash-table
-        // lookup cost O(n) plus a full copy -- on the container whose whole
-        // point is that asking is cheap.
-        if (const IndexHandle *keys = receiver.as_index()) {
-            const satelliteIndex *held = keys->get();
-            std::string key_name;
-            if (held == nullptr || !key_name_of(arguments.front(), key_name))
-                return Value::of_bool(false);   // a key it could never hold is a key it does not hold
-            return Value::of_bool(value_at(*held, key_name) != nullptr);
-        }
-        break;
-    }
-
-    // `.sort()` ON A LIST TAKES A COPY AND ORDERS NOTHING -- 1 4 2 3, its number, since
-    // 2026-10-10. The ordering is the `.by_name()` or `.by_value()` that follows.
-    //
-    // ON A MAP IT ORDERS THE ENTRIES (the author, 2026-09-26): `.sort()` and
-    // `.sort("key")` by key, `.sort("value")` by value -- the width first, then a to
-    // z and 0 to 9. satellite_map_sort.hpp says how, and why the answer is the map,
-    // a copy, as a list's is. The word may be any string, written or worked out.
-    case token::sort_token: {
-        std::string by = "key";
-        if (!arguments.empty()) {
-            const satellite_string *word = arguments.front().as_string();
-            if (word == nullptr) {
-                context.refuse(types_do_not_meet, what + container_takes(method, arity) + ", and was given " +
-                                                      arguments.front().kind_name());
-                return Value();
-            }
-            by = word->to_utf8();
-            const std::string refused = sort_word_refused(by, is_index, name);
-            if (!refused.empty()) {
-                context.refuse(is_index ? satl_line_not_understood : types_do_not_meet, refused);
-                return Value();
-            }
-        }
-        const satelliteIndex *held = receiver.as_index()->get();
-        if (held == nullptr)
-            return receiver;
-        // EVERY KIND OF KEY, OR OF VALUE, IS ASKED FOR AN ORDER FIRST, so a number
-        // key beside a string key -- or two list values -- is refused and never
-        // guessed at (satellite_map_sort.hpp: WHAT HAS NO ORDER IS NOT GUESSED AT).
-        const bool by_key = by == "key";
-        std::string why;
-        const signed long long int comparable = all_comparable_by(
-            held->entries.size(),
-            [held, by_key](std::size_t at) -> const satelliteObject & {
-                return by_key ? held->entries[at].key : held->entries[at].value;
-            },
-            std::string("it puts the entries in order by their ") + (by_key ? "keys" : "values"), "entry", why);
-        if (comparable != success) {
-            context.refuse(comparable, what + (arguments.empty() ? "()" : "(\"" + by + "\")") + ": " + why);
-            return Value();
-        }
-        return Value::of_index(by_key ? sorted_by_key(*held) : sorted_by_value(*held));
-    }
-
-    case token::reverse_token: {
-        std::vector<satelliteObject> borrowed;
-        std::vector<satelliteObject> items = *items_of(receiver, borrowed);
-        std::reverse(items.begin(), items.end());
-        return Value::of_list(make_list(std::move(items)));
-    }
-
-    default:
-        break;
-    }
-
+    // A MAP GETS NO FURTHER EITHER: every container method it has runs its number (run_map_number,
+    // 2026-10-11), and every other was refused above -- so this is only said of a method a later day
+    // gives a container and gives a map no number for.
     context.refuse(not_built_yet,
                    what + " is not built for " + receiver.kind_name() + " yet -- " + what_containers_have());
     return Value();

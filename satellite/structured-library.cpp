@@ -98,7 +98,7 @@ void go_to_the_default_directory(const satellite004::Arguments &arguments)
     if (where == "~" || where.rfind("~/", 0) == 0) {
         const char *home = std::getenv("HOME");
         if (home == nullptr || *home == '\0') {
-            satellite004::report_error("satl(directory): arguments.directory.default is \"" + where +
+            satellite004::report_error("satl(directory): satellite.arguments.directory.default is \"" + where +
                                            "\" and $HOME is not set, so the prompt starts where satl did",
                                        satellite004::success);
             return;
@@ -106,17 +106,19 @@ void go_to_the_default_directory(const satellite004::Arguments &arguments)
         where = std::string(home) + where.substr(1);
     }
     if (chdir(where.c_str()) != 0)
-        satellite004::report_error("satl(directory): arguments.directory.default is " + where + ", which cannot be "
+        satellite004::report_error("satl(directory): satellite.arguments.directory.default is " + where + ", which cannot be "
                                        "entered (" + std::strerror(errno) + "), so the prompt starts where satl did",
                                    satellite004::success);
 }
 
 // Every argument, one line each, while debug mode is on -- what was typed first, from satl
-// itself at argument1 (MS-1), then the rest, as the arguments variable shows them.
+// itself at argument1 (MS-1), then the rest, as the arguments variable shows them. EACH NAMED AS A PROGRAM
+// WRITES IT, satellite.arguments.argument3 (the author's L of 2026-10-11: "yes"), the bare arguments.<row> being
+// refused since that morning.
 void display_arguments(const satellite004::Arguments &arguments, satellite004::MachineState &state)
 {
     for (const satellite004::Argument *argument : arguments.every_row_arguments_first())
-        state.set(argument->name + " = " + satellite004::describe(*argument), satellite004::success);
+        state.set("satellite." + argument->name + " = " + satellite004::describe(*argument), satellite004::success);
 }
 
 } // namespace
@@ -403,8 +405,8 @@ signed long long int run_satl(int argc, char **argv)
         satellite_number::compare(asked, arguments.number("arguments.threads_max")) > 0) {
         const satellite_number &threads_max = arguments.number("arguments.threads_max");
         // Shown every time, not only in debug mode: the author asked for more threads than start.
-        report_error("threads.startup(capped): arguments.threads_startup " + asked.to_text() +
-                         " is more than arguments.threads_max " + threads_max.to_text() + ", so " +
+        report_error("threads.startup(capped): satellite.arguments.threads_startup " + asked.to_text() +
+                         " is more than satellite.arguments.threads_max " + threads_max.to_text() + ", so " +
                          threads_max.to_text() + " threads start",
                      success);
         asked = threads_max;

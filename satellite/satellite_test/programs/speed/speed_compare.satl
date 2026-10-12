@@ -45,6 +45,6 @@ satellite.capsule satellite.main()
             differ = differ + 1
         }
     }
-    satellite.console.display(less.string + " " + more.string + " " + at_most.string + " " + at_least.string + " " + same.string + " " + differ.string)
+    satellite.console.display(less.satellite.string + " " + more.satellite.string + " " + at_most.satellite.string + " " + at_least.satellite.string + " " + same.satellite.string + " " + differ.satellite.string)
     satellite.return(satellite)
 }

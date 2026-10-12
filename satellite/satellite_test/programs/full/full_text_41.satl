@@ -7,6 +7,6 @@ satellite.capsule satellite.main()
 {
     satellite.variable.number passes = 1
     satellite.container.map m = {1: "a", "b": 2}
-    satellite.console.display(m.sort())
+    satellite.console.display(m.satellite.sort())
     satellite.return(satellite)
 }

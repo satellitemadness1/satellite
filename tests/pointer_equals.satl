@@ -24,8 +24,8 @@ satellite.capsule satellite.main()
 {
     box a
     box b
-    box p = a.pointer()
-    box q = a.pointer()
+    box p = a.satellite.pointer()
+    box q = a.satellite.pointer()
     satellite.console.display(a == p)
     satellite.console.display(p == a)
     satellite.console.display(p == q)

@@ -17,8 +17,9 @@
 // have no ceiling should not borrow a sentinel from one whose numbers do. `out`
 // is left untouched.
 //
-// AN EMPTY NEEDLE IS FOUND AT 0, which is what every library answers and what
-// the loop below produces on its own.
+// COUNTED FROM 1, as every other position in satellite is (the author's 7 of 2026-10-11): "abc".find("a")
+// is 1, the s[1] that reads it, and a list's index_of was already. AN EMPTY NEEDLE IS FOUND AT 1, the first
+// place the loop below looks.
 
 #include "fast_paths.hpp"
 
@@ -44,7 +45,7 @@ signed long long int str_find_str(const satelliteObject &left, const satelliteOb
     const std::size_t units = haystack->units();
     for (std::size_t unit = 0, character = 0; unit + wanted <= units; ++character) {
         if (std::char_traits<char16_t>::compare(haystack->unit_data() + unit, needle->unit_data(), wanted) == 0) {
-            out = satelliteObject::of_number(satellite_number((unsigned long long int)character));
+            out = satelliteObject::of_number(satellite_number((unsigned long long int)character + 1));
             return success;
         }
         std::size_t width = 0;

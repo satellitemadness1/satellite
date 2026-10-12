@@ -2,6 +2,12 @@
 // satellite/bytecode/file_calls.hpp -- satellite.file's words and a file's
 // methods, run by the interpreter. SATELLITE_FILE_OPERATIONS.md Part 3.
 //
+// A FILE'S METHODS RUN BY THEIR NUMBERS SINCE 2026-10-11 (NM-8): each is the word
+// satellite.variable.file.<it>, 1 6 2 n, whose code is a file under
+// satellite-numbers/words/ (1.6.2.12.cpp is append), and is written
+// f.satellite.append("x"). This file keeps what they share, the refusals made
+// before one runs (run_file_number), and satellite.file's own words.
+//
 // THESE WORDS HAVE NO LIBRARY, and that is a departure from DESIGN §3.4 that is
 // said here rather than hidden. `satellite.file.new(path)` answers a HANDLE --
 // a std::shared_ptr to a satellite_file -- and a library's scenarios only
@@ -37,7 +43,8 @@ bool is_file_word(token::Code code);
 std::size_t file_word_arity(token::Code code);
 std::string file_word_takes(token::Code code);
 
-// How many arguments a file METHOD takes, or -1 for a method a file does not have.
+// How many arguments a file METHOD takes, or -1 for a method a file does not have. The checker reads it,
+// and run_file_number refuses a wrong count by it before a number runs.
 int file_method_arity(token::Code method);
 
 // One of those words, its arguments already evaluated. `row` is the row the call
@@ -45,10 +52,64 @@ int file_method_arity(token::Code method);
 Value call_file_word(token::Code code, const std::vector<Value> &arguments,
                      const std::vector<std::bitset<16>> &row, ExpressionContext &context);
 
-// `file.method(arguments)`. `had_parentheses` is false for `f.size`, which the
-// zero-argument methods allow. `name` is the variable, for the refusals.
-Value call_file_method(token::Code method, satellite_file &file, const std::vector<Value> &arguments,
-                       bool had_parentheses, const std::string &name, ExpressionContext &context);
+// THE NUMBER A FILE'S METHOD RUNS -- the code of satellite.variable.file.<it>, 1 6 2 n (NM-8; the author,
+// 2026-10-11: "we still need to get the word satellite onto everything ... everything builtin needs the word
+// satellite still") -- or 0 for a method a file does not have. Every method file_method_arity counts is one:
+// 003's seven kept their numbers (open 2, read_all 5, close 6, exists 7, ok 8, path 9, error 10) and the
+// rest took 12 to 30 that day, in SATELLITE_FILE_OPERATIONS.md 3.3's order.
+token::Code file_number_of(token::Code method);
+
+// A FILE'S METHOD, RUN BY ITS NUMBER: the count and the brackets refused as they always were, the eight
+// questions about lines refused on a file that is not open (file_method_parts::open_or_stop says why), and
+// then the function its file under satellite-numbers/words/ put in the number's row. `number` is
+// file_number_of(method), already asked, never 0. `receiver` holds the handle, and a file is one thing to
+// every name for it -- so no method needs the name's own object, as a list's and a string's changes do.
+// The walker runs .lock() and .unlock() through here BEFORE it takes the file's hold, and every other
+// method inside it (expression.cpp).
+Value run_file_number(token::Code method, token::Code number, const Value &receiver,
+                      const std::vector<Value> &arguments, bool had_parentheses, const std::string &name,
+                      ExpressionContext &context);
+
+// A METHOD A FILE DOES NOT HAVE, written with a `.` -- its only business since its methods run their
+// numbers (2026-10-11): said, never run. `name` is the variable, for the sentence.
+Value call_file_method(token::Code method, const std::string &name, ExpressionContext &context);
+
+// THE PIECES A FILE'S NUMBERED METHODS SHARE with satellite.file's words and with f[n], in a namespace of
+// their own (as a string's string_method_parts and a list's container_parts).
+namespace file_method_parts {
+
+// HOW A SENTENCE SAYS THE CALL -- `f.satellite.append`, `satellite.file.new`, `f[...]` -- worked out only
+// when one is said: a method that is right spells nothing, as a list's numbered methods spell nothing.
+// `word` is the method, said after `.satellite.`; with none, `name` is the whole call.
+struct Said {
+    const std::string &name;
+    const char *word = nullptr;
+    std::string text() const { return word == nullptr ? name : name + ".satellite." + word; }
+};
+
+// A count or a line number coming out, as a number.
+Value a_number(std::size_t n);
+
+// Text coming OUT of a file, as a string; refused (file_not_text) if a line is not UTF-8.
+Value a_string(const std::string &utf8, ExpressionContext &context);
+
+// TEXT GOING IN: a string, or a number's digits with S020 in satellite.log.
+bool text_of(const Value &value, std::string &out, const Said &said, ExpressionContext &context);
+
+// A LINE NUMBER GOING IN: a number no less than 0; one too large for any line is past every file's end.
+bool number_of(const Value &value, std::size_t &out, const Said &said, ExpressionContext &context);
+
+// A file's own words about itself -- its path and its last error -- never a reason to stop.
+Value a_string_always(const std::string &bytes);
+
+// A LINE THAT WAS READ, or the program stopped with the file's own code and reason.
+Value a_line_or_stop(bool read, const std::string &text, const satellite_file &file, const Said &said,
+                     ExpressionContext &context);
+
+// A QUESTION ASKED OF A FILE THAT IS NOT OPEN STOPS THE PROGRAM; true when it is open.
+bool open_or_stop(const satellite_file &file, const std::string &name, const Said &said, ExpressionContext &context);
+
+} // namespace file_method_parts
 
 // `file[n]`: line n, counting from 1. Stops the program when the line cannot be read.
 Value read_file_line(satellite_file &file, const Value &index, const std::string &name, ExpressionContext &context);

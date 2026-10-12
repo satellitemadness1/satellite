@@ -129,21 +129,21 @@ bool window_set_text(satellite_window &which, const std::string &text, std::stri
     // the title to `.text` would be two names for one thing, and a person who
     // wrote `.text` on a window meant `.title` -- so say that.
     if (which.piece == satellite_window::window) {
-        why = "a window's words are its title -- write .title(\"text\") instead";
+        why = "a window's words are its title -- write .satellite.title(\"text\") instead";
         return false;
     }
     // A CONSOLE IS WRITTEN INTO, A LINE AT A TIME (GTK-17): `.text` on one
     // would be a second word for `.display`, so it is sent to the first.
     if (which.piece == satellite_window::console) {
-        why = "a console is written into a line at a time -- write .display(\"words\") instead";
+        why = "a console is written into a line at a time -- write .satellite.display(\"words\") instead";
         return false;
     }
     if (which.piece == satellite_window::picture) {
-        why = "a picture's words are the file it shows -- write .path(\"other.png\") instead";
+        why = "a picture's words are the file it shows -- write .satellite.path(\"other.png\") instead";
         return false;
     }
     if (which.piece == satellite_window::canvas) {
-        why = "a canvas has no words of its own -- .write(across, down, \"words\") draws some";
+        why = "a canvas has no words of its own -- .satellite.write(across, down, \"words\") draws some";
         return false;
     }
     // A MENU'S WORDS ARE ITS HEADING, and changing one on a bar is a remove and
@@ -154,12 +154,12 @@ bool window_set_text(satellite_window &which, const std::string &text, std::stri
     // taken, shown by nothing, and wiped by the next read.
     if (which.piece == satellite_window::a_section) {
         why = "a section has no words of its own -- what is made in it does: "
-              "my_section.widgets.displays.input(\"words\")";
+              "my_section.satellite.widgets.display.input(\"words\")";
         return false;
     }
     if (which.piece == satellite_window::file_display) {
         why = "a file display shows a directory's files and has no words of its own -- "
-              ".directory(\"/home/you/\") says which directory";
+              ".satellite.directory(\"/home/you/\") says which directory";
         return false;
     }
     // NOT still_there(): a piece is on no screen until it is appended, and
@@ -199,19 +199,19 @@ bool window_set_text(satellite_window &which, const std::string &text, std::stri
 bool window_text_of(satellite_window &which, std::string &out, std::string &why)
 {
     if (which.piece == satellite_window::window) {
-        why = "a window's words are its title -- write .title instead";
+        why = "a window's words are its title -- write .satellite.title instead";
         return false;
     }
     if (which.piece == satellite_window::console) {
-        why = "a console's words are on its screen -- .typed is the last line a person finished in it";
+        why = "a console's words are on its screen -- .satellite.typed is the last line a person finished in it";
         return false;
     }
     if (which.piece == satellite_window::picture) {
-        why = "a picture's words are the file it shows -- write .path instead";
+        why = "a picture's words are the file it shows -- write .satellite.path instead";
         return false;
     }
     if (which.piece == satellite_window::canvas) {
-        why = "a canvas has no words of its own -- .write(across, down, \"words\") draws some";
+        why = "a canvas has no words of its own -- .satellite.write(across, down, \"words\") draws some";
         return false;
     }
     // A MENU'S HEADING IS OURS, LIKE A LABEL'S WORDS: satellite put it there and
@@ -237,7 +237,7 @@ bool window_text_of(satellite_window &which, std::string &out, std::string &why)
     // so, so this refuses and names when to read it.
     if (which.widget == nullptr) {
         why = "it is closed, and what was typed in it went with the window -- "
-              "read .text while the window is still open";
+              "read .satellite.text while the window is still open";
         return false;
     }
     GtkWidget *widget = static_cast<GtkWidget *>(which.widget);

@@ -166,8 +166,9 @@ std::string usage_lines()
            "    --debug and --console come before the file, --run or --repl. --version\n"
            "    and --help are the whole command line. Every word after the file is the\n"
            "    program's, --version and --debug included, numbered as it was typed:\n"
-           "    arguments.argument1 is satl, argument2 the file, argument3 onwards its\n"
-           "    words (arg3, args3 and arguments3 are argument3), and arguments.length.\n"
+           "    satellite.arguments.argument1 is satl, argument2 the file, argument3\n"
+           "    onwards its words (arg3, args3 and arguments3 are argument3), and\n"
+           "    satellite.arguments.length.\n"
            "\n"
            // NO MONITOR, NO satl (the author, 2026-10-05): every run is in satl's own
            // console, and the terminal satl was started from is not where it runs.

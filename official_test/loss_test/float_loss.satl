@@ -1,7 +1,7 @@
 satellite.include(satellite)
-arguments.float.decimal(128)
-arguments.float.whole(4096)
-arguments.infinity_display(128)
+satellite.arguments.float.decimal(128)
+satellite.arguments.float.whole(4096)
+satellite.arguments.infinity_display(128)
 
 // FLOAT LOSS TEST -- satellite.variable.float
 //
@@ -118,7 +118,7 @@ satellite.capsule satellite.main()
         x = x * 10 ^ 30
         x = x * 12345.6789
         before = x
-        x = x + (x - x % 1).number % 1000
+        x = x + (x - x % 1).satellite.number % 1000
         satellite.statement.if (x - before != -663)
         {
             wrong = wrong + 1
@@ -169,7 +169,7 @@ satellite.capsule satellite.main()
         }
         x = x - 0.0000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000001
         x = x * 2.5
-        x = 1.75 + x.string
+        x = 1.75 + x.satellite.string
         // back: the 50 that undo them, in reverse order
         x = x - 1.75
         before = x

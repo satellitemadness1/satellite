@@ -9,7 +9,7 @@ satellite.capsule satellite.main()
     satellite.variable.file f = satellite.file.new("stops.se")
     satellite.statement.for(satellite.variable.number i = 0; i < 5; i++)
     {
-        f.append(i)
+        f.satellite.append(i)
     }
     satellite.variable.number z = 0
     satellite.variable.number x = 1 / z

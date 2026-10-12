@@ -69,7 +69,7 @@ signed long long int refuse_meeting(const std::string &what, const satelliteObje
     }
     if (what == "+" && other.is_string()) {
         why = both + " -- with a number first, + adds; to join them, put the text first (\"total: \" + n) or "
-                     "write n.string";
+                     "write n.satellite.string";
         return types_do_not_meet;
     }
     why = both + ", and there is no scenario for that pair";
@@ -164,11 +164,11 @@ signed long long int fraction_to_string(const satellite_fraction &value, satelli
 
 // NOT BUILT: 4/2 is 2 and 1/3 is no whole number, and which of cutting, rounding or
 // refusing 1/3 means is the float's question too (float_to_number refuses). A
-// fraction's own numbers are its .numerator and .denominator.
+// fraction's own numbers are its .satellite.numerator and .satellite.denominator.
 signed long long int fraction_to_number(const satellite_fraction &value, satellite_number &, std::string &why)
 {
     why = "a number made of the fraction " + fraction_written(value) +
-          " is not built yet -- its two numbers are .numerator and .denominator";
+          " is not built yet -- its two numbers are .satellite.numerator and .satellite.denominator";
     return not_built_yet;
 }
 

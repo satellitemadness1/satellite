@@ -1,7 +1,7 @@
 // A time keeps its sign, so -1s is a time -- and a wait below zero is refused, S440.
 satellite.include(satellite)
 
-satellite.capsule satellite.main(satellite.container.list<satellite.variable.string> arguments)
+satellite.capsule satellite.main(satellite.variable.arguments arguments)
 {
     satellite.time.sleep(-1s)
     satellite.return(satellite)

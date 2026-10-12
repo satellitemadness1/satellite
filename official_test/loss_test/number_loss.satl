@@ -59,7 +59,7 @@ satellite.capsule satellite.main()
         n = n - b1                                                       // 4: a borrow back through 64 bits (binary 1)
         n = n * x10000000000000000                                       // 5: a whole limb shifted in (hex 2^64)
         n = n + xFFFFFFFFFFFFFFFF                                        // 6: the low limb all ones (hex)
-        n = n.add(1)                                                     // 7: a carry through 128 bits
+        n = n.satellite.add(1)                                                     // 7: a carry through 128 bits
         n = -n                                                           // 8: below zero
         n = n + 10 ^ 50                                                  // 9: above zero again, past a 3-limb value
         n = n * -7                                                       // 10: a negative multiplier
@@ -71,14 +71,14 @@ satellite.capsule satellite.main()
         n = n * 340282366920938463463374607431768211507                  // 16: 2^128 + 51
         n = n - 3 ** 100                                                 // 17: ** is ^
         n = n * 10 ^ 40 + 547311173                                      // 18: the satellite digits appended
-        n = n.reverse() + (n % 10 - 3) * far                             // 19: its digits turned round (a 0 at its end would vanish: kept up in far)
+        n = n.satellite.reverse() + (n % 10 - 3) * far                             // 19: its digits turned round (a 0 at its end would vanish: kept up in far)
         n = n % 2 ^ 64 * 2 ^ 576 + n / 2 ^ 64 + n / 2 ^ 640 * far        // 20: the lowest limb rotated to the top (a value past 2^640 would wrap: kept up in far)
         n = (n + 5) ^ 2 - (n - 5) ^ 2                                    // 21: its own squares: 20 n
         n = n / 4 + n % 4 * far                                          // 22: an exact division, its remainder kept
-        n = n.add(n)                                                     // 23: .add() its own value
+        n = n.satellite.add(n)                                                     // 23: .add() its own value
         n = n - 547311173547311173547311173547311173547311173547311173547311173547311173 // 24: satellite 8 times
         n = n * 3 + 1                                                    // 25: * before +
-        n = n.string.satellite.number                                              // 26: through its own text, back with .number
+        n = n.satellite.string.satellite.number                                              // 26: through its own text, back with .number
         n = n * 800%                                                     // 27: 800% of it
         n = n + 12.5%                                                    // 28: grown by 12.5%
         n = n / 0.00000000000000000000000000000001%                      // 29: divided by the smallest percent: n * 10^34
@@ -87,9 +87,9 @@ satellite.capsule satellite.main()
         n = n - b1111111111111111111111111111111111111111111111111111111111111111111111111111111 // 32: 79 binary ones
         n = n % 10 ^ 9 * 10 ^ 300 + n / 10 ^ 9 + n / 10 ^ 309 * far      // 33: the last 9 digits moved up above the rest (past 10^309 it would wrap: kept up in far)
         n = n + n                                                        // 34: the value added to itself with +
-        n = n.add(xDEADBEEF)                                             // 35: .add() a hex
-        n = n.add("547311173")                                           // 36: .add() text
-        n = n.add(2 ^ 200)                                               // 37: .add() a power
+        n = n.satellite.add(xDEADBEEF)                                             // 35: .add() a hex
+        n = n.satellite.add("547311173")                                           // 36: .add() text
+        n = n.satellite.add(2 ^ 200)                                               // 37: .add() a power
         n = (n + 1) ^ 2 - n ^ 2 - 1                                      // 38: its own squares again: 2 n
         n = n * 3 ** 40                                                  // 39: 3 ** 40
         n = n - 7 ** 77                                                  // 40: a 66-digit power
@@ -97,15 +97,15 @@ satellite.capsule satellite.main()
         n = n * 9223372036854775807                                      // 42: 2^63 - 1
         n = n + 9223372036854775808                                      // 43: 2^63
         n = 0 - n                                                        // 44: above zero again
-        n = 0 + (n.string + "173")                                       // 45: three digits appended as text
-        n = 0 + ("547" + n.str)                                          // 46: three digits put in front as text
+        n = 0 + (n.satellite.string + "173")                                       // 45: three digits appended as text
+        n = 0 + ("547" + n.satellite.str)                                          // 46: three digits put in front as text
         n = (n + xFFFFFFFFFFFFFFFEFFFFFFFFFFFFFFFF * 2 ^ 1408) * x200000000000000000000000000000003 // 47: forces Knuth D's rare add-back when undone
         n = n * 4294967296                                               // 48: 2^32
         n = (n + x7FFFFFFFFFFFFFFF * 2 ^ 2048) * x8000000000000003       // 49: forces one-limb division's rare second correction when undone
         n = n * 10                                                       // 50: * 10
 
         // HALFWAY: n is where exact math says it is, so a step that undoes itself cannot cancel out
-        satellite.statement.if (n.string != "27492268294360120508912033380221923927668579884630881103392555925645403049218412427639005488220055195833773988772922471650476294404764235835713376087727872762804076306709507192010049471986023828917685393991576842156624154142878871507043732727540257319696113156082112621309331459845155882659178399780206080473286239965583450871340034087953933386206935741410186561391157494582649652631461711098796083688727064344897596812865293531298299809778286521023719165540063052920605572592903000622897346574865954158724462669667943029645491509452792153150579151320344282193164884098746946986535548161729935081254053753514036292901351223550264145440506258127807494225920")
+        satellite.statement.if (n.satellite.string != "27492268294360120508912033380221923927668579884630881103392555925645403049218412427639005488220055195833773988772922471650476294404764235835713376087727872762804076306709507192010049471986023828917685393991576842156624154142878871507043732727540257319696113156082112621309331459845155882659178399780206080473286239965583450871340034087953933386206935741410186561391157494582649652631461711098796083688727064344897596812865293531298299809778286521023719165540063052920605572592903000622897346574865954158724462669667943029645491509452792153150579151320344282193164884098746946986535548161729935081254053753514036292901351223550264145440506258127807494225920")
         {
             wrong = wrong + 1
         }
@@ -114,7 +114,7 @@ satellite.capsule satellite.main()
         n = n / x8000000000000003 + n % x8000000000000003 * far - x7FFFFFFFFFFFFFFF * 2 ^ 2048 // 52: undoes 49
         n = n / 4294967296 + n % 4294967296 * far                        // 53: undoes 48
         n = n / x200000000000000000000000000000003 + n % x200000000000000000000000000000003 * far - xFFFFFFFFFFFFFFFEFFFFFFFFFFFFFFFF * 2 ^ 1408 // 54: undoes 47
-        n = (n.string - "547").satellite.number + (n / 10 ^ 350 - 547) * far      // 55: undoes 46 (anything but 547 in front of 350 digits: kept up in far)
+        n = (n.satellite.string - "547").satellite.number + (n / 10 ^ 350 - 547) * far      // 55: undoes 46 (anything but 547 in front of 350 digits: kept up in far)
         n = n / 1000 + (n % 1000 - 173) * far                            // 56: undoes 45
         n = -1 * n                                                       // 57: undoes 44
         n = n - 9223372036854775808                                      // 58: undoes 43
@@ -124,8 +124,8 @@ satellite.capsule satellite.main()
         n = n / 3 ** 40 + n % 3 ** 40 * far                              // 62: undoes 39
         n = n / b10 + n % b10 * far                                      // 63: undoes 38
         n = n - 2 ^ 200                                                  // 64: undoes 37
-        n = n.add("-547311173")                                          // 65: undoes 36
-        n = n.add(-xDEADBEEF)                                            // 66: undoes 35
+        n = n.satellite.add("-547311173")                                          // 65: undoes 36
+        n = n.satellite.add(-xDEADBEEF)                                            // 66: undoes 35
         n = n / 2 + n % 2 * far                                          // 67: undoes 34
         n = n % 10 ^ 300 * 10 ^ 9 + n / 10 ^ 300 + n / 10 ^ 309 * far    // 68: undoes 33 (the same guard)
         n = n + b1111111111111111111111111111111111111111111111111111111111111111111111111111111 // 69: undoes 32
@@ -134,14 +134,14 @@ satellite.capsule satellite.main()
         n = n * 0.00000000000000000000000000000001%                      // 72: undoes 29
         n = n / 112.5%                                                   // 73: undoes 28
         n = n * 12.5%                                                    // 74: undoes 27
-        n = 0 + n.to_string                                              // 75: undoes 26
+        n = 0 + n.satellite.to_string                                              // 75: undoes 26
         n = (n - 1) / 3 + (n - 1) % 3 * far                              // 76: undoes 25
         n = n + 547311173547311173547311173547311173547311173547311173547311173547311173 // 77: undoes 24
         n = n * 50%                                                      // 78: undoes 23
         n = n * 4                                                        // 79: undoes 22
         n = n / 20 + n % 20 * far                                        // 80: undoes 21
         n = n % 2 ^ 576 * 2 ^ 64 + n / 2 ^ 576 + n / 2 ^ 640 * far       // 81: undoes 20 (the same guard)
-        n = (0 + n.string.satellite.reverse()) + (n % 10 - 3) * far                // 82: undoes 19 (a 0 at its end would vanish: kept up in far)
+        n = (0 + n.satellite.string.satellite.reverse()) + (n % 10 - 3) * far                // 82: undoes 19 (a 0 at its end would vanish: kept up in far)
         n = n / 10 ^ 40 + (n % 10 ^ 40 - 547311173) * far                // 83: undoes 18
         n = n + 3 ** 100                                                 // 84: undoes 17
         n = n / 340282366920938463463374607431768211507 + n % 340282366920938463463374607431768211507 * far // 85: undoes 16
@@ -153,7 +153,7 @@ satellite.capsule satellite.main()
         n = n / -7 + n % -7 * far                                        // 91: undoes 10
         n = n - 10 ^ 50                                                  // 92: undoes 9
         n = n * -1                                                       // 93: undoes 8
-        n = n.add(-1)                                                    // 94: undoes 7
+        n = n.satellite.add(-1)                                                    // 94: undoes 7
         n = n - xFFFFFFFFFFFFFFFF                                        // 95: undoes 6
         n = n / x10000000000000000 + n % x10000000000000000 * far        // 96: undoes 5
         n = n + "1"                                                      // 97: undoes 4
@@ -168,14 +168,14 @@ satellite.capsule satellite.main()
         }
         satellite.statement.if (wrong > 0)
         {
-            seen = "pass " + pass.string + ": wrong " + wrong.string + ", n = " + n.string
+            seen = "pass " + pass.satellite.string + ": wrong " + wrong.satellite.string + ", n = " + n.satellite.string
             satellite.statement.break
         }
     }
     // 547311173, n's own text -- or the first pass that went wrong, and what n was then
     satellite.statement.if (seen == "")
     {
-        seen = n.string
+        seen = n.satellite.string
     }
     satellite.console.display(seen)
     satellite.return(satellite)

@@ -18,11 +18,15 @@ h = h + x01 is refused, and the refusal tells you to keep the answer in a
 satellite.variable.number, or to write the hex it should be. A hex given to a
 number name keeps its worth.
 
-.number is what it is worth, .string is how it is shown, .hex is its digits,
-.binary is its bits, four to each digit, .width counts those bits, and
-.reverse() turns its digits round with the width and sign kept. Adding a hex to
-a binary and getting a hex or a binary back is not built yet: the new types are
-mixed together later.
+.satellite.number is what it is worth, .satellite.string is how it is shown,
+.satellite.hex is its digits, .satellite.binary is its bits, four to each digit,
+.satellite.width counts those bits, .satellite.reverse() turns its digits round
+with the width and sign kept, and .satellite.add(x) is +, so it answers a
+number. Since 2026-10-11 a hex's words are written with satellite. in front of
+them, as every word built into the language is: mask.satellite.number. The old
+mask.number is refused before anything runs, naming the new spelling. Adding a
+hex to a binary and getting a hex or a binary back is not built yet: the new
+types are mixed together later.
 
 example:
 
@@ -35,10 +39,10 @@ satellite.capsule satellite.main(satellite.variable.arguments arguments)
     satellite.console.display(mask) // x00FF
     satellite.console.display(mask + 1) // 256
     satellite.console.display(mask == red) // false
-    satellite.console.display(mask.number) // 255
-    satellite.console.display(mask.binary) // 0000000011111111
-    satellite.console.display(mask.width) // 16
-    satellite.console.display(mask.reverse()) // xFF00
+    satellite.console.display(mask.satellite.number) // 255
+    satellite.console.display(mask.satellite.binary) // 0000000011111111
+    satellite.console.display(mask.satellite.width) // 16
+    satellite.console.display(mask.satellite.reverse()) // xFF00
     satellite.console.display(-x1F) // -x1F
     satellite.return(satellite)
 }

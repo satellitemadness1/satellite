@@ -23,34 +23,51 @@ satellite.variable.float, while 4 / 3 stays 1 -- write 4.0 / 3 for the float
 
 A number meets text by what the text says: 5 + "2" is the number 7, because
 "2" spells a number, and 5 + "a" is the text 5a. Every other conversion you say
-out loud with a method. .string (also .to_string and .str) is
-its base 10 text, .binary (also .bin) its base 2 text, .hex its base 16 text,
-.reverse() turns its digits round and keeps the sign, and .add(x) is +.
+out loud with a method, and a number's methods are its own words, written
+under satellite: n.satellite.string (also .satellite.to_string and
+.satellite.str) is its base 10 text, n.satellite.binary (also .satellite.bin)
+its base 2 text, n.satellite.hex its base 16 text, n.satellite.reverse() turns
+its digits round and keeps the sign, and n.satellite.add(x) is +.
+
+Its other words, each answering a new number and leaving n as it was:
+n.satellite.abs() is n without its sign; n.satellite.max(x) and
+n.satellite.min(x) the larger and the smaller of n and x;
+n.satellite.clamp(low, high) holds n between low and high; n.satellite.power(x)
+is n ^ x and n.satellite.modulus(x) is n % x, the operators' own answers;
+n.satellite.shift_left(k) and n.satellite.shift_right(k) multiply and divide n
+by 2 ^ k; n.satellite.digits() counts its decimal digits and n.satellite.bytes()
+the bytes it takes. A number is whole, so n.satellite.floor(),
+n.satellite.ceil(), n.satellite.round() and n.satellite.truncate() answer n.
+n.satellite.sqrt() is numbered and not built yet (S210).
 
 What it refuses today: a touching sign, 4+3 (S110), and n += 1 (S210, "write
 n = n + ..."). A number with a point in it, 12.34, is a float, not a number, and
-a number name given one is refused ("it holds a float"). n.power(2) is refused
-as not built (S210), and max, min, abs, clamp, floor, ceil, round, truncate,
-sqrt, modulus, shift_left, shift_right and digits are numbered words with no
-library wired to them yet (MILESTONES.md M17): n.max(3) says "no capsule named
-max".
+a number name given one is refused ("it holds a float"). A number's word with a
+bare period, n.max(3), is refused before anything runs, naming n.satellite.max
+(S110), and so is one it does not have: n.find("8") is a string's (S301).
 
 example:
 
 satellite.include(satellite)
 
-satellite.capsule satellite.main(satellite.container.list<satellite.variable.string> arguments)
+satellite.capsule satellite.main(satellite.variable.arguments arguments)
 {
     satellite.variable.number n = 87
-    satellite.console.display(n + 13)           // 100
-    satellite.console.display(4 / 3)            // 1
-    satellite.console.display(-7 % 2)           // -1
-    satellite.console.display(2 ^ 3 ^ 2)        // 512
-    satellite.console.display(2 ^ 70)           // 1180591620717411303424
-    satellite.console.display(n > 50)           // true
-    satellite.console.display(n.binary)         // 1010111
-    satellite.console.display(n.hex)            // 57
-    satellite.console.display(n.reverse())      // 78
+    satellite.console.display(n + 13)                       // 100
+    satellite.console.display(4 / 3)                        // 1
+    satellite.console.display(-7 % 2)                       // -1
+    satellite.console.display(2 ^ 3 ^ 2)                    // 512
+    satellite.console.display(2 ^ 70)                       // 1180591620717411303424
+    satellite.console.display(n > 50)                       // true
+    satellite.console.display(n.satellite.binary)           // 1010111
+    satellite.console.display(n.satellite.hex)              // 57
+    satellite.console.display(n.satellite.reverse())        // 78
+    satellite.console.display(n.satellite.max(100))         // 100
+    satellite.console.display(n.satellite.clamp(0, 50))     // 50
+    satellite.console.display(n.satellite.power(2))         // 7569
+    satellite.console.display(n.satellite.modulus(10))      // 7
+    satellite.console.display(n.satellite.shift_left(1))    // 174
+    satellite.console.display(n.satellite.digits())         // 2
     satellite.return(satellite)
 }
 

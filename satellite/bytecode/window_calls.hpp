@@ -53,7 +53,8 @@ int window_method_arity(token::Code method);
 // take the piece and where it goes, a row and a column take just the piece, and
 // which is right is the RECEIVER's -- which the checker cannot know, because a
 // satellite.variable.window name may hold either. `.listen` takes a capsule or
-// nothing, and `.file` and `.input` a name, or a name and a size (2026-10-10).
+// nothing, and `.widgets.display.file` and `.widgets.display.input` a name, or a
+// name and a size (2026-10-10).
 int window_method_also_takes(token::Code method);
 
 // HOW MANY IT TAKES, AS A REFUSAL SAYS IT: "1 argument", "4 arguments", and both
@@ -87,14 +88,23 @@ bool window_method_takes_a_capsule_name(token::Code method);
 // rather than carrying its own list, for the reason above.
 bool window_method_takes_more_after_the_name(token::Code method);
 
-// THE AUTHOR'S WIDGET CHAIN (2026-10-09), main_window.widgets.displays.file("file_display"):
-// "" when `method` may follow `before`, else the sentence that says how it is written. Asked by
-// the checker of the codes it walked and by the walker of the method before, on the same value.
-std::string widgets_spelled_wrong(token::Code method, token::Code before);
+// THE AUTHOR'S WORDS OF PARTS (his final window syntax, 2026-10-10 ~21:15), each ONE word with `.satellite.`
+// once before it: main_window.files_display.satellite.widgets.display.file("list_of_files", 100%, 100%), and
+// w.satellite.scroll.vertical(1). The lexer reads each as one code after `.satellite.`; written any other way --
+// bare, `.satellite.` again inside it, the family's old name displays, begun and not finished -- it arrives as its
+// parts. True when the method after the period at `dot` is such a part (window_shapes.cpp says which are). Asked
+// by the walker and the checker of a window, before the period's own rule, so the sentence names the whole word.
+bool a_word_in_parts(const std::vector<std::bitset<16>> &row, std::size_t dot);
 
-// `.file("a_name")` and `.input("a_name")`: the two that make a widget and take its name. A section
-// (2026-10-10) is not one of the displays: `.section` is written on the window or the section, and
-// program_check.cpp judges it where it knows that is what it was written on.
+// AND THE SENTENCE: `receiver` is the call as written up to the period -- main_window, main_window.files_display --
+// and the sentence says how the whole word is written: "main_window.widgets.display.file is written
+// main_window.satellite.widgets.display.file now -- a window's own words are under satellite".
+std::string word_in_parts_written_wrong(const std::vector<std::bitset<16>> &row, std::size_t dot,
+                                        const std::string &receiver);
+
+// `.satellite.widgets.display.file("a_name")` and `.satellite.widgets.display.input("a_name")`: the two that make a
+// widget and take its name. A section (2026-10-10) is not one of the displays: `.satellite.section` is written on
+// the window or the section, and program_check.cpp judges it where it knows that is what it was written on.
 bool makes_a_widget(token::Code method);
 
 // `.section("a_name", 100%, 50%)` WRITTEN ON A WINDOW OR A SECTION: three arguments, the first its name
@@ -108,13 +118,23 @@ bool a_widget_name_fits(const std::string &name, std::string &why);
 // One of those words, its arguments already evaluated.
 Value call_window_word(token::Code code, const std::vector<Value> &arguments, ExpressionContext &context);
 
-// `window.method(arguments)`. `had_parentheses` is false for `w.title`, which
-// reads the title back; `w.title("x")` writes it.
-Value call_window_method(token::Code method, const WindowHandle &which, const std::vector<Value> &arguments,
-                         bool had_parentheses, const std::string &name, ExpressionContext &context);
+// A WINDOW'S OWN WORDS RUN BY THEIR NUMBERS (NM-8, 2026-10-11; the author: "we have to give everything a number
+// and then make it run those numbers"). Every method a window and the pieces in one have is the word
+// satellite.variable.window.<it>, 1 6 18 n -- a file under satellite-numbers/words/ -- and this says which method
+// runs which, or 0 for one a window does not have. ONE NUMBER A METHOD: a read written bare and its write with
+// brackets are one (`.title` and `.title("x")`), `.colour` and `.color` one, and a method's two right counts one.
+token::Code window_number_of(token::Code method);
+
+// `window.satellite.method(arguments)`, by its number. What a window refuses before any of its words runs --
+// a program's own thread using one, a satl built without a window -- is refused here; everything else is the
+// number's, which the function table runs (window_methods.cpp). `had_parentheses` is false for `w.satellite.title`,
+// which reads the title back; `w.satellite.title("x")` writes it.
+Value run_window_number(token::Code method, token::Code number, const Value &receiver,
+                        const std::vector<Value> &arguments, bool had_parentheses, const std::string &name,
+                        ExpressionContext &context);
 
 // `my_window.a_name` -- THE WIDGET MADE IN IT UNDER THAT NAME (the author, 2026-10-09), with
-// `.widgets.displays.file("a_name")`. `name` is the chain so far, as a refusal says it.
+// `.satellite.widgets.display.file("a_name")`. `name` is the chain so far, as a refusal says it.
 Value a_widget_by_name(const WindowHandle &which, const std::string &member, const std::string &name,
                        ExpressionContext &context);
 

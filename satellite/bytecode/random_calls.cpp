@@ -153,7 +153,7 @@ Value call_random_word(Code code, const std::vector<Value> &arguments, Expressio
             const bool holds_one = arguments[i].is_binary() || arguments[i].is_hexadecimal();
             context.refuse(random_wants_whole_numbers,
                            spelled + " takes whole numbers, and was given " + arguments[i].kind_name() +
-                               (holds_one ? " -- its .number is the whole number it holds" : ""));
+                               (holds_one ? " -- its .satellite.number is the whole number it holds" : ""));
             return Value();
         }
     }

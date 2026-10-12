@@ -12,7 +12,7 @@ satellite.capsule divide(satellite.variable.number by)
 satellite.capsule satellite.main()
 {
     satellite.variable.thread t = satellite.thread.new(divide(0))
-    t.start()
+    t.satellite.start()
     satellite.variable.number i = 0
     satellite.statement.while(i < 200000)
     {

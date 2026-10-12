@@ -5,11 +5,11 @@ satellite.include(satellite)
 satellite.capsule satellite.main(satellite.variable.arguments args)
 {
     satellite.variable.program stubborn = {"sh", "-c", "trap '' TERM; while :; do sleep 0.1; done"}
-    stubborn.start()
+    stubborn.satellite.start()
     satellite.variable.program settle = {"sleep", "0.3"}
-    settle.start()
-    settle.join()
-    satellite.console.display(stubborn.shutdown())           // 137
-    satellite.console.display(stubborn.error())              // it was ended by signal 9 (SIGKILL)
+    settle.satellite.start()
+    settle.satellite.join()
+    satellite.console.display(stubborn.satellite.shutdown())           // 137
+    satellite.console.display(stubborn.satellite.error())              // it was ended by signal 9 (SIGKILL)
     satellite.return(satellite)
 }

@@ -333,6 +333,13 @@ public:
     int scroll_horizontal = -1;
     void *scroller = nullptr;
     void *vertical_bar = nullptr;
+    // THE WIDEST LINE A CONSOLE HAS PRINTED, in columns, and the row it was looked for down to (the author,
+    // 2026-10-11: "if it prints a line that is 1000 chars wide, you can only scroll to 1000 chars"): sideways, a
+    // console is that wide, or the window's width when that is wider. The desk's, with `width_look` its GLib
+    // source while a look waits.
+    long widest = 0;
+    long looked_to_row = 0;
+    unsigned int width_look = 0;
 
     // THE WORDS ON A PIECE: a button's label, a label's line, what a person
     // typed. FOR A BUTTON AND A LABEL THIS IS THE TRUTH -- nothing but satellite
@@ -652,7 +659,7 @@ WindowHandle window_text_box_of(const std::string &text, long long int character
 // WHETHER A WINDOW OR A CONSOLE SCROLLS, written: `.scroll.vertical(on)` and `.scroll.horizontal(on)`
 // (the author, 2026-10-07). A window's fixed area sits in a scroller whose bars appear when a piece
 // lies past its edge; a console's up-and-down is its bar and its scrollback, its sideways a width
-// of 2048 characters that wraps nothing. Anything else is refused by name.
+// as wide as its widest line, wrapping nothing. Anything else is refused by name.
 bool window_set_scrolling(satellite_window &which, bool vertical, bool on, std::string &why);
 // What it scrolls like now, the arguments' rows standing in where nothing was set on it.
 bool window_scrolls(const satellite_window &which, bool vertical);

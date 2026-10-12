@@ -1,6 +1,12 @@
 // satellite/bytecode/file_calls.cpp -- the header says why these words are the
 // object model's and not libraries, and which refusals stop a program.
 //
+// A FILE'S METHODS ARE REACHED BY THEIR NUMBERS SINCE 2026-10-11 (NM-8): each
+// one's code is a file under satellite-numbers/words/ named by its number --
+// 1.6.2.12.cpp is append -- and this file is what they share: the arguments going
+// in, the refusals made before one runs, and run_file_number, which calls the one
+// a method's number names. satellite.file's own words are still all here.
+//
 // LINES COUNT FROM 1 (the author, 2026-09-18). Every number going into a file
 // method is a line number as a person counts it, and every number coming out --
 // index_of, search, size -- is one too. 0 is never a line, so it is the answer
@@ -8,6 +14,7 @@
 
 #include "file_calls.hpp"
 #include "container_calls.hpp"
+#include "number_calls.hpp"
 #include "string_calls.hpp"
 
 #include "word_codes.hpp"
@@ -38,6 +45,12 @@ std::size_t line_number_of(const satellite_number &value)
     return fast::fits_a_count(value) ? static_cast<std::size_t>(fast::as_count(value)) : kNoSuchLine;
 }
 
+} // namespace
+
+// THE PIECES A FILE'S NUMBERED METHODS SHARE (file_calls.hpp) -- with satellite.file's words and f[n] too.
+// Each takes the call as a Said and spells it only when it says something.
+namespace file_method_parts {
+
 Value a_number(std::size_t n)
 {
     return Value::of_number(satellite_number(static_cast<unsigned long long int>(n)));
@@ -61,15 +74,15 @@ Value a_string(const std::string &utf8, ExpressionContext &context)
 // Text going IN. A NUMBER WHERE TEXT IS EXPECTED IS ITS DIGITS (the author,
 // 2026-09-16: "obviously the programmer meant convert to string, but record the
 // warning in satellite.log") -- and the warning goes there, S020 (M5).
-bool text_of(const Value &value, std::string &out, const std::string &what, ExpressionContext &context)
+bool text_of(const Value &value, std::string &out, const Said &said, ExpressionContext &context)
 {
     if (value.is_string()) { out = value.text_utf8(); return true; }
     if (const satellite_number *number = value.as_number()) {
         out = fast::to_text(*number);
-        warn_number_taken_as_text(context.state, what, out);
+        warn_number_taken_as_text(context.state, said.text(), out);
         return true;
     }
-    context.refuse(types_do_not_meet, what + " takes text, and was given " + value.kind_name());
+    context.refuse(types_do_not_meet, said.text() + " takes text, and was given " + value.kind_name());
     return false;
 }
 
@@ -77,18 +90,18 @@ bool text_of(const Value &value, std::string &out, const std::string &what, Expr
 // 2026-09-18): it used to reach the file as the largest number there is, so
 // `f.truncate(-1)` answered true and changed nothing, and `f[-1]` was reported as
 // line 18446744073709551615. Lines count from 1; -1 is not a line in any file.
-bool number_of(const Value &value, std::size_t &out, const std::string &what, ExpressionContext &context)
+bool number_of(const Value &value, std::size_t &out, const Said &said, ExpressionContext &context)
 {
     if (const satellite_number *number = value.as_number()) {
         if (number->negative()) {
-            context.refuse(not_a_position, what + " was given " + fast::to_text(*number) +
+            context.refuse(not_a_position, said.text() + " was given " + fast::to_text(*number) +
                                                ", and lines count from 1");
             return false;
         }
         out = line_number_of(*number);
         return true;
     }
-    context.refuse(types_do_not_meet, what + " takes a line number, and was given " + value.kind_name());
+    context.refuse(types_do_not_meet, said.text() + " takes a line number, and was given " + value.kind_name());
     return false;
 }
 
@@ -113,6 +126,46 @@ Value a_string_always(const std::string &bytes)
     Value::of_utf8(shown, out, bad_offset);
     return out;
 }
+
+// A READ THAT CANNOT BE ANSWERED STOPS THE PROGRAM, with the file's own code and
+// reason: line_past_the_end, file_not_open or file_has_no_lines.
+Value a_line_or_stop(bool read, const std::string &text, const satellite_file &file, const Said &said,
+                     ExpressionContext &context)
+{
+    if (read) return a_string(text, context);
+    if (file.code() == line_past_the_end || file.code() == success) {
+        const std::size_t lines = file.size();
+        context.refuse(line_past_the_end, said.text() + ": " + (lines == 0 ? std::string("the file has no lines")
+                                                                            : "there is no such line -- the file has " +
+                                                                                  std::to_string(lines) +
+                                                                                  (lines == 1 ? " line" : " lines") +
+                                                                                  ", counting from 1"));
+        return Value();
+    }
+    context.refuse(file.code(), said.text() + ": " + file.error());
+    return Value();
+}
+
+// A QUESTION ASKED OF A FILE THAT IS NOT OPEN STOPS THE PROGRAM (the review,
+// 2026-09-18). It answered as though the file were empty -- `size` 0, `search`
+// 0, `contains` false -- so an open that failed went on to a `replace(0, ...)`
+// that answered false, and the run exited 0 having changed nothing. Those are
+// answers that are wrong and do not say so. The words that CHANGE a file still
+// answer false, which is true; the words about the handle itself (ok, error,
+// path, exists, open, close, save) still answer.
+bool open_or_stop(const satellite_file &file, const std::string &name, const Said &said, ExpressionContext &context)
+{
+    if (file.ok()) return true;
+    context.refuse(file_not_open, said.text() + ": " + name + " is not open" +
+                                      (file.error().empty() ? std::string() : " -- " + file.error()));
+    return false;
+}
+
+} // namespace file_method_parts
+
+using namespace file_method_parts;
+
+namespace {
 
 std::string folder_of(const std::string &path)
 {
@@ -191,41 +244,6 @@ bool kind_of(const Value &value, satellite_file::Kind &kind, const std::string &
     return false;
 }
 
-// A READ THAT CANNOT BE ANSWERED STOPS THE PROGRAM, with the file's own code and
-// reason: line_past_the_end, file_not_open or file_has_no_lines.
-Value a_line_or_stop(bool read, const std::string &text, const satellite_file &file, const std::string &what,
-                     ExpressionContext &context)
-{
-    if (read) return a_string(text, context);
-    if (file.code() == line_past_the_end || file.code() == success) {
-        const std::size_t lines = file.size();
-        context.refuse(line_past_the_end, what + ": " + (lines == 0 ? std::string("the file has no lines")
-                                                                     : "there is no such line -- the file has " +
-                                                                           std::to_string(lines) +
-                                                                           (lines == 1 ? " line" : " lines") +
-                                                                           ", counting from 1"));
-        return Value();
-    }
-    context.refuse(file.code(), what + ": " + file.error());
-    return Value();
-}
-
-// A QUESTION ASKED OF A FILE THAT IS NOT OPEN STOPS THE PROGRAM (the review,
-// 2026-09-18). It answered as though the file were empty -- `size` 0, `search`
-// 0, `contains` false -- so an open that failed went on to a `replace(0, ...)`
-// that answered false, and the run exited 0 having changed nothing. Those are
-// answers that are wrong and do not say so. The words that CHANGE a file still
-// answer false, which is true; the words about the handle itself (ok, error,
-// path, exists, open, close, save) still answer.
-bool open_or_stop(const satellite_file &file, const std::string &name, const std::string &what,
-                  ExpressionContext &context)
-{
-    if (file.ok()) return true;
-    context.refuse(file_not_open, what + ": " + name + " is not open" +
-                                      (file.error().empty() ? std::string() : " -- " + file.error()));
-    return false;
-}
-
 } // namespace
 
 const char *method_spelling(Code method)
@@ -250,10 +268,30 @@ const char *so_far_whose(token::Code method)
     // .ok() IS A FILE'S, A PROGRAM'S AND EVERY OBJECT'S (pointer_calls.hpp) -- it said a file's alone.
     if (method == token::ok_token)
         return "so far a file, a program and an object have it";
+    // A HEX'S .width (a window's too), A COLOUR'S .transparency AND A FRACTION'S TWO NUMBERS (scalar_calls.hpp)
+    // -- each said "no type has it" since the four types of 2026-09-22 gave them one (2026-10-11).
+    if (method == token::width_token)
+        return "so far a hex and a window have it";
+    if (method == token::transparency_token)
+        return "so far it is a color's";
+    if (method == token::numerator_token || method == token::denominator_token)
+        return "so far it is a fraction's";
     const bool a_file = file_method_arity(method) >= 0;
     const bool a_container = container_arity(method) >= 0;
+    // A NUMBER'S OWN (NM-8, 2026-10-11, number_calls.hpp) -- the built ones: .sqrt is numbered and refused. A
+    // number's words and a string's share none, so a number is named on lines of its own: `f.floor()` on a
+    // float is told a number has it, and `x.max(1)` on an infinity that a number and a container do.
+    const bool a_number = number_number_of(method) != 0 && number_method_not_built(method).empty();
+    if (a_number && a_file && a_container)
+        return "so far a number, a file and a container have it";
+    if (a_number && a_container)
+        return "so far a number and a container have it";
+    if (a_number && a_file)
+        return "so far a number and a file have it";
+    if (a_number)
+        return "so far it is a number's";
     // A STRING'S OWN (M16, string_calls.hpp) -- named first, as the one a person is most
-    // likely to have meant: `n.contains("4")` on a number wants n.string.contains("4").
+    // likely to have meant: `n.contains("4")` on a number wants n.satellite.string.satellite.contains("4").
     const bool a_string = string_method_arity(method) >= 0;
     if (a_string && a_file && a_container)
         return "so far a string, a file and a container have it";
@@ -338,7 +376,7 @@ Value call_file_word(Code code, const std::vector<Value> &arguments, const std::
     }
 
     std::string written;
-    if (!text_of(arguments[0], written, spelling, context))
+    if (!text_of(arguments[0], written, Said{spelling}, context))
         return Value();
 
     const bool making = code == word::code_of(1, 8, 1) || code == word::code_of(1, 8, 4);
@@ -368,43 +406,100 @@ Value call_file_word(Code code, const std::vector<Value> &arguments, const std::
 Value read_file_line(satellite_file &file, const Value &index, const std::string &name, ExpressionContext &context)
 {
     std::size_t n = 0;
-    if (!number_of(index, n, name + "[...]", context))
+    const std::string any_line = name + "[...]";
+    if (!number_of(index, n, Said{any_line}, context))
         return Value();
     const std::string what = name + "[" + fast::to_text(*index.as_number()) + "]";
-    if (!open_or_stop(file, name, what, context))
+    if (!open_or_stop(file, name, Said{what}, context))
         return Value();
     std::string text;
     const bool read = file.line(n, text);
-    return a_line_or_stop(read, text, file, what, context);
+    return a_line_or_stop(read, text, file, Said{what}, context);
 }
 
-Value call_file_method(Code method, satellite_file &file, const std::vector<Value> &arguments,
-                       bool had_parentheses, const std::string &name, ExpressionContext &context)
-{
-    const std::string what = name + "." + method_spelling(method);
+// ---------------------------------------------------------------------------
+// A FILE'S METHODS RUN BY THEIR NUMBERS (NM-8; the author, 2026-10-11: "we still need to get the word
+// satellite onto everything ... everything builtin needs the word satellite still", and of how, 2026-10-10:
+// "we have to give everything a number and then make it run those numbers"). Each is
+// satellite.variable.file.<it>, 1 6 2 n, whose code is a file under satellite-numbers/words/.
+// ---------------------------------------------------------------------------
 
-    // HOW MANY ARGUMENTS EACH TAKES (file_method_arity, which the checker reads
-    // too). Zero-argument methods may leave the brackets off (`f.size`, as
-    // words.tsv spells them); the rest may not.
-    const int arity = file_method_arity(method);
-    if (arity < 0) {
-        context.refuse(types_do_not_meet, what + " -- a file has no " + method_spelling(method) +
-                                              " (SATELLITE_FILE_OPERATIONS Part 3 lists what a file does)");
-        return Value();
+// EVERY NUMBER BELOW IS IN words/words.tsv, OR THIS FILE DOES NOT COMPILE: a fixed_code of 0
+// would quietly send that method to call_file_method's refusal instead of to its number.
+template <int... Last>
+inline constexpr bool every_file_word_numbered = ((word::fixed_code<1, 6, 2, Last> != 0) && ...);
+static_assert(every_file_word_numbered<2, 5, 6, 7, 8, 9, 10, 12, 13, 14, 15, 16, 17, 18, 19, 20, 21, 22, 23, 24, 25,
+                                       26, 27, 28, 29, 30>,
+              "a file method's number is missing from words/words.tsv");
+
+token::Code file_number_of(token::Code method)
+{
+    // ONE METHOD, ONE NUMBER, as a string's are (string_number_of) -- replace too, whose two shapes,
+    // replace(n, x) and replace(a, b), are one method that looks at its first argument (1.6.2.14.cpp).
+    // `contain` and `has` are contains by the time anything here sees them: the lexer folds a second
+    // spelling into the first. 1 6 2 1 new, 3 read_line, 4 write_line(s) and 11 write(x) are 003's words,
+    // and no method of 004 is spelled that way -- they stay numbered and empty, as a list's 1 4 2 4 to 7 do
+    // (SATELLITE_FILE_OPERATIONS.md 3.4: "A number is never reused").
+    switch (method) {
+    case token::open_token: return word::fixed_code<1, 6, 2, 2>;
+    case token::read_all_token: return word::fixed_code<1, 6, 2, 5>;
+    case token::close_token: return word::fixed_code<1, 6, 2, 6>;
+    case token::exists_token: return word::fixed_code<1, 6, 2, 7>;
+    case token::ok_token: return word::fixed_code<1, 6, 2, 8>;
+    case token::path_token: return word::fixed_code<1, 6, 2, 9>;
+    case token::error_text_token: return word::fixed_code<1, 6, 2, 10>;
+    case token::append_token: return word::fixed_code<1, 6, 2, 12>;
+    case token::insert_token: return word::fixed_code<1, 6, 2, 13>;
+    case token::replace_token: return word::fixed_code<1, 6, 2, 14>;
+    case token::index_of_token: return word::fixed_code<1, 6, 2, 15>;
+    case token::search_token: return word::fixed_code<1, 6, 2, 16>;
+    case token::contains_token: return word::fixed_code<1, 6, 2, 17>;
+    case token::remove_at_token: return word::fixed_code<1, 6, 2, 18>;
+    case token::remove_token: return word::fixed_code<1, 6, 2, 19>;
+    case token::remove_first_token: return word::fixed_code<1, 6, 2, 20>;
+    case token::remove_last_token: return word::fixed_code<1, 6, 2, 21>;
+    case token::truncate_token: return word::fixed_code<1, 6, 2, 22>;
+    case token::clear_token: return word::fixed_code<1, 6, 2, 23>;
+    case token::size_token: return word::fixed_code<1, 6, 2, 24>;
+    case token::empty_token: return word::fixed_code<1, 6, 2, 25>;
+    case token::first_token: return word::fixed_code<1, 6, 2, 26>;
+    case token::last_token: return word::fixed_code<1, 6, 2, 27>;
+    case token::save_token: return word::fixed_code<1, 6, 2, 28>;
+    // THE AUTHOR'S LOCK ON A FILE (satellite_object/object_lock.hpp) is a file's word as much as any: numbered
+    // with the rest, and run by the walker BEFORE the hold it turns on (expression.cpp).
+    case token::lock_token: return word::fixed_code<1, 6, 2, 29>;
+    case token::unlock_token: return word::fixed_code<1, 6, 2, 30>;
+    default: return 0;
     }
-    const std::size_t wanted = static_cast<std::size_t>(arity);
-    if (arguments.size() != wanted) {
-        context.refuse(satl_line_not_understood, what + " takes " + std::to_string(wanted) + " argument" +
-                                                     (wanted == 1 ? "" : "s") + ", and was given " +
-                                                     std::to_string(arguments.size()));
+}
+
+Value run_file_number(token::Code method, token::Code number, const Value &receiver,
+                      const std::vector<Value> &arguments, bool had_parentheses, const std::string &name,
+                      ExpressionContext &context)
+{
+    // HOW MANY ARGUMENTS EACH TAKES (file_method_arity, which the checker reads
+    // too). Zero-argument methods may leave the brackets off (`f.satellite.size`, as
+    // words.tsv spells them); the rest may not. Every method with a number has a count.
+    // LOCK AND UNLOCK ARE NOT COUNTED HERE, AS THEY NEVER WERE: BUILD 0032 turned the lock on or off and read
+    // nothing in their brackets. The checker refuses `f.satellite.lock(5)` on a name it can type; on one it
+    // cannot -- a list's item, a word's answer -- the line runs as it always ran. Not about the spelling, so
+    // not changed with it (the fresh reader's H2, 2026-10-11; asked of the author).
+    const std::size_t wanted = static_cast<std::size_t>(file_method_arity(method));
+    const bool counted = method != token::lock_token && method != token::unlock_token;
+    if (counted && arguments.size() != wanted) {
+        context.refuse(satl_line_not_understood, name + ".satellite." + method_spelling(method) + " takes " +
+                                                     std::to_string(wanted) + " argument" + (wanted == 1 ? "" : "s") +
+                                                     ", and was given " + std::to_string(arguments.size()));
         return Value();
     }
     if (wanted > 0 && !had_parentheses) {
-        context.refuse(satl_line_not_understood, what + " takes an argument and needs a ( after it");
+        context.refuse(satl_line_not_understood,
+                       name + ".satellite." + method_spelling(method) + " takes an argument and needs a ( after it");
         return Value();
     }
 
-    // THE QUESTIONS ABOUT LINES NEED AN OPEN FILE (open_or_stop says why).
+    // THE QUESTIONS ABOUT LINES NEED AN OPEN FILE (open_or_stop says why) -- asked before the number runs,
+    // so no question's own code ever sees a file that is not open.
     switch (method) {
     case token::index_of_token:
     case token::search_token:
@@ -414,74 +509,28 @@ Value call_file_method(Code method, satellite_file &file, const std::vector<Valu
     case token::first_token:
     case token::last_token:
     case token::read_all_token:
-        if (!open_or_stop(file, name, what, context)) return Value();
+        if (!open_or_stop(*receiver.as_file(), name, Said{name, method_spelling(method)}, context)) return Value();
         break;
     default: break;
     }
 
-    std::string text, other;
-    std::size_t n = 0;
-    switch (method) {
-    case token::append_token:
-        if (!text_of(arguments[0], text, what, context)) return Value();
-        return Value::of_bool(file.append(text));
-    case token::insert_token:
-        if (!number_of(arguments[0], n, what, context) || !text_of(arguments[1], text, what, context)) return Value();
-        return Value::of_bool(file.insert(n, text));
-    // TWO SHAPES, ONE WORD (the author, 2026-09-18: "we will do .replace(line_number,
-    // "string") or .replace will optionally take this: .replace("string", "with
-    // string") so it will have two syntaxes"). The first argument's KIND chooses.
-    case token::replace_token:
-        if (arguments[0].is_number()) {
-            if (!number_of(arguments[0], n, what, context) || !text_of(arguments[1], text, what, context))
-                return Value();
-            return Value::of_bool(file.replace_line(n, text));
-        }
-        if (!text_of(arguments[0], text, what, context) || !text_of(arguments[1], other, what, context))
-            return Value();
-        return Value::of_bool(file.replace_text(text, other));
-    case token::index_of_token:
-        if (!text_of(arguments[0], text, what, context)) return Value();
-        return a_number(file.index_of(text));
-    case token::search_token:
-        if (!text_of(arguments[0], text, what, context)) return Value();
-        return a_number(file.search(text));
-    case token::contains_token:
-        if (!text_of(arguments[0], text, what, context)) return Value();
-        return Value::of_bool(file.contains(text));
-    case token::remove_at_token:
-        if (!number_of(arguments[0], n, what, context)) return Value();
-        return Value::of_bool(file.remove_at(n));
-    case token::remove_token:
-        if (!text_of(arguments[0], text, what, context)) return Value();
-        return Value::of_bool(file.remove(text));
-    case token::truncate_token:
-        if (!number_of(arguments[0], n, what, context)) return Value();
-        return Value::of_bool(file.truncate(n));
-    case token::remove_first_token: return Value::of_bool(file.remove_first());
-    case token::remove_last_token: return Value::of_bool(file.remove_last());
-    case token::clear_token: return Value::of_bool(file.clear_lines());
-    case token::size_token: return a_number(file.size());
-    case token::empty_token: return Value::of_bool(file.empty());
-    case token::first_token: {
-        const bool read = file.first(text);
-        return a_line_or_stop(read, text, file, what, context);
+    // THE NUMBER RUNS: table[code], one subtraction and one load (function_table.hpp), and the
+    // function its file under satellite-numbers/words/ put in the row at start-up.
+    const NumberRow *row = context.functions.method(number);
+    if (row == nullptr || row->scenarios.method_call == nullptr) {
+        context.refuse(not_built_yet, name + ".satellite." + method_spelling(method) + " is not built for a file yet");
+        return Value();
     }
-    case token::last_token: {
-        const bool read = file.last(text);
-        return a_line_or_stop(read, text, file, what, context);
-    }
-    case token::save_token: return Value::of_bool(file.save());
-    case token::read_all_token: return a_string(file.read_all(), context);
-    case token::close_token: return Value::of_bool(file.close());
-    case token::open_token: return Value::of_bool(file.reopen());
-    case token::ok_token: return Value::of_bool(file.ok());
-    case token::error_text_token: return a_string_always(file.error());
-    case token::path_token: return a_string_always(file.path());
-    case token::exists_token: return Value::of_bool(file.path_exists());
-    default: break;
-    }
-    context.refuse(types_do_not_meet, what + " -- a file has no " + method_spelling(method));
+    return row->scenarios.method_call(receiver, nullptr, nullptr, arguments, had_parentheses, name, context);
+}
+
+Value call_file_method(Code method, const std::string &name, ExpressionContext &context)
+{
+    // A WORD A FILE DOES NOT HAVE, written with a `.` -- every word it has runs its number above, and is
+    // written .satellite. (method_periods.hpp).
+    const std::string what = name + "." + method_spelling(method);
+    context.refuse(types_do_not_meet, what + " -- a file has no " + method_spelling(method) +
+                                          " (SATELLITE_FILE_OPERATIONS Part 3 lists what a file does)");
     return Value();
 }
 

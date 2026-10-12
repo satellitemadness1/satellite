@@ -9,8 +9,8 @@ satellite.capsule open_one()
 satellite.capsule satellite.main()
 {
     satellite.variable.thread t = satellite.thread.new(open_one())
-    t.start()
-    t.join()
+    t.satellite.start()
+    t.satellite.join()
     satellite.console.display("never printed")
     satellite.return(satellite)
 }

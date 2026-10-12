@@ -5,11 +5,13 @@ SATELLITE 004: arguments
 
 arguments is the special variable that controls the interpreter: the settings
 satl starts with, the words it was given on the command line, and what it can
-read about the machine it runs on. It is filled from four places:
+read about the machine it runs on. Every capsule reads it as
+satellite.arguments, and satellite.main may be handed it by a name of its own
+(below). It is filled from four places:
 
 1) the author's rows, compiled into satl (satellite/config/satellite_config.hpp)
-   -- arguments.version, arguments.threads_startup_per_core, arguments.infinity
-   and more.
+   -- satellite.arguments.version, satellite.arguments.threads_startup_per_core,
+   satellite.arguments.infinity and more.
 2) ~/.satl/config.ini, your own file: one "key = value" a line, # for comments.
    Every SETTING is read from it by its name without "arguments." --
    missing = false, magic = 9, float.decimal = 10, directory.default = ~/code
@@ -27,10 +29,11 @@ read about the machine it runs on. It is filled from four places:
    start says S011. At its top, first_start and the machine's facts satl keeps
    (point 4). No config.ini is only a notice (S010), and the run carries on.
 3) the command line, numbered as it was typed: satl prog.satl one two gives
-   arguments.argument1 = satl (satl itself), argument2 = prog.satl, argument3
-   = one, argument4 = two, and arguments.length = 4, every one counted. arg3,
-   args3 and arguments3 are argument3 too, and arguments.program is the file
-   again. satl --debug prints every argument, these first.
+   satellite.arguments.argument1 = satl (satl itself), argument2 = prog.satl,
+   argument3 = one, argument4 = two, and satellite.arguments.length = 4, every
+   one counted. arg3, args3 and arguments3 are argument3 too, and
+   satellite.arguments.program is the file again. satl --debug prints every
+   argument, these first.
 4) the machine. What changes -- free and used memory, the process, the
    session -- is read fresh each time a program asks. What does not -- the
    processor's name and cores, and the system's name and version -- is read
@@ -38,7 +41,8 @@ read about the machine it runs on. It is filled from four places:
    with the machine's name: believed on that machine only, and read again after
    satl --rebuild. satl --config [most] measures once how many threads this
    machine can hold and keeps the count in ~/.satl/machine.conf; until then
-   arguments.threads answers the lowest of the thread limits the system states.
+   satellite.arguments.threads answers the lowest of the thread limits the
+   system states.
 
 satellite.main hands a program all of it as ONE variable, when main asks for it
 by declaring it -- satellite.main() with nothing between its brackets asks for
@@ -57,6 +61,14 @@ the arguments". The older spelling,
 satellite.container.list<satellite.variable.string> arguments, is the same
 variable.
 
+Its own words are a map's, and since 2026-10-11 they are written under
+satellite, as every word the language has is: args.satellite.size counts its
+rows, args.satellite.contains("username") asks for one, args.satellite.keys
+names them all. Its rows are not words of the language and keep their own
+names -- args.username, never args.satellite.username -- so a row after a .
+and a word after .satellite. never meet. args.satellite.get and
+args.satellite.set are refused: a row is read and written by its own name.
+
 What the processor can run is two rows: args.cpu.architecture is haswell when
 it runs everything Haswell brought (the x86-64-v3 set: AVX, AVX2, FMA, BMI1,
 BMI2 ...) and baseline when it does not, and args.cpu.features is one list of
@@ -74,13 +86,13 @@ program runs.
 
 A SETTING IS CHANGED BY A LINE, and WHERE the line is says how long it lasts:
 
-    typed at the prompt     arguments.infinity(256)   saved in config.ini --
-                                                      every run after reads it
-    in a file               arguments.infinity(256)   this run only; config.ini
-                                                      is not touched
+    typed at the prompt     satellite.arguments.infinity(256)
+                            saved in config.ini -- every run after reads it
+    in a file               satellite.arguments.infinity(256)
+                            this run only; config.ini is not touched
 
-arguments.infinity = 256 is the same line as arguments.infinity(256), with the
-same rule. A switch takes true or
+satellite.arguments.infinity = 256 is the same line as
+satellite.arguments.infinity(256), with the same rule. A switch takes true or
 false (bare, or satellite.bool.false), a count a whole number (infinity,
 infinity_display, infinity.counter, float.whole, float.decimal and
 display.buffer at least 1), and directory.default and log_path a folder or a
@@ -91,40 +103,47 @@ changed at the prompt, for every run after. A file run from
 the prompt (interpret file.satl) is a satl of its own, so what that file
 changes for its run never reaches the prompt.
 
-THE BARE NAME arguments reads them anywhere: in any capsule, and at the
-prompt, arguments.missing, arguments.username and the rest are the run's own
-rows, and arguments.infinity(64) changes one. So nothing else may be named
-arguments -- no variable, object, parameter or satellite.namespace -- except
-satellite.main's parameter, which is the arguments. A name of the program's
-own is main's: it is written on main's arguments, not on the bare name.
+satellite.arguments READS THEM ANYWHERE: in any capsule, and at the prompt,
+satellite.arguments.missing, satellite.arguments.username and the rest are the
+run's own rows, and satellite.arguments.infinity(64) changes one. Until
+2026-10-11 they were read by the bare name arguments; the author: "arguments
+becomes satellite.arguments but the arguments like .username .machine don't get
+the word "satellite", so we don't type satellite.arguments.satellite.username,
+we just enter satellite.arguments.username". The bare name arguments is a name
+like any other now -- most often satellite.main's parameter -- and where nothing
+declares it, it is refused before anything runs, naming the new spelling. A name
+of the program's own is main's: it is written on main's arguments, not on
+satellite.arguments.
 
-A bare true or false is taken by every write to the arguments: args.access =
-false is args.access = satellite.bool.false, args.access(false) is the same,
-args.my_flag = true is a row of your own, and satellite.library.arguments.access
-= false works too. There the bare word is the value, always -- a variable a
-program named false is read as (false), in brackets.
+A write to the arguments takes satellite.bool.true or satellite.bool.false, as
+every value does: args.access = satellite.bool.false and
+args.access(satellite.bool.false) are the same line, args.my_flag =
+satellite.bool.true is a row of your own, and satellite.library.arguments.access
+= satellite.bool.false works too. A bare true or false is refused before
+anything runs, naming satellite.bool.true or satellite.bool.false.
 
-arguments.missing is the switch a program writes for itself, at the top of its
-own file and outside every capsule, where satellite.library.span = 25 would
-stand (the example below has it under satellite.include(satellite)):
+satellite.arguments.missing is the switch a program writes for itself, at the
+top of its own file and outside every capsule, where satellite.library.span =
+25 would stand (the example below has it under satellite.include(satellite)):
 
-arguments.missing(false)
+satellite.arguments.missing(satellite.bool.false)
 
--- or arguments.missing = false, the same line. Any setting a file may change
-is written there the same way, for that run: arguments.float.decimal(10).
+-- or satellite.arguments.missing = satellite.bool.false, the same line. Any
+setting a file may change is written there the same way, for that run:
+satellite.arguments.float.decimal(10).
 
 It is true unless the program says false, and it is what turns off what satl
-says a program is missing -- a forgotten .open(), a forgotten return, Hello,
+says a program is missing -- a forgotten .satellite.open(), a forgotten return, Hello,
 World! for a blank file. Those reports are being built after it, so today it is
-only the row. satellite.library.arguments.missing = false is the same line. It
-is written once, true or false and nothing else, before anything is said about
-the program; a file the program includes keeps its own switch for when it runs
-by itself, and a file that never runs by itself -- one with no
-satellite.include(satellite) -- cannot have one. Inside a capsule it is
-refused: it holds for the whole run, and some of what it turns off is said
-before satellite.main begins. Typed at the prompt, arguments.missing(false) is
-saved for every run. Read it back as args.missing, or arguments.missing
-anywhere.
+only the row. satellite.library.arguments.missing = satellite.bool.false is the
+same line. It is written once, satellite.bool.true or satellite.bool.false and
+nothing else, before anything is said about the program; a file the program
+includes keeps its own switch for when it runs by itself, and a file that never
+runs by itself -- one with no satellite.include(satellite) -- cannot have one.
+Inside a capsule it is refused: it holds for the whole run, and some of what it
+turns off is said before satellite.main begins. Typed at the prompt,
+satellite.arguments.missing(satellite.bool.false) is saved for every run. Read
+it back as args.missing, or satellite.arguments.missing anywhere.
 
 The same facts are words of the language too, read by their full name with no
 brackets: satellite.library.arguments.cores,
@@ -157,27 +176,28 @@ satellite.capsule satellite.main(satellite.variable.arguments args)
 example, a program that turns the switch off and reads it back:
 
 satellite.include(satellite)
-arguments.missing = false
+satellite.arguments.missing = satellite.bool.false
 
 satellite.capsule satellite.main(satellite.variable.arguments args)
 {
     satellite.console.display(args.missing) // false
-    args.my_flag = true
+    args.my_flag = satellite.bool.true
     satellite.console.display(args.my_flag) // true
 
     satellite.return(satellite)
 }
 
-example, settings changed for one run -- at the top, in main, and by the bare
-name in a capsule of its own -- and config.ini is not touched:
+example, settings changed for one run -- at the top, in main, and as
+satellite.arguments in a capsule of its own -- and config.ini is not touched:
 
 satellite.include(satellite)
-arguments.float.decimal(10)
+satellite.arguments.float.decimal(10)
 
 satellite.capsule wider()
 {
-    arguments.infinity(64)
-    satellite.console.display(arguments.missing) // true
+    satellite.arguments.infinity(64)
+    satellite.console.display(satellite.arguments.missing) // true
+    satellite.console.display(satellite.arguments.satellite.contains("username")) // true
 }
 
 satellite.capsule satellite.main(satellite.variable.arguments args)
@@ -194,8 +214,8 @@ satellite.capsule satellite.main(satellite.variable.arguments args)
 satl --debug prog.satl one two prints, among its other lines, every argument --
 the command line first:
 
-[satellite] arguments.argument1 = satl (machine_code: 0 success)
-[satellite] arguments.argument2 = prog.satl (machine_code: 0 success)
-[satellite] arguments.argument3 = one (machine_code: 0 success)
-[satellite] arguments.argument4 = two (machine_code: 0 success)
-[satellite] arguments.length = 4 (machine_code: 0 success)
+[satellite] satellite.arguments.argument1 = satl (machine_code: 0 success)
+[satellite] satellite.arguments.argument2 = prog.satl (machine_code: 0 success)
+[satellite] satellite.arguments.argument3 = one (machine_code: 0 success)
+[satellite] satellite.arguments.argument4 = two (machine_code: 0 success)
+[satellite] satellite.arguments.length = 4 (machine_code: 0 success)

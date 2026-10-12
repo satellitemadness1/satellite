@@ -24,6 +24,7 @@
 
 #include "color_values.hpp"
 #include "color_reading.hpp"
+#include "scalar_calls.hpp"
 
 #include <string>
 
@@ -232,14 +233,15 @@ std::size_t color_names_start(const std::vector<std::bitset<16>> &row, std::size
 }
 
 // THE CHECKER'S ANSWER IS FINAL FOR A COLOUR NAME (program_check.cpp's
-// method_right_for), so this is the whole list: `.transparency`, and the four
-// conversions. `.reverse()` is let through before this is asked, as it is on every
-// type, and a colour refuses it where it runs: a colour has no order to reverse.
+// method_right_for), so this is the whole list: the words a colour runs a number for
+// (scalar_calls.cpp's color_number_of, asked and never copied, since 2026-10-11) --
+// `.transparency`, and the four conversions. `.reverse()` is let through before this
+// is asked, as it is on every type, and a colour refuses it where it runs: a colour
+// has no order to reverse. The walker refuses a word it reaches that is not one of
+// them in this sentence.
 signed long long int color_method_check(token::Code method, const std::string &spelling, std::string &why)
 {
-    if (method == token::transparency_token || method == token::to_string_token ||
-        method == token::to_number_token || method == token::to_binary_token ||
-        method == token::to_hexadecimal_token)
+    if (color_number_of(method) != 0)
         return success;
     why = spelling + " -- " + kWhatAColorHas;
     return types_do_not_meet;

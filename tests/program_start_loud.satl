@@ -6,7 +6,7 @@ satellite.capsule satellite.main(satellite.variable.arguments args)
 {
     satellite.console.display("before")
     satellite.variable.program p = "true"
-    p.start("loud")
-    p.join()
+    p.satellite.start("loud")
+    p.satellite.join()
     satellite.return(satellite)
 }

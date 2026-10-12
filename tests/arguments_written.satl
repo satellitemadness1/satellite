@@ -23,7 +23,7 @@ satellite.capsule satellite.main(satellite.variable.arguments any_name)
     satellite.console.display(any_name.argument3)
     satellite.console.display(any_name.username)
     satellite.console.display(any_name["some_var"])
-    satellite.console.display(any_name.contains("deep.row"))
+    satellite.console.display(any_name.satellite.contains("deep.row"))
     satellite.container.list<satellite.variable.string> kept
     kept.satellite.append("kept")
     any_name.saved = kept
@@ -31,7 +31,7 @@ satellite.capsule satellite.main(satellite.variable.arguments any_name)
     satellite.console.display(any_name.saved[2])
     any_name.saved[1] = "first"
     satellite.console.display(any_name.saved)
-    any_name.remove("saved")
+    any_name.satellite.remove("saved")
     any_name.saved = "new"
     satellite.container.list<satellite.variable.string> other
     other.satellite.append("other")

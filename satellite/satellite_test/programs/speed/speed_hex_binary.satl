@@ -24,6 +24,6 @@ satellite.capsule satellite.main()
             high = high + b1
         }
     }
-    satellite.console.display(x.string + " " + sum.string + " " + high.string)
+    satellite.console.display(x.satellite.string + " " + sum.satellite.string + " " + high.satellite.string)
     satellite.return(satellite)
 }

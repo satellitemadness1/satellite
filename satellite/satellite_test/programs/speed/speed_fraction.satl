@@ -30,6 +30,6 @@ satellite.capsule satellite.main()
             same = same + 1
         }
     }
-    satellite.console.display(below.string + " " + above.string + " " + same.string)
+    satellite.console.display(below.satellite.string + " " + above.satellite.string + " " + same.satellite.string)
     satellite.return(satellite)
 }

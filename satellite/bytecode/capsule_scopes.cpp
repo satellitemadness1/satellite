@@ -503,9 +503,10 @@ void scan_row(CapsuleTable &table, const std::vector<std::bitset<16>> &row, std:
             continue;
         }
 
-        // A SWITCH THE FILE WRITES FOR ITSELF (MS-2): `arguments.missing = false`, at a file's top
-        // where a satellite.library value stands, and nowhere else (argument_switches.hpp). Asked
-        // before a payload is skipped, because `arguments` is a name and carries its letters.
+        // A SWITCH THE FILE WRITES FOR ITSELF (MS-2): `satellite.arguments.missing = false`, at a file's
+        // top where a satellite.library value stands, and nowhere else (argument_switches.hpp). Asked
+        // before a payload is skipped, because the bare name `arguments` -- refused there, naming
+        // satellite.arguments -- is a name and carries its letters.
         if (std::string key; begins_a_line && starts_a_switch_line(row, i, key)) {
             if (!in_a_space) {
                 switch_line(table, row, r, file_scope, i);
@@ -514,9 +515,9 @@ void scan_row(CapsuleTable &table, const std::vector<std::bitset<16>> &row, std:
             }
             if (a_switch_a_file_writes(key)) {
                 refuse(table, r, i, satl_line_not_understood,
-                       "arguments." + key + " is written at the top of its file, not inside " +
+                       "satellite.arguments." + key + " is written at the top of its file, not inside " +
                            where_is(table.scopes[here]) + " -- a switch is the file's own, outside every capsule "
-                           "and space: arguments." + key + "(value)");
+                           "and space: satellite.arguments." + key + "(value)");
                 i = past_the_statement(row, i);
                 line_begins = true;
                 continue;
@@ -612,13 +613,9 @@ void scan_row(CapsuleTable &table, const std::vector<std::bitset<16>> &row, std:
                 continue;
             }
             const std::string name = text_at(row, k);
-            // NOT arguments (2026-10-06): the bare name is the run's own arguments in every capsule, so
-            // `arguments.greet()` could then mean either (the fresh reader). Refused, and still opened below,
-            // so its braces balance and the scan goes on -- as a file named arguments is refused.
-            if (name == "arguments")
-                refuse(table, r, i, name_declared_twice,
-                       "a satellite.namespace cannot be named arguments -- arguments is the run's own arguments, "
-                       "readable in every capsule, so arguments.something() could then mean either");
+            // A SPACE NAMED arguments WAS REFUSED from 2026-10-06 until 2026-10-11, while the bare name was the
+            // run's own arguments in every capsule and `arguments.greet()` could have meant either (the fresh
+            // reader). The run's own are satellite.arguments now, which no space can be named (main_arguments.hpp).
             // A COMMENT MAY FOLLOW THE NAME, AND STAND ON ITS OWN LINES BEFORE THE `{`,
             // as it may before a capsule's. A comment is a MARKER, one code: its text
             // is not stored.
@@ -772,7 +769,8 @@ void scan_row(CapsuleTable &table, const std::vector<std::bitset<16>> &row, std:
     if (!a_program)
         for (const auto &[key, line] : table.scopes[file_scope].switches)
             refuse(table, r, line.declared_at, satl_line_not_understood,
-                   "arguments." + key + " is a program's switch, and this file has no satellite.include(satellite)"
+                   "satellite.arguments." + key + " is a program's switch, and this file has no "
+                   "satellite.include(satellite)"
                    " -- it is a spaceship, which a program includes and which never runs by itself, so nothing "
                    "would ever read it. The switch goes at the top of the program's own file");
 

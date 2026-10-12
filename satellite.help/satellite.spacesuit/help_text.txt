@@ -36,21 +36,32 @@ or what a list holds, satellite.container.list<greeter>, and a capsule can hand
 one back. A field of a spacesuit's type with nothing after its name starts
 empty, until a capsule gives it an object.
 
-Every object also answers pointer(), reference() and ok(), whatever its
-spacesuit declares -- the author, 2026-10-02: ".pointer() be something that
-points at the object, and .reference() something that is a copy of the object,
-so the object can be emptied and the reference is still there".
+Every object also answers five words of the language's own, whatever its
+spacesuit declares, written after .satellite. -- pointer(), reference() and ok()
+below, and lock() and unlock(), which turn on and off the lock a thread's writes
+to the object wait for. They are satellite.spacesuit's own words, 1 10 1 to
+1 10 5 -- the author, 2026-10-02: ".pointer() be something that points at the
+object, and .reference() something that is a copy of the object, so the object
+can be emptied and the reference is still there".
 
-- host.pointer() points at host's object and does not keep it living: once
-  nothing else holds the object -- no name, no field, no item of a list -- it is
-  gone, and the pointer is empty. greeter p = host.pointer() is a greeter, and
-  p.greet() runs on host's object. A pointer is how an object points back at
-  its parent, or at itself, without the two keeping each other alive for ever.
-- host.reference() is an exact copy: its fields, and every object it holds,
-  copied all the way down, and its own from then on. A pointer inside it points
-  at the copy of what it pointed at, when that was copied too.
-- ok() is true of an object, and of a pointer whose object is still there. A
-  capsule called through a pointer whose object is gone stops with S260.
+Your own capsules keep their . -- host.greet() -- even one called pointer or
+lock: host.lock() calls your spacesuit's lock(), and host.satellite.lock() the
+language's. One of the five written with a . on an object whose spacesuit has
+no capsule of that name is refused before anything runs, naming the .satellite.
+spelling.
+
+- host.satellite.pointer() points at host's object and does not keep it living:
+  once nothing else holds the object -- no name, no field, no item of a list --
+  it is gone, and the pointer is empty. greeter p = host.satellite.pointer() is
+  a greeter, and p.greet() runs on host's object. A pointer is how an object
+  points back at its parent, or at itself, without the two keeping each other
+  alive for ever.
+- host.satellite.reference() is an exact copy: its fields, and every object it
+  holds, copied all the way down, and its own from then on. A pointer inside it
+  points at the copy of what it pointed at, when that was copied too.
+- host.satellite.ok() is true of an object, and of a pointer whose object is
+  still there. A capsule called through a pointer whose object is gone stops
+  with S260.
 - == and != ask whether two are one object: host == p is true when p points
   at host's object, host == host is true, and two objects are never ==, even
   when every field matches. An object has no order, so < > <= >= stop the
@@ -98,7 +109,7 @@ satellite.spacesuit greeter()
         satellite.capsule greet()
         {
             times = times + 1
-            satellite.return("hello from " + name + ", " + times.to_string())
+            satellite.return("hello from " + name + ", " + times.satellite.to_string())
         }
     }
 }
@@ -141,14 +152,14 @@ satellite.spacesuit counter()
 satellite.capsule satellite.main()
 {
     counter first
-    counter looking = first.pointer()
-    counter copied = first.reference()
+    counter looking = first.satellite.pointer()
+    counter copied = first.satellite.reference()
     satellite.console.display(looking.bump())
     satellite.console.display(first.bump())
     satellite.console.display(copied.bump())
     counter spare
     first = spare
-    satellite.console.display(looking.ok())
+    satellite.console.display(looking.satellite.ok())
     satellite.console.display(copied.bump())
     satellite.return(satellite)
 }

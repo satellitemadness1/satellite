@@ -30,113 +30,113 @@ satellite.capsule satellite.main()
     satellite.variable.colour paint_moved = x000000
     satellite.variable.color paint_held = x000000
     satellite.variable.hex paint_hex = x9F4E45
-    satellite.variable.number worth = paint.transparency * x1000000 + paint.number      // 547311173
+    satellite.variable.number worth = paint.satellite.transparency * x1000000 + paint.satellite.number      // 547311173
     satellite.variable.number far = x2 ^ x100      // 2 ^ 256: where a / puts a remainder
 
     satellite.statement.for(satellite.variable.number pass = 0; pass < 10000; pass + 1)
     {
         // the 50 forward operations: the value goes away from 547311173
-        worth = worth + paint.number
-        paint.transparency(paint.transparency + 5)
-        worth = worth * paint.transparency
-        paint = paint, paint.transparency + 40
-        worth = worth - paint.transparency * x1000000
+        worth = worth + paint.satellite.number
+        paint.satellite.transparency(paint.satellite.transparency + 5)
+        worth = worth * paint.satellite.transparency
+        paint = paint, paint.satellite.transparency + 40
+        worth = worth - paint.satellite.transparency * x1000000
         paint_moved = paint
-        paint_moved.transparency(99 - paint_moved.transparency)
-        worth = worth + paint_moved.binary
-        paint_moved = paint_hex.reverse(), paint_moved.transparency
-        worth = worth + paint_moved.number
-        paint_moved.transparency(paint_moved.transparency + b1010)
-        worth = worth * (paint_moved.transparency + x1)
-        paint_moved.transparency(paint_moved.transparency + 64)
+        paint_moved.satellite.transparency(99 - paint_moved.satellite.transparency)
+        worth = worth + paint_moved.satellite.binary
+        paint_moved = paint_hex.satellite.reverse(), paint_moved.satellite.transparency
+        worth = worth + paint_moved.satellite.number
+        paint_moved.satellite.transparency(paint_moved.satellite.transparency + b1010)
+        worth = worth * (paint_moved.satellite.transparency + x1)
+        paint_moved.satellite.transparency(paint_moved.satellite.transparency + 64)
         paint_held = paint_moved
-        worth = worth - paint_held.number * paint_held.transparency
-        paint_held = paint_held, paint_held.transparency - 95
-        worth = worth * (paint_held.transparency() - x0B)
-        paint_held.transparency(paint_held.transparency - 1)
-        worth = worth + paint_held.binary
-        paint_held = paint_hex, paint_held.transparency + 50
-        worth = worth - paint_held.number * x3
-        paint_held.transparency(paint_held.transparency + x31)
-        worth = worth * paint_held.transparency
+        worth = worth - paint_held.satellite.number * paint_held.satellite.transparency
+        paint_held = paint_held, paint_held.satellite.transparency - 95
+        worth = worth * (paint_held.satellite.transparency() - x0B)
+        paint_held.satellite.transparency(paint_held.satellite.transparency - 1)
+        worth = worth + paint_held.satellite.binary
+        paint_held = paint_hex, paint_held.satellite.transparency + 50
+        worth = worth - paint_held.satellite.number * x3
+        paint_held.satellite.transparency(paint_held.satellite.transparency + x31)
+        worth = worth * paint_held.satellite.transparency
         paint = paint_held
-        paint.transparency(paint.transparency - 90)
-        worth = worth + paint.transparency * paint.number
-        paint = paint, 99 - paint.transparency
-        worth = worth - paint.transparency() ^ x2
-        paint.transparency(paint.transparency - b1011010)
-        worth = worth + paint.binary
-        paint = paint_hex.reverse(), paint.transparency + 77
-        worth = worth * (paint.number % x100)
-        paint_moved = paint, paint.transparency - 7
-        worth = worth - paint_moved.number * x10
-        paint_moved.transparency(paint_moved.transparency - x46)
-        worth = worth * (paint_moved.number % x1000 + x1)
-        paint_moved = paint_moved, paint_moved.transparency + 99
-        worth = worth + paint_moved.transparency * x1000000
-        paint_held = paint_moved, 99 - paint_moved.transparency
-        worth = worth - paint_held.binary.satellite.number * x2
-        paint_held.transparency(paint_held.transparency + b1100011)
-        worth = worth * (paint_held.transparency + b1)
-        paint_held = paint_held, paint_held.transparency - 66
-        worth = worth + paint_held.number * paint_held.number
-        paint = paint_held, paint_held.transparency
-        paint = paint, x63 - paint.transparency
-        worth = worth - paint.transparency * paint.transparency
-        worth = worth + paint.binary.satellite.number * x7
-        paint.transparency(paint.transparency - x0B)
-        worth = worth - paint.number * x5
+        paint.satellite.transparency(paint.satellite.transparency - 90)
+        worth = worth + paint.satellite.transparency * paint.satellite.number
+        paint = paint, 99 - paint.satellite.transparency
+        worth = worth - paint.satellite.transparency() ^ x2
+        paint.satellite.transparency(paint.satellite.transparency - b1011010)
+        worth = worth + paint.satellite.binary
+        paint = paint_hex.satellite.reverse(), paint.satellite.transparency + 77
+        worth = worth * (paint.satellite.number % x100)
+        paint_moved = paint, paint.satellite.transparency - 7
+        worth = worth - paint_moved.satellite.number * x10
+        paint_moved.satellite.transparency(paint_moved.satellite.transparency - x46)
+        worth = worth * (paint_moved.satellite.number % x1000 + x1)
+        paint_moved = paint_moved, paint_moved.satellite.transparency + 99
+        worth = worth + paint_moved.satellite.transparency * x1000000
+        paint_held = paint_moved, 99 - paint_moved.satellite.transparency
+        worth = worth - paint_held.satellite.binary.satellite.number * x2
+        paint_held.satellite.transparency(paint_held.satellite.transparency + b1100011)
+        worth = worth * (paint_held.satellite.transparency + b1)
+        paint_held = paint_held, paint_held.satellite.transparency - 66
+        worth = worth + paint_held.satellite.number * paint_held.satellite.number
+        paint = paint_held, paint_held.satellite.transparency
+        paint = paint, x63 - paint.satellite.transparency
+        worth = worth - paint.satellite.transparency * paint.satellite.transparency
+        worth = worth + paint.satellite.binary.satellite.number * x7
+        paint.satellite.transparency(paint.satellite.transparency - x0B)
+        worth = worth - paint.satellite.number * x5
         // the 50 inverse operations, in the reverse order: the value comes back
-        worth = worth + paint_hex.reverse().number * x5
-        paint.transparency(paint.transparency + b1011)
-        worth = worth - paint.binary.satellite.number * x7
-        worth = worth + paint.transparency * paint.transparency
-        paint.transparency(b1100011 - paint.transparency)
-        paint_held = paint, paint.transparency
-        worth = worth - paint_held.number * paint_held.number
-        paint_held = paint_held, paint_held.transparency + 66
-        worth = worth / (paint_held.transparency + b1) + worth % (paint_held.transparency + b1) * far
-        paint_held.transparency(paint_held.transparency - x63)
-        worth = worth + paint_held.binary.satellite.number * x2
-        paint_moved = paint_held, 99 - paint_held.transparency
-        worth = worth - paint_moved.transparency * x1000000
-        paint_moved = paint_moved, paint_moved.transparency - 99
-        worth = worth / (paint_moved.number % x1000 + x1) + worth % (paint_moved.number % x1000 + x1) * far
-        paint_moved.transparency(paint_moved.transparency + b1000110)
-        worth = worth + paint_moved.number * x10
-        paint = paint_moved, paint_moved.transparency + 7
-        worth = worth / (paint.number % x100) + worth % (paint.number % x100) * far
-        paint = paint_hex, paint.transparency - 77
-        worth = worth - paint.binary.satellite.number
-        paint.transparency(paint.transparency + x5A)
-        worth = worth + paint.transparency() ^ x2
-        paint.transparency(99 - paint.transparency)
-        worth = worth - paint.transparency * paint.number
-        paint.transparency(paint.transparency + 90)
+        worth = worth + paint_hex.satellite.reverse().satellite.number * x5
+        paint.satellite.transparency(paint.satellite.transparency + b1011)
+        worth = worth - paint.satellite.binary.satellite.number * x7
+        worth = worth + paint.satellite.transparency * paint.satellite.transparency
+        paint.satellite.transparency(b1100011 - paint.satellite.transparency)
+        paint_held = paint, paint.satellite.transparency
+        worth = worth - paint_held.satellite.number * paint_held.satellite.number
+        paint_held = paint_held, paint_held.satellite.transparency + 66
+        worth = worth / (paint_held.satellite.transparency + b1) + worth % (paint_held.satellite.transparency + b1) * far
+        paint_held.satellite.transparency(paint_held.satellite.transparency - x63)
+        worth = worth + paint_held.satellite.binary.satellite.number * x2
+        paint_moved = paint_held, 99 - paint_held.satellite.transparency
+        worth = worth - paint_moved.satellite.transparency * x1000000
+        paint_moved = paint_moved, paint_moved.satellite.transparency - 99
+        worth = worth / (paint_moved.satellite.number % x1000 + x1) + worth % (paint_moved.satellite.number % x1000 + x1) * far
+        paint_moved.satellite.transparency(paint_moved.satellite.transparency + b1000110)
+        worth = worth + paint_moved.satellite.number * x10
+        paint = paint_moved, paint_moved.satellite.transparency + 7
+        worth = worth / (paint.satellite.number % x100) + worth % (paint.satellite.number % x100) * far
+        paint = paint_hex, paint.satellite.transparency - 77
+        worth = worth - paint.satellite.binary.satellite.number
+        paint.satellite.transparency(paint.satellite.transparency + x5A)
+        worth = worth + paint.satellite.transparency() ^ x2
+        paint.satellite.transparency(99 - paint.satellite.transparency)
+        worth = worth - paint.satellite.transparency * paint.satellite.number
+        paint.satellite.transparency(paint.satellite.transparency + 90)
         paint_held = paint
-        worth = worth / paint_held.transparency + worth % paint_held.transparency * far
-        paint_held.transparency(paint_held.transparency - b110001)
-        worth = worth + paint_held.number * x3
-        paint_held = paint_hex.reverse(), paint_held.transparency - 50
-        worth = worth - paint_held.binary.satellite.number
-        paint_held.transparency(paint_held.transparency + 1)
-        worth = worth / (paint_held.transparency() - x0B) + worth % (paint_held.transparency() - x0B) * far
-        paint_held = paint_held, paint_held.transparency + 95
-        worth = worth + paint_held.number * paint_held.transparency
+        worth = worth / paint_held.satellite.transparency + worth % paint_held.satellite.transparency * far
+        paint_held.satellite.transparency(paint_held.satellite.transparency - b110001)
+        worth = worth + paint_held.satellite.number * x3
+        paint_held = paint_hex.satellite.reverse(), paint_held.satellite.transparency - 50
+        worth = worth - paint_held.satellite.binary.satellite.number
+        paint_held.satellite.transparency(paint_held.satellite.transparency + 1)
+        worth = worth / (paint_held.satellite.transparency() - x0B) + worth % (paint_held.satellite.transparency() - x0B) * far
+        paint_held = paint_held, paint_held.satellite.transparency + 95
+        worth = worth + paint_held.satellite.number * paint_held.satellite.transparency
         paint_moved = paint_held
-        paint_moved.transparency(paint_moved.transparency - 64)
-        worth = worth / (paint_moved.transparency + x1) + worth % (paint_moved.transparency + x1) * far
-        paint_moved.transparency(paint_moved.transparency - xA)
-        worth = worth - paint_moved.number
-        paint_moved = paint_hex, paint_moved.transparency
-        worth = worth - paint_moved.binary.satellite.number
-        paint_moved = paint_moved, 99 - paint_moved.transparency
+        paint_moved.satellite.transparency(paint_moved.satellite.transparency - 64)
+        worth = worth / (paint_moved.satellite.transparency + x1) + worth % (paint_moved.satellite.transparency + x1) * far
+        paint_moved.satellite.transparency(paint_moved.satellite.transparency - xA)
+        worth = worth - paint_moved.satellite.number
+        paint_moved = paint_hex, paint_moved.satellite.transparency
+        worth = worth - paint_moved.satellite.binary.satellite.number
+        paint_moved = paint_moved, 99 - paint_moved.satellite.transparency
         paint = paint_moved
-        worth = worth + paint.transparency * x1000000
-        paint = paint, paint.transparency - 40
-        worth = worth / paint.transparency + worth % paint.transparency * far
-        paint.transparency(paint.transparency - 5)
-        worth = worth - paint.number
+        worth = worth + paint.satellite.transparency * x1000000
+        paint = paint, paint.satellite.transparency - 40
+        worth = worth / paint.satellite.transparency + worth % paint.satellite.transparency * far
+        paint.satellite.transparency(paint.satellite.transparency - 5)
+        worth = worth - paint.satellite.number
     }
 
     satellite.statement.if (paint != start)

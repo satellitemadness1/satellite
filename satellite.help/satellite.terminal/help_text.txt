@@ -27,7 +27,7 @@ GTK_AND_NO_DEPENDENCIES.md, and the shape written there is a piece like any
 other, made with a size and appended into a window:
 
     satellite.variable.window t = satellite.terminal.new(80, 24)
-    my_window.append(t, 400, 300)
+    my_window.satellite.append(t, 400, 300)
 
 Inside it satl would start your $SHELL, in the same terminal widget (VTE) that
 satellite.console.new already puts in a window -- but joined to the shell's own

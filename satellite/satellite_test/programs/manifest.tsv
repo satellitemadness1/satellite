@@ -20,7 +20,7 @@ full/full_structure_14.satl	refused	satellite.capsule: a capsule cannot see the 
 full/full_structure_15.satl	refused	satellite.return: an answer used from a capsule that can never hand one back	53	S240: CAPSULE_GAVE_NO_ANSWER	
 full/full_structure_16.satl	refused	satellite.return: an answer used, from a capsule that ended without handing one back the way it went	53	maybe's answer is used, and it ended without handing one back	
 full/full_structure_17.satl	refused	satellite.legal: a name used after the } of its block	25	x is not legal here	
-full/full_structure_18.satl	refused	satellite.legal: arguments.access(false) inside a capsule does not change the rule for that run	25	x is not legal here	
+full/full_structure_18.satl	refused	satellite.legal: arguments.access(satellite.bool.false) inside a capsule does not change the rule for that run	25	x is not legal here	
 full/full_structure_19.satl	refused	satellite.legal: nothing else may be named satellite	26	satellite is the first legal object of every	
 full/full_structure_20.satl	refused	satellite.delete: a name used after its delete	25	big was deleted by satellite.delete(big) on line	
 full/full_structure_21.satl	refused	satellite.delete: it stands in the block that declared the name	13	stands in a different block	
@@ -45,7 +45,7 @@ full/full_numbers_9.satl	answers	satellite.random, seeded: every draw keeps its 
 full/full_numbers_10.satl	refused	number: 1 / 0 is refused (S401)	22	the / of 1 and 0 is a division by zero	
 full/full_numbers_11.satl	refused	number: a touching sign, 4+3, is refused (S110)	13	sign, and this + has none	
 full/full_numbers_12.satl	refused	number: n += 1 is not built yet (S210)	14	n += ... is not built yet -- write n = n + ...	
-full/full_numbers_13.satl	refused	number: n.max(3) has no library wired to it yet (M17), so it is not built (S210)	14	n.max is not built for satellite.variable.number	
+full/full_numbers_13.satl	refused	number: n.satellite.sqrt() is numbered and not built yet (M17), so it is refused (S210)	14	n.satellite.sqrt is numbered (1 6 4 14) and not built yet	
 full/full_numbers_14.satl	refused	number: a number name given 12.34 holds a float	27	holds a float	
 full/full_numbers_15.satl	refused	float: 1.0 / 0 is a division by zero (S401)	22	the / of 1.0 and 0 is a division by zero	
 full/full_numbers_16.satl	refused	float: 12.5.number is refused, satellite rounds nothing on its own (S402)	24	12.5 is not a whole number, so there is no number	
@@ -126,7 +126,7 @@ full/full_text_39.satl	refused	map .append is refused: a map has keys and not po
 full/full_text_40.satl	refused	map .index_of is refused: a map has keys and not positions	27	m.index_of -- an index has keys and not positions	
 full/full_text_41.satl	refused	map .sort() of a number key beside a string key is refused rather than guessed	27	entry 2 have no order between them	
 full/full_text_42.satl	refused	map .sort("value") of two list values is refused: two lists have no order between them	27	entry 1 and entry 2 have no order between them: a comparison was given a list	
-full/full_text_43.satl	refused	map .sort().by_name() is a list's, and a map refuses it	27	m.sort().by_name -- a map is put in order by	
+full/full_text_43.satl	refused	map .sort().by_name() is a list's, and a map refuses it	27	m.satellite.sort().by_name -- a map is put in order by	
 full/full_text_44.satl	refused	map .sum asks which half: .values.sum or .keys.sum	27	an index holds keys and values, so say	
 full/full_text_45.satl	refused	map satellite.container.map(5) is refused (S110): map() takes nothing	13	satellite.container.map() makes a map of nothing	
 full/full_text_46.satl	refused	map <key, value> checks the value	27	the value does not fit: it holds a string	
@@ -150,7 +150,7 @@ full/full_objects_11.satl	refused	satellite.thread.new given no capsule call is 
 full/full_objects_12.satl	refused	a question about the lines of a file that did not open is refused (S503)	45	S503: FILE_NOT_OPEN	
 full/full_objects_13.satl	refused	reading a line past the end of a file is refused (S501)	47	S501: LINE_PAST_THE_END	
 full/full_objects_14.satl	refused	join() on a program never started is refused (S741)	68	S741: PROGRAM_NOT_STARTED	
-full/full_objects_15.satl	refused	start() given a word that is not "hide" is refused (S110)	13	p.start(loud) -- start() takes nothing, or	
+full/full_objects_15.satl	refused	start() given a word that is not "hide" is refused (S110)	13	p.satellite.start(loud) -- .satellite.start() takes nothing, or	
 full/full_objects_16.satl	refused	a display colour that is not six hex digits is refused (S301)	27	colour, which is exactly six hex digits	
 speed/speed_his_new_object.satl	speed	the author's loop 1: a new object			speed_his_new_object
 speed/speed_his_set_number_list.satl	speed	the author's loop 2: set a list of numbers			speed_his_set_number_list

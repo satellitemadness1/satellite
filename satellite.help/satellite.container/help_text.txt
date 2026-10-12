@@ -36,8 +36,8 @@ list: it is the older spelling of satellite.variable.arguments, the arguments
 variable, read by name -- arguments.argument3 is the first word typed after
 the program, and arguments.length counts satl and the file as well, so
 satl prog.satl one two gives 4. See satellite.help(arguments).
-satellite.main() with nothing between its brackets runs too, and reads the
-same rows by the bare name arguments.
+satellite.main() with nothing between its brackets runs too, and every capsule
+reads the same rows as satellite.arguments: satellite.arguments.argument3.
 
 example:
 

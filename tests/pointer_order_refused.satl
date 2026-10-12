@@ -21,7 +21,7 @@ satellite.spacesuit box()
 satellite.capsule satellite.main()
 {
     box a
-    box p = a.pointer()
+    box p = a.satellite.pointer()
     satellite.console.display("before")
     satellite.console.display(a < p)
     satellite.console.display("THIS LINE MUST NOT RUN")

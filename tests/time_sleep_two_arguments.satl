@@ -1,7 +1,7 @@
 // 003's sleep(n, unit) is refused before anything runs: the unit is written on the number now.
 satellite.include(satellite)
 
-satellite.capsule satellite.main(satellite.container.list<satellite.variable.string> arguments)
+satellite.capsule satellite.main(satellite.variable.arguments arguments)
 {
     satellite.console.display("before")
     satellite.time.sleep(90, "ms")

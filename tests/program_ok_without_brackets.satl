@@ -4,8 +4,8 @@ satellite.include(satellite)
 satellite.capsule satellite.main(satellite.variable.arguments args)
 {
     satellite.variable.program p = "true"
-    p.start()
-    satellite.console.display(p.ok)
-    p.join()
+    p.satellite.start()
+    satellite.console.display(p.satellite.ok)
+    p.satellite.join()
     satellite.return(satellite)
 }

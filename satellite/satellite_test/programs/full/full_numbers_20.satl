@@ -9,6 +9,6 @@ satellite.capsule satellite.main()
 {
     satellite.variable.number passes = 1
     satellite.variable.infinity i = satellite.infinity()
-    satellite.console.display(i.number)
+    satellite.console.display(i.satellite.number)
     satellite.return(satellite)
 }

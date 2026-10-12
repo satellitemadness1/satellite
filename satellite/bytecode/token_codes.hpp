@@ -83,8 +83,8 @@ inline constexpr Code less_than_token = 0x0502;  // <
 inline constexpr Code greater_than_token = 0x0503;  // >
 inline constexpr Code less_or_equal_token = 0x0504;  // <=
 inline constexpr Code greater_or_equal_token = 0x0505;  // >=
-inline constexpr Code and_token = 0x0600;  // &&   QUESTION: 003 DESIGN §13 leaves && and || open, and may spell them as words
-inline constexpr Code or_token = 0x0601;  // ||   QUESTION: as above
+inline constexpr Code and_token = 0x0600;  // &&   ANSWERED 2026-09-22 (C's symbols), BUILT 2026-10-12 (his 10): both bools, the right
+inline constexpr Code or_token = 0x0601;  // ||   ANSWERED 2026-09-22 (C's symbols), BUILT 2026-10-12 (his 10): as && -- a true befor
 inline constexpr Code not_token = 0x0602;  // !    QUESTION: §13 leaves open whether ! is the negation
 inline constexpr Code bit_and_token = 0x0603;  // &    QUESTION: §6 has no bitwise row; & ends an expression and is reported
 inline constexpr Code bit_or_token = 0x0604;  // |    QUESTION: as above
@@ -132,7 +132,7 @@ inline constexpr Code find_token = 0x0B00;  // find  [METHOD] object.find(x) -- 
 inline constexpr Code replace_token = 0x0B01;  // replace  [METHOD] object.replace(a, b)
 inline constexpr Code to_string_token = 0x0B02;  // to_string/str/string  [METHOD] the receiver as base-10 text
 inline constexpr Code to_number_token = 0x0B03;  // number/as_number/to_number  [METHOD] the receiver as a whole number
-inline constexpr Code to_binary_token = 0x0B04;  // binary/bin/as_binary  [METHOD] the receiver as base-2 text
+inline constexpr Code to_binary_token = 0x0B04;  // binary/bin/as_binary/to_binary  [METHOD] the receiver as base-2 text
 inline constexpr Code to_hexadecimal_token = 0x0B05;  // hex/as_hex/to_hex  [METHOD] the receiver as base-16 text
 inline constexpr Code add_token = 0x0B06;  // add  [METHOD] object.add(x)
 inline constexpr Code append_token = 0x0B07;  // append  [METHOD] object.append(x) -- a new last line (a file); a new last item (a list) 
@@ -240,16 +240,33 @@ inline constexpr Code quit_token = 0x0B6C;  // quit  [METHOD] program.quit() -- 
 inline constexpr Code shutdown_token = 0x0B6D;  // shutdown  [METHOD] program.shutdown() -- the same as program.end(), with its own code, a
 inline constexpr Code pointer_token = 0x0B6E;  // pointer  [METHOD] object.pointer() -- points at the object and does not keep it living: 
 inline constexpr Code reference_token = 0x0B6F;  // reference  [METHOD] object.reference() -- an exact copy of the object, its own from then
-inline constexpr Code scroll_token = 0x0B70;  // scroll  [METHOD] window.scroll -- the window itself, so .vertical(on) and .horizontal(on
-inline constexpr Code vertical_token = 0x0B71;  // vertical  [METHOD] window.scroll.vertical(on) -- whether a window or a console scrolls u
-inline constexpr Code horizontal_token = 0x0B72;  // horizontal  [METHOD] window.scroll.horizontal(on) -- whether it scrolls sideways; a cons
-inline constexpr Code widgets_token = 0x0B73;  // widgets  [METHOD] window.widgets -- the window itself, so .displays can follow it as the
-inline constexpr Code displays_token = 0x0B74;  // displays  [METHOD] window.widgets.displays -- still the window, so the kind follows: .fi
-inline constexpr Code file_piece_token = 0x0B75;  // file  [METHOD] window.widgets.displays.file("a_name") -- a file display: the files of a 
-inline constexpr Code input_piece_token = 0x0B76;  // input  [METHOD] window.widgets.displays.input("a_name") -- a one-line text input, made a
+inline constexpr Code scroll_token = 0x0B70;  // scroll  [METHOD] SINCE NM-8 (2026-10-11) A PART: window.satellite.scroll.vertical(on) an
+inline constexpr Code vertical_token = 0x0B71;  // vertical  [METHOD] SINCE NM-8 A PART of window.satellite.scroll.vertical(on) (scroll_ver
+inline constexpr Code horizontal_token = 0x0B72;  // horizontal  [METHOD] SINCE NM-8 A PART of window.satellite.scroll.horizontal(on) (scroll
+inline constexpr Code widgets_token = 0x0B73;  // widgets  [METHOD] SINCE NM-8 A PART: window.satellite.widgets.display.file("a_name") and
+inline constexpr Code displays_token = 0x0B74;  // displays  [METHOD] SINCE NM-8 THE OLD NAME, refused naming widgets.display (the author's
+inline constexpr Code file_piece_token = 0x0B75;  // file  [METHOD] SINCE NM-8 A PART of window.satellite.widgets.display.file("a_name") (wid
+inline constexpr Code input_piece_token = 0x0B76;  // input  [METHOD] SINCE NM-8 A PART of window.satellite.widgets.display.input("a_name") (w
 inline constexpr Code directory_token = 0x0B77;  // directory  [METHOD] file_display.directory("/home/you/") -- which directory a file displ
 inline constexpr Code listen_token = 0x0B78;  // listen  [METHOD] text_input.listen() keeps its text up to date; text_input.listen(a_caps
 inline constexpr Code section_token = 0x0B79;  // section  [METHOD] window.section("a_name", 100%, 50%) -- a section of the window, as wid
+inline constexpr Code abs_token = 0x0B7A;  // abs  [METHOD] number.satellite.abs() -- the number without its sign: -7 is 7 (003's word
+inline constexpr Code floor_token = 0x0B7B;  // floor  [METHOD] number.satellite.floor() -- a whole number is its own floor, so it answe
+inline constexpr Code ceil_token = 0x0B7C;  // ceil  [METHOD] number.satellite.ceil() -- a whole number is its own ceiling, so it answe
+inline constexpr Code round_token = 0x0B7D;  // round  [METHOD] number.satellite.round() -- a whole number is already round, so it answe
+inline constexpr Code sqrt_token = 0x0B7E;  // sqrt  [METHOD] number.satellite.sqrt() -- numbered (word 1 6 4 14) and not built: an exa
+inline constexpr Code digits_token = 0x0B7F;  // digits  [METHOD] number.satellite.digits() -- how many decimal digits its size has; 0 ha
+inline constexpr Code modulus_method_token = 0x0B80;  // modulus  [METHOD] number.satellite.modulus(x) -- the % operator's own: what is left of t
+inline constexpr Code shift_left_method_token = 0x0B81;  // shift_left  [METHOD] number.satellite.shift_left(n) -- the number times 2 to the power n
+inline constexpr Code shift_right_method_token = 0x0B82;  // shift_right  [METHOD] number.satellite.shift_right(n) -- the number divided by 2 to the 
+inline constexpr Code clamp_token = 0x0B83;  // clamp  [METHOD] number.satellite.clamp(low, high) -- the number held between low and hig
+inline constexpr Code bytes_token = 0x0B84;  // bytes  [METHOD] number.satellite.bytes() -- how many bytes the number takes in memory, 8
+inline constexpr Code get_token = 0x0B8B;  // get  [METHOD] map.get(k) -- the value under the key k, the same as map[k]; a key it does
+inline constexpr Code set_token = 0x0B8C;  // set  [METHOD] map.set(k, v) -- files v under the key k, the same as map[k] = v, and answ
+inline constexpr Code widgets_display_file_token = 0x0B97;  // widgets.display.file  [METHOD] window.satellite.widgets.display.file("a_name") -- a file
+inline constexpr Code widgets_display_input_token = 0x0B98;  // widgets.display.input  [METHOD] window.satellite.widgets.display.input("a_name") -- a on
+inline constexpr Code scroll_vertical_token = 0x0B99;  // scroll.vertical  [METHOD] window.satellite.scroll.vertical(on) -- whether a window or a 
+inline constexpr Code scroll_horizontal_token = 0x0B9A;  // scroll.horizontal  [METHOD] window.satellite.scroll.horizontal(on) -- whether it scrolls
 inline constexpr Code wide_token = 0x9C40;  // the author, 2026-09-16: the next TWO codes are one 32-bit integer -- a character above U
 inline constexpr Code extend_token = 0xFFFF;  // the next code carries the token; kept back so an all-ones buffer is never a token
 
@@ -381,6 +398,23 @@ inline constexpr const char *method_name_of(Code code)
     if (code == directory_token) return "directory";
     if (code == listen_token) return "listen";
     if (code == section_token) return "section";
+    if (code == abs_token) return "abs";
+    if (code == floor_token) return "floor";
+    if (code == ceil_token) return "ceil";
+    if (code == round_token) return "round";
+    if (code == sqrt_token) return "sqrt";
+    if (code == digits_token) return "digits";
+    if (code == modulus_method_token) return "modulus";
+    if (code == shift_left_method_token) return "shift_left";
+    if (code == shift_right_method_token) return "shift_right";
+    if (code == clamp_token) return "clamp";
+    if (code == bytes_token) return "bytes";
+    if (code == get_token) return "get";
+    if (code == set_token) return "set";
+    if (code == widgets_display_file_token) return "widgets.display.file";
+    if (code == widgets_display_input_token) return "widgets.display.input";
+    if (code == scroll_vertical_token) return "scroll.vertical";
+    if (code == scroll_horizontal_token) return "scroll.horizontal";
     return "";
 }
 
@@ -399,6 +433,7 @@ inline constexpr Code method_code_of(std::string_view spelling)
     if (spelling == "binary") return to_binary_token;
     if (spelling == "bin") return to_binary_token;
     if (spelling == "as_binary") return to_binary_token;
+    if (spelling == "to_binary") return to_binary_token;
     if (spelling == "hex") return to_hexadecimal_token;
     if (spelling == "as_hex") return to_hexadecimal_token;
     if (spelling == "to_hex") return to_hexadecimal_token;
@@ -527,6 +562,23 @@ inline constexpr Code method_code_of(std::string_view spelling)
     if (spelling == "directory") return directory_token;
     if (spelling == "listen") return listen_token;
     if (spelling == "section") return section_token;
+    if (spelling == "abs") return abs_token;
+    if (spelling == "floor") return floor_token;
+    if (spelling == "ceil") return ceil_token;
+    if (spelling == "round") return round_token;
+    if (spelling == "sqrt") return sqrt_token;
+    if (spelling == "digits") return digits_token;
+    if (spelling == "modulus") return modulus_method_token;
+    if (spelling == "shift_left") return shift_left_method_token;
+    if (spelling == "shift_right") return shift_right_method_token;
+    if (spelling == "clamp") return clamp_token;
+    if (spelling == "bytes") return bytes_token;
+    if (spelling == "get") return get_token;
+    if (spelling == "set") return set_token;
+    if (spelling == "widgets.display.file") return widgets_display_file_token;
+    if (spelling == "widgets.display.input") return widgets_display_input_token;
+    if (spelling == "scroll.vertical") return scroll_vertical_token;
+    if (spelling == "scroll.horizontal") return scroll_horizontal_token;
     return 0;
 }
 
@@ -534,11 +586,11 @@ inline constexpr Code method_code_of(std::string_view spelling)
 // its own: every method name shares the high byte.
 inline constexpr bool is_method_code(Code code)
 {
-    return code == find_token || code == replace_token || code == to_string_token || code == to_number_token || code == to_binary_token || code == to_hexadecimal_token || code == add_token || code == append_token || code == insert_token || code == index_of_token || code == search_token || code == contains_token || code == remove_at_token || code == remove_token || code == remove_first_token || code == remove_last_token || code == truncate_token || code == clear_token || code == size_token || code == empty_token || code == first_token || code == last_token || code == save_token || code == read_all_token || code == close_token || code == open_token || code == ok_token || code == error_text_token || code == path_token || code == exists_token || code == sort_token || code == by_name_token || code == by_value_token || code == reverse_token || code == keys_token || code == values_token || code == power_of_token || code == resize_token || code == nines_token || code == focus_token || code == title_token || code == pressed_token || code == press_token || code == text_token || code == on_token || code == value_token || code == chosen_token || code == changed_token || code == closed_token || code == width_token || code == height_token || code == fullscreen_token || code == colour_token || code == background_token || code == font_token || code == every_token || code == key_token || code == clicked_token || code == message_token || code == ask_token || code == answer_token || code == menu_token || code == item_token || code == line_token || code == box_token || code == circle_token || code == write_token || code == separator_token || code == across_token || code == down_token || code == outline_token || code == thickness_token || code == arc_token || code == choose_a_file_token || code == display_token || code == typed_token || code == home_token || code == columns_token || code == rows_token || code == transparency_token || code == numerator_token || code == denominator_token || code == sum_token || code == max_token || code == min_token || code == join_token || code == reserve_token || code == foreground_token || code == start_token || code == stop_token || code == wait_method_token || code == lock_token || code == unlock_token || code == upper_token || code == lower_token || code == center_token || code == starts_with_token || code == ends_with_token || code == substring_token || code == split_token || code == trim_token || code == at_token || code == resolved_token || code == code_token || code == end_token || code == pass_token || code == return_token || code == exit_token || code == quit_token || code == shutdown_token || code == pointer_token || code == reference_token || code == scroll_token || code == vertical_token || code == horizontal_token || code == widgets_token || code == displays_token || code == file_piece_token || code == input_piece_token || code == directory_token || code == listen_token || code == section_token;
+    return code == find_token || code == replace_token || code == to_string_token || code == to_number_token || code == to_binary_token || code == to_hexadecimal_token || code == add_token || code == append_token || code == insert_token || code == index_of_token || code == search_token || code == contains_token || code == remove_at_token || code == remove_token || code == remove_first_token || code == remove_last_token || code == truncate_token || code == clear_token || code == size_token || code == empty_token || code == first_token || code == last_token || code == save_token || code == read_all_token || code == close_token || code == open_token || code == ok_token || code == error_text_token || code == path_token || code == exists_token || code == sort_token || code == by_name_token || code == by_value_token || code == reverse_token || code == keys_token || code == values_token || code == power_of_token || code == resize_token || code == nines_token || code == focus_token || code == title_token || code == pressed_token || code == press_token || code == text_token || code == on_token || code == value_token || code == chosen_token || code == changed_token || code == closed_token || code == width_token || code == height_token || code == fullscreen_token || code == colour_token || code == background_token || code == font_token || code == every_token || code == key_token || code == clicked_token || code == message_token || code == ask_token || code == answer_token || code == menu_token || code == item_token || code == line_token || code == box_token || code == circle_token || code == write_token || code == separator_token || code == across_token || code == down_token || code == outline_token || code == thickness_token || code == arc_token || code == choose_a_file_token || code == display_token || code == typed_token || code == home_token || code == columns_token || code == rows_token || code == transparency_token || code == numerator_token || code == denominator_token || code == sum_token || code == max_token || code == min_token || code == join_token || code == reserve_token || code == foreground_token || code == start_token || code == stop_token || code == wait_method_token || code == lock_token || code == unlock_token || code == upper_token || code == lower_token || code == center_token || code == starts_with_token || code == ends_with_token || code == substring_token || code == split_token || code == trim_token || code == at_token || code == resolved_token || code == code_token || code == end_token || code == pass_token || code == return_token || code == exit_token || code == quit_token || code == shutdown_token || code == pointer_token || code == reference_token || code == scroll_token || code == vertical_token || code == horizontal_token || code == widgets_token || code == displays_token || code == file_piece_token || code == input_piece_token || code == directory_token || code == listen_token || code == section_token || code == abs_token || code == floor_token || code == ceil_token || code == round_token || code == sqrt_token || code == digits_token || code == modulus_method_token || code == shift_left_method_token || code == shift_right_method_token || code == clamp_token || code == bytes_token || code == get_token || code == set_token || code == widgets_display_file_token || code == widgets_display_input_token || code == scroll_vertical_token || code == scroll_horizontal_token;
 }
 
 
-inline constexpr int kTokenCount = 202;
+inline constexpr int kTokenCount = 219;
 
 } // namespace token
 } // namespace satellite004

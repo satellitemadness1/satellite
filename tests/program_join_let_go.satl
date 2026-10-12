@@ -6,18 +6,18 @@ satellite.include(satellite)
 satellite.capsule quit_soon()
 {
     satellite.variable.program nap = {"sleep", "0.3"}
-    nap.start()
-    nap.join()
+    nap.satellite.start()
+    nap.satellite.join()
     satellite.return(satellite)
 }
 
 satellite.capsule satellite.main(satellite.variable.arguments args)
 {
     satellite.variable.program long_wait = {"sleep", "6.17"}
-    long_wait.start()
+    long_wait.satellite.start()
     satellite.variable.thread quitter = satellite.thread.new(quit_soon())
-    quitter.start()
-    satellite.console.display(long_wait.join())
+    quitter.satellite.start()
+    satellite.console.display(long_wait.satellite.join())
     satellite.console.display("never shown")
     satellite.return(satellite)
 }

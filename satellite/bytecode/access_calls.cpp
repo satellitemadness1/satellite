@@ -149,8 +149,9 @@ void reach_into(const TypeShape &declared, const std::string &path, const std::s
                              "puts " + with_article(short_noun(example_arm(item), false)) + (example.empty() ? ", x," : "") +
                                  " under " +
                                  placeholder + tail});
-        if (top) walk.count.push_back({path + ".size", "how many keys it holds" + tail});
-        walk.count.push_back({path + ".keys",
+        // A MAP'S OWN WORDS ARE UNDER SATELLITE (2026-10-11), as a list's .satellite.size is above.
+        if (top) walk.count.push_back({path + ".satellite.size", "how many keys it holds" + tail});
+        walk.count.push_back({path + ".satellite.keys",
                               "the keys of " + (top ? std::string("it") : with_article(last_part(shape.word))) +
                                   ", as a list" + tail});
         if (reached_into(item)) reach_into(item, reached, when, nullptr, false, walk);

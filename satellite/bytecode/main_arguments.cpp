@@ -3,6 +3,7 @@
 #include "main_arguments.hpp"
 
 #include "argument_switches.hpp"
+#include "container_calls.hpp"
 #include "program_walk.hpp"
 #include "setting_writes.hpp"
 #include "../machine/machine_state.hpp"
@@ -222,6 +223,54 @@ bool an_argument_key(Value &key, const std::string &name, ExpressionContext &con
     return true;
 }
 
+std::string the_bare_arguments_refused(const std::vector<std::bitset<16>> &row, std::size_t after)
+{
+    // WHAT WAS WRITTEN AFTER THE NAME, said in the new spelling: its rows as they were, and a map's word --
+    // a method of the arguments -- under satellite, so the sentence names what runs and not a second refusal.
+    std::string key;
+    past_the_argument_names(row, after, key);
+    std::string written = kTheOldBareArguments, now = kTheRunsArguments;
+    const Code alone = key.find('.') == std::string::npos ? token::method_code_of(key) : 0;
+    const Code period = code_at(row, after);
+    if (!key.empty()) {
+        written += "." + key;
+        now += (alone != 0 && map_number_of(alone) != 0 ? ".satellite." : ".") + key;
+    } else if ((period == token::method_token || period == token::satellite_method_token) &&
+               token::is_method_code(code_at(row, after + 1))) {
+        const Code method = code_at(row, after + 1);
+        written += std::string(period == token::satellite_method_token ? ".satellite." : ".") +
+                   token::method_name_of(method);
+        now += std::string(map_number_of(method) != 0 ? ".satellite." : ".") + token::method_name_of(method);
+    } else if (period == token::left_square_bracket_token) {
+        written += "[...]";
+        now += "[...]";
+    }
+    return written + " is written " + now + " now -- the run's own arguments are under satellite, read in every "
+           "capsule, and their rows keep their own names: satellite.arguments.username. A name of the program's "
+           "own called arguments is declared, as satellite.main(satellite.variable.arguments arguments) declares it";
+}
+
+bool a_map_word_where_a_row_would_be(const std::vector<std::bitset<16>> &row, std::size_t at)
+{
+    std::string key;
+    if (past_the_argument_names(row, at, key) == at || key.find('.') != std::string::npos)
+        return false;
+    const Code method = token::method_code_of(key);
+    return method != 0 && map_number_of(method) != 0;
+}
+
+std::string get_or_set_on_the_arguments(token::Code method, const std::string &name)
+{
+    // SAID WITHOUT A PERIOD: it is refused whichever one was written.
+    if (method == token::get_token)
+        return "get(...) is not a word of the arguments variable " + name + " -- a row is read by its own name, " +
+               name + ".row or " + name + "[\"row\"]";
+    if (method == token::set_token)
+        return "set(...) is not a word of the arguments variable " + name + " -- a row is written by its own name, " +
+               name + ".row = value or " + name + ".row(value)";
+    return std::string();
+}
+
 Value read_an_argument(const std::vector<std::bitset<16>> &row, std::size_t &at, const std::string &name,
                        const Value &arguments, ExpressionContext &context, bool &read, std::string &read_as,
                        bool the_runs)
@@ -350,8 +399,8 @@ bool an_argument_call(const std::vector<std::bitset<16>> &row, std::size_t at, s
     for (const std::string &name : names)
         key += (key.empty() ? "" : ".") + name;
     open = k;
-    // A MAP'S .get AND .set ARE ITS OWN WORDS (expression.cpp), refused on the arguments where they
-    // always were -- `args.get("x")` is not a row named get being written.
+    // A MAP'S .get AND .set ARE ITS OWN WORDS -- tokens since 2026-10-11, refused on the arguments by
+    // get_or_set_on_the_arguments -- and `args.get("x")` is not a row named get being written.
     if (names.size() == 1 && (names.front() == "get" || names.front() == "set"))
         return false;
     // A NAME OF THE PROGRAM'S OWN IS ONE NAME: `args.my_value(5)`. Past one, the names before the `(`
@@ -386,6 +435,54 @@ bool satl_holds(const std::string &key, const Arguments *arguments)
 
 } // namespace
 
+satelliteObject::Kind kind_of_a_row_satl_holds(const std::string &key, const Arguments *arguments,
+                                               const FunctionTable &functions)
+{
+    // A NAME THE WALKER REFUSES BEFORE IT READS ANYTHING -- argument0, the old argument_1 -- is no row here either.
+    if (names_argument_zero(key) || !the_row_argument_underscore_is_now(key).empty())
+        return satelliteObject::how_many_kinds;
+    const std::string tried = the_argument_row_spelled(key);
+    if (const Argument *gathered = arguments != nullptr ? arguments->find(kPrefix + tried) : nullptr) {
+        switch (gathered->kind) {
+        case ArgumentKind::text: return satelliteObject::string;
+        case ArgumentKind::count: case ArgumentKind::number: case ArgumentKind::size: return satelliteObject::number;
+        case ArgumentKind::flag: return satelliteObject::boolean;
+        case ArgumentKind::list: return satelliteObject::list;
+        }
+    }
+    Value answer;
+    std::string why;
+    signed long long int code = success;
+    if (live_row(tried, functions, answer, why, code) && code == success)
+        return answer.kind();
+    return satelliteObject::how_many_kinds;
+}
+
+std::size_t a_word_after_the_rows(const std::vector<std::bitset<16>> &row, std::size_t at, const Arguments *arguments,
+                                  const FunctionTable &functions, std::string &key, satelliteObject::Kind &kind)
+{
+    std::string run, segment;
+    std::size_t k = at, held_end = at;
+    key.clear();
+    kind = satelliteObject::how_many_kinds;
+    while (one_segment(row, k, segment)) {
+        run += (run.empty() ? "" : ".") + segment;
+        const satelliteObject::Kind its = kind_of_a_row_satl_holds(run, arguments, functions);
+        if (its != satelliteObject::how_many_kinds) {
+            held_end = k;
+            key = run;
+            kind = its;
+        }
+    }
+    if (held_end == at || held_end == k || code_at(row, held_end) != token::method_token ||
+        !token::is_method_code(code_at(row, held_end + 1))) {
+        key.clear();
+        kind = satelliteObject::how_many_kinds;
+        return at;
+    }
+    return held_end;
+}
+
 std::string why_an_argument_is_not_written(const std::string &key, const std::string &name, const Value *rows,
                                            const Arguments *arguments, const FunctionTable &functions,
                                            const ArgumentWrite &where)
@@ -416,14 +513,14 @@ std::string why_an_argument_is_not_written(const std::string &key, const std::st
         return name + "." + key + " is a row satl holds, and a program reads it but does not write it -- the "
                "machine, the command line or satl itself says what it is" + why_not + "; " + settings + "." +
                (where.the_runs ? std::string() : own);
-    // THE RUN'S OWN, BY THE BARE NAME: its rows are satl's, and a name of the program's own is written
+    // THE RUN'S OWN, satellite.arguments: its rows are satl's, and a name of the program's own is written
     // where main was handed the arguments -- there is no second copy for it to land in.
     if (where.the_runs && where.at_the_prompt)
-        return name + "." + key + " is not one of the settings -- " + settings + ". At the prompt the bare name "
-               "arguments is satl's own rows, and a name of your own is a variable the prompt keeps until you "
-               "leave: satellite.variable.number " + key.substr(key.rfind('.') + 1) + " = 5";
+        return name + "." + key + " is not one of the settings -- " + settings + ". At the prompt "
+               "satellite.arguments is satl's own rows, and a name of your own is a variable the prompt keeps until "
+               "you leave: satellite.variable.number " + key.substr(key.rfind('.') + 1) + " = 5";
     if (where.the_runs)
-        return name + "." + key + " is not one of the settings -- " + settings + ". The bare name arguments is "
+        return name + "." + key + " is not one of the settings -- " + settings + ". satellite.arguments is "
                "the run's own rows; a name of the program's own is written on satellite.main's arguments, as "
                "args." + key + " = ... in satellite.main(satellite.variable.arguments args)";
     // A ROW'S MEMBER IS NOT A ROW (the review, 2026-09-23). `args.l.size = 99` names

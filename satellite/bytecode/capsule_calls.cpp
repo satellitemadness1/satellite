@@ -2,6 +2,7 @@
 
 #include "capsule_calls.hpp"
 
+#include "method_periods.hpp"
 #include "pointer_calls.hpp"
 #include "program_walk.hpp"
 #include "../machine/source_position.hpp"
@@ -14,6 +15,32 @@ namespace {
 token::Code code_at_here(const std::vector<std::bitset<16>> &row, std::size_t at)
 {
     return at < row.size() ? static_cast<token::Code>(row[at].to_ulong()) : 0;
+}
+
+// IS `name` A CAPSULE OF THE SPACESUIT THIS IS AN OBJECT OF, or of one it extends (CapsuleTable::declares)?
+// `held` is object_behind(object), already asked. A pointer carries its spacesuit even when its object
+// is gone (satellite_pointer.hpp); a field never given an object, and a line typed at the prompt with no
+// program around it, have no spacesuit to ask, and so no capsule of his. `from` is the scope the line stands
+// in: given, only a capsule that line reaches counts (declares says why); kNoScope, any he declares.
+bool his_own_capsule(const Value &object, const UserDefinedHandle &held, const std::string &name,
+                     const ExpressionContext &context, std::size_t from = kNoScope)
+{
+    const CapsuleTable *table = context.state.capsules;
+    if (table == nullptr)
+        return false;
+    const ObjectPointer *pointer = object.as_pointer();
+    const satelliteSuitLayout *layout = pointer != nullptr ? pointer->layout.get()
+                                        : held != nullptr  ? held->layout.get()
+                                                           : nullptr;
+    return layout != nullptr && table->declares(layout->suit, name, from);
+}
+
+// THE SCOPE A LINE STANDS IN, as member() is asked from it -- kNoScope when no program is around the line.
+std::size_t scope_of_the_line(const std::vector<std::bitset<16>> &row, std::size_t at, const ExpressionContext &context)
+{
+    const CapsuleTable *table = context.state.capsules;
+    const BytecodeRegistry *program = context.state.program;
+    return table == nullptr || program == nullptr ? kNoScope : table->scope_at(row_index_of(program, row), at);
 }
 
 // THE ARGUMENTS BETWEEN `(` AND `)`, worked out in the caller's frame -- `at` on the
@@ -136,7 +163,10 @@ bool package_capsule_call(const std::vector<std::bitset<16>> &row, std::size_t &
         // A POINTER'S OBJECT TOO (pointer_calls.hpp), held by the thread as any object it is
         // handed is -- for as long as the thread itself is kept (thread_calls.cpp keeps `self`).
         const UserDefinedHandle held = object ? object_behind(*object.value) : UserDefinedHandle();
-        if (held != nullptr && every_object_word(names.back())) {
+        // ONE OF THE FIVE IS NO CAPSULE TO RUN -- unless his spacesuit declares a capsule of that name,
+        // which a bare `.` calls everywhere (pointer_calls.hpp; the author's C of 2026-10-10).
+        if (held != nullptr && every_object_word(names.back()) &&
+            !his_own_capsule(*object.value, held, names.back(), context, table->scope_at(which, started))) {
             context.refuse(thread_needs_a_capsule_call, not_a_capsule_for_a_thread(out.written, names.back()),
                            started);
             return false;
@@ -186,6 +216,9 @@ Value call_member(const std::vector<std::bitset<16>> &row, std::size_t &at, cons
                   const std::string &receiver, ExpressionContext &context)
 {
     const std::size_t dot = at;
+    // WHICH PERIOD WAS WRITTEN (method_periods.hpp): `.satellite.` before the five words every object
+    // has, and `.` before a capsule of his own (pointer_calls.hpp says both rulings).
+    const bool under_satellite = code_at_here(row, dot) == token::satellite_method_token;
     std::size_t k = at + 1;
     const token::Code next = code_at_here(row, k);
     std::string name;
@@ -196,13 +229,14 @@ Value call_member(const std::vector<std::bitset<16>> &row, std::size_t &at, cons
         ++k;
     }
     at = k;
-    const std::string written = receiver + "." + name;
+    const std::string written = receiver + (under_satellite ? ".satellite." : ".") + name;
 
-    // THE THREE EVERY OBJECT ANSWERS (pointer_calls.hpp), asked of a pointer BEFORE its object
-    // is held, because a pointer whose object is gone still answers them: ok() is false. The
-    // pointer is asked about first -- one compare, and almost every call is on an object.
-    if (object.is_pointer() && every_object_answers(next))
-        return every_object_method(row, at, next, object, receiver, dot, context);
+    // THE FIVE WORDS EVERY OBJECT HAS RUN THEIR NUMBERS (pointer_calls.hpp), 1 10 1 to 1 10 5 -- and a
+    // pointer is asked ok(), pointer() and reference() BEFORE its object is held, which
+    // run_object_number keeps: a pointer whose object is gone still answers ok() false.
+    const token::Code number = next == token::name_token ? 0 : object_number_of(next);
+    if (under_satellite && number != 0)
+        return run_object_number(next, number, row, at, object, receiver, dot, context);
 
     // THE OBJECT IS HELD HERE, BY A HANDLE OF ITS OWN, for the whole call. `object` is
     // whatever the chain was standing on -- a variable, or a field of this body's object
@@ -211,6 +245,24 @@ Value call_member(const std::vector<std::bitset<16>> &row, std::size_t &at, cons
     // so the object it points at cannot go while its capsule runs.
     const UserDefinedHandle held = object_behind(object);
     const UserDefinedHandle *handle = &held;
+
+    // THE OTHER PERIOD, JUDGED BEFORE ANYTHING RUNS: `.satellite.` before a capsule his spacesuit
+    // declares, or a bare `.` before one of the five that it does not (the author's A of 2026-10-11, and
+    // his C of 2026-10-10: his own spacesuit's methods stay as he writes them). So `d.lock()` runs his
+    // own lock() when his spacesuit has one -- ERRORS4 #005 -- and is told to write d.satellite.lock()
+    // when it has none. A pointer's spacesuit is known even when its object is gone; a field never
+    // given an object has none to ask, and is told that below.
+    if (under_satellite || number != 0) {
+        // A BARE ONE OF THE FIVE IS HIS ONLY WHERE THIS LINE REACHES HIS CAPSULE OF THAT NAME (declares): from
+        // outside, a protected lock() of his leaves `d.lock()` the language's word written the old way.
+        const bool his = his_own_capsule(object, held, name, context,
+                                         under_satellite ? kNoScope : scope_of_the_line(row, dot, context));
+        if (under_satellite ? his : !his && (object.is_pointer() || held != nullptr)) {
+            context.refuse(satl_line_not_understood,
+                           period_written_wrong(receiver, name, object.kind(), under_satellite), dot);
+            return Value();
+        }
+    }
     if (held == nullptr || held->layout == nullptr) {
         if (object.is_pointer()) {
             context.refuse(object_is_gone, object_is_gone_because(written, receiver), dot);
@@ -221,21 +273,8 @@ Value call_member(const std::vector<std::bitset<16>> &row, std::size_t &at, cons
                                                      "gives it one", dot);
         return Value();
     }
-    // A CAPSULE'S OWN NAME is a name, never one of the three -- one compare for nearly every call.
-    if (next != token::name_token && every_object_answers(next))
-        return every_object_method(row, at, next, object, receiver, dot, context);
-    // THE AUTHOR'S LOCK (satellite_object/object_lock.hpp): `.lock()` turns it on and
-    // `.unlock()` off. Neither locks anything itself; a statement that writes the object does.
-    if (next == token::lock_token || next == token::unlock_token) {
-        if (code_at_here(row, at) != token::left_parenthesis_token ||
-            code_at_here(row, at + 1) != token::right_parenthesis_token) {
-            context.refuse(satl_line_not_understood, written + "() takes nothing, in its brackets", dot);
-            return Value();
-        }
-        at += 2;
-        (*handle)->lock.on.store(next == token::lock_token, std::memory_order_release);
-        return Value();
-    }
+    // ANY OTHER NAME IS A CAPSULE OF HIS SPACESUIT -- one of the five too, when his spacesuit declares
+    // it (above) -- and the language's own words were run by their numbers before this.
     const CapsuleTable *table = context.state.capsules;
     const BytecodeRegistry *program = context.state.program;
     if (table == nullptr || program == nullptr) {

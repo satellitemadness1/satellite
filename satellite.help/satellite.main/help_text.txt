@@ -47,7 +47,7 @@ example:
 
 satellite.include(satellite)
 
-satellite.capsule satellite.main(satellite.container.list<satellite.variable.string> arguments)
+satellite.capsule satellite.main(satellite.variable.arguments arguments)
 {
     satellite.console.display("Hello, World!") // Hello, World!
     satellite.console.display(42)              // 42

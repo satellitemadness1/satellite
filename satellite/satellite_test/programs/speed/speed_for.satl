@@ -18,6 +18,6 @@ satellite.capsule satellite.main()
         }
         turns = turns + 10
     }
-    satellite.console.display(turns.string + " " + h.string)
+    satellite.console.display(turns.satellite.string + " " + h.satellite.string)
     satellite.return(satellite)
 }
