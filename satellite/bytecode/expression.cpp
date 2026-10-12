@@ -1294,50 +1294,59 @@ bool a_converted_division(const std::vector<std::bitset<16>> &row, std::size_t a
     return true;
 }
 
+Value one_operand(const std::vector<std::bitset<16>> &row, std::size_t &at, ExpressionContext &context);
+
+// THE HOT PATH: satellite.convert.whole(a / b) AND .number(a / b) (the author, 2026-10-12: "these things should be
+// hot paths in C++"). Its two names or numbers are read here and divided once, as `a / b` was before it was a
+// fraction -- none of a word call's work, which cost a loop ~900 instructions a turn (callgrind on BUILD 0053: .whole
+// 11% behind %, .number 16%). Reading a name or a number twice changes nothing, so two that are not both numbers, or
+// any other shape, answer false with nothing refused and go the whole way round (call_convert_word), as before.
+//
+// NEVER INLINED, and that is the point of it being a function: written inside one_operand (BUILD 0054), its warning's
+// code made one_operand too big to take text_at and VariableTable::seen into itself, and every name read in every
+// program cost 7% more (callgrind: a + b's loop 1.62 -> 1.73 billion instructions).
+[[gnu::noinline]] bool converted_division(const std::vector<std::bitset<16>> &row, std::size_t &at,
+                                          ExpressionContext &context, Value &answer)
+{
+    const Code code = code_at(row, at);
+    std::size_t divide_at = 0, close = 0;
+    if (!a_converted_division(row, at, divide_at, close))
+        return false;
+    std::size_t k = at + 2;
+    const Value left = one_operand(row, k, context);
+    if (context.code != success || k != divide_at)
+        return false;
+    ++k;
+    const Value right = one_operand(row, k, context);
+    if (context.code != success || k != close || !left.is_number() || !right.is_number())
+        return false;
+    if (context.state.features.on(Feature::word_counts))
+        word_counts().saw(code);
+    std::string why;
+    bool lost = false;
+    const signed long long int made = code == word::fixed_code<1, 35, 3> ? left.divide_whole(right, answer, why)
+                                                                        : left.divide_rounded(right, answer, why, lost);
+    if (made != success) {
+        context.refuse(made, why, divide_at);
+        return false;
+    }
+    if (lost)    // S021, as the root's division says it (evaluate_at)
+        warn_number_rounded(
+            context.state, [&] { return left.as_number()->to_text() + " / " + right.as_number()->to_text(); },
+            [&] { return answer.as_number()->to_text(); });
+    at = close + 1;
+    return true;
+}
+
 Value one_operand(const std::vector<std::bitset<16>> &row, std::size_t &at, ExpressionContext &context)
 {
     const Code code = code_at(row, at);
 
-    // THE HOT PATH: satellite.convert.whole(a / b) AND .number(a / b) (the author, 2026-10-12: "these things should
-    // be hot paths in C++"). Its two names or numbers are read here and divided once, as `a / b` was before it was a
-    // fraction -- none of a word call's work, which cost a loop ~900 instructions a turn (callgrind on BUILD 0053:
-    // .whole 11% behind %, .number 16%). Reading a name or a number twice changes nothing, so two that are not both
-    // numbers, or any other shape, go the whole way round (call_convert_word) and answer exactly as before.
+    // satellite.convert.whole(a / b) AND .number(a / b): converted_division, above. A refusal there is this one's.
     if (code == word::fixed_code<1, 35, 3> || code == word::fixed_code<1, 35, 1>) {
-        std::size_t divide_at = 0, close = 0;
-        if (a_converted_division(row, at, divide_at, close)) {
-            std::size_t k = at + 2;
-            const Value left = one_operand(row, k, context);
-            if (context.code != success)
-                return Value();
-            if (k == divide_at) {
-                ++k;
-                const Value right = one_operand(row, k, context);
-                if (context.code != success)
-                    return Value();
-                if (k == close && left.is_number() && right.is_number()) {
-                    if (context.state.features.on(Feature::word_counts))
-                        word_counts().saw(code);
-                    Value answer;
-                    std::string why;
-                    bool lost = false;
-                    const signed long long int made = code == word::fixed_code<1, 35, 3>
-                                                          ? left.divide_whole(right, answer, why)
-                                                          : left.divide_rounded(right, answer, why, lost);
-                    if (made != success) {
-                        context.refuse(made, why, divide_at);
-                        return Value();
-                    }
-                    if (lost)    // S021, as the root's division says it (evaluate_at)
-                        warn_number_rounded(
-                            context.state,
-                            [&] { return left.as_number()->to_text() + " / " + right.as_number()->to_text(); },
-                            [&] { return answer.as_number()->to_text(); });
-                    at = close + 1;
-                    return answer;
-                }
-            }
-        }
+        Value answer;
+        if (converted_division(row, at, context, answer) || context.code != success)
+            return answer;
     }
 
     // A TOUCHING MINUS IS THE UNARY ONE, and that falls out of the author's
