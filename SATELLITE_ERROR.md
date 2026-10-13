@@ -194,6 +194,7 @@ nothing at all.
 | **S0802** | `ANSWER_IS_NOT_WHOLE` | 24 `answer_is_not_whole` | `machine/s_codes.hpp` |
 | **S016** | `CONFIG_ROW_NOT_UNDERSTOOD` | *(notice -- the run carries on; 2026-09-25, the author's A9: each unknown `config.ini` row and each line that is not key = value, by line)* | `structured-library.cpp` |
 | **S020** | `NUMBER_TAKEN_AS_TEXT` | *(warning, satellite.log only -- the run carries on; M5, 2026-09-25, in the Part 4 numbering the rows above predate)* | `machine/s_codes.hpp` |
+| **S022** | `HOLDS_LET_GO` | *(warning, on the screen and in satellite.log, once a line -- the run carries on; 2026-10-12, the author: "display an error but build code to recover the interpreter", and of his own `.lock()` too: "the user is expecting the program to run and to work here, and we are giving them an error when we don't have to": two threads each held an object the other's line needed, and this line let go of what it held, waited and took it back -- where S728 stopped it before)* | `machine/s_codes.hpp`, `satellite_object/object_lock.cpp`, `bytecode/program_walk.cpp`, `bytecode/expression.cpp` |
 | **S021** | `NUMBER_ROUNDED` | *(warning, on the screen and in satellite.log, once a line -- the run carries on; 2026-10-12, the author: "7 / 2 = 4 if a number", ".500000000 is plus one .499999999 is not plus one", "With a warning", "But don't stop the interpreter": `satellite.convert.number` of a float or a fraction that was not even)* | `machine/s_codes.hpp`, `bytecode/convert_calls.cpp`, `bytecode/expression.cpp` |
 | **S430** | `RANDOM_NEEDS_A_SHAPE` | 71 `random_needs_a_shape` -- `fast()`, `normal()`, `ultra()` draw nothing (003's ruling, 2026-09-04); the checker, before anything runs | `machine/s_codes.hpp`, `bytecode/random_calls.cpp` |
 | **S431** | `RANDOM_WANTS_WHOLE_NUMBERS` | 72 `random_wants_whole_numbers` -- a count, a bound or a step that is not a whole number, or a count below 0 | `bytecode/random_calls.cpp` |
@@ -289,7 +290,7 @@ report under `the lines, corrected:`, four columns in, before `directory:`; in a
 one line, the heading four columns in and the lines eight. A tab in a line is kept a tab, so a
 tab-indented line still runs; anything else a terminal would act on is escaped. The lines are part
 of what the report tally counts as one report, so two notices of one code missing different lines
-are both said. **Free after it:** S017–S019, S022–S029 and S035–S099 in the warning band;
+are both said. **Free after it:** S017–S019, S023–S029 and S035–S099 in the warning band;
 S104–S109, S111–S119, S122–S129, S131–S139, S141–S149 and S157–S199 in the first stopping band;
 exits 84–129 and 131–254 (77 never; 130 is Ctrl-C's; 255 is never given). Proven before any new code
 is raised by `build/missing_cases` (satellite/machine/missing_cases.cpp), one check.sh row a code.

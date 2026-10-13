@@ -6192,9 +6192,12 @@ expect "threads: total = w.join() lets go of the lock w needs while it waits, an
 timeout 20 "$interpreter" tests/threads_lock_field_join.satl > build/threads_lfj.out 2>/dev/null; code=$?
 expect "threads: a thread kept in a locked object's field is joined from its capsule, and writes it" "0|1" \
        "$code|$(tr -d '\n' < build/threads_lfj.out)"
-timeout 20 "$interpreter" tests/threads_lock_circle.satl > /dev/null 2> build/threads_circle.err; code=$?
-expect "threads: two objects locked in opposite orders by two threads is S728 WAIT_NEVER_ENDS, not a frozen program" "63|1" \
-       "$code|$(grep -c 'S728: WAIT_NEVER_ENDS' build/threads_circle.err)"
+timeout 20 "$interpreter" tests/threads_lock_circle.satl > build/threads_circle.out 2> build/threads_circle.err; code=$?
+# BROKEN, NOT REFUSED (the author, 2026-10-12: "display an error but build code to recover the interpreter", and of
+# his own .lock(): "the user is expecting the program to run and to work here"): one thread lets go, says S022 once
+# for its line, waits, and takes its lock back -- every add lands, 2000 a thread.
+expect "threads: two objects locked in opposite orders by two threads -- one lets go (S022), and the run ends with 4000" "0|1|4000" \
+       "$code|$(grep -c '^\[satellite\] S022 HOLDS_LET_GO' build/threads_circle.err)|$(tail -n 1 build/threads_circle.out)"
 "$interpreter" tests/threads_override.satl > build/threads_override.out 2>/dev/null; code=$?
 expect "threads: satellite.thread.new(call_speak()) in a dog runs the dog's override" "0|dog|dog|dog|" \
        "$code|$(tr '\n' '|' < build/threads_override.out)"
@@ -8426,13 +8429,14 @@ printf 'satellite.include(satellite)\n\nsatellite.spacesuit animal()\n{\n    sat
 "$interpreter" "$sweep/nm8_review_inherit.satl" > "$sweep/nm8_review_inherit.out" 2>&1; code=$?
 expect "rule C through inheritance and a pointer: d.lock() and p.lock() both run his parent's lock(), then 2" "0|2|1" \
        "$code|$(grep -cx 'his parent lock ran' "$sweep/nm8_review_inherit.out")|$(grep -cx 2 "$sweep/nm8_review_inherit.out")"
-# UNLOCK TURNS THE LOCK OFF: the S728 circle (tests/threads_lock_circle.satl) with a.satellite.unlock() and
-# b.satellite.unlock() after its locks runs to its end -- this row fails if .satellite.unlock() ever kept the lock on.
-# Its total differs run to run (call_get reads n - n while the other thread writes n), so only that one is printed.
+# UNLOCK TURNS THE AUTHOR'S LOCK OFF -- and since 2026-10-12 (his 2: satl takes the lock itself once a thread has
+# started, object_lock.hpp) satl's own hold stands in its place, so the circle of tests/threads_lock_circle.satl with
+# a.satellite.unlock() and b.satellite.unlock() after its locks meets the same circle, broken the same way (S022), and
+# ends with every add: until then it ran with the two threads writing n at once.
 sed 's/^    b\.satellite\.lock()$/    b.satellite.lock()\n    a.satellite.unlock()\n    b.satellite.unlock()/' tests/threads_lock_circle.satl > "$sweep/nm8_review_circle_unlock.satl"
 timeout 20 "$interpreter" "$sweep/nm8_review_circle_unlock.satl" > "$sweep/nm8_review_circle_unlock.out" 2>&1; code=$?
-expect "threads: the S728 circle with both objects unlocked after their locks runs to its end and prints its total" "0|2|1" \
-       "$code|$(grep -c 'satellite.unlock()' "$sweep/nm8_review_circle_unlock.satl")|$(tail -n 1 "$sweep/nm8_review_circle_unlock.out" | grep -cE '^[0-9]+$')"
+expect "threads: the circle with both objects unlocked after their locks -- satl's own hold, broken the same way, 4000" "0|2|1" \
+       "$code|$(grep -c 'satellite.unlock()' "$sweep/nm8_review_circle_unlock.satl")|$(grep -cx 4000 "$sweep/nm8_review_circle_unlock.out")"
 # A FILE'S lock(5) ON A LIST'S ITEM RUNS AS IT ALWAYS RAN (the files review's H2): BUILD 0032 turned the lock on or off
 # and read nothing in its brackets, and the spelling change keeps that (file_calls.cpp run_file_number); on a declared
 # name the checker refuses the count before anything runs, as it did.

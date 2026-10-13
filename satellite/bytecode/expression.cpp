@@ -727,6 +727,8 @@ Value call_method(const std::vector<std::bitset<16>> &row, std::size_t &at, cons
                 continue;
             }
             const ObjectHold one_call(&file->lock, LockUse::writing);
+            if (one_call.circle_broken())
+                warn_circle_broken(context.state);
             if (one_call.code() != success) {
                 context.refuse(one_call.code(), name + " is a locked file held by a thread that is waiting for this one");
                 return Value();
@@ -1042,6 +1044,8 @@ Value index_into(const Value &current, const Value &index, const std::string &wh
         // A LOCKED FILE'S LINE IS READ UNDER ITS LOCK, as its methods are (the second review:
         // f[n] beside another thread's f.append(...) read a half-moved line, S514).
         const ObjectHold one_read(&file->lock, LockUse::reading);
+        if (one_read.circle_broken())
+            warn_circle_broken(context.state);
         if (one_read.code() != success) {
             context.refuse(one_read.code(), what + " is a locked file held by a thread that is waiting for this one");
             return Value();

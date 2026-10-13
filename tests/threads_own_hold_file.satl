@@ -15,7 +15,7 @@ satellite.capsule writer(satellite.variable.file f, satellite.variable.string wh
 
 satellite.capsule satellite.main()
 {
-    satellite.variable.file f = satellite.file.new("build/threads_own_hold_file.se")
+    satellite.variable.file f = satellite.file.new("../build/threads_own_hold_file.se")
     satellite.variable.thread a = satellite.thread.new(writer(f, "alpha"))
     satellite.variable.thread b = satellite.thread.new(writer(f, "bravo"))
     a.satellite.start()

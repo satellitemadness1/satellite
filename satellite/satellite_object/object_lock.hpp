@@ -49,6 +49,17 @@
 // taken -- one more relaxed load a statement -- and the author's lock, when it is on, is used as it always was.
 // Turning a lock on or off while another thread is inside a statement on it can let one statement of each
 // kind overlap; turned on once, before the threads start, as every program here does, it cannot.
+//
+// A CIRCLE OF HOLDS IS BROKEN, NOT REFUSED (the author, 2026-10-12: "display an error but build code to recover the
+// interpreter", and of his own .lock() too: "the user is expecting the program to run and to work here, and we are
+// giving them an error when we don't have to"). When taking a lock would close a circle -- two threads each holding
+// an object the other's line needs -- the thread that would close it gives back the holds its line had, waits for
+// this one with nothing held, and takes them back when it gives this one back; the screen says S022 once a line and
+// the run goes on. With nothing held no circle can pass through a thread (one joining another holds nothing while it
+// waits), so the wait ends. The price is join()'s: a value the line read before it let go may have been changed by
+// the other thread before it is written back. Nothing is added where nothing collides: the circle is only looked
+// for by a thread about to wait. S728 is left for a join that would never return -- each thread waiting for the
+// other to END, which no letting go can end.
 
 #include <atomic>
 #include <vector>
@@ -123,11 +134,15 @@ public:
     ObjectHold(const ObjectHold &) = delete;
     ObjectHold &operator=(const ObjectHold &) = delete;
     signed long long int code() const { return code_; }
+    // TAKING IT BROKE A CIRCLE (above): the line's earlier holds were given back and are taken again when this one is
+    // given back. Its caller says S022 (machine/s_codes.hpp warn_circle_broken).
+    bool circle_broken() const { return let_go_; }
 
 private:
     ObjectLock *lock_ = nullptr;
     LockUse use_ = LockUse::none;
     signed long long int code_ = 0;
+    bool let_go_ = false;
 };
 
 } // namespace satellite004

@@ -394,11 +394,11 @@ inline SCode s_code_for(signed long long int machine_code)
                 "ends a thread in the middle of one."};
     case wait_never_ends:
         return {"S728", "WAIT_NEVER_ENDS",
-                "this line would wait forever: the object's lock it needs is held by a thread that is itself "
-                "waiting -- through locks and joins -- for this one. Two threads each waiting for the other "
-                "never end, so satellite stops this line instead of the program freezing (003's S1407 and "
-                "S1408). A line that holds an object's lock -- writing it, or reading it -- should not wait for a "
-                "thread that needs the same object's lock."};
+                "this line would wait forever: the thread it joins is itself waiting -- through joins -- for "
+                "this one to end. Two threads each waiting for the other to end never end, so satellite stops "
+                "this line instead of the program freezing (003's S1407 and S1408). Two threads each holding an "
+                "object the other needs are not this: since 2026-10-12 one of them lets go and waits, and the run "
+                "goes on (S022)."};
     case thread_cannot_share_yet:
         return {"S727", "THREAD_CANNOT_SHARE_YET",
                 "a window belongs to the main thread, which draws it, so a thread the program started may "
@@ -646,6 +646,19 @@ void display_warning_here(const MachineState &state, const char *code, const cha
 // 60 characters each -- a 128-place float is a line no one reads whole. BOTH ARE MADE ONLY WHEN THE WARNING IS
 // SHOWN, once a line: a loop that rounds on every turn pays for a count, not for its answer's digits written out
 // (the author, 2026-10-12: "these things should be hot paths in C++").
+// S022 -- A CIRCLE OF HOLDS WAS BROKEN, NOT REFUSED (the author, 2026-10-12: "display an error but build code to
+// recover the interpreter", "the user is expecting the program to run and to work here, and we are giving them an
+// error when we don't have to"). Two threads each held an object the other's line needed; this line let go of what
+// it held, waited, and took it back (satellite_object/object_lock.hpp). Once a line; the run goes on.
+inline void warn_circle_broken(const MachineState &state)
+{
+    display_warning_here(state, "S022", "HOLDS_LET_GO", [] {
+        return std::string("two threads each held an object the other's line needed, so this line let go of what it "
+                           "held, waited for the other, and took it back -- the run goes on, and a value this line "
+                           "read before the wait may have been changed by the other thread before it was written");
+    });
+}
+
 template <typename What, typename Answer>
 void warn_number_rounded(const MachineState &state, What &&what, Answer &&answer)
 {

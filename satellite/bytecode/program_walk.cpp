@@ -852,6 +852,8 @@ signed long long int run_while(const BytecodeRegistry &registry,
         if (opened) ++here;
         const Value holds = [&] {
             const ObjectHold condition(lock_of(variables.self), what_the_line_does(row, condition_at, variables, state.capsules));
+            if (condition.circle_broken())
+                warn_circle_broken(state);
             if (condition.code() != success) {
                 context.refuse(condition.code(), "this condition needs its object's lock, and a thread holding it "
                                                  "is waiting for this one");
@@ -917,6 +919,8 @@ signed long long int run_if(const BytecodeRegistry &registry,
         if (opened) ++here;
         const Value holds = [&] {
             const ObjectHold condition(lock_of(variables.self), what_the_line_does(row, condition_at, variables, state.capsules));
+            if (condition.circle_broken())
+                warn_circle_broken(state);
             if (condition.code() != success) {
                 context.refuse(condition.code(), "this condition needs its object's lock, and a thread holding it "
                                                  "is waiting for this one");
@@ -1029,6 +1033,8 @@ signed long long int run_for_step(const std::vector<std::bitset<16>> &row,
     ExpressionContext context{variables, functions, state};
     {
         const ObjectHold step(lock_of(variables.self), what_the_line_does(row, parts.step, variables, state.capsules));
+        if (step.circle_broken())
+            warn_circle_broken(state);
         // A STEP OF h / 2 KEEPS THE NUMBER WHOLE (2026-10-12): every other a / b of two numbers is a
         // fraction, and a fraction would stop the loop below -- so the step's last division is whole, cut
         // toward zero, as it was (the author, "That's okay"; expression.hpp's evaluate_whole_expression).
@@ -1102,6 +1108,8 @@ signed long long int run_for(const BytecodeRegistry &registry,
     // review: both read a locked list half moved, S501).
     Value start = [&] {
         const ObjectHold part(lock_of(variables.self), what_the_line_does(row, k, variables, state.capsules));
+        if (part.circle_broken())
+            warn_circle_broken(state);
         if (part.code() != success) {
             opening.refuse(part.code(), "this for needs its object's lock, and a thread holding it is waiting for "
                                         "this one");
@@ -1146,6 +1154,8 @@ signed long long int run_for(const BytecodeRegistry &registry,
         ExpressionContext turn{variables, functions, state};
         const Value holds = [&] {
             const ObjectHold condition(lock_of(variables.self), what_the_line_does(row, parts.condition, variables, state.capsules));
+            if (condition.circle_broken())
+                warn_circle_broken(state);
             if (condition.code() != success) {
                 turn.refuse(condition.code(), "this condition needs its object's lock, and a thread holding it is "
                                               "waiting for this one");
@@ -1955,6 +1965,8 @@ signed long long int run_statements(const BytecodeRegistry &registry,
                              code == word::code_of(1, 13, 2);
         const ObjectHold this_statement(a_block ? nullptr : lock_of(variables.self),
                                         a_block ? LockUse::none : what_the_line_does(row, at, variables, state.capsules));
+        if (this_statement.circle_broken())
+            warn_circle_broken(state);
         if (this_statement.code() != success)
             return raise_at(this_statement.code(),
                             "this line needs its object's lock, and a thread holding it is waiting -- through "

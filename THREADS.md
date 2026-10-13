@@ -105,8 +105,8 @@ probe programs. Everything it confirmed is fixed:
 
 - **Two threads writing `config.ini` at once** through an arguments row with `access` can
   mix the file: both write the same `config.ini.writing` before the rename. (The review.)
-- **A circle of threads waiting for each other**, through joins or locks, is caught as S728
-  (T2, satellite's own lock).
+- **A circle of threads waiting for each other** through joins -- each waiting for the other to end -- is caught
+  as S728 (T2, satellite's own lock). Through locks it is broken since 2026-10-12, below.
 - **A thread blocked in `satellite.console.input` stops only when its line comes.** 003's
   Q3, input from several threads, is still unanswered.
 - **The `statements` and `word_counts` debugging features keep one table for the whole
@@ -201,6 +201,24 @@ C++'s `condition_variable::wait` do the same with their one lock.
   between the line's read of it and its write. The line holds the lock before and after
   the join, but not during it.
 - A true circle is still caught. Taking a lock back after the join can itself answer S728.
+
+**A CIRCLE OF LOCKS IS BROKEN, NOT REFUSED (2026-10-12).** The author: *"display an error but build
+code to recover the interpreter"*, and of his own `.lock()` too: *"the user is expecting the program
+to run and to work here, and we are giving them an error when we don't have to"*. When taking a lock
+would close a circle -- two threads each holding an object the other's line needs -- the thread that
+would close it gives back the locks its line holds, as a join does, waits for this one with nothing
+held, and takes them back when it gives this one back. The screen says **S022 HOLDS_LET_GO** once a
+line and the run goes on. With nothing held, no circle can pass through a thread (one joining another
+holds nothing while it waits), so the wait ends. Nothing is added where nothing collides: the circle
+is looked for only by a thread about to wait (`object_lock.cpp`, `take_back_recovering`).
+
+- `tests/threads_lock_circle.satl`, two objects locked in opposite orders by two threads, runs to its
+  end and prints 4000, where it was S728; with both locks turned off (satl's own hold) the same.
+- **The one cost is join()'s:** a value the line read before it let go may have been changed by the
+  other thread before the line writes it back.
+- Taking the locks back after a join or a sleep breaks a circle the same way, and is never S728.
+- **S728 stays for joins:** two threads each joining the other wait for each other to END, and no
+  letting go can end that.
 
 **Still open:**
 

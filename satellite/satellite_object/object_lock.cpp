@@ -10,6 +10,7 @@
 #include <algorithm>
 #include <condition_variable>
 #include <mutex>
+#include <thread>
 #include <utility>
 
 namespace satellite004 {
@@ -175,7 +176,11 @@ signed long long int take_own_hold(ObjectLock &lock)
 
 void give_back_own_hold(ObjectLock &lock)
 {
-    lock.holder.store(nullptr, std::memory_order_seq_cst);
+    // ONLY THIS THREAD'S: a hold let go of for a join that then ended in S728 is given back again by its
+    // ObjectHold on the way out, when another thread may hold it.
+    const WaitNode *me = &this_threads_node();
+    if (!lock.holder.compare_exchange_strong(me, nullptr, std::memory_order_seq_cst))
+        return;
     if (lock.asleep.load(std::memory_order_seq_cst) != 0) {
         const std::lock_guard<std::mutex> hold(graph());
         released().notify_all();
@@ -193,6 +198,31 @@ void give_back_either(ObjectLock &lock, LockUse use)
         give_back_own_hold(lock);
     else
         give_back_object_lock(lock, use);
+}
+
+// EVERY HOLD THIS THREAD'S LINE HAD, TAKEN BACK after a wait it let them go for (a join, a sleep, a circle broken).
+// Should taking one back close a circle -- another thread holds it and waits for one taken back already -- what was
+// taken is given back, that one is waited for with nothing held (which ends: no circle passes through a thread
+// holding nothing), and every one is taken again in its order. The other thread goes on meanwhile.
+void take_back_recovering()
+{
+    for (;;) {
+        std::size_t taken = 0;
+        signed long long int code = success;
+        for (; taken < held_here.size(); ++taken) {
+            code = take_either(*held_here[taken].first, held_here[taken].second);
+            if (code != success)
+                break;
+        }
+        if (code == success)
+            return;
+        for (std::size_t k = taken; k-- > 0;)
+            give_back_either(*held_here[k].first, held_here[k].second);
+        if (take_either(*held_here[taken].first, held_here[taken].second) == success)
+            give_back_either(*held_here[taken].first, held_here[taken].second);
+        else
+            std::this_thread::yield();
+    }
 }
 
 } // namespace
@@ -222,11 +252,7 @@ void let_go_while_waiting()
 
 signed long long int take_back_after_waiting()
 {
-    for (const auto &[lock, use] : held_here) {
-        const signed long long int taken = take_either(*lock, use);
-        if (taken != success)
-            return taken;     // the holds give back what they hold; one not taken back is a no-op
-    }
+    take_back_recovering();     // a circle met taking them back is broken there, never refused (object_lock.hpp)
     return success;
 }
 
@@ -260,6 +286,20 @@ ObjectHold::ObjectHold(ObjectLock *lock, LockUse use)
     // never given back (the third review).
     held_here.emplace_back(lock, use);
     code_ = take_either(*lock, use);
+    // A CIRCLE IS BROKEN HERE, NOT REFUSED (object_lock.hpp): this line's earlier holds are given back, this one is
+    // waited for with nothing held, and they are taken back with this one's giving back, below.
+    if (code_ == wait_never_ends && held_here.size() > 1) {
+        held_here.pop_back();
+        let_go_while_waiting();
+        held_here.emplace_back(lock, use);
+        code_ = take_either(*lock, use);
+        if (code_ != success) {
+            held_here.pop_back();
+            take_back_recovering();
+            return;
+        }
+        let_go_ = true;
+    }
     if (code_ != success) {
         held_here.pop_back();
         return;
@@ -274,6 +314,8 @@ ObjectHold::~ObjectHold()
         return;
     held_here.pop_back();
     give_back_either(*lock_, use_);
+    if (let_go_)
+        take_back_recovering();
 }
 
 } // namespace satellite004
