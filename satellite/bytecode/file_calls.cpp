@@ -21,6 +21,7 @@
 #include "../machine/s_codes.hpp"
 #include "../machine/source_position.hpp"
 #include "../satellite_variable_number/number_conversions.hpp"
+#include "../satellite_variable_file/file_moves.hpp"
 
 #include <sys/stat.h>
 
@@ -190,10 +191,16 @@ std::string joined(const std::string &folder, const std::string &rest)
 //   a leading /    under the program's own folder first, then the filesystem's.
 //
 // `making` is true for new(): what must already be there is the folder the file
-// goes in, not the file. At the prompt there is no program file, so a path is the
-// working directory's, as it always was.
+// goes in, not the file. `link_itself` is true for delete, which takes a link and
+// never what it points to: a dangling link under the program's folder is there
+// (FD-2's reader: it was passed over for the filesystem's file of that name).
+// `folders` is true for satellite.directory.create, which
+// makes every missing folder: only the path's FIRST folder must be under the
+// program's own (FILE_AND_DRIVE_PLAN.md FD-1's reader: create("/data/two/deeper")
+// with only P/data there went to the filesystem's /data). At the prompt there is no
+// program file, so a path is the working directory's, as it always was.
 std::string resolved(const std::string &written, bool making, const std::vector<std::bitset<16>> &row,
-                     ExpressionContext &context)
+                     ExpressionContext &context, bool folders = false, bool link_itself = false)
 {
     const std::string *calling = nullptr;
     const std::string *main_file = nullptr;
@@ -219,8 +226,16 @@ std::string resolved(const std::string &written, bool making, const std::vector<
         if (root == "/") return written;
         const std::string under = joined(root, written.substr(1));
         struct stat about;
+        if (folders) {
+            const std::size_t first = written.find_first_not_of('/');
+            const std::string top = first == std::string::npos ? std::string()
+                                                                : written.substr(first, written.find('/', first) - first);
+            if (!top.empty() && stat(joined(root, top).c_str(), &about) == 0 && S_ISDIR(about.st_mode))
+                return under;
+            return written;
+        }
         if (making ? (stat(folder_of(under).c_str(), &about) == 0 && S_ISDIR(about.st_mode))
-                   : stat(under.c_str(), &about) == 0)
+                   : (link_itself ? lstat(under.c_str(), &about) : stat(under.c_str(), &about)) == 0)
             return under;
         return written;
     }
@@ -245,6 +260,12 @@ bool kind_of(const Value &value, satellite_file::Kind &kind, const std::string &
 }
 
 } // namespace
+
+std::string resolved_path(const std::string &written, bool making, const std::vector<std::bitset<16>> &row,
+                          ExpressionContext &context, bool folders)
+{
+    return resolved(written, making, row, context, folders);
+}
 
 const char *method_spelling(Code method)
 {
@@ -359,7 +380,8 @@ bool is_file_word(Code code)
 {
     return code == word::fixed_code<1, 8, 1> || code == word::fixed_code<1, 8, 2> ||
            code == word::fixed_code<1, 8, 3> || code == word::fixed_code<1, 8, 4> ||
-           code == word::fixed_code<1, 8, 5> || code == word::fixed_code<1, 8, 6>;
+           code == word::fixed_code<1, 8, 5> || code == word::fixed_code<1, 8, 6> ||
+           code == word::fixed_code<1, 8, 7>;
 }
 
 Value call_file_word(Code code, const std::vector<Value> &arguments, const std::vector<std::bitset<16>> &row,
@@ -380,7 +402,7 @@ Value call_file_word(Code code, const std::vector<Value> &arguments, const std::
         return Value();
 
     const bool making = code == word::code_of(1, 8, 1) || code == word::code_of(1, 8, 4);
-    const std::string path = resolved(written, making, row, context);
+    const std::string path = resolved(written, making, row, context, false, code == word::code_of(1, 8, 7));
 
     if (code == word::code_of(1, 8, 5))
         return Value::of_bool(satellite_file::exists(path));
@@ -388,6 +410,9 @@ Value call_file_word(Code code, const std::vector<Value> &arguments, const std::
         std::string reason;
         return Value::of_bool(satellite_file::clear(path, reason) == success);
     }
+    // DELETE GOES THROUGH OR ASKS (file_moves.hpp, FILE_AND_DRIVE_PLAN.md FD-2): true when the file is gone.
+    if (code == word::code_of(1, 8, 7))
+        return Value::of_bool(delete_a_file(path).done);
 
     satellite_file::Kind kind = satellite_file::Kind::text;
     if (two && !kind_of(arguments[1], kind, spelling, context))

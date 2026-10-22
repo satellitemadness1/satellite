@@ -526,6 +526,11 @@ must learn the section code scheme,"*.
   with `.append`, one or the other, for now -- an appended button in a sectioned window landed in a
   strip under the sections, so each way round is refused by name. How the two should meet (a
   button made IN a section, or `.append` over the sections in the window's own corners) is his.
+- 2026-10-20: SATELLITE_WINDOW_SECTIONS.md is the live plan for sections now, milestones SEC-0 to
+  SEC-6, none built. It respells them `.satellite.window.section` and `.satellite.window.display.*`,
+  makes a section's name a bare name, and adds fraction sizes and the whole-window rule (S157
+  MISSING_SECTION). It adds the displays text, image, console, text.input, text.view, source.view,
+  button and progress. Its Section 6 holds the author's open questions.
 
 ### NM-8 — EVERY BUILT-IN UNDER `satellite`: a number for every method first, then `.satellite.` — STRINGS AND LISTS NUMBERED 2026-10-10 (BUILDS 0016 and 0017) AND WRITTEN `.satellite.` THE SAME NIGHT (BUILD 0027 on); each type takes `.satellite.` as soon as it is numbered
 

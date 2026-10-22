@@ -472,7 +472,9 @@ Value call_console_word(Code code, const std::vector<Value> &arguments, const st
         return Value();
     }
     // IN THE PROMPT'S SESSION, THROUGH ITS READER (machine/input_source.hpp): the next
-    // line may already be in its buffer, and it answers Ctrl-C as the prompt does.
+    // line may already be in its buffer, and it answers Ctrl-C as the prompt does. AND IN
+    // A FILE RUN AT A TERMINAL, THROUGH ONE OF ITS OWN (KEY_PLAN.md KEY-4, structured-library.cpp's
+    // read_for_the_run), which keeps the line as the session's does.
     std::string line;
     const std::string drawn = for_the_screen(styled_line(prompt, style));
     InputAnswer got = InputAnswer::line;
@@ -486,10 +488,14 @@ Value call_console_word(Code code, const std::vector<Value> &arguments, const st
             const ConsoleHold one_prompt;
             std::cout << drawn << std::flush;
         }
+        // NO CONSOLE HERE: stdin or stdout is a pipe or a file. At a console -- both terminals -- a file
+        // run reads through a reader of its own, which keeps each line it answers (KEY_PLAN.md KEY-4),
+        // so a line read here is nobody's typing (rule 1), and the console's store is never told of it:
+        // a line is kept once, by the reader, or not at all.
         if (!std::getline(std::cin, line))
             got = InputAnswer::ended;
-        // THE KERNEL ECHOED THE LINE, AND ITS ENTER, INTO THE PTY: in satl's own console the next
-        // line is fed past the pty, and must not overtake them (printing_satellite.hpp).
+        // WHAT A TERMINAL ECHOED, IF ONE DID, went into the pty: in satl's own console the next
+        // line is fed past the pty, and must not overtake it (printing_satellite.hpp).
         the_pty_was_written_directly();
     }
     if (got == InputAnswer::interrupted) {

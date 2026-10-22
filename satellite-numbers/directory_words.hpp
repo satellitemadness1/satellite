@@ -153,5 +153,44 @@ inline DirectoryReply drives(const std::string &, bool, const volatile sig_atomi
     return reply;
 }
 
+// `create(d)` 1 18 8, the author's of 2026-10-21 (FILE_AND_DRIVE_PLAN.md): makes the folder AND EVERY
+// MISSING FOLDER ABOVE IT, as mkdir -p does, one mkdir a folder from the top down; a folder already there
+// is fine. Like change it ANSWERS A VALUE AND NEVER AN ERROR -- true when the folder is there at the end --
+// and `reason` says why it is not, for the prompt to print when the line was typed alone (rule 1).
+inline DirectoryReply create(const std::string &path, bool given, const volatile sig_atomic_t *)
+{
+    DirectoryReply reply;
+    if (!given || path.empty()) {
+        reply.reason = "satellite.directory.create needs the folder to make";
+        return reply;
+    }
+    if (holds_a_nul(path)) {
+        reply.code = path_holds_a_nul;
+        return reply;
+    }
+    std::size_t end = path.find_first_not_of('/');
+    while (end != std::string::npos) {
+        end = path.find('/', end);
+        const std::string folder = path.substr(0, end);
+        if (::mkdir(folder.c_str(), 0777) != 0) {
+            const int why = errno;
+            struct stat about;
+            if (why != EEXIST || ::stat(folder.c_str(), &about) != 0) {
+                reply.reason = "could not make " + folder + ": " + std::strerror(why);
+                return reply;
+            }
+            if (!S_ISDIR(about.st_mode)) {
+                reply.reason = folder + (end == std::string::npos ? " is a file, not a folder: nothing was made"
+                                                                  : " is a file, not a folder, so nothing can be made in it");
+                return reply;
+            }
+        }
+        if (end != std::string::npos)
+            end = path.find_first_not_of('/', end);
+    }
+    reply.flag = true;
+    return reply;
+}
+
 } // namespace directory_words
 } // namespace satellite004

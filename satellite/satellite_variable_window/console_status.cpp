@@ -14,9 +14,11 @@
 // a job (threads/startup_threads.hpp), /proc for the memory, and VTE for the
 // size. A label is set only when its text changed.
 //
-// THE MEMORY IS RESIDENT MEMORY, satl's own and that of the programs it is
-// running with `interpret` -- a child satl on this console, the same
-// interpreter as far as the person is concerned.
+// THE MEMORY IS RESIDENT MEMORY, satl's own and that of its children still
+// running: a satellite.variable.program's, and a program `interpret` runs under
+// SATL_NO_WINDOW, in this console and waited for, as before. Without it, since
+// 2026-10-20, `interpret` starts the program in a satellite of its own
+// (satl/prompt_run.cpp), which is not this satl's child: its own bar counts it.
 //
 // THE THREADS ARE THE START-UP POOL'S (arguments.threads_startup). A program's
 // lines run on satl's main thread, which is not one of them, so a running
@@ -56,7 +58,8 @@ unsigned long long int resident_bytes(const std::string &pid)
     return resident * static_cast<unsigned long long int>(page > 0 ? page : 4096);
 }
 
-// satl, and every process it started that is still running: `interpret`'s child.
+// satl, and its children still running: a satellite.variable.program's, and `interpret`'s under
+// SATL_NO_WINDOW. A satellite of its own is not one of them.
 unsigned long long int satls_resident_bytes()
 {
     const std::string self = std::to_string(getpid());

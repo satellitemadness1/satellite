@@ -9,7 +9,13 @@
 // (waited), so keys can be typed while a line "runs"; `drop` calls
 // discard_pending(), as the session will on Ctrl-C. `exit` or the end of input
 // ends it with (end), and the terminal's modes after it when there is one.
+//
+// IT KEEPS EVERY LINE IT ANSWERS AT THE TERMINAL in lines of its own (KEY_PLAN.md KEY-3), as
+// satl's reader keeps them in the console store's, so check_prompt.py's pastes of 100,000
+// lines and its line of a megabyte are kept as they are answered, and Up and Down go through
+// them (KEY-4). Nothing is written: the write hook is satl's, and is null here.
 
+#include "console_lines.hpp"
 #include "line_reader.hpp"
 #include "render.hpp"
 
@@ -22,7 +28,9 @@
 int main()
 {
     using namespace satellite004::prompt;
+    ConsoleLines lines;
     LineReader reader;
+    reader.keep_lines_in(&lines);
     std::string line;
     for (;;) {
         const LineStatus status = reader.read("satl> ", line);
@@ -32,7 +40,6 @@ int main()
             write_all(STDOUT_FILENO, "(interrupted)\n");
             continue;
         }
-        reader.remember(line);
         write_all(STDOUT_FILENO, line.size() >= 1000 ? "(" + std::to_string(line.size()) + " bytes)\n"
                                                      : "[" + satellite004::shown(line) + "]\n");
         if (line == "wait") {

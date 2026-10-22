@@ -67,7 +67,8 @@ public:
     // A file that is NOT there: made empty and open (O_CREAT | O_EXCL). NEVER
     // CLOBBERS -- anything at the path gives a handle that is not ok
     // (file_already_there, or not_a_file for a directory) and the thing at the
-    // path is untouched.
+    // path is untouched. A binary one is made empty too, and its handle is not ok
+    // (not_built_yet, FO-8).
     static std::shared_ptr<satellite_file> make_new(const std::string &path, Kind kind);
 
     // A file that IS there: read and open. NEVER CREATES -- a missing file is

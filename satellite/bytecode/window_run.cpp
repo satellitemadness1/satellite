@@ -12,10 +12,12 @@
 #include "window_readers.hpp"
 
 #include "../machine/run_state.hpp"
+#include "../machine/satellite_of_its_own.hpp"
 #include "../satellite_variable_window/window_desk.hpp"
 
 #include <functional>
 #include <string>
+#include <vector>
 
 #include <cstdlib>
 #include <sys/stat.h>
@@ -143,6 +145,16 @@ signed long long int open_satls_own_console(const std::string &title, bool holds
 
 bool satls_own_console_is_open() { return the_interpreters_console_is_open(); }
 
+// ON THE DESK, AND WAITED FOR THERE ONLY AS LONG AS THE START TAKES: a fork, the
+// middle one's end and the exec (machine/satellite_of_its_own.hpp). The desk
+// runs at the priority satl was started with, as File > Open…'s start does.
+bool start_a_satellite_on_the_desk(const std::vector<std::string> &words, std::string &why)
+{
+    bool started = false;
+    on_the_desk([&] { started = start_a_satellite_of_its_own(words, why); });
+    return started;
+}
+
 void satls_own_console_is_done(signed long long int code)
 {
     const bool stopped = stops_the_program(code);
@@ -175,6 +187,13 @@ signed long long int open_satls_own_console(const std::string &, bool)
 }
 bool satls_own_console_is_open() { return false; }
 void satls_own_console_is_done(signed long long int) {}
+
+// AND NO DESK TO HAND A SATELLITE'S START TO: never asked here, satl's own
+// console never being open, and started where it is if it were.
+bool start_a_satellite_on_the_desk(const std::vector<std::string> &words, std::string &why)
+{
+    return start_a_satellite_of_its_own(words, why);
+}
 
 // AND NOTHING TO PRESS. No window word answered a window, so no button was made
 // and no press can be waiting.

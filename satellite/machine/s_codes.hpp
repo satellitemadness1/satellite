@@ -500,6 +500,19 @@ inline constexpr SCode kMissingCapsule = {
 inline constexpr SCode kMissingNotices[] = {kMissingProgram, kMissingReturn, kMissingWindow, kMissingObject,
                                             kMissingCapsule};
 
+// S017 -- A CONSOLE THAT CANNOT SAVE KEEPS WORKING (KEY_PLAN.md rule 8, KEY-1). A notice of the S0xx band,
+// as the S03x above are: no machine code and no exit status, one line said by print_notice, and the run
+// carries on. satl/console_files.cpp says it at a console's first Enter when the day's folder cannot be
+// made, or the console's file cannot be claimed in it (KEY-2) -- HOME unset, the disk full, a folder not
+// writable, a link where a folder should be, or no console file left to claim in the day's folder -- and
+// at the first line that cannot be written into that file (KEY-3), with what stopped it in front of this
+// sentence. ONCE A RUN BECAUSE THE STORE TRIES NOTHING MORE ON THE DISK AFTER IT, not because
+// print_notice's tally holds a second one back. The console's lines are still kept in memory.
+inline constexpr SCode kConsoleNotSaved = {
+    "S017", "CONSOLE_NOT_SAVED",
+    "what is typed into this console is not kept. The console works as before, and nothing more is tried "
+    "on the disk this run."};
+
 // E5 -- ONE CALL THAT RENDERS, PRINTS AND ANSWERS THE MACHINE CODE.
 //
 // `return raise(report, code);` is the whole shape, so a caller never writes the

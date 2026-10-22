@@ -25,11 +25,26 @@
 # when the author clicked the app and got 003's satl-term around 004's satl.
 # 004's window keeps org.satellite.terminal; 070-desktop.sh writes its entry.
 #
+# AND satl'S ICON AND THE .satl FILE TYPE, for $HOME/.satl (the author, 2026-10-20:
+# "CAn you make a plain "make" ask if you want to install the icons? There's an icon
+# for the .satl filetype, and there's an icon for the satl program too somewhere, I
+# dunno where though..."): icons/'s pictures and its mime packet, into
+# ${XDG_DATA_HOME:-$HOME/.local/share} -- 072-icons.sh. SATELLITE_ICONS=no in the
+# environment leaves them out, which is how the bare make's second question says n;
+# unset or yes puts them in, asking nothing, as `make install` and this script alone
+# do, because the launcher already names the icon. `--icons-current` answers whether
+# they are in place already -- exit 0 or 1, printing nothing -- which is how the bare
+# make knows whether to ask.
+#
 # WHAT IT INSTALLS:
 #
 #     <root>/satl                   the interpreter, every word inside it (2026-10-07)
 #     <root>/satellite.help/        the help files satellite.help() reads beside satl
 #     <root>/.satellite-004-install what this installer put there, and each file's sha256
+#
+# and, for $HOME/.satl alone, outside it: the launcher (070-desktop.sh), and
+# icons/hicolor/<size>/{apps,mimetypes}/ and mime/packages/application-x-satellite.xml
+# under ${XDG_DATA_HOME:-$HOME/.local/share} (072-icons.sh).
 #
 # The record is how a later install knows a satl in the root is its own: it is
 # never learnt by running the file. A satellite-numbers/ an earlier install put
@@ -52,16 +67,17 @@
 #     060-install-tree.sh ... the copy, the rename and the record
 #     065-config.sh ......... $HOME/.satl/config.ini, never overwritten
 #     070-desktop.sh ........ the Satellite launcher, for $HOME/.satl only
+#     072-icons.sh .......... satl's icon and the .satl file type, for $HOME/.satl only
 #     080-report.sh ......... the proof and the title lines
 #
 # check_install.sh beside this file runs the installer against the refusals and
 # failures a review found; make test runs it.
 #
 # NOT PORTED from 003: 040-machine.sh (the Enterprise Linux checks and the
-# --system prefix), 070-desktop.sh (the ~/.local links, launcher, icons and .satl
-# type) and 075-system.sh -- a 004 launcher under org.satellite.terminal would
-# take 003's (D0.5.1). The artwork in icons/ and icon_artwork/ is 003's and stays
-# as it is.
+# --system prefix), 070-desktop.sh's ~/.local links (its launcher came across with
+# D0.5.1, and its icons and .satl type on 2026-10-20, as 072-icons.sh) and
+# 075-system.sh. The artwork in icons/ and icon_artwork/ is 003's and stays as it
+# is.
 
 set -eu
 # An exported CDPATH makes `cd dir` print where it went, which $(cd ... && pwd)
@@ -87,4 +103,5 @@ fi
 . "$support/060-install-tree.sh"
 . "$support/065-config.sh"
 . "$support/070-desktop.sh"
+. "$support/072-icons.sh"
 . "$support/080-report.sh"

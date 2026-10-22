@@ -161,10 +161,15 @@ support for nvidia GPUs"*.
 **004's interpreter is `satl`** (`build/satellite-004` is a link to it). A plain
 `make` builds it, with a new BUILD number every time, and then asks whether to
 install it: Enter, `y` or a minute's silence installs, `n` leaves it in `build/`
-(with no terminal to ask, it installs). `make install` installs without asking.
+(with no terminal to ask, it installs). After a yes, while satl's icon and the
+`.satl` file type are not installed yet, it asks about them the same way, and
+`SATELLITE_ICONS=no` (or `yes`) in the environment is that answer, every time.
+`make install` installs without asking, the icons too unless `SATELLITE_ICONS=no`.
 The install puts satl -- every word inside it -- and the help files into `~/.satl`,
-and adds **Satellite 004** to the applications menu. One link puts the word `satl`
-on your command line: `ln -sf ~/.satl/satl ~/.local/bin/satl`. So `satl` typed in
+and adds **Satellite 004** to the applications menu, with its icon, and a `.satl`
+file becomes a type of its own, drawn with its own icon (`~/.local/share`): a
+double-click runs it in Satellite 004. One link puts the word `satl` on your command
+line: `ln -sf ~/.satl/satl ~/.local/bin/satl`. So `satl` typed in
 a shell is the last install, and `build/satl` is the last make. The whole install,
 step by step, is on the INSTALL page at [satellite.foundation](https://satellite.foundation).
 

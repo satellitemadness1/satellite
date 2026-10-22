@@ -190,6 +190,18 @@ bool satls_own_console_is_open();
 // window_run.cpp names the two. The same answer on every build.
 bool nobody_gave_satl_a_console();
 
+// A SATELLITE OF ITS OWN FOR A PROGRAM THE PROMPT STARTS (the author,
+// 2026-10-20: "Just create another satellite, for each program"), STARTED ON
+// THE DESK, where the console menu's File > Open… starts one
+// (machine/satellite_of_its_own.hpp says what it is given). Not on the
+// prompt's own thread, which console_launch.cpp sets to nice 19: a satl forked
+// there starts at 19 and its window's desk with it, and no thread comes back
+// from 19 -- so 24 programs would draw 24 windows at the priority of the work
+// they are doing. The start calls no GTK; the desk is only where it runs.
+// Asked only while satl's own console is open, so a satl with no window, which
+// has no desk, starts it where it is.
+bool start_a_satellite_on_the_desk(const std::vector<std::string> &words, std::string &why);
+
 // AND WHAT BECOMES OF IT WHEN THE RUN IS OVER, called by main() before it
 // waits for the windows: a run that STOPPED keeps the console up with the code
 // and its name on the last line until a person presses a key; the prompt keeps

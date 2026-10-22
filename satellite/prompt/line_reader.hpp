@@ -41,8 +41,17 @@
 //
 // THE PROMPT IS A FIXED TEXT. 003 took a function of the line, so a `}` could move
 // its own line left; 004's prompt refuses blocks until M6, and gets it back then.
+//
+// EVERY LINE IT ANSWERS AT A TERMINAL IS KEPT (KEY_PLAN.md KEY-3): added to the console's
+// lines it was handed (console_lines.hpp), then given to the console's write hook
+// (machine/console_store.hpp). A piped line, a line stopped with Ctrl-C and the end of
+// the input are not; a pasted line is kept when it is answered, never when it is queued.
+// AND UP AND DOWN GO THROUGH THOSE SAME LINES (KEY-4), input()'s answers among them: the
+// History the prompt kept of its own is gone, and the caller remembers nothing. LEFT AND RIGHT GO
+// ON PAST THE LINE'S ENDS TO THE CONSOLES BEFORE THIS ONE (KEY-6), when the reader is handed them.
 
-#include "history.hpp"
+#include "console_lines.hpp"
+#include "earlier_consoles.hpp"
 #include "render.hpp"
 
 #include <cstddef>
@@ -66,18 +75,22 @@ public:
     LineReader &operator=(const LineReader &) = delete;
 
     LineStatus read(const std::string &prompt, std::string &line);
-    // THE SAME, WITH A PROMPT THAT HAS COLOUR (render.hpp's Prompt).
+    // THE SAME, WITH A PROMPT THAT HAS COLOUR (render.hpp's Prompt), or one written as given.
     LineStatus read(const Prompt &prompt, std::string &line);
 
-    // Add an accepted line to the history. The caller decides what is worth
-    // remembering.
-    void remember(const std::string &line);
+    // WHERE EVERY LINE IT ANSWERS AT A TERMINAL IS KEPT (KEY_PLAN.md KEY-3), and what Up and
+    // Down go through (KEY-4): the console's lines -- in satl the store's (session.cpp, and a
+    // file run's reader in structured-library.cpp), in a harness its own. Null keeps nothing
+    // here, the write hook, when one is set, keeps the line itself, and Up and Down do nothing.
+    void keep_lines_in(ConsoleLines *lines) { lines_ = lines; }
+    // WHERE LEFT GOES PAST THE START OF A LINE, AND RIGHT COMES BACK THROUGH (KEY_PLAN.md KEY-6): the
+    // consoles before this one -- in satl the store's, found by its walk (KEY-5), in prompt_cases its
+    // own. Null, as in prompt_reader, Left and Right stop at the line's ends.
+    void left_reaches(EarlierConsoles *earlier) { earlier_ = earlier; }
 
     // Drop every line and byte this reader holds and has not answered: the rest
     // of a paste, keys typed ahead. The session calls it when Ctrl-C stops a line.
     void discard_pending();
-
-    const History &history() const { return history_; }
 
     // Both ends are a terminal: lines are edited, and the prompt is drawn.
     bool interactive() const { return interactive_; }
@@ -105,7 +118,8 @@ private:
     int in_;
     int out_;
     bool interactive_;
-    History history_;
+    ConsoleLines *lines_ = nullptr;   // the console's lines, or null (keep_lines_in)
+    EarlierConsoles *earlier_ = nullptr;   // the consoles before this one, or null (left_reaches)
 
     std::string input_;       // bytes read and not yet used, from `taken_` on
     std::size_t taken_ = 0;

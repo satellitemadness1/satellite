@@ -1,17 +1,22 @@
 // satellite/prompt with no terminal: bytes to keys, keys to a line, a line to
 // the cells it takes, and the piped reader (PLAN M0.6). 003's prompt_test clauses
-// for the decoder and the editor, and one clause a change 004 made.
+// for the decoder and the editor, and one clause a change 004 made. And the lines
+// a reader keeps (KEY_PLAN.md KEY-3), handed lines of its own as satl hands it the
+// console store's. And Left and Right past a line's ends, through the consoles
+// before this one (KEY-6), filled here by hand as the store fills them from its walk.
 //
 //     make build/prompt_cases && build/prompt_cases    (check.sh runs it)
 //
 // check_prompt.py drives the same code at a real terminal.
 
+#include "console_lines.hpp"
+#include "earlier_consoles.hpp"
 #include "editor.hpp"
-#include "history.hpp"
 #include "keys.hpp"
 #include "line_reader.hpp"
 #include "render.hpp"
 
+#include "../machine/console_store.hpp"
 #include "../machine/shown.hpp"
 
 #include <cstdio>
@@ -19,6 +24,7 @@
 #include <string>
 #include <thread>
 #include <unistd.h>
+#include <vector>
 
 using namespace satellite004::prompt;
 
@@ -136,10 +142,11 @@ void editing()
     check(o.apply(key(Key::EndOfInput)) == Editor::Outcome::Continue && o.line() == "bc",
           "Ctrl-D on a line with text deletes forward");
 
-    History history;
-    history.add("first");
-    history.add("second");
-    Editor h(&history);
+    // UP AND DOWN GO THROUGH THE CONSOLE'S LINES (KEY_PLAN.md KEY-4), as they went through History.
+    ConsoleLines lines;
+    lines.add("first");
+    lines.add("second");
+    Editor h(&lines);
     type(h, "half typed");
     h.apply(key(Key::Up));
     h.apply(key(Key::Up));
@@ -157,13 +164,21 @@ void editing()
     check(p.apply(key(Key::PasteEnd, "Z")) == Editor::Outcome::Continue && p.line() == "aXYZb",
           "the paste's last text is inserted and waits");
 
-    History many;
+    // TURNED ROUND BY KEY-4: every Enter is a line now, a repeat too, and it is Up that shows it once.
+    ConsoleLines many;
     many.add("same");
     many.add("same");
-    const bool once = many.size() == 1;
+    Editor twice(&many);
+    type(twice, "x");
+    twice.apply(key(Key::Up));
+    twice.apply(key(Key::Up));
+    const bool shown_once = twice.line() == "same";
+    twice.apply(key(Key::Down));
+    const bool once = many.size() == 2 && shown_once && twice.line() == "x";
     for (int i = 0; i < 100000; ++i)
         many.add("line " + std::to_string(i));
-    check(once && many.size() == 100001 && many.at(1) == "line 0", "no line twice in a row, and no ceiling (003 kept 1,000)");
+    check(once && many.size() == 100002 && many.stops() == 100001 && many.stop_at(1) == "line 0",
+          "two Enters of the same line are two lines, Up shows it once, and no ceiling (003 kept 1,000)");
 }
 
 void cells()
@@ -259,6 +274,209 @@ void piped()
     check(lines == "[wait][xy][cd]", "a terminal that hangs up after a line: the rest of what was typed, once each (" + satellite004::shown(lines) + ")");
 }
 
+// THE LINES A READER KEEPS (KEY_PLAN.md KEY-3): every line it answers at a terminal --
+// typed and mended, empty, each line of a paste -- once, as Enter sent it, less what
+// what_is_kept drops; never a line stopped with Ctrl-C, and never a piped line. The
+// write hook, which satl points at the console's store, is pointed here at a counter
+// of the harness's own: it is called after each line is kept, and told where.
+const ConsoleLines *hooked_with = nullptr;
+std::size_t hooked = 0, kept_when_hooked = 0;
+
+void hook_called(const std::string &, const ConsoleLines *kept_in)
+{
+    ++hooked;
+    hooked_with = kept_in;
+    kept_when_hooked = kept_in != nullptr ? kept_in->size() : 0;
+}
+
+void kept()
+{
+    int master = -1, slave = -1;
+    if (openpty(&master, &slave, nullptr, nullptr, nullptr) != 0)
+        return check(false, "a pty for the lines a reader keeps");
+    ConsoleLines lines;
+    LineReader typed(slave, slave);
+    typed.keep_lines_in(&lines);
+    satellite004::line_entered() = hook_called;
+    std::thread typist([master] {
+        usleep(200000);  // after the reader waits: keys already there when it starts are dropped (D0.6.5)
+        const std::string keys = "pritn\x7f\x7fnt\r" "\r" "half\x03" "\x1b[200~one\rtwo\x1b\rthree\r\x1b[201~";
+        (void)!write(master, keys.data(), keys.size());
+    });
+    std::string answered, line;
+    bool in_step = true;   // the hook is called once a line, after the line is kept, with the reader's lines
+    for (int read = 0; read < 6; ++read) {
+        const std::size_t before = hooked;
+        const LineStatus status = typed.read("> ", line);
+        answered += status == LineStatus::Line ? "[" + line + "]" : status == LineStatus::Interrupted ? "(interrupted)" : "(end)";
+        in_step = in_step && hooked == before + (status == LineStatus::Line ? 1 : 0) &&
+                  (status != LineStatus::Line || (hooked_with == &lines && kept_when_hooked == lines.size()));
+    }
+    typist.join();
+    satellite004::line_entered() = nullptr;
+    close(master);
+    close(slave);
+    std::string held;
+    for (std::size_t index = 0; index < lines.size(); ++index)
+        held += "[" + lines.at(index).to_utf8() + "]";
+    check(answered == "[print][](interrupted)[one][two\x1b][three]" && held == "[print][][one][two][three]" && in_step,
+          "a reader keeps each line it answers at a terminal once -- mended, empty, each of a paste, an ESC dropped "
+          "-- and not the one Ctrl-C stopped, then calls the write hook with its lines (answered " +
+              satellite004::shown(answered) + ", kept " + satellite004::shown(held) + ")");
+
+    std::FILE *in = std::tmpfile(), *out = std::tmpfile();
+    std::fputs("piped\nand another\n", in);
+    std::fflush(in);
+    lseek(fileno(in), 0, SEEK_SET);
+    ConsoleLines none;
+    LineReader piped(fileno(in), fileno(out));
+    piped.keep_lines_in(&none);
+    satellite004::line_entered() = hook_called;
+    hooked = 0;
+    int count = 0;
+    while (piped.read("> ", line) == LineStatus::Line)
+        ++count;
+    satellite004::line_entered() = nullptr;
+    std::fclose(in);
+    std::fclose(out);
+    check(count == 2 && none.size() == 0 && hooked == 0, "... and a piped line is nobody's typing: not kept, and the hook not called");
+}
+
+// LEFT AND RIGHT FROM CONSOLE TO CONSOLE (KEY_PLAN.md KEY-6, rule 5): Left moves back through the line, and
+// from its start shows the console before at its last line, the cursor at its end; Right is the mirror,
+// and back at this console the half-typed line returns. The consoles before this one are filled by hand,
+// newest first, as the store fills them from its walk (KEY-5), and each is read when Left first reaches it.
+int reads = 0;
+
+EarlierConsoles::Read holding(std::vector<std::string> lines)
+{
+    return [lines](ConsoleLines &into) {
+        ++reads;
+        for (const std::string &line : lines)
+            into.add(line);
+        return true;
+    };
+}
+
+void press(Editor &editor, Key k, std::size_t times = 1)
+{
+    for (std::size_t i = 0; i < times; ++i)
+        editor.apply(key(k));
+}
+
+void across_consoles()
+{
+    ConsoleLines here;
+    here.add("this console's own");
+    EarlierConsoles earlier;
+    earlier.add(holding({"three first", "three"}));   // the console just before this one
+    earlier.add(holding({"", "    ", ""}));            // a console with no line to stop at
+    earlier.add([](ConsoleLines &) {                   // a console whose file went after the walk
+        ++reads;
+        return false;
+    });
+    earlier.add(holding({"two"}));
+    earlier.add(holding({"one a", "one"}));            // the oldest Left reaches
+
+    Editor e(&here, &earlier);
+    type(e, "abc");
+    press(e, Key::Left, 3);
+    const bool at_start = e.line() == "abc" && e.cursor() == 0 && reads == 0;
+    e.apply(key(Key::Left));
+    check(at_start && e.line() == "three" && e.cursor() == 5 && reads == 1,
+          "on abc with the cursor at its end, three Lefts reach the start, and the fourth shows the last line of the "
+          "console before, with the cursor at its end -- read only then");
+
+    press(e, Key::Left, 5);
+    const bool through = e.line() == "three" && e.cursor() == 0;
+    e.apply(key(Key::Left));
+    check(through && e.line() == "two" && e.cursor() == 3 && reads == 4,
+          "Left goes on through that line, and at its start shows the line of the console before that -- a console "
+          "with no line to stop at, and one that cannot be read, stepped over");
+    press(e, Key::Left, 4);
+    const bool oldest = e.line() == "one" && e.cursor() == 3;
+    press(e, Key::Left, 10);
+    check(oldest && e.line() == "one" && e.cursor() == 0 && reads == 5,
+          "... and at the start of the oldest console's line, Left does nothing");
+
+    e.apply(key(Key::End));
+    e.apply(key(Key::Right));
+    const bool after = e.line() == "two" && e.cursor() == 0;
+    press(e, Key::Right, 3);
+    e.apply(key(Key::Right));
+    const bool after_again = e.line() == "three" && e.cursor() == 0;
+    press(e, Key::Right, 5);
+    e.apply(key(Key::Right));
+    const bool back = e.line() == "abc" && e.cursor() == 0;
+    e.apply(key(Key::End));
+    e.apply(key(Key::Right));
+    check(after && after_again && back && e.line() == "abc" && e.cursor() == 3 && reads == 5,
+          "Right at the end of a line from a console before shows the console after, with the cursor at its start, "
+          "and back at this console the half-typed line returns; at its end Right does nothing");
+
+    Editor empty(&here, &earlier);
+    empty.apply(key(Key::Left));
+    const bool straight = empty.line() == "three" && empty.cursor() == 5;
+    KeyDecoder decoder;
+    Editor ctrl(&here, &earlier);
+    ctrl.apply(decoder.feed(0x02));
+    const bool ctrl_b = ctrl.line() == "three";
+    ctrl.apply(key(Key::End));
+    ctrl.apply(decoder.feed(0x06));
+    check(straight && ctrl_b && ctrl.line().empty() && ctrl.cursor() == 0,
+          "on an empty line, Left goes straight to the console before -- and Ctrl-B and Ctrl-F do as Left and Right");
+
+    Editor home(&here, &earlier);
+    type(home, "xyz");
+    home.apply(key(Key::Home));
+    home.apply(key(Key::Left));
+    check(home.line() == "three" && home.cursor() == 5, "Home, then Left, goes to the console before");
+
+    Editor browse(&here, &earlier);
+    type(browse, "half");
+    browse.apply(key(Key::Home));
+    browse.apply(key(Key::Left));
+    browse.apply(key(Key::Up));
+    const bool up = browse.line() == "three first";
+    browse.apply(key(Key::Up));
+    const bool stops = browse.line() == "three first";
+    browse.apply(key(Key::Down));
+    const bool down = browse.line() == "three";
+    browse.apply(key(Key::Down));
+    const bool here_again = browse.line() == "half" && browse.cursor() == 4;
+    browse.apply(key(Key::Up));
+    check(up && stops && down && here_again && browse.line() == "this console's own",
+          "Up and Down move inside a console before this one, Up stopping at its first line, and Down past its last "
+          "line comes back here, to the half-typed line and this console's own lines");
+
+    // ENTER ON A LINE FROM A CONSOLE BEFORE: the reader answers it, and keeps it as this console's line --
+    // and the next line starts at this console, where Up brings it back.
+    int master = -1, slave = -1;
+    if (openpty(&master, &slave, nullptr, nullptr, nullptr) != 0)
+        return check(false, "a pty for Enter on a line from a console before");
+    ConsoleLines mine;
+    EarlierConsoles before;
+    before.add(holding({"from before"}));
+    LineReader typed(slave, slave);
+    typed.keep_lines_in(&mine);
+    typed.left_reaches(&before);
+    std::thread typist([master] {
+        usleep(200000);  // after the reader waits: keys already there when it starts are dropped (D0.6.5)
+        (void)!write(master, "\x1b[D\r", 4);
+        usleep(200000);
+        (void)!write(master, "\x1b[A\r", 4);
+    });
+    std::string first, second;
+    const bool read_both = typed.read("> ", first) == LineStatus::Line && typed.read("> ", second) == LineStatus::Line;
+    typist.join();
+    close(master);
+    close(slave);
+    check(read_both && first == "from before" && second == "from before" && mine.size() == 2 &&
+              mine.at(0).to_utf8() == "from before",
+          "Enter on a line from a console before this one keeps it in this console, and the next line starts here "
+          "(answered \"" + satellite004::shown(first) + "\" then \"" + satellite004::shown(second) + "\")");
+}
+
 } // namespace
 
 int main()
@@ -267,6 +485,8 @@ int main()
     editing();
     cells();
     piped();
+    kept();
+    across_consoles();
     std::printf("%s\n", failed == 0 ? "every prompt case passed" : "a prompt case FAILED");
     return failed == 0 ? 0 : 1;
 }

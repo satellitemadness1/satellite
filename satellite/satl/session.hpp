@@ -10,7 +10,8 @@
 // yet, run it, say what happened, and go again.
 //
 // WHAT IT KEEPS BETWEEN LINES is the number index, the function table, the
-// working directory, the history -- and, since 2026-09-24, EVERY NAME A LINE
+// working directory -- the lines Up brings back are the console's, which its store
+// keeps (KEY_PLAN.md KEY-4) -- and, since 2026-09-24, EVERY NAME A LINE
 // DECLARES, with its value, until the session ends (the author: "the prompt has to
 // remember what you type in"). program_walk.hpp's TypedLineMemory holds them, and a
 // file one holds is saved on the way out. NOTHING TYPED IS KEPT AS TEXT AND RUN

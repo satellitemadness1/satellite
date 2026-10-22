@@ -2,7 +2,8 @@
 
 #include "editor.hpp"
 
-#include "history.hpp"
+#include "console_lines.hpp"
+#include "earlier_consoles.hpp"
 
 #include <utility>
 
@@ -19,9 +20,9 @@ bool is_space(char c) { return c == ' '; }
 
 } // namespace
 
-Editor::Editor(const History *history) : history_(history)
+Editor::Editor(const ConsoleLines *lines, EarlierConsoles *earlier) : lines_(lines), earlier_(earlier)
 {
-    browse_ = history_ != nullptr ? history_->size() : 0;
+    browse_ = lines_ != nullptr ? lines_->stops() : 0;
 }
 
 void Editor::reset()
@@ -30,7 +31,8 @@ void Editor::reset()
     cursor_ = 0;
     live_.clear();
     browsing_ = false;
-    browse_ = history_ != nullptr ? history_->size() : 0;
+    shown_ = 0;
+    browse_ = lines_ != nullptr ? lines_->stops() : 0;
 }
 
 void Editor::set_line(std::string text)
@@ -39,11 +41,45 @@ void Editor::set_line(std::string text)
     cursor_ = buffer_.size();
 }
 
+// A LINE BROUGHT BACK IS ITS UTF-8, every byte as it was typed, less what the console's lines never
+// keep (console_lines.hpp's what_is_kept) -- the Editor's line stays bytes -- with the cursor at its end.
+// It is a line of the console shown (KEY-6): this console's, or one before it.
 void Editor::recall(std::size_t index)
 {
-    if (history_ == nullptr || index >= history_->size())
+    const ConsoleLines *const lines = console(shown_);
+    if (lines == nullptr || index >= lines->stops())
         return;
-    buffer_ = history_->at(index);
+    buffer_ = lines->stop_at(index);
+    cursor_ = buffer_.size();
+}
+
+const ConsoleLines *Editor::console(std::size_t shown) const
+{
+    if (shown == 0)
+        return lines_;
+    return earlier_ != nullptr ? earlier_->lines(shown - 1) : nullptr;
+}
+
+// THE HALF-TYPED LINE IS KEPT AS UP KEEPS IT, the first time this console is left -- by Up, or by Left
+// past the line's start -- and only then: a line Up brought back is this console's, never what was being
+// typed. The console is shown at its last stop, as Up shows this console first at its newest.
+void Editor::show(std::size_t shown, const ConsoleLines &lines)
+{
+    if (!browsing_) {
+        live_ = buffer_;
+        browsing_ = true;
+    }
+    shown_ = shown;
+    browse_ = lines.stops() - 1;
+    recall(browse_);
+}
+
+void Editor::back_to_this_console()
+{
+    shown_ = 0;
+    browse_ = lines_ != nullptr ? lines_->stops() : 0;
+    browsing_ = false;
+    buffer_ = live_;
     cursor_ = buffer_.size();
 }
 
@@ -127,12 +163,44 @@ Editor::Outcome Editor::apply(const KeyEvent &event)
             buffer_.erase(cursor_, next_character(buffer_, cursor_) - cursor_);
         return Outcome::Continue;
 
+    // LEFT MOVES BACK THROUGH THE LINE, AND FROM ITS START TO THE CONSOLE BEFORE (KEY_PLAN.md KEY-6, rule 5;
+    // the author's answer 6 of 2026-10-20: "it moves the cursor through the input that has already been
+    // typed, until it is all the way to the left, then it switches at last to the left most set of inputs
+    // from the previous console file"). That console is shown at its last line, with the cursor at the
+    // line's end, so Left goes on through it. An empty line has its cursor at the start already, and Home
+    // puts it there. A console with no line to stop at -- every line empty, spaces or a repeat, or its
+    // file gone -- is stepped over; at the oldest, Left does nothing, as at a line's start before.
     case Key::Left:
-        cursor_ = previous_character(buffer_, cursor_);
+        if (cursor_ > 0) {
+            cursor_ = previous_character(buffer_, cursor_);
+            return Outcome::Continue;
+        }
+        for (std::size_t before = shown_ + 1; earlier_ != nullptr && before <= earlier_->size(); ++before)
+            if (const ConsoleLines *lines = console(before); lines != nullptr && lines->stops() > 0) {
+                show(before, *lines);
+                return Outcome::Continue;
+            }
         return Outcome::Continue;
 
+    // RIGHT MOVES FORWARD THROUGH THE LINE, AND FROM ITS END TO THE CONSOLE AFTER (rule 5), the mirror of
+    // Left: shown at its last line, as Left showed it, with the cursor at the line's start. Past the
+    // newest console before this one comes this console, and the half-typed line returns, the cursor at
+    // its start. At the end of this console's own line, Right does nothing, as before.
     case Key::Right:
-        cursor_ = next_character(buffer_, cursor_);
+        if (cursor_ < buffer_.size()) {
+            cursor_ = next_character(buffer_, cursor_);
+            return Outcome::Continue;
+        }
+        if (shown_ == 0)
+            return Outcome::Continue;
+        for (std::size_t after = shown_ - 1; after > 0; --after)
+            if (const ConsoleLines *lines = console(after); lines != nullptr && lines->stops() > 0) {
+                show(after, *lines);
+                cursor_ = 0;
+                return Outcome::Continue;
+            }
+        back_to_this_console();
+        cursor_ = 0;
         return Outcome::Continue;
 
     case Key::Home:
@@ -173,8 +241,10 @@ Editor::Outcome Editor::apply(const KeyEvent &event)
     case Key::ClearScreen:
         return Outcome::ClearScreen;
 
+    // UP KEEPS THE HALF-TYPED LINE AND GOES BACK ONE STOP, and stops at the first (KEY_PLAN.md rule 4) --
+    // of the console shown, this one or one before it (KEY-6). Up never goes on into another console.
     case Key::Up:
-        if (history_ == nullptr || browse_ == 0)
+        if (console(shown_) == nullptr || browse_ == 0)
             return Outcome::Continue;
         if (!browsing_) {
             live_ = buffer_;
@@ -186,18 +256,19 @@ Editor::Outcome Editor::apply(const KeyEvent &event)
     // DOWN PAST THE NEWEST ENTRY RETURNS THE HALF-TYPED LINE rather than
     // stopping at the last one. Stopping there strands whatever was being
     // typed when Up was first pressed, with no key that brings it back.
-    case Key::Down:
-        if (history_ == nullptr || !browsing_)
+    // AND PAST THE LAST LINE OF A CONSOLE BEFORE THIS ONE, the same: this console, and the half-typed
+    // line (KEY-6), never the next console's first line.
+    case Key::Down: {
+        if (!browsing_)
             return Outcome::Continue;
-        if (browse_ + 1 >= history_->size()) {
-            browse_ = history_->size();
-            browsing_ = false;
-            buffer_ = live_;
-            cursor_ = buffer_.size();
+        const ConsoleLines *const lines = console(shown_);
+        if (lines == nullptr || browse_ + 1 >= lines->stops()) {
+            back_to_this_console();
             return Outcome::Continue;
         }
         recall(++browse_);
         return Outcome::Continue;
+    }
     }
 
     return Outcome::Continue;

@@ -27,7 +27,8 @@ BARE_MAKE = $(if $(filter-out all,$(MAKECMDGOALS))$(filter-out 0,$(MAKELEVEL))$(
 # make or an install. They do not depend on the build stamp and raise no number.
 ALL_TARGETS = $(BUILD)/satl $(BUILD)/satellite-004 $(BUILD)/exit_status_cases $(BUILD)/arguments_cases \
               $(BUILD)/missing_cases $(BUILD)/count_cases $(BUILD)/prompt_cases $(BUILD)/prompt_reader $(BUILD)/directory_cases \
-              $(BUILD)/file_cases $(BUILD)/infinity_cases $(BUILD)/random_cases $(BUILD)/satl-cpu-level
+              $(BUILD)/file_cases $(BUILD)/file_moves_cases $(BUILD)/console_files_cases $(BUILD)/prompt_run_cases $(BUILD)/infinity_cases \
+              $(BUILD)/random_cases $(BUILD)/satl-cpu-level
 
 # AN EARLIER BUILD'S satl-term IS REMOVED, with its objects: it would run the
 # newer satl beside it and be installed with it, and its .d files would name
@@ -66,6 +67,23 @@ all: $(ALL_TARGETS)
 # THE MINUTE IS bash's read -t, ASKED OF bash BY NAME: a recipe runs in /bin/sh, which on Debian and
 # Ubuntu is dash, whose read has no -t -- the question was shown and the install began at once (the
 # review, 2026-10-11).
+# AND AFTER A YES, THE ICONS (the author, 2026-10-20: "CAn you make a plain "make" ask if you want to
+# install the icons? There's an icon for the .satl filetype, and there's an icon for the satl program
+# too somewhere, I dunno where though..."): satl's own and the .satl file type's, with the type
+# itself, into ~/.local/share (satellite_enterprise/install_support/072-icons.sh). THE QUESTION SAYS
+# WHAT THE TYPE CHANGES (the review, 2026-10-20): the launcher already claims it (MimeType=), so
+# once a .satl file is a type of its own a double-click runs it in Satellite 004, where until then
+# it opened in a text editor. ASKED ONLY WHILE THEY ARE NOT IN PLACE -- install.sh --icons-current
+# answers that, printing nothing -- so someone who has them is not asked again until the artwork
+# changes. The same answers: Enter, y or a minute's silence installs them, and n leaves them out,
+# which the installer hears as SATELLITE_ICONS=no -- and is not remembered: they are still not in
+# place, so the next bare make asks again. SATELLITE_ICONS=no IN make's ENVIRONMENT, OR ON ITS
+# COMMAND LINE, IS AN n THAT STAYS, and yes a yes: the answer is given already, so nothing is
+# asked, at a terminal or without one, and the installer does what it says. An n to the install
+# asks nothing more, nor does a linked worktree, which run_the_installer never installs from
+# (080-install.mk); and with no terminal there is no second question either: the icons go in, as
+# they do with `make install`, which asks nothing and puts them in unless SATELLITE_ICONS=no is in
+# its environment.
 ifneq ($(BARE_MAKE),)
 	@n=$$(python3 $(SATELLITE)/config/build_number.py --print arguments.build); while [ $${#n} -lt 4 ]; do n=0$$n; done; \
 	 echo "built $(BUILD)/satl -- BUILD $$n"; \
@@ -76,14 +94,22 @@ ifneq ($(BARE_MAKE),)
 	     question='Install it into ~/.satl? [Y/n] (Enter installs it; so does a minute of silence) '; \
 	     declined='not installed -- make install installs it'; \
 	 fi; \
-	 answer=; \
+	 answer=; tty=no; \
 	 if ( : <>/dev/tty ) 2>/dev/null; then \
+	     tty=yes; \
 	     printf '%s' "$$question" > /dev/tty; \
 	     answer=$$(bash -c 'read -r -t 60 a < /dev/tty || exit 1; printf %s "$$a"') || { answer=; echo > /dev/tty; }; \
 	 fi; \
 	 case "$$answer" in \
 	     [nN]*) echo "$$declined" ;; \
-	     *) $(call run_the_installer) ;; \
+	     *) if [ $$tty = yes ] && [ -z "$${SATELLITE_ICONS:-}" ] && ! sh satellite_enterprise/install.sh --icons-current && \
+	           [ "$$(git rev-parse --git-dir 2>/dev/null)" = "$$(git rev-parse --git-common-dir 2>/dev/null)" ]; then \
+	            printf '%s' "Install the icons too -- satl's own and the .satl file type's? A double-clicked .satl file then runs in Satellite 004. [Y/n] (Enter installs them; so does a minute of silence) " > /dev/tty; \
+	            icons=$$(bash -c 'read -r -t 60 a < /dev/tty || exit 1; printf %s "$$a"') || { icons=; echo > /dev/tty; }; \
+	            case "$$icons" in [nN]*) SATELLITE_ICONS=no ;; *) SATELLITE_ICONS=yes ;; esac; \
+	            export SATELLITE_ICONS; \
+	        fi; \
+	        $(call run_the_installer) ;; \
 	 esac
 endif
 # SAID ONCE, BY THE MAKE THAT WAS TYPED: `make cpus` runs a make per processor inside it.

@@ -31,7 +31,7 @@ namespace word {
 inline constexpr token::Code kBase = 4096;       // reserved: no word has it
 inline constexpr token::Code kFirst = 4097;      // satellite
 inline constexpr token::Code kLast = 8191;       // the end of the range
-inline constexpr unsigned int kWordsInTable = 679;
+inline constexpr unsigned int kWordsInTable = 690;
 inline constexpr unsigned int kMaxDepth = 7;
 
 inline constexpr bool is_word_code(token::Code code) { return code >= kBase && code <= kLast; }
@@ -88,6 +88,7 @@ inline constexpr KeyedWord kKeyedWords[] = {
     {0x0201210000000000ULL, 4635},  // 1 33 -- satellite.test
     {0x0201220000000000ULL, 4768},  // 1 34 -- satellite.arguments
     {0x0201230000000000ULL, 4772},  // 1 35 -- satellite.convert
+    {0x0201240000000000ULL, 4782},  // 1 36 -- satellite.drive
     {0x0301010000000000ULL, 4099},  // 1 1 0 -- satellite.include()
     {0x0301010100000000ULL, 4100},  // 1 1 1 -- satellite.include(satellite)
     {0x0301010200000000ULL, 4101},  // 1 1 2 -- satellite.include(spaceship)
@@ -164,6 +165,11 @@ inline constexpr KeyedWord kKeyedWords[] = {
     {0x0301080400000000ULL, 4307},  // 1 8 4 -- satellite.file.new(path, mode)
     {0x0301080500000000ULL, 4308},  // 1 8 5 -- satellite.file.exists(path)
     {0x0301080600000000ULL, 4464},  // 1 8 6 -- satellite.file.open(path)
+    {0x0301080700000000ULL, 4776},  // 1 8 7 -- satellite.file.delete(path)
+    {0x0301080800000000ULL, 4777},  // 1 8 8 -- satellite.file.copy(path)
+    {0x0301080900000000ULL, 4778},  // 1 8 9 -- satellite.file.paste()
+    {0x0301080A00000000ULL, 4779},  // 1 8 10 -- satellite.file.paste(d)
+    {0x0301080B00000000ULL, 4780},  // 1 8 11 -- satellite.file.move(path, d)
     {0x0301090000000000ULL, 4310},  // 1 9 0 -- satellite.time()
     {0x0301090100000000ULL, 4311},  // 1 9 1 -- satellite.time.now
     {0x0301090200000000ULL, 4312},  // 1 9 2 -- satellite.time.new
@@ -205,6 +211,7 @@ inline constexpr KeyedWord kKeyedWords[] = {
     {0x0301120500000000ULL, 4403},  // 1 18 5 -- satellite.directory.list(d)
     {0x0301120600000000ULL, 4533},  // 1 18 6 -- satellite.directory.system()
     {0x0301120700000000ULL, 4538},  // 1 18 7 -- satellite.directory.free(d)
+    {0x0301120800000000ULL, 4781},  // 1 18 8 -- satellite.directory.create(d)
     {0x0301130000000000ULL, 4405},  // 1 19 0 -- satellite.help()
     {0x0301130100000000ULL, 4406},  // 1 19 1 -- satellite.help(x)
     {0x0301140000000000ULL, 4408},  // 1 20 0 -- satellite.network()
@@ -268,6 +275,10 @@ inline constexpr KeyedWord kKeyedWords[] = {
     {0x0301230100000000ULL, 4773},  // 1 35 1 -- satellite.convert.number(x)
     {0x0301230200000000ULL, 4774},  // 1 35 2 -- satellite.convert.float(x)
     {0x0301230300000000ULL, 4775},  // 1 35 3 -- satellite.convert.whole(x)
+    {0x0301240100000000ULL, 4783},  // 1 36 1 -- satellite.drive.list()
+    {0x0301240200000000ULL, 4784},  // 1 36 2 -- satellite.drive.mount(d)
+    {0x0301240300000000ULL, 4785},  // 1 36 3 -- satellite.drive.release(d)
+    {0x0301240400000000ULL, 4786},  // 1 36 4 -- satellite.drive.remount(d)
     {0x0401040100000000ULL, 4110},  // 1 4 1 0 -- satellite.container.map()
     {0x0401040101000000ULL, 4111},  // 1 4 1 1 -- satellite.container.map.set(k, v)
     {0x0401040102000000ULL, 4112},  // 1 4 1 2 -- satellite.container.map.get(k)
@@ -1418,6 +1429,17 @@ inline constexpr WordFacts kWordFacts[] = {
     {"satellite.convert.number(x)", {1, 35, 1, 0, 0, 0, 0}, 3},
     {"satellite.convert.float(x)", {1, 35, 2, 0, 0, 0, 0}, 3},
     {"satellite.convert.whole(x)", {1, 35, 3, 0, 0, 0, 0}, 3},
+    {"satellite.file.delete(path)", {1, 8, 7, 0, 0, 0, 0}, 3},
+    {"satellite.file.copy(path)", {1, 8, 8, 0, 0, 0, 0}, 3},
+    {"satellite.file.paste()", {1, 8, 9, 0, 0, 0, 0}, 3},
+    {"satellite.file.paste(d)", {1, 8, 10, 0, 0, 0, 0}, 3},
+    {"satellite.file.move(path, d)", {1, 8, 11, 0, 0, 0, 0}, 3},
+    {"satellite.directory.create(d)", {1, 18, 8, 0, 0, 0, 0}, 3},
+    {"satellite.drive", {1, 36, 0, 0, 0, 0, 0}, 2},
+    {"satellite.drive.list()", {1, 36, 1, 0, 0, 0, 0}, 3},
+    {"satellite.drive.mount(d)", {1, 36, 2, 0, 0, 0, 0}, 3},
+    {"satellite.drive.release(d)", {1, 36, 3, 0, 0, 0, 0}, 3},
+    {"satellite.drive.remount(d)", {1, 36, 4, 0, 0, 0, 0}, 3},
 };
 
 inline constexpr std::size_t kWordFactsCount = sizeof kWordFacts / sizeof kWordFacts[0];
@@ -1537,23 +1559,34 @@ inline constexpr SpelledWord kSpelledWords[] = {
     {"satellite.directory", 4397},
     {"satellite.directory()", 4398},
     {"satellite.directory.change(d)", 4399},
+    {"satellite.directory.create(d)", 4781},
     {"satellite.directory.current()", 4400},
     {"satellite.directory.exists(d)", 4401},
     {"satellite.directory.free(d)", 4538},
     {"satellite.directory.list()", 4402},
     {"satellite.directory.list(d)", 4403},
     {"satellite.directory.system()", 4533},
+    {"satellite.drive", 4782},
+    {"satellite.drive.list()", 4783},
+    {"satellite.drive.mount(d)", 4784},
+    {"satellite.drive.release(d)", 4785},
+    {"satellite.drive.remount(d)", 4786},
     {"satellite.feedback", 4473},
     {"satellite.feedback()", 4474},
     {"satellite.feedback(x)", 4475},
     {"satellite.file", 4302},
     {"satellite.file()", 4303},
     {"satellite.file.clear(path)", 4306},
+    {"satellite.file.copy(path)", 4777},
+    {"satellite.file.delete(path)", 4776},
     {"satellite.file.exists(path)", 4308},
+    {"satellite.file.move(path, d)", 4780},
     {"satellite.file.new(path)", 4304},
     {"satellite.file.new(path, mode)", 4307},
     {"satellite.file.open(path)", 4464},
     {"satellite.file.open(path, mode)", 4305},
+    {"satellite.file.paste()", 4778},
+    {"satellite.file.paste(d)", 4779},
     {"satellite.help", 4404},
     {"satellite.help()", 4405},
     {"satellite.help(x)", 4406},

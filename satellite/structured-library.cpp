@@ -50,15 +50,22 @@
 #include "config/run_feedback.hpp"
 #include "licenses/licenses.hpp"
 #include "machine/s_codes.hpp"
+#include "machine/console_lock.hpp"
+#include "machine/console_store.hpp"
+#include "machine/input_source.hpp"
 #include "machine/critical_report.hpp"
 #include "machine/exit_status.hpp"
 #include "machine/machine_codes.hpp"
 #include "machine/machine_state.hpp"
 #include "machine/run_state.hpp"
+#include "machine/satellite_of_its_own.hpp"
 #include "machine/stack_share.hpp"
 #include "machine/thread_stop.hpp"
 #include "../satellite-numbers/call_number.hpp"
 #include "../satellite-numbers/machine_facts.hpp"
+#include "prompt/line_reader.hpp"
+#include "prompt/raw_mode.hpp"
+#include "satl/console_files.hpp"
 #include "satl/satl_file.hpp"
 #include "satl/session.hpp"
 #include "display/printing_satellite.hpp"
@@ -74,11 +81,58 @@
 #include <csignal>
 #include <atomic>
 #include <cstdlib>
+#include <mutex>
 #include <new>
 #include <cstring>
 #include <unistd.h>
 
 namespace {
+
+// A FILE RUN AT A TERMINAL READS input() THROUGH A READER OF ITS OWN (KEY_PLAN.md KEY-4), as the
+// prompt's input() reads through the session's (session.cpp's read_for_the_program, whose steps these
+// are: the flush, the reader, the_pty_was_written_directly, the_pty_flows_again). So Up and Down bring
+// back the console's lines, Left, Right, Home and End edit the answer -- an arrow no longer lands in it
+// as ESC [ A -- keys typed before input() asks are dropped, as the prompt drops them (D0.6.5), and the
+// reader keeps each answer in the console's store, once (KEY-3). run_satl makes it, below.
+//
+// THE PROGRAM'S PROMPT IS WRITTEN AS GIVEN, as the cooked getline wrote it (prompt/render.hpp's
+// Prompt): a program's prompt may hold the terminal's own codes -- the author's journal.satl moves the
+// cursor to its typing row with them -- and the reader draws only the line after it.
+satellite004::prompt::LineReader *the_runs_reader = nullptr;
+
+satellite004::InputAnswer read_for_the_run(const std::string &text, const std::string &drawn, std::string &line)
+{
+    using namespace satellite004;
+    // ONE input() AT A TIME: a program's threads call it too, with no console lock held while a person
+    // types (expression.cpp), and one reader cannot read two lines at once. Another thread's input()
+    // waits its turn, as an Enter waits its turn in the store.
+    static std::mutex one_at_a_time;
+    const std::lock_guard<std::mutex> held(one_at_a_time);
+    // WHAT THE PROGRAM DISPLAYED BEFORE IT ASKED IS ON THE SCREEN FIRST, std::cout flushed under the
+    // console lock, as the getline's prompt was written (console_calls.cpp): every thread writes it.
+    {
+        const ConsoleHold one_flush;
+        std::cout.flush();
+    }
+    const prompt::LineStatus status = the_runs_reader->read(prompt::Prompt{text, drawn, true}, line);
+    the_pty_was_written_directly();   // the reader drew the line on the pty (printing_satellite.hpp)
+    the_pty_flows_again();            // ...and took it raw, which ends a Ctrl-S
+    if (status == prompt::LineStatus::Line)
+        return InputAnswer::line;
+    if (status == prompt::LineStatus::EndOfFile)
+        return InputAnswer::ended;   // Ctrl-D on an empty line: S830, exit 55, as before
+    // CTRL-C STILL ENDS satl BY SIGINT, as it did when the kernel read the line cooked and raised it:
+    // the reader has given the terminal back cooked by now. The signal goes where the kernel's went --
+    // to satl's process group, the programs it started with satellite.variable.program among them,
+    // when the terminal is satl's own and satl is in its foreground; to satl alone when it is not, as
+    // satl's own console sends it (console_launch.cpp's the_keys) -- and to a whole process, never one
+    // thread, so a thread holding it blocked is no hindrance. Only a handler that returns -- a
+    // satellite.test's guard -- or a SIGINT satl was started ignoring comes back here, and then input()
+    // is stopped with Ctrl-C, as at the prompt.
+    const pid_t foreground = tcgetpgrp(STDIN_FILENO);
+    kill(foreground > 0 && foreground == getpgrp() ? 0 : getpid(), SIGINT);
+    return InputAnswer::interrupted;
+}
 
 // THE PROMPT IN satl'S OWN CONSOLE STARTS IN arguments.directory.default (the
 // author, 2026-09-22: "on this machine set it to /home/madness/code/satl, as
@@ -172,6 +226,23 @@ signed long long int run_satl(int argc, char **argv)
     const bool runs_something = command_line.command == Command::run || command_line.command == Command::repl ||
                                 command_line.command == Command::opening;
     const bool on_its_own = !command_line.console && runs_something && nobody_gave_satl_a_console();
+    // AND FROM A SHELL IT GIVES THE SHELL BACK (the author, 2026-10-21: "When I start the interpreter in a
+    // console, it doesn't give the console back, the console window has to stay open -- the process has to
+    // detach from the console when you start it with a console"). A terminal on stdin, stdout or stderr is
+    // a shell waiting on this process, so the console is opened by a satl of its own -- `satl --console`
+    // and every word typed after satl, started as File > Open… starts one (machine/satellite_of_its_own.hpp):
+    // its own session, so closing the terminal leaves it running, and only stderr for what its desk says --
+    // and this one ends at once with success. The program's code is its console's to show, as the prompt's
+    // `interpret` leaves it (prompt_run.cpp). A launcher gives satl no terminal and keeps the console in this
+    // process, as before; so does `--console` typed out, which the new satl is given, so it never starts
+    // another. A satl that cannot be started is said, and the console opens here instead.
+    if (on_its_own && (isatty(STDIN_FILENO) || isatty(STDOUT_FILENO) || isatty(STDERR_FILENO))) {
+        std::string why;
+        if (start_a_satellite_of_its_own(std::vector<std::string>(argv + 1, argv + argc), why,
+                                         argc > 0 && argv[0] != nullptr ? argv[0] : "satl"))
+            return success;
+        std::cerr << "satl(console): could not start in a console of its own, so it runs here -- " << why << "\n";
+    }
     if (command_line.console || on_its_own) {
         // BARE satl IS THE PROMPT IN THE CONSOLE, as `satl --console` already is
         // (command_line.cpp): the opening lines would flash in a window and be
@@ -229,6 +300,27 @@ signed long long int run_satl(int argc, char **argv)
     // its own file and the command only prints it.
     if (command_line.command == Command::feedback)
         return run_feedback();
+
+    // THE CONSOLE'S STORE (KEY_PLAN.md KEY-1): made here, once, after every command that prints and
+    // exits has returned, and never deleted -- the reader and input() reach it through
+    // machine/console_store.hpp until satl exits, from any thread. ONLY FOR A CONSOLE, stdin and stdout
+    // both terminals, the reader's own test (prompt/raw_mode.hpp): satl's own console has moved them
+    // onto its pty by now, and with SATL_NO_WINDOW they are the terminal satl was started in. A pipe, a
+    // file and a satellite.test child make none. Its day is read now, and nothing is made on the disk
+    // until the first Enter.
+    // AND THE CONSOLES BEFORE THIS ONE ARE FOUND NOW (KEY-5), by the store's one walk, before the prompt or
+    // the program reads a line. Left reaches the newest arguments.input.cache mb of them (KEY-6), given to
+    // the store as bytes: mb x 1024 x 1024, the author's mb. A row past what a byte count holds reaches
+    // every console; a row under 0 reaches none.
+    if (prompt::is_interactive(STDIN_FILENO, STDOUT_FILENO)) {
+        const satellite_number &mb = arguments.number("arguments.input.cache");
+        constexpr unsigned long long int kMb = 1024ull * 1024ull;
+        const unsigned long long int cache = mb.negative()                                       ? 0
+                                             : mb.fits_one_limb() && mb.limb(0) <= ULLONG_MAX / kMb ? mb.limb(0) * kMb
+                                                                                                  : ULLONG_MAX;
+        console_files() = new ConsoleFiles(the_machines_clock, std::getenv("HOME"), cache);
+        line_entered() = a_line_was_entered;
+    }
 
     // THE LASTING SETTINGS, AND SAYING SO WHEN THEY ARE NOT THERE. Checked here
     // and not above, so `satl --version`, `satl --help` and a bare `satl` stay
@@ -505,6 +597,33 @@ signed long long int run_satl(int argc, char **argv)
     code = file_can_run(bytecode_registry.front(), bytecode_filenames.front(), state);
     if (stops_the_program(code))
         return code;
+
+    // THE RUN'S OWN READER FOR input() (KEY_PLAN.md KEY-4, read_for_the_run above): declared BEFORE
+    // the guard below, so it outlives every thread the program starts, and the hook is cleared
+    // before it goes, as run_session clears its own. Only at a console, stdin and stdout both
+    // terminals -- the store's test -- and its lines are the store's, as the session's reader's
+    // are. A pipe or a file keeps std::getline (console_calls.cpp).
+    struct RunsOwnReader {
+        prompt::LineReader reader;
+        RunsOwnReader()
+        {
+            if (!reader.interactive())
+                return;
+            if (ConsoleFiles *store = console_files()) {
+                reader.keep_lines_in(&store->lines());
+                reader.left_reaches(&store->earlier());
+            }
+            the_runs_reader = &reader;
+            input_source() = read_for_the_run;
+        }
+        ~RunsOwnReader()
+        {
+            if (the_runs_reader != &reader)
+                return;
+            input_source() = nullptr;
+            the_runs_reader = nullptr;
+        }
+    } runs_own_reader;
 
     // THE CHECKER IS OWED, AND IT IS THE NEXT PIECE. check.sh asserts "nothing
     // ran before the refusal", and the prototype earned that by choosing every

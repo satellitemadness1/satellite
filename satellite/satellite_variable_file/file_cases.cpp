@@ -259,11 +259,16 @@ void new_never_clobbers()
           "new in a missing folder: file_unwritable, with the system's reason", said(f));
     check(!there(at("no_such_folder")), "new in a missing folder: no folder is made");
 
+    // A BINARY FILE IS MADE, EMPTY (the author, 2026-10-21, FILE_AND_DRIVE_PLAN.md FD-1); its handle is FO-8's.
     f = satellite_file::make_new(at("binary.dat"), Kind::binary);
-    check(f && !f->ok() && f->code() == not_built_yet &&
-              f->error() == "binary files are not built yet (SATELLITE_FILE_OPERATIONS FO-8)",
-          "new binary: not_built_yet, said by name", said(f));
-    check(!there(at("binary.dat")), "new binary: nothing is made");
+    check(f && !f->ok() && f->code() == not_built_yet && contains_text(f->error(), "made ") &&
+              contains_text(f->error(), "reading and writing a binary file is not built yet (SATELLITE_FILE_OPERATIONS FO-8)"),
+          "new binary: the file is made, and its handle is not_built_yet, said by name", said(f));
+    struct stat made_binary {};
+    check(::stat(at("binary.dat").c_str(), &made_binary) == 0 && S_ISREG(made_binary.st_mode) && made_binary.st_size == 0,
+          "new binary: an empty file is made");
+    f = satellite_file::make_new(at("binary.dat"), Kind::binary);
+    check(f && !f->ok() && f->code() == file_already_there, "new binary over it: file_already_there, as text's", said(f));
 
     f = satellite_file::make_new(at("nul") + kNul + "tail", Kind::text);
     check(f && !f->ok() && f->code() == path_holds_a_nul, "new with a NUL in the path: path_holds_a_nul", said(f));

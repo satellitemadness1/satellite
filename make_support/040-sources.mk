@@ -115,19 +115,21 @@ WORD_SOURCES = $(NUMBERS)/word_table.cpp \
                $(NUMBERS)/words/1.6.4.23.cpp $(NUMBERS)/words/1.6.17.1.cpp $(NUMBERS)/words/1.6.17.2.cpp \
                $(NUMBERS)/words/1.6.17.3.cpp $(NUMBERS)/words/1.6.17.4.cpp \
                $(NUMBERS)/words/1.18.1.cpp $(NUMBERS)/words/1.18.4.cpp $(NUMBERS)/words/1.18.5.cpp \
-               $(NUMBERS)/words/1.18.6.cpp $(NUMBERS)/words/1.25.cpp $(NUMBERS)/words/1.25.1.cpp
+               $(NUMBERS)/words/1.18.6.cpp $(NUMBERS)/words/1.18.8.cpp $(NUMBERS)/words/1.25.cpp $(NUMBERS)/words/1.25.1.cpp
 
 INTERPRETER_SOURCES = $(SATELLITE)/structured-library.cpp \
                       $(ARGUMENTS)/arguments.cpp $(ARGUMENTS)/command_line.cpp \
                       $(SATELLITE)/licenses/licenses.cpp \
                       $(MACHINE)/machine_state.cpp $(MACHINE)/stack_share.cpp $(MACHINE)/own_environment.cpp $(SATELLITE)/satl/satl_file.cpp \
+                      $(MACHINE)/satellite_of_its_own.cpp $(MACHINE)/ask_at_the_console.cpp $(MACHINE)/as_another_account.cpp \
                       $(SATELLITE)/satl/session.cpp $(SATELLITE)/satl/listing.cpp $(SATELLITE)/satl/listing_counts.cpp \
-                      $(SATELLITE)/satl/listing_progress.cpp $(SATELLITE)/satl/drives.cpp \
+                      $(SATELLITE)/satl/listing_progress.cpp $(SATELLITE)/satl/drives.cpp $(SATELLITE)/satl/console_files.cpp \
                       $(SATELLITE)/display/printing_satellite.cpp $(SATELLITE)/display/display_stream.cpp \
                       $(SATELLITE)/satl/prompt_run.cpp $(SATELLITE)/satl/prompt_help.cpp \
                       $(BYTECODE)/main_arguments.cpp \
                       $(PROMPT)/raw_mode.cpp $(PROMPT)/keys.cpp $(PROMPT)/editor.cpp \
-                      $(PROMPT)/history.cpp $(PROMPT)/render.cpp $(PROMPT)/line_reader.cpp \
+                      $(PROMPT)/render.cpp $(PROMPT)/line_reader.cpp $(PROMPT)/console_lines.cpp \
+                      $(PROMPT)/earlier_consoles.cpp \
                       $(SATELLITE)/threads/startup_threads.cpp \
                       $(BYTECODE)/bytecode_registry.cpp $(BYTECODE)/cascade_convert.cpp \
                       $(BYTECODE)/function_table.cpp $(BYTECODE)/include_shape.cpp \
@@ -141,6 +143,7 @@ INTERPRETER_SOURCES = $(SATELLITE)/structured-library.cpp \
                       $(BYTECODE)/string_calls.cpp $(BYTECODE)/string_check.cpp $(BYTECODE)/number_calls.cpp \
                       $(BYTECODE)/scalar_calls.cpp \
                       $(BYTECODE)/console_style.cpp $(BYTECODE)/console_calls.cpp $(SATELLITE)/satellite_variable_file/satellite_file.cpp \
+                      $(SATELLITE)/satellite_variable_file/file_moves.cpp \
                       $(BYTECODE)/infinity_calls.cpp $(INFINITY)/satellite_infinity.cpp \
                       $(BYTECODE)/thread_calls.cpp $(OBJECT)/object_lock.cpp \
                       $(BYTECODE)/program_calls.cpp $(SATELLITE)/satellite_variable_program/program_spawn.cpp \
@@ -174,13 +177,15 @@ HEADERS = $(ARGUMENTS)/arguments.hpp $(ARGUMENTS)/argument_words.hpp $(ARGUMENTS
           $(SATELLITE)/config/run_feedback.hpp $(NUMBERS)/feedback_book.hpp \
           $(MACHINE)/critical_report.hpp $(MACHINE)/satellite_log.hpp $(MACHINE)/source_position.hpp $(MACHINE)/s_codes.hpp \
           $(MACHINE)/machine_codes.hpp $(MACHINE)/machine_state.hpp $(MACHINE)/exit_status.hpp $(MACHINE)/shown.hpp \
-          $(MACHINE)/stop_flag.hpp $(MACHINE)/input_source.hpp $(MACHINE)/stack_share.hpp $(MACHINE)/own_environment.hpp $(MACHINE)/stack_segments.hpp $(MACHINE)/run_state.hpp $(SATELLITE)/satl/session.hpp $(SATELLITE)/satl/listing.hpp $(SATELLITE)/satl/listing_counts.hpp \
+          $(MACHINE)/stop_flag.hpp $(MACHINE)/input_source.hpp $(MACHINE)/stack_share.hpp $(MACHINE)/satellite_of_its_own.hpp $(MACHINE)/ask_at_the_console.hpp $(MACHINE)/as_another_account.hpp $(MACHINE)/own_environment.hpp $(MACHINE)/stack_segments.hpp $(MACHINE)/run_state.hpp $(SATELLITE)/satl/session.hpp $(SATELLITE)/satl/listing.hpp $(SATELLITE)/satl/listing_counts.hpp \
           $(SATELLITE)/satl/listing_progress.hpp $(SATELLITE)/satl/drives.hpp $(MACHINE)/filesystems.hpp \
+          $(SATELLITE)/satl/console_files.hpp $(MACHINE)/console_store.hpp \
           $(SATELLITE)/display/printing_satellite.hpp \
           $(SATELLITE)/satl/prompt_run.hpp $(SATELLITE)/satl/prompt_help.hpp $(SATELLITE)/satl/prompt_shorts.hpp \
           $(BYTECODE)/main_arguments.hpp \
-          $(PROMPT)/raw_mode.hpp $(PROMPT)/keys.hpp $(PROMPT)/editor.hpp $(PROMPT)/history.hpp \
-          $(PROMPT)/render.hpp $(PROMPT)/line_reader.hpp $(NUMBERS)/directory_words.hpp \
+          $(PROMPT)/raw_mode.hpp $(PROMPT)/keys.hpp $(PROMPT)/editor.hpp \
+          $(PROMPT)/render.hpp $(PROMPT)/line_reader.hpp $(PROMPT)/console_lines.hpp $(PROMPT)/earlier_consoles.hpp \
+          $(NUMBERS)/directory_words.hpp \
           $(SATELLITE)/satl/satl_file.hpp $(SATELLITE)/threads/startup_threads.hpp \
           $(VERSION_DIR)/version.hpp $(VERSION_DIR)/title_lines.hpp \
           $(BYTECODE)/bytecode_registry.hpp $(BYTECODE)/token_codes.hpp \
@@ -210,6 +215,7 @@ HEADERS = $(ARGUMENTS)/arguments.hpp $(ARGUMENTS)/argument_words.hpp $(ARGUMENTS
           $(BYTECODE)/string_calls.hpp $(BYTECODE)/number_calls.hpp $(BYTECODE)/method_periods.hpp $(OBJECT)/string_pieces.hpp \
           $(BYTECODE)/scalar_calls.hpp \
           $(BYTECODE)/console_style.hpp $(BYTECODE)/console_calls.hpp $(SATELLITE)/satellite_variable_file/satellite_file.hpp \
+          $(SATELLITE)/satellite_variable_file/file_moves.hpp \
           $(BYTECODE)/infinity_calls.hpp $(INFINITY)/satellite_infinity.hpp \
           $(BYTECODE)/window_calls.hpp $(BYTECODE)/window_readers.hpp \
           $(WINDOW_DIR)/satellite_window.hpp $(WINDOW_DIR)/window_desk.hpp \

@@ -309,19 +309,19 @@ std::shared_ptr<satellite_file> satellite_file::make_new(const std::string &path
             handle->fail(path_holds_a_nul, "the path holds a NUL, which no file's name can: nothing was made");
             return handle;
         }
-        if (kind == Kind::binary) {
-            handle->fail(not_built_yet, "binary files are not built yet (SATELLITE_FILE_OPERATIONS FO-8)");
-            return handle;
-        }
         handle->where_ = absolute(path);
         const int fd = ::open(handle->where_.c_str(), O_WRONLY | O_CREAT | O_EXCL | O_CLOEXEC | O_NOCTTY, 0666);
         if (fd < 0) {
             const int why = errno;
             if (why == EEXIST || why == EISDIR) {
-                // NOTHING THERE IS TOUCHED: it is only looked at, to say what it is.
+                // NOTHING THERE IS TOUCHED: it is only looked at, to say what it is. EISDIR WITH NOTHING THERE is a
+                // path ending in / (FD-1's reader: new("sub/") said "sub/ is a directory" with no sub at all).
                 struct stat there {};
-                if (why == EISDIR || (::stat(handle->where_.c_str(), &there) == 0 && !S_ISREG(there.st_mode)))
-                    handle->fail(not_a_file, path + " is " + (why == EISDIR ? "a directory" : what_it_is(there.st_mode)) +
+                const bool seen = ::stat(handle->where_.c_str(), &there) == 0;
+                if (!seen && why == EISDIR)
+                    handle->fail(not_a_file, path + " ends in /, so it names a folder and not a file: nothing was made");
+                else if (why == EISDIR || (seen && !S_ISREG(there.st_mode)))
+                    handle->fail(not_a_file, path + " is " + (seen ? what_it_is(there.st_mode) : "a directory") +
                                                  ", not a file: nothing was made");
                 else
                     handle->fail(file_already_there, "something is already at " + path +
@@ -332,6 +332,14 @@ std::shared_ptr<satellite_file> satellite_file::make_new(const std::string &path
             return handle;
         }
         ::close(fd);
+        // A BINARY FILE IS MADE, EMPTY, LIKE A TEXT ONE (the author, 2026-10-21, FILE_AND_DRIVE_PLAN:
+        // `satellite.file.new("name.ext", "text" or "binary")`): an empty file is the same bytes either way.
+        // Its handle is the part not built -- reading and writing one is FO-8 -- so it is not open.
+        if (kind == Kind::binary) {
+            handle->fail(not_built_yet, "made " + path + ", but reading and writing a binary file is not built yet "
+                                        "(SATELLITE_FILE_OPERATIONS FO-8)");
+            return handle;
+        }
         handle->open_ = true;
         return handle;
     } catch (...) {

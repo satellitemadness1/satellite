@@ -75,3 +75,5 @@ TOPICS:
 34) satellite.variable.time (a length of time, exact to the nanosecond)
 
 35) satellite.convert (a value as a whole number or a float: satellite.convert.number(7 / 2) is 4, satellite.convert.whole(7 / 2) is 3)
+
+36) satellite.file (make and delete files, and make folders: satellite.file.new, satellite.file.delete, satellite.directory.create)

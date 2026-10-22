@@ -23,11 +23,16 @@
 
 namespace satellite004::prompt {
 
-class History;
+class ConsoleLines;
+class EarlierConsoles;
 
 class Editor {
 public:
-    explicit Editor(const History *history = nullptr);
+    // UP AND DOWN GO THROUGH `lines` (KEY_PLAN.md KEY-4): the console's lines, from stop to stop
+    // (console_lines.hpp). Null, they do nothing.
+    // LEFT AND RIGHT GO ON PAST THE LINE'S ENDS TO `earlier` (KEY-6): the consoles before this one, newest
+    // first (earlier_consoles.hpp). Null, Left and Right stop at the line's ends, as they always have.
+    explicit Editor(const ConsoleLines *lines = nullptr, EarlierConsoles *earlier = nullptr);
 
     enum class Outcome {
         Continue,     // the line changed, or did not; either way keep reading
@@ -48,6 +53,13 @@ public:
 private:
     void recall(std::size_t index);
     void kill_word_back();
+    // THE LINES OF CONSOLE `shown`: this console's for 0, the console `shown` back from it for the
+    // rest -- read the first time Left reaches it. Null when there are none, or it was passed over.
+    const ConsoleLines *console(std::size_t shown) const;
+    // CONSOLE `shown`, AT ITS LAST LINE, the half-typed line kept first when this console is left.
+    void show(std::size_t shown, const ConsoleLines &lines);
+    // BACK AT THIS CONSOLE: the half-typed line returns, browsing ends.
+    void back_to_this_console();
 
     std::string buffer_;
     std::size_t cursor_ = 0;
@@ -57,7 +69,15 @@ private:
     // and the three words are still there. `live_` is where they wait, and
     // `browsing_` is what says whether there is anything in it -- an empty
     // `live_` is a legitimate saved line and cannot double as "not browsing".
-    const History *history_ = nullptr;
+    // `browse_` counts stops, never lines: the stop shown, or stops() when none is.
+    //
+    // AND WHICH CONSOLE IS SHOWN (KEY_PLAN.md KEY-6): `shown_` is 0 for this one, 1 for the console
+    // before it, and so on back. Up and Down go through the stops of the console shown, and `browsing_`
+    // stays true all the while another console is shown, so the half-typed line waits in `live_` until
+    // Right or Down brings this console back.
+    const ConsoleLines *lines_ = nullptr;
+    EarlierConsoles *earlier_ = nullptr;
+    std::size_t shown_ = 0;
     std::size_t browse_ = 0;
     std::string live_;
     bool browsing_ = false;

@@ -174,10 +174,12 @@ std::string usage_lines()
            // console, and the terminal satl was started from is not where it runs.
            "    satl runs in a console window of its own, typed in a shell or started\n"
            "    from a launcher alike: it does not run in the terminal it was started\n"
-           "    from, and a machine with no screen is refused (S730, exit 50). Only\n"
-           "    output sent to a file or a pipe -- satl x.satl > log -- or SATL_NO_WINDOW\n"
-           "    set for a harness keeps satl where it was pointed; bare satl then prints\n"
-           "    the opening lines.\n"
+           "    from, and typed in a shell it gives the shell back at once, with 0, so\n"
+           "    the terminal can be closed. A machine with no screen is refused (S730,\n"
+           "    exit 50; from a shell, said there after the shell is back). Only output\n"
+           "    sent to a file or a pipe -- satl x.satl > log -- or SATL_NO_WINDOW set\n"
+           "    for a harness keeps satl where it was pointed; bare satl then prints the\n"
+           "    opening lines.\n"
            "\n"
            // THE SPELLINGS ARE DOCUMENTED HERE AND NOT IN THE TABLE. Four of them
            // on one row would be wider than the column and would read as four

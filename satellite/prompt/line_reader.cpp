@@ -7,6 +7,7 @@
 #include "raw_mode.hpp"
 #include "render.hpp"
 
+#include "../machine/console_store.hpp"
 #include "../machine/shown.hpp"
 
 #include <cerrno>
@@ -50,11 +51,6 @@ struct HoldResizes {
 
 LineReader::LineReader(int in, int out) : in_(in), out_(out), interactive_(is_interactive(in, out)) {}
 
-void LineReader::remember(const std::string &line)
-{
-    history_.add(line);
-}
-
 void LineReader::discard_pending()
 {
     pasted_.clear();
@@ -85,7 +81,28 @@ LineStatus LineReader::read(const Prompt &prompt, std::string &line)
 {
     line.clear();
     typed_ = false;
-    return interactive_ ? read_typed(prompt, line) : read_piped(line);
+    if (!interactive_)
+        return read_piped(line);
+    const LineStatus status = read_typed(prompt, line);
+    // A LINE ANSWERED AT A TERMINAL IS A LINE ENTERED AT A CONSOLE (KEY_PLAN.md KEY-1): typed and
+    // Entered, a line a paste brought -- the three places read_typed answers one -- or a line read
+    // cooked because raw mode could not be had, which a person typed all the same, as a file run's
+    // input() line is (console_calls.cpp). Never a piped line, Ctrl-C or the end of the input.
+    // HERE, ONCE read_typed HAS RETURNED: its RawMode is a local, so the terminal is cooked again by
+    // now, and S017 -- the one thing the store can say, on stderr -- is drawn as any line is.
+    //
+    // KEPT, THEN WRITTEN (KEY-3): added to the console's lines first, then handed to the write hook
+    // with where it was added, so the store writes it into the console's file and never adds it a
+    // second time. A PASTED LINE IS KEPT HERE TOO, when it is answered: read_typed's PasteLine only
+    // queues it, so each line of a paste is kept once, and a queued line Ctrl-C drops
+    // (discard_pending) was never answered, and is never kept.
+    if (status == LineStatus::Line) {
+        if (lines_ != nullptr)
+            lines_->add(line);
+        if (const LineEntered entered = line_entered())
+            entered(line, lines_);
+    }
+    return status;
 }
 
 bool LineReader::fill()
@@ -139,11 +156,14 @@ LineStatus LineReader::read_piped(std::string &line)
 LineStatus LineReader::read_typed(const Prompt &prompt, std::string &line)
 {
     // A LINE A PASTE ALREADY BROUGHT is answered without reading, drawn after the
-    // prompt as if it had been typed.
+    // prompt as if it had been typed -- a prompt as given written as given (KEY-4).
     if (!pasted_.empty()) {
         line = std::move(pasted_.front());
         pasted_.pop_front();
-        write_all(out_, (prompt.drawn.empty() ? shown(prompt.text) : prompt.drawn) + shown(line) + "\r\n");
+        const std::string written = !prompt.drawn.empty() ? prompt.drawn
+                                    : prompt.as_given     ? prompt.text
+                                                          : shown(prompt.text);
+        write_all(out_, written + shown(line) + "\r\n");
         return LineStatus::Line;
     }
 
@@ -156,7 +176,10 @@ LineStatus LineReader::read_typed(const Prompt &prompt, std::string &line)
     const HoldResizes held;
     take_resize();  // the renderer below asks the width now
 
-    Editor editor(&history_);
+    // UP AND DOWN GO THROUGH THE CONSOLE'S LINES (KEY_PLAN.md KEY-4), the ones this reader keeps, and
+    // LEFT AND RIGHT ON PAST THE LINE'S ENDS THROUGH THE CONSOLES BEFORE IT (KEY-6). Each line starts at
+    // this console: a line Enter sent from another is answered as this console's, and kept with its lines.
+    Editor editor(lines_, earlier_);
     editor.set_line(std::move(carried_));
     carried_.clear();
     KeyDecoder decoder;

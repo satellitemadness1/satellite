@@ -1,0 +1,52 @@
+
+--------------------------------------------------------------------------------
+SATELLITE 004: satellite.file
+--------------------------------------------------------------------------------
+
+Making and deleting files, and making folders. Each of these is a whole line by
+itself, typed at the prompt or written in a program:
+
+    satellite.directory.create("/path/dir_name")
+    satellite.file.new("filename.ext")
+    satellite.file.new("filename.ext", "text")
+    satellite.file.new("filename.ext", "binary")
+    satellite.file.delete("filename.ext")
+
+satellite.directory.create makes the folder, and every missing folder above it.
+A folder already there is fine.
+
+satellite.file.new makes an empty file, and never replaces anything already at
+its path. Every new file is empty -- there is no "empty" kind -- and "text" or
+"binary" says how the file is read and written after: a text file is a list of
+lines. Reading and writing a binary file is not built yet, so a binary file is
+made, empty, and that is all.
+
+satellite.file.delete deletes the file, and asks nothing when the file is yours
+to delete -- a write-protected one too. When the system will not let you, it
+asks on the console for the password of the account that may: the owner of the
+folder the file is in (in a folder like /tmp, the file's own owner), and your
+own password, for sudo, when that account is yours or one nobody logs into. The
+password is never drawn and never kept. A wrong one, or no console to ask on,
+leaves the file where it is. A folder is not deleted -- delete takes files --
+and a link is deleted itself, never what it points to.
+
+Typed alone at the prompt, a line that could not do its work says why in one
+line, and a line that did says nothing. In a program, create and delete answer
+true or false, and new answers the file, whose .satellite.ok() and
+.satellite.error() say how it went. None of them stops the program. A path in
+a program is found from the folder of the .satl it is written in, as every
+file's path is.
+
+example:
+
+    satellite.include(satellite)
+
+    satellite.capsule satellite.main()
+    {
+        satellite.directory.create("notes/2026/october")
+        satellite.file.new("notes/2026/october/today.txt", "text")
+        satellite.file.new("notes/2026/october/picture.bin", "binary")
+        satellite.file.delete("notes/2026/october/picture.bin")
+        satellite.console.display("made")
+        satellite.return(satellite)
+    }

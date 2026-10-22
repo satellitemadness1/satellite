@@ -8,7 +8,10 @@
 // in THAT buffer when input() asks -- and std::cin, reading the same descriptor
 // behind it, finds the input ended. A session sets this to a function that reads
 // through its reader, which also draws the prompt and answers Ctrl-C as the prompt
-// does. Null in every other run of satl, where input() reads std::cin itself.
+// does. A FILE RUN AT A TERMINAL sets it too, to a reader of its own (KEY_PLAN.md
+// KEY-4, structured-library.cpp's read_for_the_run), so a program's input() is edited
+// as the prompt's lines are. Null in every other run of satl -- a pipe or a file --
+// where input() reads std::cin itself.
 //
 // stop_flag.hpp's shape and stop_flag.hpp's reason: one pointer set once when a
 // session starts, instead of a parameter threaded through five signatures. It holds

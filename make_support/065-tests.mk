@@ -81,9 +81,18 @@ $(BUILD)/count_cases: $(COUNT_CASES_SOURCES) $(filter-out $(SATELLITE)/config/sa
 # satellite/prompt, M0.6's terminal layer, alone: its cases with no terminal, and a
 # reader with no language behind it, which check_prompt.py types at through a real
 # terminal. check.sh runs both. They join satl when the session reads its lines.
-PROMPT_SOURCES = $(PROMPT)/raw_mode.cpp $(PROMPT)/keys.cpp $(PROMPT)/editor.cpp $(PROMPT)/history.cpp \
-                 $(PROMPT)/render.cpp $(PROMPT)/line_reader.cpp
-PROMPT_HEADERS = $(PROMPT_SOURCES:.cpp=.hpp) $(MACHINE)/shown.hpp
+# THE CONSOLE'S LINES ARE satellite.variable.strings (console_lines.hpp, KEY_PLAN.md KEY-3), so
+# satellite_string.cpp is linked with them, and the headers it is made from are prerequisites. AND THE
+# CONSOLES BEFORE THIS ONE (earlier_consoles.hpp, KEY-5 and KEY-6), which Left reaches; prompt_cases
+# fills them by hand.
+PROMPT_SOURCES = $(PROMPT)/raw_mode.cpp $(PROMPT)/keys.cpp $(PROMPT)/editor.cpp \
+                 $(PROMPT)/render.cpp $(PROMPT)/line_reader.cpp \
+                 $(PROMPT)/console_lines.cpp $(PROMPT)/earlier_consoles.cpp $(STRING16)/satellite_string.cpp
+# AND THE CONSOLE'S HOOK the reader calls at an Enter (machine/console_store.hpp, KEY_PLAN.md KEY-1):
+# a header alone, left null in both harnesses, so neither links anything of satl/.
+PROMPT_HEADERS = $(PROMPT_SOURCES:.cpp=.hpp) $(MACHINE)/shown.hpp $(MACHINE)/console_store.hpp \
+                 $(STRING16)/character_table.hpp $(STRING16)/conversion_loops.hpp $(STRING16)/string_overwrite.hpp \
+                 $(MACHINE)/machine_codes.hpp
 
 $(BUILD)/prompt_cases: $(PROMPT)/prompt_cases.cpp $(PROMPT_SOURCES) $(PROMPT_HEADERS)
 	@mkdir -p $(BUILD)
@@ -113,6 +122,44 @@ FILE_CASES_HEADERS = $(SATELLITE)/satellite_variable_file/satellite_file.hpp $(S
 $(BUILD)/file_cases: $(FILE_CASES_SOURCES) $(FILE_CASES_HEADERS)
 	@mkdir -p $(BUILD)
 	$(LINK_ENV) $(CXX) $(CXXFLAGS) $(LDFLAGS) $(FILE_CASES_SOURCES) -o $@
+
+# satellite.file.delete AND WHAT IT ASKS WITH, with no interpreter around it (FILE_AND_DRIVE_PLAN.md FD-2): the
+# delete, su on a pty of its own and sudo -S through stand-ins the cases write, and the hidden question and the
+# yes-or-no on a pty. It takes the room to work in, as file_cases does, and never runs a real su or sudo.
+FILE_MOVES_CASES_SOURCES = $(SATELLITE)/satellite_variable_file/file_moves_cases.cpp \
+                           $(SATELLITE)/satellite_variable_file/file_moves.cpp \
+                           $(MACHINE)/as_another_account.cpp $(MACHINE)/ask_at_the_console.cpp $(MACHINE)/stack_share.cpp
+FILE_MOVES_CASES_HEADERS = $(SATELLITE)/satellite_variable_file/file_moves.hpp $(MACHINE)/as_another_account.hpp \
+                           $(MACHINE)/ask_at_the_console.hpp $(MACHINE)/stack_share.hpp $(MACHINE)/stop_flag.hpp
+$(BUILD)/file_moves_cases: $(FILE_MOVES_CASES_SOURCES) $(FILE_MOVES_CASES_HEADERS)
+	@mkdir -p $(BUILD)
+	$(LINK_ENV) $(CXX) $(CXXFLAGS) $(LDFLAGS) $(FILE_MOVES_CASES_SOURCES) -o $@
+
+# THE CONSOLE'S STORE WITH NO CONSOLE AROUND IT (KEY_PLAN.md KEY-1 to KEY-3, KEY-5 and KEY-6): the day's
+# folder, from a clock of its own, made at the first Enter, the console's file claimed in it, every Enter a
+# line of it and of the console's lines, S017 counted where it would be said, and the walk of the consoles
+# before it, with Left's list of the newest of them, each read back. It takes the room to work in, as
+# file_cases does, and points HOME into it -- never a person's. s_codes.hpp reads the bytecode's headers
+# through source_position.hpp, so every header but the build-numbered config is a prerequisite, as for
+# missing_cases; it never includes satellite_config.hpp.
+CONSOLE_FILES_CASES_SOURCES = $(SATELLITE)/satl/console_files_cases.cpp $(SATELLITE)/satl/console_files.cpp \
+                              $(PROMPT)/console_lines.cpp $(PROMPT)/earlier_consoles.cpp $(STRING16)/satellite_string.cpp
+$(BUILD)/console_files_cases: $(CONSOLE_FILES_CASES_SOURCES) $(filter-out $(SATELLITE)/config/satellite_config.hpp,$(HEADERS))
+	@mkdir -p $(BUILD)
+	$(LINK_ENV) $(CXX) $(CXXFLAGS) $(LDFLAGS) $(CONSOLE_FILES_CASES_SOURCES) -o $@
+
+# `interpret <file>` AND `run <file>` WITH NO SCREEN AROUND THEM (the author, 2026-10-20: "Just create another
+# satellite, for each program"): where the prompt runs a program -- here and waited for, or in a satellite of
+# its own while satl's own console is open -- and how a satellite is started, which the console menu shares:
+# its words, its folder, its session, its streams, no wait and nothing left to reap. It is its own stand-in
+# for satl, and takes the room to work in, as file_cases does. prompt_run.cpp reads window_calls.hpp, and
+# through it the bytecode's headers, so every header but the build-numbered config is a prerequisite, as
+# for missing_cases.
+PROMPT_RUN_CASES_SOURCES = $(SATELLITE)/satl/prompt_run_cases.cpp $(SATELLITE)/satl/prompt_run.cpp \
+                           $(MACHINE)/satellite_of_its_own.cpp $(MACHINE)/stack_share.cpp
+$(BUILD)/prompt_run_cases: $(PROMPT_RUN_CASES_SOURCES) $(filter-out $(SATELLITE)/config/satellite_config.hpp,$(HEADERS))
+	@mkdir -p $(BUILD)
+	$(LINK_ENV) $(CXX) $(CXXFLAGS) $(LDFLAGS) $(PROMPT_RUN_CASES_SOURCES) -o $@
 
 # The build fingerprint's inputs, one a line: check.sh compares them with the
 # headers the compiler says satl is made from.

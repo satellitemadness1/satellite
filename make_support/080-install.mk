@@ -12,6 +12,10 @@
 # which puts satl (every word inside it) into $HOME/.satl -- where ~/.local/bin/satl
 # points, so the word satl is the last install. 003 did the same from 2026-09-13 (its
 # 080-install.mk); this is that rule, ported. Both run run_the_installer below.
+# AND satl'S ICON AND THE .satl FILE TYPE go into ~/.local/share with it, unless SATELLITE_ICONS=no
+# is in the environment (install_support/072-icons.sh): the bare make asks about them after a yes,
+# while they are not in place and SATELLITE_ICONS does not answer already (050-build.mk, the
+# author, 2026-10-20), and `make install` asks nothing and puts them in.
 #
 # THE LAST FRAGMENT, because it names $(ALL_TARGETS) in a prerequisite list, which
 # make expands as it reads -- so 050-build.mk must have set it already.

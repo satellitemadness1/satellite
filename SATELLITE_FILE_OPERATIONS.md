@@ -364,7 +364,7 @@ change, never half of one.
 | **R4** | `replace(a, b)`: the first occurrence, or every one? | the first, matching the author's first brief (*"position the write line at the first occurrence"*). If every one is wanted, `replace_all(a, b)` would be a new word, `1 6 2 30` |
 | **R5** | A newline inside `append` or `insert`: several lines, or refused? | several lines, because *"satellite does everything for you"* |
 | **R6** | What a binary file takes and gives | `satellite.variable.binary` in whole bytes; decided at FO-8 |
-| **R7** | **A read-only open, for the storyline generator's lock:** `satellite.file.open(path, kind, "read")`, word `1 8 7`, where every changing word answers false and the file is never rewritten | **yes.** The generator can then never change the author's story files, even by a mistake in the program |
+| **R7** | **A read-only open, for the storyline generator's lock:** `satellite.file.open(path, kind, "read")`, word `1 8 12` (1 8 7 to 1 8 11 went to FILE_AND_DRIVE_PLAN.md's words on 2026-10-21), where every changing word answers false and the file is never rewritten | **yes.** The generator can then never change the author's story files, even by a mistake in the program |
 | **R8** | A sandbox, so a program can touch only files under its own folder? | not now. DESIGN §9's hostile paths are refused by name, and a sandbox is a separate decision |
 | **R9** | M15's `seek("str")`, `seek("entire_file")`, `seek("collection_of_str")` | the first is `index_of`/`search`; the second is `read_all`; the third is `index_of` given a list, which waits on M14 |
 | **R10** | The file words as the object model's, with no library (3.2) | keep them there until a handle can cross a library boundary; that question goes to the author with M8's spacesuits, which have the same shape |
@@ -454,7 +454,7 @@ time recorded; the limit is FO-9's).
 
 ## FO-5 — read-only (R7)
 
-**Build:** `open(path, kind, "read")`, word `1 8 7`: every changing word answers
+**Build:** `open(path, kind, "read")`, word `1 8 12` (it was `1 8 7`, which went to satellite.file.delete on 2026-10-21): every changing word answers
 false with the reason *"opened to read"*, and `save` and `close` never write.
 Merged into FO-2 if the author prefers.
 **Done when** every changing word has been tried on a read-only handle and the

@@ -172,7 +172,38 @@ HAVE_CONSOLE := $(shell [ -f $(GTK_STAGE)/lib/libvte-2.91-gtk4.a ] && echo yes |
 ifeq ($(HAVE_CONSOLE),yes)
 GTK_PKGS = gtk4 vte-2.91-gtk4
 endif
-GTK_CFLAGS := $(shell env -u PKG_CONFIG_PATH PKG_CONFIG_LIBDIR=$(GTK_PC_LIBDIR) pkg-config --cflags $(GTK_PKGS) 2>/dev/null)
+
+# THE STACK'S .pc FILES REMEMBER THE FOLDER THEY WERE BUILT IN, AND THIS CHECKOUT NEED NOT BE THERE
+# (2026-10-15). build_stack.py's prefixes are absolute -- prefix=/home/madness/code/cxx/satellite/
+# vendor/stage -- and so are GTK's meson-uninstalled files, which name its source folder too. The tree
+# built on AlmaLinux was unpacked on Debian 13 at .../last_satellite/satellite, pkg-config answered
+# with 24 folders that were not there, and the window sources stopped at `fatal error: 'gtk/gtk.h'
+# file not found` (window_canvas.hpp at 'cairo.h') -- an error that reads like an order to install
+# GTK, about a build that carries its own.
+#
+# SO A FOLDER UNDER A ROOT THE STACK RECORDED IS SAID AGAIN UNDER THIS CHECKOUT (the author, that
+# day: "we have to use relative paths because this may be compiled on another machine"). The roots
+# are read off the prefix= lines -- <root>/vendor/stage and <root>/vendor/build/gtk, one root unless
+# part of the stack was built somewhere else -- and -I<root>/vendor/ becomes -I$(CURDIR)/vendor/,
+# which make works out again on every run, wherever the checkout is: GTK_BUILD, GTK_STAGE and the
+# archives below were always made that way, and only answers read back from files could go stale.
+# $(CURDIR) AND NOT A BARE vendor/, though make runs from this folder: clang's .d files write a
+# header the way its -I spelled it, and check.sh's row "every header the compiler reads is in the
+# build fingerprint" asks every header with a relative path to be one of BUILD_INPUTS -- with
+# -Ivendor/, 770 of the carried GTK's were, and the row failed (the review, 2026-10-15). Absolute,
+# they stay outside it, as they always were (040-sources.mk keeps PCG's out with -isystem instead).
+#
+# NOT pkg-config --define-prefix, which rewrites prefix= alone: ten of the stage's .pc files spell
+# includedir or libdir out in full (zlib, libpng, libffi, libjpeg, libtiff, expat, pcre2, fmt -- the
+# cmake and autotools ones), and no prefix describes GTK's source folder.
+GTK_PC_FILES := $(wildcard $(GTK_BUILD)/meson-uninstalled/*.pc $(GTK_STAGE)/lib/pkgconfig/*.pc \
+                           $(GTK_STAGE)/lib64/pkgconfig/*.pc $(GTK_STAGE)/share/pkgconfig/*.pc)
+GTK_RECORDED_ROOTS := $(if $(GTK_PC_FILES),$(sort $(shell sed -n -e 's,^prefix=\(/.*\)/vendor/stage/*$$,\1,p' \
+                          -e 's,^prefix=\(/.*\)/vendor/build/gtk/*$$,\1,p' $(GTK_PC_FILES))))
+# $(call gtk_reroot,FLAGS,ROOTS): every -I<root>/vendor/ in FLAGS as -I$(CURDIR)/vendor/, one root
+# at a time.
+gtk_reroot = $(if $(2),$(call gtk_reroot,$(subst -I$(firstword $(2))/vendor/,-I$(CURDIR)/vendor/,$(1)),$(wordlist 2,$(words $(2)),$(2))),$(1))
+GTK_CFLAGS := $(call gtk_reroot,$(shell env -u PKG_CONFIG_PATH PKG_CONFIG_LIBDIR=$(GTK_PC_LIBDIR) pkg-config --cflags $(GTK_PKGS) 2>/dev/null),$(GTK_RECORDED_ROOTS))
 
 # EVERY ARCHIVE, FROM TWO PLACES NOW -- GTK's own build tree (7) and the install
 # prefix everything below it was staged into (32). The old build found all 63 under
@@ -319,6 +350,12 @@ GTK_SOURCES = $(SATELLITE)/satellite_variable_window/window_desk.cpp \
               $(SATELLITE)/satellite_variable_window/console_settings.cpp \
               $(SATELLITE)/satellite_variable_window/console_shadow.cpp \
               $(SATELLITE)/satellite_variable_window/console_status.cpp
+# AND THE ONE WAYLAND TABLE THE CARRIED GTK NEEDS AND WAYLAND 1.23 LACKS (2026-10-15):
+# window_wayland_fixes.cpp says why. The carried GTK's only -- the system's GTK and the
+# system's libwayland agree already.
+ifeq ($(GTK),vendor)
+GTK_SOURCES += $(SATELLITE)/satellite_variable_window/window_wayland_fixes.cpp
+endif
 else
 GTK_SOURCES =
 endif

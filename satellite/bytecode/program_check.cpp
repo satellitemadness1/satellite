@@ -1668,7 +1668,8 @@ satelliteObject::Kind kind_a_word_answers(Code code)
     if (code == word::code_of(1, 8, 1) || code == word::code_of(1, 8, 2) || code == word::code_of(1, 8, 4) ||
         code == word::code_of(1, 8, 6))
         return O::file;
-    if (code == word::code_of(1, 8, 5) || code == word::code_of(1, 8, 3) || code == word::code_of(1, 18, 1))
+    if (code == word::code_of(1, 8, 5) || code == word::code_of(1, 8, 3) || code == word::code_of(1, 18, 1) ||
+        code == word::code_of(1, 18, 8) || code == word::code_of(1, 8, 7))
         return O::boolean;
     // THE WHOLE PATH LEXES FIRST (bytecode_registry.cpp): satellite.container.list() is the word 1 4 2 with its
     // brackets, never its path() row 1 4 2 0 -- so a word is known here by its family, which holds both.

@@ -4,10 +4,16 @@
 #                          number every time (050-build.mk's BARE_MAKE) -- then it ASKS whether
 #                          to install into ~/.satl: Enter, y or a minute's silence installs, n
 #                          leaves the build where it is (the author, the evening of 2026-10-07).
+#                          After a yes, while satl's icon and the .satl file type are not in
+#                          ~/.local/share yet, it asks about them the same way (the author,
+#                          2026-10-20: "make a plain "make" ask if you want to install the icons")
+#                          -- a yes makes a double-clicked .satl file run in Satellite 004 too --
+#                          and SATELLITE_ICONS=no or yes in its environment answers it every time.
 #                          A checkout with no vendor/stage -- a fresh copy -- first builds the
 #                          GTK satl carries, once, about five minutes (047-window.mk, 2026-10-08)
 #     make install         build what changed, then install into ~/.satl, asking nothing
-#                          (080-install.mk); make INSTALL_AFTER_BUILD=no builds and asks nothing
+#                          (080-install.mk) -- the icons too, unless SATELLITE_ICONS=no;
+#                          make INSTALL_AFTER_BUILD=no builds and asks nothing
 #     make test            check.sh and the string checks
 #     make check           check.sh alone
 #     make clean

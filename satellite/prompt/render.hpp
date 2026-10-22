@@ -40,7 +40,9 @@
 // down to the bottom, clears each row going up, and redraws.
 //
 // THE FIRST DRAW CLEARS THE ROW IT STARTS ON, so whatever printed before the
-// prompt must end with a newline, or its last line is erased.
+// prompt must end with a newline, or its last line is erased -- except before a
+// prompt as given (below), which is written where the cursor stands, as a run's
+// own line would be.
 
 #include <cstddef>
 #include <string>
@@ -82,9 +84,22 @@ bool take_resize();
 // every field through shown() and add nothing but SGR (session.cpp does). With
 // `drawn` empty, shown(text) is drawn plain -- which is every prompt before
 // this one, and the reader's own harness.
+//
+// A PROMPT AS GIVEN (KEY_PLAN.md KEY-4) IS A PROGRAM'S OWN: a file run's input() at
+// a terminal, whose prompt is the program's string, and may hold the terminal's own
+// codes -- the author's journal.satl moves the cursor to its typing row with them,
+// clears rows, and ends with `word> `. It is drawn as the cooked getline drew it,
+// WRITTEN ONCE AS GIVEN -- `drawn`, or `text` when `drawn` is empty, raw, never
+// through shown() -- at the first draw and after Ctrl-L, and never again. Every
+// other draw redraws the line alone, from the column the prompt left the cursor in,
+// and a draw that stays on one row moves along it by what this renderer drew there,
+// so it never writes over the prompt. That column is worked out from the prompt's
+// characters and the codes that move a cursor (render.cpp's column_after): no
+// escape byte is ever counted as a column.
 struct Prompt {
     std::string text;
     std::string drawn;
+    bool as_given = false;
 };
 
 class Renderer {
@@ -104,7 +119,7 @@ public:
     void resize();
 
     // Forget the rows: a line was accepted or abandoned, and the next one starts
-    // below whatever was printed.
+    // below whatever was printed. A prompt as given is written again at the next draw.
     void reset();
 
     // Ctrl-L: clear, home, and forget the rows.
@@ -129,10 +144,15 @@ private:
     std::size_t width_;
     std::size_t rows_ = 1;
     std::size_t cursor_row_ = 0;
+    std::size_t cursor_column_ = 0;  // where the last draw left the cursor on its row
     std::string drawn_;              // the last draw's text, shown: what is on the screen
     std::size_t drawn_cursor_ = 0;
     bool below_ = false;
     bool resized_ = false;           // the next draw redraws whole
+    // A PROMPT AS GIVEN: written yet, and the column it left the cursor in, where the
+    // line's first row starts. 0 for every other prompt, which is part of the text.
+    bool given_ = false;
+    std::size_t start_ = 0;
 };
 
 } // namespace satellite004::prompt

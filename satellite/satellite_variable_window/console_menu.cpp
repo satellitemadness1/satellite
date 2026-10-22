@@ -18,11 +18,9 @@
 #if SATELLITE_HAS_CONSOLE
 
 #include "window_console.hpp"
-#include "../machine/stack_share.hpp"
+#include "../machine/satellite_of_its_own.hpp"
 
-#include <cstdio>
 #include <string>
-#include <unistd.h>
 #include <vector>
 
 namespace satellite004 {
@@ -76,32 +74,21 @@ void say_it_in_a_box(satellite_window *console, const std::string &saying)
 // where THIS satl was started (the C stderr, which keep_the_c_streams_off_the_pty
 // left there) -- never this console's pty, or the new satl's first words would
 // land in this window. setsid() in the child, so this console's hangup is never
-// the new one's; GLib's double fork reaps it, so no zombie waits on this one.
+// the new one's; a double fork reaps it, so no zombie waits on this one.
+//
+// AND THE PROMPT STARTS A PROGRAM THE SAME WAY (the author, 2026-10-20: "Just
+// create another satellite, for each program"): the start that was GLib's
+// g_spawn_async here is machine/satellite_of_its_own.hpp's since that day, one
+// start for the two, and it calls no GTK, which the prompt's thread may not.
+// What goes wrong is still this file's to say, in a box.
 void start_another_satl(satellite_window *console, const char *file)
 {
-    char self[4096];
-    const ssize_t length = readlink("/proc/self/exe", self, sizeof self - 1);
-    if (length <= 0) {
-        say_it_in_a_box(console, "satl cannot read its own path (/proc/self/exe), so it cannot start another");
-        return;
-    }
-    self[length] = '\0';
-    char console_flag[] = "--console";
-    std::vector<char *> words{self, console_flag};
-    std::string path = file != nullptr ? std::string(file) : std::string();
+    std::vector<std::string> words;
     if (file != nullptr)
-        words.push_back(path.data());
-    words.push_back(nullptr);
-    GError *trouble = nullptr;
-    const int where_satl_started = fileno(stderr);
-    if (!g_spawn_async_with_fds(nullptr, words.data(), nullptr, G_SPAWN_STDIN_FROM_DEV_NULL,
-                                [](gpointer) { setsid(); hand_a_child_the_stack_satl_was_given(); }, nullptr, nullptr, -1, where_satl_started,
-                                where_satl_started, &trouble)) {
-        say_it_in_a_box(console, std::string("could not start another satl -- ") +
-                                     (trouble != nullptr ? trouble->message : "no reason given"));
-        if (trouble != nullptr)
-            g_error_free(trouble);
-    }
+        words.push_back(file);
+    std::string why;
+    if (!start_a_satellite_of_its_own(words, why))
+        say_it_in_a_box(console, "could not start another satl -- " + why);
 }
 
 void when_a_new_window(GSimpleAction *, GVariant *, gpointer user_data)

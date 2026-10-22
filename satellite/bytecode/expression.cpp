@@ -2084,7 +2084,7 @@ signed long long int display_a_number(const Scenarios &scenarios, const satellit
 // as the table, which the session does with the library's own answer rather than
 // through 003's one-shot global request (PLAN M0.6).
 Value call_directory_word(token::Code code, const Scenarios &scenarios, const Value &argument,
-                          ExpressionContext &context)
+                          const std::vector<std::bitset<16>> &row, ExpressionContext &context)
 {
     const std::string spelling(word::spelling_of(code));
     std::string path;
@@ -2096,13 +2096,17 @@ Value call_directory_word(token::Code code, const Scenarios &scenarios, const Va
     }
     if (given)
         path = argument.text_utf8();
+    // A FOLDER TO MAKE IS FOUND AS A FILE TO MAKE IS (FILE_AND_DRIVE_PLAN.md rule 2), so create("notes") and
+    // satellite.file.new("notes/today.txt") in one program name the same folder wherever satl was started.
+    if (given && code == word::code_of(1, 18, 8))
+        path = resolved_path(path, true, row, context, true);
 
     const DirectoryReply reply = scenarios.directory(path, given, stop_flag());
     if (stops_the_program(reply.code)) {
         context.refuse(reply.code, spelling + (reply.reason.empty() ? std::string() : ": " + reply.reason));
         return Value();
     }
-    if (code == word::code_of(1, 18, 1))
+    if (code == word::code_of(1, 18, 1) || code == word::code_of(1, 18, 8))
         return Value::of_bool(reply.flag);
 
     context.refuse(not_built_yet, spelling + " read " + std::to_string(reply.names.size()) +
@@ -2307,7 +2311,7 @@ Value call_word(const std::vector<std::bitset<16>> &row, std::size_t &at, Expres
     if (to_the_screen)
         return display_plainly(code, std::move(argument), context);
     if (scenarios->directory != nullptr)
-        return call_directory_word(code, *scenarios, argument, context);
+        return call_directory_word(code, *scenarios, argument, row, context);
 
     // A FACT, WRITTEN WITH ITS BRACKETS. `arguments.memory()` is the author's own
     // spelling in the second brief -- "arguments.memory() (alias of

@@ -694,6 +694,17 @@ inline constexpr WordRow kWords[] = {
     {"satellite.convert.number(x)", {1, 35, 1, 0, 0, 0}, 3},
     {"satellite.convert.float(x)", {1, 35, 2, 0, 0, 0}, 3},
     {"satellite.convert.whole(x)", {1, 35, 3, 0, 0, 0}, 3},
+    {"satellite.file.delete(path)", {1, 8, 7, 0, 0, 0}, 3},
+    {"satellite.file.copy(path)", {1, 8, 8, 0, 0, 0}, 3},
+    {"satellite.file.paste()", {1, 8, 9, 0, 0, 0}, 3},
+    {"satellite.file.paste(d)", {1, 8, 10, 0, 0, 0}, 3},
+    {"satellite.file.move(path, d)", {1, 8, 11, 0, 0, 0}, 3},
+    {"satellite.directory.create(d)", {1, 18, 8, 0, 0, 0}, 3},
+    {"satellite.drive", {1, 36, 0, 0, 0, 0}, 2},
+    {"satellite.drive.list()", {1, 36, 1, 0, 0, 0}, 3},
+    {"satellite.drive.mount(d)", {1, 36, 2, 0, 0, 0}, 3},
+    {"satellite.drive.release(d)", {1, 36, 3, 0, 0, 0}, 3},
+    {"satellite.drive.remount(d)", {1, 36, 4, 0, 0, 0}, 3},
 };
 
 // Removed words, with the numbers they had in 003 06.
@@ -715,7 +726,7 @@ struct NextFree {
 };
 
 inline constexpr NextFree kNextFree[] = {
-    {"satellite", {1, 36, 0, 0, 0, 0, 0}, 2},
+    {"satellite", {1, 37, 0, 0, 0, 0, 0}, 2},
     {"satellite.include", {1, 1, 3, 0, 0, 0, 0}, 3},
     {"satellite.capsule", {1, 2, 2, 0, 0, 0, 0}, 3},
     {"satellite.capsule.launch", {1, 2, 1, 1, 0, 0, 0}, 4},
@@ -826,7 +837,7 @@ inline constexpr NextFree kNextFree[] = {
     {"satellite.variable.variant.clear", {1, 6, 14, 4, 1, 0, 0}, 5},
     {"satellite.variable.capsule", {1, 6, 15, 1, 0, 0, 0}, 4},
     {"satellite.random", {1, 7, 18, 0, 0, 0, 0}, 3},
-    {"satellite.file", {1, 8, 7, 0, 0, 0, 0}, 3},
+    {"satellite.file", {1, 8, 12, 0, 0, 0, 0}, 3},
     {"satellite.time", {1, 9, 8, 0, 0, 0, 0}, 3},
     {"satellite.time.now", {1, 9, 1, 1, 0, 0, 0}, 4},
     {"satellite.time.new", {1, 9, 2, 1, 0, 0, 0}, 4},
@@ -893,7 +904,7 @@ inline constexpr NextFree kNextFree[] = {
     {"satellite.bool", {1, 17, 3, 0, 0, 0, 0}, 3},
     {"satellite.bool.false", {1, 17, 1, 1, 0, 0, 0}, 4},
     {"satellite.bool.true", {1, 17, 2, 1, 0, 0, 0}, 4},
-    {"satellite.directory", {1, 18, 8, 0, 0, 0, 0}, 3},
+    {"satellite.directory", {1, 18, 9, 0, 0, 0, 0}, 3},
     {"satellite.help", {1, 19, 2, 0, 0, 0, 0}, 3},
     {"satellite.network", {1, 20, 8, 0, 0, 0, 0}, 3},
     {"satellite.network.new", {1, 20, 3, 1, 0, 0, 0}, 4},
@@ -1064,6 +1075,7 @@ inline constexpr NextFree kNextFree[] = {
     {"satellite.variable.float.reverse", {1, 6, 10, 6, 1, 0, 0}, 5},
     {"satellite.variable.fraction.reverse", {1, 6, 20, 4, 1, 0, 0}, 5},
     {"satellite.convert", {1, 35, 4, 0, 0, 0, 0}, 3},
+    {"satellite.drive", {1, 36, 5, 0, 0, 0, 0}, 3},
 };
 
 } // namespace satellite004

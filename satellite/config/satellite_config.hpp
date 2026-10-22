@@ -89,7 +89,7 @@ inline std::vector<satellite_argument_row> return_arguments_vector()
     arguments_vector.push_back({"arguments.missing", 0, true, true});
     arguments_vector.push_back({"arguments.version", 4, false, false});
     arguments_vector.push_back({"arguments.revision", 10, false, false});
-    arguments_vector.push_back({"arguments.build", 58, false, false});
+    arguments_vector.push_back({"arguments.build", 86, false, false});
     arguments_vector.push_back({"arguments.object_bytes_max", 34359738368, false, false});
     arguments_vector.push_back({"arguments.threads_max", 1000000, false, false});
     // HOW MANY WARM THREADS START: THE MACHINE'S CORES TIMES THIS (the author, 2026-10-03): "set
@@ -144,6 +144,13 @@ inline std::vector<satellite_argument_row> return_arguments_vector()
     // ~/.satl/config.ini; a program cannot change it -- "it has to be changed outside of program
     // execution".
     arguments_vector.push_back({"arguments.display.buffer", 131072, false, false});
+
+    // HOW MUCH OF WHAT WAS TYPED LEFT REACHES (KEY_PLAN.md KEY-6; the author, 2026-10-20: "cycled through
+    // with left and right arrows ... saving the most recent 32mb worth of files", and "arguments.input.cache
+    // for the 32 megabytes"). In the author's mb, bytes / 1024 / 1024, so 32 is 33,554,432 bytes of the
+    // newest console files in ~/.satl/console. Read when a console starts (satl/console_files.hpp); KEY-10
+    // makes it a setting a person changes.
+    arguments_vector.push_back({"arguments.input.cache", 32, false, false});   // mb: 32 x 1024 x 1024 bytes
 
     return(arguments_vector);
 }

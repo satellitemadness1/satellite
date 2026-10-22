@@ -281,6 +281,7 @@ signed long long int describe_1_18_1(LibraryRow *row);   // satellite.directory.
 signed long long int describe_1_18_4(LibraryRow *row);   // satellite.directory.list()
 signed long long int describe_1_18_5(LibraryRow *row);   // satellite.directory.list(d)
 signed long long int describe_1_18_6(LibraryRow *row);   // satellite.directory.system()
+signed long long int describe_1_18_8(LibraryRow *row);   // satellite.directory.create(d)
 signed long long int describe_1_25(LibraryRow *row);   // satellite.feedback
 signed long long int describe_1_25_1(LibraryRow *row);   // satellite.feedback(x)
 

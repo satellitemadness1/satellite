@@ -54,19 +54,24 @@ step() {
 usage() {
     cat <<EOF
 usage: sh $self [--root <folder>]
+       sh $self --icons-current
        sh $self --help
 
 Builds satellite 004 with make, then installs satl (every word inside it)
 into \$HOME/.satl, or into <folder>, and proves the
 install by running examples/hello_world.satl with the installed satl.
-\`make install\` does this; a bare \`make\` builds and installs nothing
-(since 2026-10-07).
+\`make install\` does this, asking nothing; a bare \`make\` builds, then asks
+whether to install (since 2026-10-07), and after a yes whether to put in the
+icons below.
 
 In \$HOME/.satl, a satl this installer did not put there -- satellite
 003's -- is kept beside the new one as satl.bak-<date>, and 003's
 satl-term is left alone; the Satellite launcher is written to open
-\$HOME/.satl/satl --console, keeping 003's as a .bak. Anywhere else,
-these are refused:
+\$HOME/.satl/satl --console, keeping 003's as a .bak; and satl's icon,
+the .satl file type and its icon go into
+\${XDG_DATA_HOME:-\$HOME/.local/share}, unless SATELLITE_ICONS=no is in
+the environment (unset, or yes, puts them in). Anywhere else, these are
+refused:
 
   - anything inside \$HOME/.satl, and /usr/local, which is 003's --system;
   - a folder on PATH, where a second satl would compete for \`satl\`;
@@ -75,8 +80,16 @@ these are refused:
     did not put there, which it knows from its record, .satellite-004-install;
   - --link, --desktop and --system, which are 003's installer's.
 
-Nothing outside the root is written but that launcher, and no shell startup
-file is edited.
+Nothing outside the root is written but that launcher, those icons and the
+.satl type, and what the desktop's own tools build from them there
+(update-desktop-database, update-mime-database, and an icon cache that was
+there already); and, whatever the root, \$HOME/.satl/config.ini, the
+person's settings, made when it is not there and written by the satl just
+installed, with its config.ini.lock; no shell startup file is edited.
+
+--icons-current builds and writes nothing: it exits 0 when the icons and the
+.satl file type are installed and current, and 1 when they are not, printing
+nothing.
 
 It exits 0 when the install is proven, 23 for a command line it does not take,
 and 1 for anything else, with the reason.

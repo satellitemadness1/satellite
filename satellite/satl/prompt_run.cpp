@@ -2,6 +2,7 @@
 
 #include "prompt_run.hpp"
 
+#include "../bytecode/window_calls.hpp"
 #include "../machine/machine_codes.hpp"
 #include "../machine/stack_share.hpp"
 #include "../machine/shown.hpp"
@@ -12,6 +13,7 @@
 #include <cstring>
 #include <iostream>
 #include <string>
+#include <sys/stat.h>
 #include <sys/wait.h>
 #include <unistd.h>
 #include <vector>
@@ -74,6 +76,16 @@ std::string this_satl()
 // status -- from the folder the prompt is in. `--run` keeps a file whose name
 // begins with - a file (command_line.cpp).
 //
+// AND IN satl'S OWN CONSOLE IT IS A SATELLITE OF ITS OWN, AND THE PROMPT COMES BACK AT ONCE (the author,
+// 2026-10-20: "I have to be able to type back into the satellite console that created the program ... and
+// to navigate into a different directory, and to start another program ... I could run.. 24 of these
+// programs or something" -- "Just create another satellite, for each program"). Everywhere else the program
+// shares the prompt's terminal and is waited for, below. In satl's own console it never shared it: its
+// stdout was the console's pty, which nobody_gave_satl_a_console() (window_run.cpp) reads as a run nobody
+// redirected, so it opened a console of its own -- while the prompt here waited for it to end. UNLESS
+// SATL_NO_WINDOW IS SET, when that same question answers no: the program ran in this console, and it still
+// does, waited for, as before -- so the prompt asks it too.
+//
 // CTRL-C BELONGS TO THE PROGRAM WHILE IT RUNS. The terminal sends SIGINT to the
 // whole foreground group, so the prompt ignores it until the program ends: its
 // own handler counts presses and exits on the second, which would take the
@@ -106,6 +118,52 @@ bool run_a_file_from_the_prompt(const std::string &typed, signed long long int &
         std::cerr << "satl(prompt): `" << typed.substr(0, typed.find(' ')) << "` needs a file after it, like "
                   << typed.substr(0, typed.find(' ')) << " examples/hello_world.satl\n";
         answer = satl_line_not_understood;
+        return true;
+    }
+
+    // IN satl'S OWN CONSOLE (satls_own_console_is_open, window_calls.hpp), with nobody_gave_satl_a_console()
+    // saying the program would have opened a console of its own (not under SATL_NO_WINDOW, above): `satl
+    // --console --run <file> [words...]`, started on the desk as File > Open… starts one (window_calls.hpp,
+    // machine/satellite_of_its_own.hpp) -- its own console, its own session, nothing of this console's pty
+    // -- from the folder the prompt is in, and never waited for. Its console closes after a clean end and
+    // holds after a failure, as a file's always has (window_run.cpp). ONE LINE SAYS SO, OR WHY IT COULD NOT
+    // START.
+    //
+    // THE ANSWER IS success ONCE IT IS RUNNING: the line did what it said, and the program's own code is its
+    // satellite's to show -- that console holds with the code and its name on its last line when the run
+    // stops -- where knowing it here would be waiting, which is what the author asked the prompt not to do.
+    // One that could not be started answers satl_line_not_understood, as a fork that fails below does.
+    if (satls_own_console_is_open() && nobody_gave_satl_a_console()) {
+        // A FILE THAT IS NOT THERE, OR IS NOT A FILE, IS SAID HERE, in program_walk.cpp's words and with its
+        // code, missing_satl_file -- never "running" for a satellite that would open only to hold on it. And
+        // named as it names one: `interpret ""` is "(an empty name)", never a gap in the line.
+        const std::string named = words.front().empty() ? std::string("(an empty name)") : shown(words.front());
+        struct stat about {};
+        std::string refused;
+        if (stat(words.front().c_str(), &about) != 0)
+            refused = errno == ENOENT || errno == ENOTDIR
+                          ? std::string("cannot locate file")
+                          : "cannot locate file (" + std::string(std::strerror(errno)) + ")";
+        else if (!S_ISREG(about.st_mode))
+            refused = std::string(S_ISDIR(about.st_mode) ? "it is a directory" : "it is not a regular file") +
+                      ", and a program is a .satl file";
+        if (!refused.empty()) {
+            std::cerr << "satl(prompt): " << named << " could not be started in a satellite of its own: " << refused
+                      << "\n";
+            answer = missing_satl_file;
+            return true;
+        }
+        std::vector<std::string> given{"--run"};
+        given.insert(given.end(), words.begin(), words.end());
+        std::string why;
+        if (start_a_satellite_on_the_desk(given, why)) {
+            std::cerr << "satl(prompt): " << named << " is running in a satellite of its own\n";
+            answer = success;
+        } else {
+            std::cerr << "satl(prompt): " << named << " could not be started in a satellite of its own: " << why
+                      << "\n";
+            answer = satl_line_not_understood;
+        }
         return true;
     }
 

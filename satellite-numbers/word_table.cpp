@@ -265,6 +265,7 @@ const BuiltInWord kBuiltInWords[] = {
     {"1 18 4", "satellite.directory.list()", describe_1_18_4},
     {"1 18 5", "satellite.directory.list(d)", describe_1_18_5},
     {"1 18 6", "satellite.directory.system()", describe_1_18_6},
+    {"1 18 8", "satellite.directory.create(d)", describe_1_18_8},
     {"1 25", "satellite.feedback", describe_1_25},
     {"1 25 1", "satellite.feedback(x)", describe_1_25_1},
 };

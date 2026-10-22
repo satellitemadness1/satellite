@@ -685,6 +685,11 @@ at the window's prompt, splits it, and stops on `quit`.
 **MS-23 — `new <file>`.** Built as a word; the skeleton prints `.error` when `.ok` is false, and
 Q11's answer is built here.
 
+**MS-24 to MS-26 ARE REPLACED (2026-10-21) by FILE_AND_DRIVE_PLAN.md**, in the author's own spellings:
+`satellite.file.copy(path)` to a clipboard and `satellite.file.paste()`/`paste(d)`, `satellite.file.move(path, d)`, and
+`satellite.file.delete(path)`, which goes through or asks for the owner's password -- the author's answer to Q13 is no
+"are you sure". The three below are kept as they were written.
+
 **MS-24 — `copy <from> <to>`.**
 - BUILD: a row in `words/words_004.tsv` at the next free number under `1 8`
   (`satellite.file.copy(from, to)`), then `python3 words/make_words.py` and

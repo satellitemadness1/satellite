@@ -35,7 +35,7 @@
 namespace satellite004 {
 
 // satellite.file.new(path) 1 8 1, open(path, mode) 1 8 2, clear(path) 1 8 3,
-// new(path, mode) 1 8 4, exists(path) 1 8 5, open(path) 1 8 6.
+// new(path, mode) 1 8 4, exists(path) 1 8 5, open(path) 1 8 6, delete(path) 1 8 7.
 bool is_file_word(token::Code code);
 
 // How many arguments a file word takes (1 or 2), and the sentence that says so.
@@ -46,6 +46,14 @@ std::string file_word_takes(token::Code code);
 // How many arguments a file METHOD takes, or -1 for a method a file does not have. The checker reads it,
 // and run_file_number refuses a wrong count by it before a number runs.
 int file_method_arity(token::Code method);
+
+// WHERE A PATH A PROGRAM WROTE POINTS: relative to the .satl the call is written in, and a leading / under
+// the program's own folder first (SATELLITE_FILE_OPERATIONS R2) -- at the prompt, the working directory's.
+// `making` is true when the path is to be made, so only the folder it goes in must be there; `folders` when
+// every missing folder is made, so only its first folder must be. The words of FILE_AND_DRIVE_PLAN.md find
+// their paths here too, satellite.directory.create among them.
+std::string resolved_path(const std::string &written, bool making, const std::vector<std::bitset<16>> &row,
+                          ExpressionContext &context, bool folders = false);
 
 // One of those words, its arguments already evaluated. `row` is the row the call
 // is written in, which is how a relative path finds the file that wrote it.

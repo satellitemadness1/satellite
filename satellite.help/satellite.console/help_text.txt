@@ -109,9 +109,53 @@ program that finishes closes it; one that stops holds it open with
 2026-10-05 every run is in this console, typed in a shell or started from a
 launcher alike: satl no longer runs in the terminal it was started from, and a
 machine with no screen is refused with S730 NO_DISPLAY, exit 50, before the
-program runs. Only output sent to a file or a pipe (satl x.satl > log), or
+program runs. Typed in a shell, satl gives the shell back at once: its console
+is a satl of its own, so the terminal can be closed and the console stays, and
+the shell's exit status is 0 -- the program's own code is on its console. Only output sent to a file or a pipe (satl x.satl > log), or
 SATL_NO_WINDOW set for a harness, keeps satl where it was pointed; --console
 opens the console even then.
+
+Every line typed into satl and sent with Enter is kept -- at the prompt, as the
+answer to a satellite.console.input(), and each line of a paste alike -- as
+Enter sent it, after Backspace and the other keys had changed it: an empty Enter
+is an empty line, and a line stopped with Ctrl-C was never sent. It is written
+at once, before it runs, into a file of the console's own:
+~/.satl/console/YYYY-MM-DD/console-NNN.c4, the folder named for the day the
+console started, console-001.c4 the first console typed into that day, and
+console-002.c4 the next. The folders are 0700 and the files 0600, because they
+hold everything typed. A file is UTF-8, one line an Enter, and keeps every
+character as it was typed, an accent or an emoji included, but the control
+characters -- ESC and the rest -- and any byte that is not UTF-8, which are
+dropped. Lines piped in or read from a file are nobody's typing, and nothing of
+them is kept; nor yet of a console your program makes. A kept line never runs
+again by itself. A console that cannot save -- HOME unset, the disk full -- says
+S017 CONSOLE_NOT_SAVED once, and works as before.
+
+Up and Down bring those lines back, this console's own, into the line being
+typed: at the prompt, and at a satellite.console.input() -- which, in a console,
+is edited as the prompt's lines are, so Left, Right, Home and End move through
+the answer and an arrow never lands in it. The first Up keeps what was half
+typed and goes back one line; Up stops at the console's first line, and Down
+past its last gives the half-typed line back. A line that is empty or only
+spaces is stepped over, and so is one the same as the line before it that Up
+stops at, so a line sent three times is one press. A line brought back runs
+only when Enter sends it. Keys typed before an input() asks are dropped, as the
+prompt drops keys typed while a line runs.
+
+Left and Right move through the line being typed, and past its ends to the
+consoles typed into before this one, one console at a time and across days.
+With the cursor all the way to the left -- an empty line, or after Home -- Left
+shows the console before this one at its last line, the cursor at its end, so
+Left goes on through that line and, from its start, to the console before that.
+Right is the mirror: at a line's end it shows the console after, the cursor at
+the start of its line, and back at this console the half-typed line returns. Up
+and Down go through the lines of the console shown, and Down past its last line
+comes back to this console. A console with no line Up would stop at is stepped
+over. Left stops at the oldest console it reaches, and Right at the end of this
+console's line; nothing wraps around. Left reaches the newest 32 mb of console
+files (arguments.input.cache), each read from its file the first time Left
+reaches it. Enter sends the line shown as this console's own: it runs, and is
+kept in this console's file.
 
 example:
 

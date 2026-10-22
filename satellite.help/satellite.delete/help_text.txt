@@ -45,8 +45,8 @@ false, when a name deleted inside a block is free again only inside that block.
 A field of an object, satellite.statement.for's own number, and arguments are
 not deleted.
 
-satellite.delete is not satellite.system.delete, the word -- numbered, not built
--- for deleting a FILE from the disk.
+satellite.delete deletes a name from memory, never a file. A FILE is deleted from
+the disk by satellite.file.delete("filename.ext") -- see satellite.help(file).
 
 example:
 

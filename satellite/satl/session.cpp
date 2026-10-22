@@ -3,6 +3,7 @@
 #include "session.hpp"
 #include "../display/printing_satellite.hpp"
 
+#include "console_files.hpp"
 #include "drives.hpp"
 #include "listing.hpp"
 #include "prompt_help.hpp"
@@ -21,10 +22,13 @@
 #include "../machine/shown.hpp"
 #include "../machine/source_position.hpp"
 #include "../machine/stop_flag.hpp"
+#include "../machine/console_store.hpp"
 #include "../machine/input_source.hpp"
 #include "../prompt/line_reader.hpp"
 #include "../prompt/raw_mode.hpp"
 #include "../prompt/render.hpp"
+#include "../satellite_variable_file/satellite_file.hpp"
+#include "../satellite_variable_file/file_moves.hpp"
 
 #include <cctype>
 #include <cerrno>
@@ -267,6 +271,17 @@ bool is_one_change(const std::vector<std::bitset<16>> &row, std::string &path)
     return after == token::line_end_token || after == token::end_of_file_token || after == token::comment_token;
 }
 
+// WHAT THE PROMPT SAYS ABOUT A LINE TYPED ALONE THAT DID NOT HAPPEN, in its lettering at a terminal and
+// plainly to a pipe. `why` has been through shown() already.
+void say_why(const std::string &why)
+{
+    const bool at_a_terminal = the_sessions_reader != nullptr && the_sessions_reader->interactive();
+    if (at_a_terminal)
+        std::cout << lettering << why << "\033[0m\n" << std::flush;
+    else
+        std::cout << why << '\n' << std::flush;
+}
+
 signed long long int move_the_prompt(const std::string &path, const FunctionTable &functions)
 {
     const NumberRow *library = functions[word::code_of(1, 18, 1)];
@@ -295,11 +310,73 @@ signed long long int move_the_prompt(const std::string &path, const FunctionTabl
     char here[4096];
     if (::getcwd(here, sizeof here) != nullptr)
         why += " -- the prompt stays in " + shown(here);
-    const bool at_a_terminal = the_sessions_reader != nullptr && the_sessions_reader->interactive();
-    if (at_a_terminal)
-        std::cout << lettering << why << "\033[0m\n" << std::flush;
-    else
-        std::cout << why << '\n' << std::flush;
+    say_why(why);
+    return success;
+}
+
+// A WHOLE LINE THAT IS ONE OF THE DISK'S WORDS (FILE_AND_DRIVE_PLAN.md rule 1), decided on the compiled line as a
+// folder change is: satellite.file.new, satellite.file.delete and satellite.directory.create, given written
+// strings and nothing after them. In a program each answers a value -- a file, or true or false -- that is
+// the program's to ask; typed alone nobody would ask it, so the prompt says why it did not happen, as
+// move_the_prompt does. When it did, the prompt says nothing. A kind that is neither "text" nor "binary" is
+// left to the run, which refuses it.
+bool is_one_disk_word(const std::vector<std::bitset<16>> &row, Code &word_code, std::vector<std::string> &given)
+{
+    const Code code = code_at(row, 0);
+    if (code != word::code_of(1, 8, 1) && code != word::code_of(1, 8, 4) && code != word::code_of(1, 8, 7) &&
+        code != word::code_of(1, 18, 8))
+        return false;
+    if (code_at(row, 1) != token::left_parenthesis_token)
+        return false;
+    given.clear();
+    std::size_t at = 2;
+    while (code_at(row, at) == token::string_token) {
+        given.push_back(string_at(row, at));
+        if (code_at(row, at) != token::comma_token)
+            break;
+        ++at;
+    }
+    if (code_at(row, at) != token::right_parenthesis_token)
+        return false;
+    const Code after = code_at(row, at + 1);
+    if (after != token::line_end_token && after != token::end_of_file_token && after != token::comment_token)
+        return false;
+    const std::size_t wanted = code == word::code_of(1, 8, 4) ? 2 : 1;
+    if (given.size() != wanted || (wanted == 2 && given[1] != "text" && given[1] != "binary"))
+        return false;
+    word_code = code;
+    return true;
+}
+
+signed long long int do_the_disk_word(Code word_code, const std::vector<std::string> &given,
+                                      const FunctionTable &functions)
+{
+    if (word_code == word::code_of(1, 18, 8)) {
+        const NumberRow *library = functions[word_code];
+        if (library == nullptr || library->scenarios.directory == nullptr)
+            return report_error("satl(prompt): satellite.directory.create has no library built for it yet", not_built_yet);
+        const DirectoryReply reply = library->scenarios.directory(given[0], true, &asked_to_stop);
+        if (stops_the_program(reply.code))
+            return report_error("satl(prompt): satellite.directory.create " + shown(given[0]), reply.code);
+        if (!reply.flag)
+            say_why(shown(reply.reason));
+        return success;
+    }
+    if (word_code == word::code_of(1, 8, 7)) {
+        const DiskAnswer deleted = delete_a_file(given[0]);
+        if (!deleted.done)
+            say_why(shown(deleted.why));
+        return success;
+    }
+    const bool binary = given.size() == 2 && given[1] == "binary";
+    const auto made =
+        satellite_file::make_new(given[0], binary ? satellite_file::Kind::binary : satellite_file::Kind::text);
+    if (made == nullptr)
+        return report_error("satl(prompt): satellite.file.new could not make a handle -- the machine is out of memory",
+                            error);
+    // A BINARY FILE THAT WAS MADE says nothing: its handle is the part not built (FO-8), and nobody holds it here.
+    if (!made->ok() && !(binary && made->code() == not_built_yet))
+        say_why(shown(made->error()));
     return success;
 }
 
@@ -581,6 +658,7 @@ signed long long int run_one_line(const std::string &line, const FunctionTable &
     std::string path;
     bool given = false;
     Code word_code = 0;
+    std::vector<std::string> given_strings;
 
     // WHAT THE SESSION DECLARED IS AROUND THE LINE, when it has declared anything.
     if (!program.declared.empty()) {
@@ -588,6 +666,8 @@ signed long long int run_one_line(const std::string &line, const FunctionTable &
             return draw_the_listing(path, given, word_code, functions);
         if (is_one_change(registry.front(), path))
             return move_the_prompt(path, functions);
+        if (is_one_disk_word(registry.front(), word_code, given_strings))
+            return do_the_disk_word(word_code, given_strings, functions);
         return run_in_the_prompt_program(line, program, functions, threads, batches, kept, state);
     }
 
@@ -600,6 +680,8 @@ signed long long int run_one_line(const std::string &line, const FunctionTable &
         return draw_the_listing(path, given, word_code, functions);
     if (is_one_change(registry.front(), path))
         return move_the_prompt(path, functions);
+    if (is_one_disk_word(registry.front(), word_code, given_strings))
+        return do_the_disk_word(word_code, given_strings, functions);
 
     return run_typed_line(registry, functions, kept, state);
 }
@@ -610,6 +692,16 @@ signed long long int run_session(const Arguments &arguments, const FunctionTable
                                  StartupThreads &threads, MachineState &state)
 {
     prompt::LineReader reader;
+    // THE CONSOLE'S LINES ARE THE STORE'S (KEY_PLAN.md KEY-3): every line the reader answers at a
+    // terminal -- the prompt's, and input()'s through read_for_the_program -- is added to them, and the
+    // store writes it into the console's file. With no store there is no console, and nothing is kept.
+    // UP AND DOWN GO THROUGH THEM (KEY-4), so nothing here remembers a line: the History the session
+    // filled, with the lines it ran and never an input() answer, is gone. LEFT AND RIGHT GO ON TO THE
+    // CONSOLES BEFORE THIS ONE (KEY-6), the ones the store's walk found as satl started (KEY-5).
+    if (ConsoleFiles *store = console_files()) {
+        reader.keep_lines_in(&store->lines());
+        reader.left_reaches(&store->earlier());
+    }
     stop_flag() = &asked_to_stop;
     the_sessions_reader = &reader;
     input_source() = read_for_the_program;
@@ -783,7 +875,6 @@ WE DO NOT ACCEPT DONATIONS, GIFTS OR A BUYOUT REQUEST OF ANY VALUE(S) OR ITEM(S)
         if (block.empty()) {
             if (typed.empty())
                 continue;
-            reader.remember(line);
             // AND UNDER satellite TOO (the author's D of 2026-10-11, of exit, quit, run and interpret: "both should
             // work"): satellite.exit and satellite.quit leave as exit and quit do.
             if (typed == "exit" || typed == "quit" || typed == "satellite.exit" || typed == "satellite.quit")
@@ -816,8 +907,6 @@ WE DO NOT ACCEPT DONATIONS, GIFTS OR A BUYOUT REQUEST OF ANY VALUE(S) OR ITEM(S)
                                     batches, kept, state, program));
                 continue;
             }
-        } else if (!typed.empty()) {
-            reader.remember(line);
         }
 
         // THE LINE JOINS THE BLOCK.

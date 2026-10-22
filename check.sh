@@ -2053,6 +2053,31 @@ else
     timeout 300 build/file_cases "${TMPDIR:-/tmp}" > build/file_cases.out 2>&1; code=$?
     expect "satellite.variable.file's handle: $(grep -c '^ok' build/file_cases.out) cases (build/file_cases.out)" 0 $code
 fi
+# satellite.file.delete AND WHAT IT ASKS WITH (FILE_AND_DRIVE_PLAN.md FD-2): the delete, su on a pty and sudo -S
+# through stand-ins the cases write -- never a real su or sudo -- and the hidden question and the yes-or-no on a
+# pty, in a folder it makes inside $TMPDIR and removes.
+if [ ! -x build/file_moves_cases ]; then expect "build/file_moves_cases is built (make)" built missing
+elif ! make -sq build/file_moves_cases 2>/dev/null; then
+    expect "build/file_moves_cases is as new as its sources (make build/file_moves_cases)" current stale
+else
+    timeout 300 build/file_moves_cases "${TMPDIR:-/tmp}" > build/file_moves_cases.out 2>&1; code=$?
+    expect "satellite.file.delete and its questions: $(grep -c '^ok' build/file_moves_cases.out) cases (build/file_moves_cases.out)" 0 $code
+fi
+# THE CONSOLE'S STORE WITH NO CONSOLE AROUND IT (KEY_PLAN.md KEY-1 to KEY-3): the day from a clock of
+# its own, the day's folder made 0700 at the first Enter and not before, the console's own file claimed
+# in it at the same Enter, every Enter kept as a line of it, less what the filter drops, and S017 where
+# either cannot be made or a line cannot be written -- in a folder it makes inside $TMPDIR and removes,
+# with HOME pointed into it.
+if [ ! -x build/console_files_cases ]; then expect "build/console_files_cases is built (make)" built missing
+elif ! make -sq build/console_files_cases 2>/dev/null; then
+    expect "build/console_files_cases is as new as its sources (make build/console_files_cases)" current stale
+else
+    timeout 300 build/console_files_cases "${TMPDIR:-/tmp}" > build/console_files_cases.out 2>&1; code=$?
+    expect "the console's store: $(grep -c '^ok' build/console_files_cases.out) cases (build/console_files_cases.out)" 0 $code
+fi
+# HOW MUCH LEFT REACHES (KEY_PLAN.md KEY-6): the newest arguments.input.cache mb of the console files, the
+# author's "most recent 32mb worth of files". The harness above gives the store its own value, never the row.
+expect "arguments.input.cache is 32: Left reaches the newest 32 mb of console files" 32 "$(config_row input.cache)"
 # satellite.variable.file IN A PROGRAM (2026-09-18, SATELLITE_FILE_OPERATIONS FO-1 to
 # FO-4 and 3.8). Each program is copied into a scratch folder and run there, because a
 # relative path is the folder of the .satl that wrote it -- so what they make lands
@@ -2165,6 +2190,28 @@ expect "satellite.interpret and satellite.run run a program, and satellite.quit 
        "$code|$(grep -c '^Hello, World!$' build/repl_satellite_words.out)|$(grep -c '^not reached$' build/repl_satellite_words.out)"
 printf 'satellite.exit\nsatellite.console.display("not reached")\n' | "$interpreter" --repl > build/repl_satellite_exit.out 2>&1; code=$?
 expect "satellite.exit leaves the prompt as exit does" "0|0" "$code|$(grep -c '^not reached$' build/repl_satellite_exit.out)"
+# AND IN satl'S OWN CONSOLE, A SATELLITE OF ITS OWN FOR EACH PROGRAM (the author, 2026-10-20: "Just create
+# another satellite, for each program"): there `interpret` and `run` start `satl --console --run <file>
+# [words...]` and the prompt comes back at once -- unless SATL_NO_WINDOW is set, which keeps the program in
+# that console, waited for, as before. That needs a screen, so build/prompt_run_cases proves its
+# two halves with none (satl/prompt_run_cases.cpp): the prompt's choice -- here and waited for, as in the
+# rows above, or a satellite while satl's own console is open -- and the start the console menu shares,
+# watched by a stand-in for satl: its words, its folder, its session, its streams, no wait, nothing left to
+# reap, and why one could not start. Stale harnesses are refused as above.
+if [ ! -x build/prompt_run_cases ]; then expect "build/prompt_run_cases is built (make)" built missing
+elif ! make -sq build/prompt_run_cases 2>/dev/null; then
+    expect "build/prompt_run_cases is as new as its sources (make build/prompt_run_cases)" current stale
+else
+    timeout 300 build/prompt_run_cases "${TMPDIR:-/tmp}" > build/prompt_run_cases.out 2>&1; code=$?
+    expect "interpret and run, here and waited for or in a satellite of its own: $(grep -c '^ok' build/prompt_run_cases.out) cases (build/prompt_run_cases.out)" 0 $code
+fi
+# AND ONE START FOR THE TWO: the console menu's New window and Open… start their satl through the function
+# the prompt does (machine/satellite_of_its_own.hpp), and the menu keeps no start of its own -- no call to
+# a g_spawn or a fork. The prompt's start runs on the desk, where the menu's does (window_run.cpp), so a
+# satellite's window never starts at the interpreter's nice 19; and Open… hands the start the file chosen,
+# which the harness cannot see -- console_menu.cpp is GTK's.
+expect "the console menu and the prompt start a satellite through the one function, the prompt's on the desk as the menu's is, Open… with the file chosen, and the menu has no start of its own" "1|1|1|1|0" \
+       "$(grep -c 'start_a_satellite_of_its_own(words, why)' satellite/satellite_variable_window/console_menu.cpp)|$(grep -c 'start_a_satellite_on_the_desk(given, why)' satellite/satl/prompt_run.cpp)|$(grep -cF 'on_the_desk([&] { started = start_a_satellite_of_its_own(words, why); });' satellite/bytecode/window_run.cpp)|$(grep -c 'words.push_back(file);' satellite/satellite_variable_window/console_menu.cpp)|$(grep -c 'g_spawn[a-z_]*(\|fork(' satellite/satellite_variable_window/console_menu.cpp)"
 
 # A PAYLOAD'S CODES ARE NEVER READ AS TOKENS. A character's own number can be any 16 bits,
 # so a string's last code can equal a word's or a token's (the payload sweep, 2026-09-17).
@@ -3944,7 +3991,8 @@ expect "a canvas, its five strokes, .clear and .save pass the checker, and stop 
 # cannot have it, and the run is refused with no_display BEFORE the program runs:
 # the file it would have written is not there. Once with no terminal (setsid), as
 # a launcher starts it; once under `script`, with a terminal of its own and stdout
-# on it, as a shell starts it -- the case that used to run in that terminal.
+# on it, as a shell starts it -- the case that used to run in that terminal, and
+# since 2026-10-21 gives it back at once (below).
 expect "satellite.console.new is 1 5 10, under satellite.console" 1 \
        "$(grep -cP '^1 5 10\tsatellite.console.new\(title, width, height\)\t' words/words.tsv)"
 expect "display, typed, home, columns and rows are 0x0B4A to 0x0B4E, in that order" "1|1|1|1|1" \
@@ -4052,12 +4100,20 @@ expect "with nobody reading its output and no screen to reach, satl is refused w
 # THE REPORT GOES WHERE satl WAS POINTED BEFORE THE SWITCH -- stderr, a launcher's
 # journal -- and it names the console, which until 2026-10-05 it was forbidden to.
 expect "... and says the console could not be opened" 1 "$(grep -c 'the console could not be opened' build/auto_console.err)"
-rm -f build/auto_console/auto_console.se
+rm -f build/auto_console/auto_console.se build/auto_console_tty.err
+# FROM A TERMINAL, SINCE 2026-10-21 ("the process has to detach from the console when you start it with a
+# console"): satl gives the shell back at once with 0, and a satl of its own, in its own session, asks for
+# the console -- and is refused here, its report going where the first one's stderr was pointed.
 env -u SATL_NO_WINDOW -u DISPLAY -u XAUTHORITY WAYLAND_DISPLAY=satl-no-such-display XDG_RUNTIME_DIR="$PWD/build/no_display" \
-    script -qec "timeout 30 '$interpreter' build/auto_console/auto_console.satl" /dev/null < /dev/null > build/auto_console_tty.out 2>&1
-expect "... and from a terminal it is the same: a controlling terminal no longer keeps satl in it" "50|" \
-       "$?|$(cat build/auto_console/auto_console.se 2>/dev/null)"
-expect "... with the same report on that terminal" 1 "$(grep -c 'the console could not be opened' build/auto_console_tty.out)"
+    script -qec "timeout 30 '$interpreter' build/auto_console/auto_console.satl 2> build/auto_console_tty.err" /dev/null < /dev/null > build/auto_console_tty.out 2>&1
+tty_status=$?
+for _ in $(seq 1 100); do
+    grep -q 'the console could not be opened' build/auto_console_tty.err 2> /dev/null && break
+    sleep 0.1
+done
+expect "... and from a terminal satl gives the terminal back at once, with 0, and runs nothing there" "0|" \
+       "$tty_status|$(cat build/auto_console/auto_console.se 2>/dev/null)"
+expect "... while a satl of its own asks for the console, and its refusal goes where satl's stderr was" 1 "$(grep -c 'the console could not be opened' build/auto_console_tty.err)"
 expect "the rule's two reasons are asked in order, /dev/tty is not, and bare satl in a console is the prompt" "1|1|0|1" \
        "$(grep -c 'const char \*off = std::getenv("SATL_NO_WINDOW");' satellite/bytecode/window_run.cpp)|$(grep -c 'S_ISFIFO(out.st_mode) || S_ISREG(out.st_mode)' satellite/bytecode/window_run.cpp)|$(grep -c 'open("/dev/tty"' satellite/bytecode/window_run.cpp)|$(grep -c 'if (command_line.command == Command::opening)' satellite/structured-library.cpp)"
 expect "satl-term is gone: no folder, no build rule, and the launcher starts satl --console" "0|0|1" \
@@ -4097,6 +4153,12 @@ WIN_EOF
 headless --console build/console_launch_file.satl > build/console_launch_file.out 2>&1
 expect "satl --console <file> with no screen is refused before the program runs" "50|" \
        "$?|$(grep -x before build/console_launch_file.out)"
+# AND `satl --console --run <file> [words...]`, what the prompt in satl's own console starts a satellite with
+# (satl/prompt_run.cpp): a run satl takes, refused here for want of a screen and never by the command line,
+# whose 23 would come after the prompt had said the program was running.
+headless --console --run build/console_launch_file.satl a b > build/console_launch_run.out 2>&1
+expect "satl --console --run <file> words, what a satellite is started with, is a run satl takes: refused for want of a screen, never by the command line" "50|" \
+       "$?|$(grep -x before build/console_launch_run.out)"
 "$interpreter" --console --version > /dev/null 2>&1; expect "--console --version is refused: --version is the whole command line" 23 $?
 "$interpreter" --console --rebuild > /dev/null 2>&1; expect "--console --rebuild is refused: it prints and exits" 23 $?
 "$interpreter" --console --license > /dev/null 2>&1; expect "--console --license is refused the same way" 23 $?
@@ -5986,8 +6048,11 @@ text = text[text.find("-----\r\n") + 7:] if "-----\r\n" in text else text
 print(repr(text) + "|" + ("signal %d" % os.WTERMSIG(status) if os.WIFSIGNALED(status) else "exit %d" % os.WEXITSTATUS(status)))
 PTY_EOF
 }
+# SINCE KEY-4 (KEY_PLAN.md) input() at a terminal reads through the line reader, so its bytes are the reader's:
+# bracketed paste on before the prompt and off after the answer, the answer echoed by the reader, and Ctrl-C
+# answered by the reader (no ^C from the kernel) before satl still goes by SIGINT.
 expect "at a terminal: 003's bytes for display's options, and every colour 004 added, put back at the end" \
-       "'\\r\\n\\x1b[1;3;38;2;255;136;0;48;2;0;0;0mwarning\\x1b[0m\\r\\nLoading... done\\r\\nstatus: \\x1b[38;2;0;255;0mOK\\x1b[39m now\\r\\n\\x1b[38;2;255;0;0ma\\x1b[38;2;0;0;255mb\\x1b[38;2;255;0;0mc\\x1b[39m\\r\\n\\x1b[48;2;135;206;235msky\\x1b[0m\\r\\n\\x1b[38;2;255;136;0morange\\x1b[0m\\r\\n\\x1b[38;2;0;255;0mgreen wins\\x1b[0m\\r\\nplain\\r\\ntrue\\r\\n\\x1b[H\\x1b]11;rgb:10/10/10\\x1b\\\\\\x1b[38;2;255;136;0mname? \\x1b[0mbob\\r\\nhello bob\\r\\n\\x1b]111\\x1b\\\\'|exit 0" \
+       "'\\r\\n\\x1b[1;3;38;2;255;136;0;48;2;0;0;0mwarning\\x1b[0m\\r\\nLoading... done\\r\\nstatus: \\x1b[38;2;0;255;0mOK\\x1b[39m now\\r\\n\\x1b[38;2;255;0;0ma\\x1b[38;2;0;0;255mb\\x1b[38;2;255;0;0mc\\x1b[39m\\r\\n\\x1b[48;2;135;206;235msky\\x1b[0m\\r\\n\\x1b[38;2;255;136;0morange\\x1b[0m\\r\\n\\x1b[38;2;0;255;0mgreen wins\\x1b[0m\\r\\nplain\\r\\ntrue\\r\\n\\x1b[H\\x1b]11;rgb:10/10/10\\x1b\\\\\\x1b[?2004h\\x1b[38;2;255;136;0mname? \\x1b[0m\\x1b[0Kbob\\r\\r\\n\\x1b[?2004lhello bob\\r\\n\\x1b]111\\x1b\\\\'|exit 0" \
        "$(at_a_terminal tests/console_from_003.satl bob)"
 
 # NO_COLOR SET AND NOT EMPTY DROPS THE COLOURS AND KEEPS BOLD AND ITALIC (no-color.org),
@@ -5999,7 +6064,7 @@ expect "NO_COLOR: bold kept, every colour dropped, the terminal untouched" \
 # CTRL-C PUTS THE TERMINAL'S COLOURS BACK before satl goes, and it still goes by SIGINT.
 printf 'satellite.include(satellite)\nsatellite.capsule satellite.main()\n{\n    satellite.terminal.foreground(xFF8800)\n    satellite.variable.string a = satellite.console.input("waiting? ")\n    satellite.return(satellite)\n}\n' > build/console_ctrl_c.satl
 expect "Ctrl-C at the prompt after satellite.terminal.foreground writes OSC 110 -- only what it changed -- then dies of SIGINT" \
-       "'\\r\\n\\x1b]10;rgb:ff/88/00\\x1b\\\\waiting? ^C\\x1b]110\\x1b\\\\'|signal 2" \
+       "'\\r\\n\\x1b]10;rgb:ff/88/00\\x1b\\\\\\x1b[?2004hwaiting? \\r\\r\\n\\x1b[?2004l\\x1b]110\\x1b\\\\'|signal 2" \
        "$(at_a_terminal build/console_ctrl_c.satl --ctrl-c)"
 
 # THE END OF THE INPUT IS S830, EXIT 55 -- never an empty line answered forever.
@@ -6537,6 +6602,75 @@ expect "system: a row for every device findmnt names under /dev, once however ma
 printf 'satellite.include(satellite)\nsatellite.capsule satellite.main()\n{\n    satellite.directory.system()\n    satellite.return(satellite)\n}\n' > build/drives_in_a_program.satl
 expect "system: in a program it reads the drives and says there is no list type to hand them back in yet, as list() does" 1 \
        "$("$interpreter" build/drives_in_a_program.satl 2>&1 | tr '\n' ' ' | grep -c 'satellite.directory.system() read [0-9]* names')"
+
+# FILE_AND_DRIVE_PLAN.md FD-1 (the author, 2026-10-21): satellite.directory.create makes a folder and every
+# missing folder above it, and satellite.file.new(path, "binary") makes the empty file. Typed alone at the
+# prompt each says why it could not, in one line, and says nothing when it did (rule 1).
+fd_room=$(mktemp -d "${TMPDIR:-/tmp}/satl_fd.XXXXXX")
+fd_out=$PWD/build/fd1_made.out
+(cd "$fd_room" && printf '%s\n' 'satellite.directory.create("a/b/c")' 'satellite.directory.create("a/b/c")' \
+     'satellite.file.new("a/b/c/one.bin", "binary")' 'satellite.file.new("a/b/c/two.txt")' |
+     "$interpreter" --repl > "$fd_out" 2>/dev/null)
+expect "FD-1 create: every missing folder is made, a second time is fine, new makes a binary and a text file empty, and the prompt says nothing" \
+       "dir|0|0|0" \
+       "$([ -d "$fd_room/a/b/c" ] && echo dir)|$(stat -c %s "$fd_room/a/b/c/one.bin" 2>&1)|$(stat -c %s "$fd_room/a/b/c/two.txt" 2>&1)|$(wc -c < "$fd_out")"
+(cd "$fd_room" && printf '%s\n' 'satellite.directory.create("a/b/c/one.bin/d")' 'satellite.file.new("a/b/c/two.txt")' \
+     'satellite.file.new("a/b/c/one.bin", "binary")' 'satellite.directory.create("")' \
+     'satellite.directory.create("a/b/c/two.txt")' 'satellite.file.new("sub/")' |
+     "$interpreter" --repl > "$fd_out" 2>/dev/null)
+expect "FD-1 typed alone: a file in create's way, new on a file already there, and new on a path ending in /, each say why in one line" \
+       "a/b/c/one.bin is a file, not a folder, so nothing can be made in it|something is already at a/b/c/two.txt, and new never replaces it: nothing was made (open opens it)|something is already at a/b/c/one.bin, and new never replaces it: nothing was made (open opens it)|satellite.directory.create needs the folder to make|a/b/c/two.txt is a file, not a folder: nothing was made|sub/ ends in /, so it names a folder and not a file: nothing was made" \
+       "$(paste -sd '|' "$fd_out")"
+cat > "$fd_room/fd1.satl" <<'FD1_EOF'
+satellite.include(satellite)
+satellite.capsule satellite.main()
+{
+    satellite.console.display(satellite.directory.create("p/q"))
+    satellite.file.new("p/q/f.txt")
+    satellite.console.display(satellite.directory.create("p/q/f.txt/r"))
+    satellite.variable.file made = satellite.file.new("p/q/x.bin", "binary")
+    satellite.console.display(made.satellite.ok())
+    satellite.console.display(satellite.directory.create("/p/two/deeper"))
+    satellite.return(satellite)
+}
+FD1_EOF
+"$interpreter" "$fd_room/fd1.satl" > "$fd_out" 2>/dev/null
+expect "FD-1 in a program: create answers true and false, never stopping it, and its paths are the program's folder's, as new's are -- a leading / too, when its first folder is there" \
+       "0|true false false true|dir|0|dir" \
+       "$?|$(paste -sd ' ' "$fd_out")|$([ -d "$fd_room/p/q" ] && echo dir)|$(stat -c %s "$fd_room/p/q/x.bin" 2>&1)|$([ -d "$fd_room/p/two/deeper" ] && echo dir)"
+rm -rf -- "$fd_room"
+
+# FD-2 (the author, 2026-10-21): satellite.file.delete goes through, or asks for the password of the account that
+# may delete the file. A file of the person's own goes with nothing said, a write-protected one too; a folder and
+# a missing file say why; and with no console to ask on -- the prompt piped -- a file in a folder the person may
+# not write stays, and says so. As root every folder is writable, so that part is not asked.
+fd_room=$(mktemp -d "${TMPDIR:-/tmp}/satl_fd.XXXXXX")
+mkdir "$fd_room/folder" "$fd_room/locked"
+printf 'x\n' > "$fd_room/mine"; printf 'x\n' > "$fd_room/protected"; chmod 444 "$fd_room/protected"
+printf 'x\n' > "$fd_room/locked/kept"; chmod 555 "$fd_room/locked"
+(cd "$fd_room" && printf '%s\n' 'satellite.file.delete("mine")' 'satellite.file.delete("protected")' \
+     'satellite.file.delete("folder")' 'satellite.file.delete("nowhere")' 'satellite.file.delete("locked/kept")' |
+     "$interpreter" --repl > "$fd_out" 2>/dev/null)
+if [ "$(id -u)" -ne 0 ]; then
+    expect "FD-2 typed alone: delete takes the person's file and a write-protected one saying nothing, says why for a folder and a missing file, and with no console leaves a file it may not take" \
+           "gone|gone|folder is a folder, and satellite.file.delete deletes files|there is no file nowhere|locked/kept is not yours to delete, and there is no console to ask $(id -un)'s password on, so it was not deleted|kept" \
+           "$([ -e "$fd_room/mine" ] || echo gone)|$([ -e "$fd_room/protected" ] || echo gone)|$(paste -sd '|' "$fd_out")|$([ -e "$fd_room/locked/kept" ] && echo kept)"
+fi
+chmod 755 "$fd_room/locked"
+cat > "$fd_room/fd2.satl" <<'FD2_EOF'
+satellite.include(satellite)
+satellite.capsule satellite.main()
+{
+    satellite.file.new("doomed.txt")
+    satellite.console.display(satellite.file.delete("doomed.txt"))
+    satellite.console.display(satellite.file.delete("doomed.txt"))
+    satellite.return(satellite)
+}
+FD2_EOF
+"$interpreter" "$fd_room/fd2.satl" > "$fd_out" 2>/dev/null
+expect "FD-2 in a program: delete answers true, then false once the file is gone, and never stops the program" \
+       "0|true false|gone" "$?|$(paste -sd ' ' "$fd_out")|$([ -e "$fd_room/doomed.txt" ] || echo gone)"
+rm -rf -- "$fd_room"
 
 # satellite.variable.info (the author, 2026-09-25, satellite.variable.info/README.md): a
 # list, one index a name -- name, size (a float) and size_type (b kb mb gb tb), a text
@@ -7092,6 +7226,13 @@ expect "... and a bare make (--always) raises it with nothing changed: plain mak
        "$(( $(config_row build) + 2 ))" "$(bn_row)"
 expect "a bare make passes --always and installs nothing; make install installs (050-build.mk, 080-install.mk)" "1|1|1" \
        "$(grep -c 'BARE_MAKE),--always' make_support/050-build.mk)|$(grep -c '^INSTALL_AFTER_BUILD ?= no' make_support/080-install.mk)|$(grep -c '^install: install-after-build' make_support/080-install.mk)"
+# AND AFTER A YES, THE ICONS (the author, 2026-10-20: "CAn you make a plain "make" ask if you want to
+# install the icons?"): asked at a terminal only while SATELLITE_ICONS has not answered already and
+# install.sh --icons-current says they are not in place, and never in a linked worktree, which
+# installs nothing; and an n is SATELLITE_ICONS=no to the installer, which sources the part that
+# puts them in. What it puts in, and its other rules, check_install.sh runs (make test).
+expect "a bare make asks about the icons after a yes, only while SATELLITE_ICONS has not answered and they are not in place, never in a linked worktree, and n leaves them out (050-build.mk, install.sh)" "1|1|1|1" \
+       "$(grep -cF 'if [ $$tty = yes ] && [ -z "$${SATELLITE_ICONS:-}" ] && ! sh satellite_enterprise/install.sh --icons-current &&' make_support/050-build.mk)|$(grep -cF '[ "$$(git rev-parse --git-dir 2>/dev/null)" = "$$(git rev-parse --git-common-dir 2>/dev/null)" ]; then' make_support/050-build.mk)|$(grep -cF '[nN]*) SATELLITE_ICONS=no ;; *) SATELLITE_ICONS=yes ;;' make_support/050-build.mk)|$(grep -cxF '. "$support/072-icons.sh"' satellite_enterprise/install.sh)"
 rm -rf "$bn_room"
 # A7: "let's refuse a main that doesnt have satellite.return(satellite) as the last line, but
 # still allow the user to satellite.return(satellite) to quit the interpreter from anywhere".

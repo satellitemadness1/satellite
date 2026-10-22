@@ -28,8 +28,8 @@
 // capsule runs on (it goes with its object), satellite.statement.for's own number inside its loop,
 // and `arguments`, the run's own rows.
 //
-// NOT satellite.system.delete(x) (1 22 1, numbered and not built): that is 003's word for deleting a
-// FILE from the disk. This deletes a NAME from memory.
+// NOT satellite.file.delete(path) (1 8 7, FILE_AND_DRIVE_PLAN.md FD-2), which deletes a FILE from the disk --
+// nor 003's satellite.system.delete(x) (1 22 1), numbered and never built. This deletes a NAME from memory.
 
 #include "token_codes.hpp"
 
