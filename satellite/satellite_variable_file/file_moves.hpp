@@ -41,4 +41,20 @@ struct DeleteAsker {
 };
 DeleteAsker who_may_delete(const struct stat &file, const struct stat &folder, uid_t me);
 
+// satellite.file.copy(path) (FD-3, rule 5): the file's bytes, and its mode as cp gives it (the nine permission bits
+// through the umask, never setuid or setgid), into $TMPDIR/.satl/tmp/file-current -- /tmp/.satl/tmp with TMPDIR
+// unset -- and the one there before it to the next file-previous-NNN. Its first name is kept in that folder's
+// `names`, for paste. Until the copy is whole the clipboard is as it was; two satl copying at once take turns.
+DiskAnswer copy_a_file(const std::string &path);
+
+// satellite.file.paste() and paste(d): file-current, under its first name, into `into` -- "." for the working
+// directory, as paste() passes; an empty name is refused. A file of that name already there is replaced only when
+// the person answers y (rule 6).
+DiskAnswer paste_a_file(const std::string &into);
+
+// satellite.file.move(path, d): the file into folder `into`, keeping its name -- a link itself, never what it
+// points to. Across drives a file is copied as paste copies and then removed, and a link is refused. The same
+// question before a replace; a hard link of the same file already there is refused, as mv refuses it.
+DiskAnswer move_a_file(const std::string &path, const std::string &into);
+
 } // namespace satellite004

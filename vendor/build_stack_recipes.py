@@ -930,8 +930,20 @@ def steps(c):
                                   "-Dapp=false", "-Dglade=false", "-Dterminfo=false",
                                   "-Da11y=true", "-Dfribidi=true",
                                   no_buildtype=True)),
-            ("ninja", ninja("build/vte")),
-            ("meson install", install("build/vte")),
+            # WHAT IS INSTALLED, AND NOT VTE'S 21 TESTS AND TOOLS (2026-10-22): they link GTK
+            # and glib as a program, and on a machine the stage was not built on that link is
+            # where it stops -- on Debian 13, libgtk-4.so's wl_fixes_interface (wayland 1.23)
+            # and glib-2.0.pc's AlmaLinux libatomic.so path -- when all satl takes is the
+            # archive. Built again whenever satl's C++ library changes (build_stack.py's
+            # CXX_PROJECTS), so that rebuild has to work wherever satl is built.
+            # AND ONLY WHAT THOSE TARGETS MAKE IS INSTALLED, --tags devel,runtime (the review,
+            # 2026-10-23): on a machine with msgfmt, VTE's po/ adds a .mo for every language,
+            # tagged i18n and not built by the targets above, and `meson install --no-rebuild`
+            # stops at the first one it cannot find. Left out with them: profile.d's vte.sh and
+            # vte.csh, which have no tag and which nothing here reads.
+            ("ninja", ninja("build/vte", "src/libvte-2.91-gtk4.a", "src/vte/vtetypebuiltins-gtk4.h",
+                            "src/vte-urlencode-cwd")),
+            ("meson install", install("build/vte", "--no-rebuild", "--tags", "devel,runtime")),
         ],
         provides=["lib/libvte-2.91-gtk4.a", "lib/pkgconfig/vte-2.91-gtk4.pc",
                   "include/vte-2.91-gtk4/vte/vte.h"],
@@ -939,7 +951,10 @@ def steps(c):
         deviations="src/meson.build:490 shared_library -> library, so that "
                    "--default-library=static yields the archive at all: "
                    "vendor/edit_journal/vte/001-static-library.patch, applied by "
-                   "build_stack.py's unpack. --buildtype not passed, for gtk's reason.",
+                   "build_stack.py's unpack. --buildtype not passed, for gtk's reason. "
+                   "ninja builds what is installed, not the tests and tools, and "
+                   "meson install --no-rebuild --tags devel,runtime, so no translations "
+                   "and no profile.d scripts (2026-10-22 and -23: the commands say why).",
     )
 
     return [zlib, libffi, expat, pcre2, gperf, fribidi, pixman,

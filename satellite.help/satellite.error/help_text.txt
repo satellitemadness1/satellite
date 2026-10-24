@@ -1,0 +1,78 @@
+--------------------------------------------------------------------------------
+SATELLITE 004: satellite.error
+--------------------------------------------------------------------------------
+
+satellite.error() catches errors. Write it right after the } of a block, with
+its own lines between { and }, and when anything in that block goes wrong while
+the program runs, the block stops at that line and the error block runs
+instead. Then the program carries on after the error block. Blank lines and
+comments may stand between the } and satellite.error(), and its brackets stay
+empty: any error runs it.
+
+It may follow a capsule's } -- satellite.main's too, a namespace's capsules, a
+spacesuit's capsules and its satellite.constructor -- or the } of an if (with
+its else), a while or a for. An if's or a loop's condition is part of what it
+guards.
+
+An error travels up to the nearest error block, through every capsule in
+between: a capsule called from a guarded block is guarded too, unless it has
+an error block of its own, which runs first. The error is not shown and not
+written to satellite.log, because the program handled it. An error inside an
+error block goes to the next error block out, or stops the program as usual.
+
+A capsule's error block sees the capsule's parameters, and a spacesuit's
+fields, but not the names its body declared: those ended with the body. A
+satellite.return(x) there hands x back. A statement's error block sees the
+names the statement could see. When satellite.main's error block has run, the
+program ends and satl exits 0.
+
+Some errors cannot be caught. Everything satl refuses before the program runs
+-- satellite.include(satellite), satellite.main or main's
+satellite.return(satellite) missing, a name never declared, a capsule given the
+wrong number of arguments -- still stops it before anything runs. So do Ctrl-C,
+a thread's .stop(), the display buffer overrunning (S840), and satl itself
+being in trouble (S9xx, S999 is no memory). satellite.return(satellite) is the
+program ending, not an error, and is never caught.
+
+satl refuses these before anything runs: satellite.error() with anything
+between its brackets, with no { after it, with no block right above it (the
+first line of a body, after a plain line, after another error block, or after a
+namespace's or a spacesuit's }), or used as a value; and an else written after
+an error block -- the error block goes after the else.
+
+example:
+
+    satellite.include(satellite)
+
+    satellite.capsule half(satellite.variable.number n, satellite.variable.number d)
+    {
+        satellite.return(n / d)
+    }
+    satellite.error()
+    {
+        satellite.console.display("half could not divide " + n.satellite.to_string() + " by 0")
+        satellite.return(0)
+    }
+
+    satellite.capsule satellite.main()
+    {
+        satellite.console.display(half(10, 0))
+        satellite.variable.number i = 0
+        satellite.statement.while (i < 3)
+        {
+            satellite.console.display(6 / (1 - i))
+            i = i + 1
+        }
+        satellite.error()
+        {
+            satellite.console.display("the loop stopped at " + i.satellite.to_string())
+        }
+        satellite.return(satellite)
+    }
+
+prints:
+
+    half could not divide 10 by 0
+    0
+    6/1
+    the loop stopped at 1

@@ -1,0 +1,34 @@
+--------------------------------------------------------------------------------
+SATELLITE 004: satellite.drive
+--------------------------------------------------------------------------------
+
+The drives this machine has. A line by itself, typed at the prompt or written in
+a program:
+
+    satellite.drive.list()
+
+satellite.drive.list() prints a table of every drive that holds a filesystem,
+mounted or not: its name (sdd1), its label, its type (ext4, ntfs, vfat ...),
+its size, where it is mounted -- or "not mounted" -- and the disk it is on, by
+the name the disk gives, with "(usb)" when it hangs off a USB port. A label,
+type or disk that is not known is "-". Each partition with a filesystem is a
+row. A disk's partition table, swap and an encrypted container hold no files and
+are not rows; the drive an encrypted or LVM volume opens as is one, named dm-0,
+dm-1 and so on, as the system names it.
+
+It reads what the system already knows about each disk, and never the disk
+itself, so a sleeping disk is not woken to be listed. It takes nothing, prints
+the same table at the prompt and in a program, and answers nothing.
+
+satellite.drive.mount("drive"), satellite.drive.release("drive") and
+satellite.drive.remount("drive") are numbered and not built yet.
+
+example:
+
+    satellite.include(satellite)
+
+    satellite.capsule satellite.main()
+    {
+        satellite.drive.list()
+        satellite.return(satellite)
+    }

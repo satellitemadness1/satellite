@@ -37,7 +37,7 @@ if [ "$home_root" = yes ]; then
             if ! mkdir -p -- "$_apps" 2> /dev/null ||
                 ! sed -e "s|^Exec=satl |Exec=$_satl |" -e "s|^TryExec=satl\$|TryExec=$_satl|" \
                     "$here/icons/org.satellite.terminal.desktop" > "$_launcher.installing" 2> /dev/null; then
-                rm -f -- "$_launcher.installing"
+                rm -f -- "$_launcher.installing" || :   # under set -e, as 065-config.sh's
                 step "could not write the launcher in $_apps; satl still runs by its path"
             else
                 if [ -f "$_launcher" ] &&
@@ -51,7 +51,7 @@ if [ "$home_root" = yes ]; then
                     ! command -v update-desktop-database > /dev/null 2>&1 ||
                         update-desktop-database -q -- "$_apps" 2> /dev/null || :
                 else
-                    rm -f -- "$_launcher.installing"
+                    rm -f -- "$_launcher.installing" || :
                     step "could not put the launcher in place at $_launcher"
                 fi
             fi

@@ -218,6 +218,37 @@ void declare_capsule(CapsuleTable &table, std::size_t r, std::size_t file_scope,
     table.sites.push_back(std::move(site));
 }
 
+std::size_t past_the_body_and_its_error_block(CapsuleTable &table, const std::vector<std::bitset<16>> &row,
+                                              std::size_t r, std::size_t brace, std::size_t made)
+{
+    const std::size_t past = past_matching_brace(row, brace);
+    if (past >= row.size())
+        return past;
+    const std::size_t body = error_block_after(row, past);
+    if (body == kNoErrorBlock)
+        return past;
+    const std::size_t ends = past_matching_brace(row, body - 1);
+    if (ends >= row.size()) {
+        std::size_t word = past;
+        while (code_at(row, word) == token::line_end_token || code_at(row, word) == token::comment_token) ++word;
+        refuse(table, r, word, satl_line_not_understood,
+               "satellite.error() is never closed -- the file ends inside it, so a } is missing: its own, or one "
+               "inside it");
+        return ends;
+    }
+    if (made < table.sites.size())
+        table.sites[made].error_body = body;
+    return ends;
+}
+
+void refuse_a_lone_error_block(CapsuleTable &table, const std::vector<std::bitset<16>> &row, std::size_t r,
+                               std::size_t &i)
+{
+    const std::size_t body = error_block_body(row, i);
+    refuse(table, r, i, satl_line_not_understood, body == kNoErrorBlock ? kErrorWrittenWrong : kErrorWithNoBlock);
+    i = body == kNoErrorBlock ? past_the_statement(row, i) : past_matching_brace(row, body - 1);
+}
+
 namespace {
 
 // WHERE LINE `line` (0-based) BEGINS IN THE ROW: its first code. The lexer ends every
@@ -503,6 +534,14 @@ void scan_row(CapsuleTable &table, const std::vector<std::bitset<16>> &row, std:
             continue;
         }
 
+        // A satellite.error() NO CAPSULE'S } CLAIMED (ERROR_BLOCK_PLAN.md): one right after a capsule was stepped
+        // over with it, so this one follows a namespace's }, a spacesuit's, another error block, or nothing.
+        if (code == word::code_of(1, 37)) {
+            refuse_a_lone_error_block(table, row, r, i);
+            line_begins = true;
+            continue;
+        }
+
         // A SWITCH THE FILE WRITES FOR ITSELF (MS-2): `satellite.arguments.missing = false`, at a file's
         // top where a satellite.library value stands, and nowhere else (argument_switches.hpp). Asked
         // before a payload is skipped, because the bare name `arguments` -- refused there, naming
@@ -575,12 +614,14 @@ void scan_row(CapsuleTable &table, const std::vector<std::bitset<16>> &row, std:
                 refuse(table, r, i, satl_line_not_understood,
                        "satellite.main goes at the top of its file, not inside " + where_is(table.scopes[here]) +
                            " -- it is where the program begins, and a space is reached by name from inside it");
+            const std::size_t made = table.sites.size();
             declare_capsule(table, r, file_scope, here, i, brace, name, std::move(parameters), Opened::file);
             // THE BODY IS STEPPED OVER WHOLE. What is inside a capsule is its
             // statements, and the checker judges those -- a satellite.capsule written
-            // there is refused by it, by name, rather than quietly declared here.
+            // there is refused by it, by name, rather than quietly declared here. Its
+            // satellite.error() block, when one follows, goes with it.
             const std::size_t capsule_at = i;
-            i = past_matching_brace(row, brace);
+            i = past_the_body_and_its_error_block(table, row, r, brace, made);
             // A BODY THE FILE ENDS INSIDE: its } -- or one inside it -- is missing, and the
             // program ran as though the end of the file closed it (the error sweep,
             // 2026-09-25). A matched } is never the row's last code: end_of_file_token is.
@@ -849,6 +890,19 @@ CapsuleTable capsules_in(const BytecodeRegistry &registry, const BytecodeFilenam
     // A SPACESUIT'S NAME WRITTEN AS A TYPE reaches its scope only once every file is
     // scanned and joined -- `tagged_report.run_log` names a spacesuit of another file.
     scan::resolve_types(table);
+    table.guarded.resize(registry.size());
+    for (std::size_t r = 0; r < registry.size(); ++r) {
+        const std::vector<std::bitset<16>> &row = registry[r];
+        bool writes_one = false;
+        for (std::size_t at = 0; at < row.size() && !writes_one;) {
+            if (token::carries_a_count(code_at(row, at))) { skip_payload(row, at); continue; }
+            writes_one = code_at(row, at) == word::code_of(1, 37);
+            ++at;
+        }
+        if (writes_one)
+            table.guarded[r] = guarded_statements_in(row);
+        table.writes_error_blocks = table.writes_error_blocks || writes_one;
+    }
     return table;
 }
 

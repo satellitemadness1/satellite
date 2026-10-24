@@ -863,6 +863,104 @@ if os.geteuid() != 0:
           'in a file run Ctrl-C at the password question ends satl by SIGINT, with ECHO put back (status %r)' % status)
     shutil.rmtree(locked, ignore_errors=True)
 
+# A PASTE ONTO A NAME ALREADY THERE ASKS FIRST, AND ONLY y REPLACES IT (FILE_AND_DRIVE_PLAN.md FD-3, rule 6): n keeps
+# the file and says so, y puts the copy in its place, and neither answer is a line of the console's file. The
+# clipboard is $TMPDIR/.satl/tmp, so this session's TMPDIR is a folder of its own -- never the person's /tmp/.satl.
+homes.append(fresh_home())
+clip = tempfile.mkdtemp(prefix='session_clip_')
+source = tempfile.mkdtemp(prefix='session_source_')
+pasting = tempfile.mkdtemp(prefix='session_paste_')
+with open(os.path.join(source, 'note.txt'), 'w') as note:
+    note.write('new\n')
+with open(os.path.join(pasting, 'note.txt'), 'w') as note:
+    note.write('old\n')
+def note_says():
+    with open(os.path.join(pasting, 'note.txt')) as note:
+        return note.read()
+tmpdir_before = os.environ.get('TMPDIR')
+os.environ['TMPDIR'] = clip
+t = session_in(homes[-1])
+if tmpdir_before is None:
+    del os.environ['TMPDIR']
+else:
+    os.environ['TMPDIR'] = tmpdir_before
+typed_lines = ['satellite.file.copy("%s/note.txt")' % source, 'satellite.file.paste("%s")' % pasting,
+               'satellite.file.paste("%s")' % pasting]
+t.at_prompt()
+t.type(typed_lines[0].encode() + b'\r')
+t.at_prompt()
+t.type(typed_lines[1].encode() + b'\r')
+asked_once = t.wait_for(lambda t: b'-- replace it? [y/N]' in t.raw)
+t.type(b'n\r')
+kept_said = t.wait_for(lambda t: b'is already there, and it was kept' in t.raw)
+after_no = note_says()
+t.at_prompt()
+t.type(typed_lines[2].encode() + b'\r')
+asked_again = t.wait_for(lambda t: t.raw.count(b'-- replace it? [y/N]') == 2)
+t.type(b'y\r')
+t.pump(0.5)
+t.at_prompt()
+after_yes = note_says()
+t.type(b'\x04')
+status = t.finish()
+kept = file_of(homes[-1])
+check(status == 0 and asked_once and kept_said and after_no == 'old\n' and asked_again and after_yes == 'new\n' and
+      kept == ('\n'.join(typed_lines) + '\n').encode(),
+      'a paste onto a name already there asks; n keeps the file and says so, y replaces it, and the console\'s file '
+      'holds the three typed lines and neither answer (%r)' % kept)
+for folder in (clip, source, pasting):
+    shutil.rmtree(folder, ignore_errors=True)
+
+# satellite.console.bash ON THE CONSOLE ITSELF (the author, 2026-10-23: "so I don't have to use a regular console
+# anymore"): what a command asks is answered by typing at satl's terminal -- its input is the terminal, not a pipe --
+# and Ctrl-C stops a command and gives the prompt back, with satl there to run the next line.
+homes.append(fresh_home())
+t = session_in(homes[-1])
+t.at_prompt()
+t.type(b'satellite.console.bash("read -p \'name? \' n; echo hi $n")\r')
+asked = t.wait_for(lambda t: t.raw.count(b'name? ') >= 2)   # the line's own echo is the first
+t.type(b'bob\r')
+answered = t.wait_for(lambda t: b'hi bob' in t.raw)
+t.at_prompt()
+t.type(b'satellite.console.bash("sleep 30; echo never")\r')
+t.pump(1.0)
+t.type(b'\x03')
+t.at_prompt()
+t.type(b'satellite.console.display("after the stop")\r')
+after = t.wait_for(shows_row('after the stop'))
+# A JOB OF ITS OWN (the review, 2026-10-23): two Ctrl-C at a command that catches the first are the command's, and
+# satl -- which had ended at the second -- is still there; an inner shell killed with kill -9 leaves the terminal
+# satl's again; and a last line with no newline is not drawn over by the prompt after it.
+t.at_prompt()
+t.type(b'satellite.console.bash("trap \'echo caught\' INT; sleep 2; sleep 2")\r')
+t.pump(0.7)
+t.type(b'\x03')
+t.pump(0.5)
+t.type(b'\x03')
+t.at_prompt()
+t.type(b'satellite.console.display("after two")\r')
+after_two = t.wait_for(shows_row('after two'))
+t.at_prompt()
+t.type(b'satellite.console.bash("bash --norc --noprofile -i")\r')
+t.pump(1.0)
+t.type(b'kill -9 $$\r')
+t.at_prompt()
+t.type(b'satellite.console.display("after the kill")\r')
+after_kill = t.wait_for(shows_row('after the kill'))
+t.at_prompt()
+t.type(b'satellite.console.bash("printf no-newline-here")\r')
+kept = t.wait_for(shows_row('no-newline-here'))
+t.at_prompt()
+kept = kept and shows_row('no-newline-here')(t)
+t.type(b'\x04')
+status = t.finish()
+check(status == 0 and asked and answered and after and b'never' not in t.raw.replace(b'echo never', b''),
+      'console.bash: a question the command asks is answered at the terminal, and Ctrl-C stops it and gives the '
+      'prompt back (status %r)' % status)
+check(status == 0 and after_two and after_kill and kept,
+      'console.bash runs as a job of its own: two Ctrl-C at a command that catches one leave satl running, an inner '
+      'shell killed with kill -9 gives the terminal back, and a last line with no newline stays on the screen')
+
 for home in homes:
     shutil.rmtree(home, ignore_errors=True)
 shutil.rmtree(room, ignore_errors=True)

@@ -76,4 +76,8 @@ TOPICS:
 
 35) satellite.convert (a value as a whole number or a float: satellite.convert.number(7 / 2) is 4, satellite.convert.whole(7 / 2) is 3)
 
-36) satellite.file (make and delete files, and make folders: satellite.file.new, satellite.file.delete, satellite.directory.create)
+36) satellite.file (make, copy, paste, move and delete files, and make folders: satellite.file.new, satellite.file.copy, satellite.file.paste, satellite.file.move, satellite.file.delete, satellite.directory.create)
+
+37) satellite.drive (every drive that holds a filesystem, mounted or not: satellite.drive.list)
+
+38) satellite.error (a block after a block's }: any error in that block runs it instead)

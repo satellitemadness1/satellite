@@ -315,15 +315,22 @@ signed long long int move_the_prompt(const std::string &path, const FunctionTabl
 }
 
 // A WHOLE LINE THAT IS ONE OF THE DISK'S WORDS (FILE_AND_DRIVE_PLAN.md rule 1), decided on the compiled line as a
-// folder change is: satellite.file.new, satellite.file.delete and satellite.directory.create, given written
-// strings and nothing after them. In a program each answers a value -- a file, or true or false -- that is
+// folder change is: satellite.file.new, delete, copy, paste and move, and satellite.directory.create, given
+// written strings and nothing after them. In a program each answers a value -- a file, or true or false -- that is
 // the program's to ask; typed alone nobody would ask it, so the prompt says why it did not happen, as
 // move_the_prompt does. When it did, the prompt says nothing. A kind that is neither "text" nor "binary" is
 // left to the run, which refuses it.
+// delete, copy, paste(), paste(d) and move -- file_moves.hpp's.
+bool moves_a_file(Code code)
+{
+    return code == word::code_of(1, 8, 7) || code == word::code_of(1, 8, 8) || code == word::code_of(1, 8, 9) ||
+           code == word::code_of(1, 8, 10) || code == word::code_of(1, 8, 11);
+}
+
 bool is_one_disk_word(const std::vector<std::bitset<16>> &row, Code &word_code, std::vector<std::string> &given)
 {
     const Code code = code_at(row, 0);
-    if (code != word::code_of(1, 8, 1) && code != word::code_of(1, 8, 4) && code != word::code_of(1, 8, 7) &&
+    if (code != word::code_of(1, 8, 1) && code != word::code_of(1, 8, 4) && !moves_a_file(code) &&
         code != word::code_of(1, 18, 8))
         return false;
     if (code_at(row, 1) != token::left_parenthesis_token)
@@ -341,8 +348,12 @@ bool is_one_disk_word(const std::vector<std::bitset<16>> &row, Code &word_code, 
     const Code after = code_at(row, at + 1);
     if (after != token::line_end_token && after != token::end_of_file_token && after != token::comment_token)
         return false;
-    const std::size_t wanted = code == word::code_of(1, 8, 4) ? 2 : 1;
-    if (given.size() != wanted || (wanted == 2 && given[1] != "text" && given[1] != "binary"))
+    const std::size_t wanted = code == word::code_of(1, 8, 9)                                       ? 0
+                               : code == word::code_of(1, 8, 4) || code == word::code_of(1, 8, 11) ? 2
+                                                                                                    : 1;
+    // THE KIND IS new's ALONE: move's second string is a folder, whatever its name.
+    if (given.size() != wanted ||
+        (code == word::code_of(1, 8, 4) && given[1] != "text" && given[1] != "binary"))
         return false;
     word_code = code;
     return true;
@@ -362,10 +373,14 @@ signed long long int do_the_disk_word(Code word_code, const std::vector<std::str
             say_why(shown(reply.reason));
         return success;
     }
-    if (word_code == word::code_of(1, 8, 7)) {
-        const DiskAnswer deleted = delete_a_file(given[0]);
-        if (!deleted.done)
-            say_why(shown(deleted.why));
+    if (moves_a_file(word_code)) {
+        const DiskAnswer answer = word_code == word::code_of(1, 8, 7)    ? delete_a_file(given[0])
+                                  : word_code == word::code_of(1, 8, 8)  ? copy_a_file(given[0])
+                                  : word_code == word::code_of(1, 8, 9)  ? paste_a_file(".")
+                                  : word_code == word::code_of(1, 8, 10) ? paste_a_file(given[0])
+                                                                         : move_a_file(given[0], given[1]);
+        if (!answer.done)
+            say_why(shown(answer.why));
         return success;
     }
     const bool binary = given.size() == 2 && given[1] == "binary";
@@ -724,8 +739,14 @@ signed long long int run_session(const Arguments &arguments, const FunctionTable
     // SOME OF WHAT IT NAMES IS NOT BUILT YET, and it is his to say when it is: `save <file.satl>` (the .sate
     // was dropped 2026-10-03), the help topics quick, bytecode, interpreter, satellite, newbie, tutorial,
     // advanced, what_now and work, and red text that is clickable (the console's links).
+    //
+    // ITS FIRST LINE IS satellite.console.bash's (the author, 2026-10-23: "this needs to be printed in the display
+    // of information that you start the console with, like after the THE SATELLITE PROGRAMMING LANGUAGE
+    // --------- satellite.console.bash("command") runs a console command"), in his words, with an empty line after.
     if (reader.interactive())
-        std::cout << R"note(FOR DETAILED INFO SEE "satellite.help()"
+        std::cout << R"note(satellite.console.bash("command") runs a console command
+
+FOR DETAILED INFO SEE "satellite.help()"
 FOR A QUICK TUTORIAL SEE "satellite.help("quick")"
 
 RED TEXT IS CLICKABLE AND "interpret <filename.satl>" RUNS A .satl FILE

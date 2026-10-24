@@ -95,10 +95,12 @@ $(BUILD)/satellite.help:
 	@ln -sfn ../../../satellite.help $@
 
 # THE CHOOSER IS COMPILED AT THE BASELINE, WHATEVER CPU SAYS: it runs before anything is
-# known about the machine (satellite/cpu_level/cpu_level.cpp). Relinked when the compiler
+# known about the machine (satellite/cpu_level/cpu_level.cpp). satl's own flags without the
+# processor's -march (020-version.mk's filter), so it is C++20 and carries the C++ library
+# satl does (010-compiler.mk): it runs on every machine satl is copied to. Relinked when the compiler
 # or the flags change, which the link stamp says; the ordinary folder's own stamp, since
 # it is the ordinary folder's program. A processor's make, which has no rule for that
 # stamp, relinks it only when its source changes.
 $(CPU_LEVEL): $(SATELLITE)/cpu_level/cpu_level.cpp $(if $(CPU),,$(LINK_STAMP))
 	@mkdir -p $(dir $@)
-	$(LINK_ENV) $(CXX) -std=c++20 $(OPT) -Wall -Wextra $(LDFLAGS) $< -o $@
+	$(LINK_ENV) $(CXX) $(filter-out -march=$(CPU),$(CXXFLAGS)) $(LDFLAGS) $< -o $@

@@ -36,6 +36,7 @@
 #include "machine_codes.hpp"
 #include "machine_state.hpp"
 #include "source_position.hpp"
+#include "thread_stop.hpp"
 
 #include <cstdint>
 #include <cstring>
@@ -518,9 +519,54 @@ inline constexpr SCode kConsoleNotSaved = {
 // `return raise(report, code);` is the whole shape, so a caller never writes the
 // print and the return as two statements that could disagree about which code
 // the run stopped on.
+//
+// satellite.error() (ERROR_BLOCK_PLAN.md): HOW MANY ERROR BLOCKS WAIT ABOVE THE LINE THIS THREAD RUNS. While one
+// waits, an error it may catch is not said -- the program handles it, so nothing goes to the screen or to
+// satellite.log -- and its code still travels up to the block, which runs instead. A thread's errors are its own,
+// so the count is the thread's; a capsule moved to a fresh stack runs on the same thread (stack_segments.hpp).
+inline int &error_blocks_waiting()
+{
+    thread_local int waiting = 0;
+    return waiting;
+}
+
+struct ErrorBlockWaits {
+    ErrorBlockWaits() { ++error_blocks_waiting(); }
+    ~ErrorBlockWaits() { --error_blocks_waiting(); }
+    ErrorBlockWaits(const ErrorBlockWaits &) = delete;
+    ErrorBlockWaits &operator=(const ErrorBlockWaits &) = delete;
+};
+
+// WHAT AN ERROR BLOCK MAY CATCH: any code that stops the program, but satellite.return(satellite) -- the program
+// ending, not failing -- Ctrl-C, a thread's .stop(), the display buffer overrunning, and the S9xx band, which is
+// satl itself in trouble (S999 is no memory). What the checker refuses never reaches one: nothing has run yet.
+// NOR ANYTHING ONCE THE RUN IS ENDING (the fresh reader, 2026-10-23): after satellite.return(satellite), from this
+// thread or another, every walker stops before its next line -- an error block's first line too -- so an error
+// held then would be said nowhere. A file that could not be saved on the way out is still reported, exit 44.
+inline bool an_error_block_may_catch(signed long long int machine_code)
+{
+    if (!stops_the_program(machine_code) || program_quit().load(std::memory_order_relaxed))
+        return false;
+    switch (machine_code) {
+    case program_returned:
+    case interrupted:
+    case thread_stopped:
+    case display_string_buffer_overrun:
+        return false;
+    default:
+        return s_code_for(machine_code).code[1] != '9';
+    }
+}
+
+inline bool held_for_an_error_block(signed long long int machine_code)
+{
+    return error_blocks_waiting() != 0 && an_error_block_may_catch(machine_code);
+}
+
 inline signed long long int raise(const CriticalReport &report, signed long long int machine_code)
 {
-    print_critical(report);
+    if (!held_for_an_error_block(machine_code))
+        print_critical(report);
     return machine_code;
 }
 
@@ -722,6 +768,10 @@ inline signed long long int raise_at(signed long long int machine_code,
                                      std::size_t at,
                                      const char *stage = "satl(run)")
 {
+    // HELD FOR AN ERROR BLOCK BEFORE ANYTHING IS BUILT: the report re-reads the program's file for its line, and a
+    // loop that catches the same error a million times would read it a million times for nothing.
+    if (held_for_an_error_block(machine_code))
+        return machine_code;
     const SCode named = s_code_for(machine_code);
     CriticalReport report;
     report.code = named.code;

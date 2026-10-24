@@ -54,7 +54,9 @@ for path in sorted(glob.glob('satellite.help/*/help_text.txt')) + ['satellite.he
             os.mkdir(empty); os.chmod(empty, 0o700)
             # satellite.test's programs at one pass each (test_run.hpp): a test is a minute long by design,
             # and an example has 20 seconds.
-            env.update(SATL_NO_WINDOW='1', XDG_RUNTIME_DIR=empty, SATL_TEST_PASSES='1')
+            # AND ITS TMPDIR IS THAT FOLDER TOO (FILE_AND_DRIVE_PLAN.md FD-3): satellite.file.copy keeps its
+            # clipboard in $TMPDIR/.satl/tmp, which goes with the example -- and never the person's /tmp/.satl.
+            env.update(SATL_NO_WINDOW='1', XDG_RUNTIME_DIR=empty, SATL_TEST_PASSES='1', TMPDIR=d)
             try:
                 r = subprocess.run([satl, 'example.satl'], cwd=d, capture_output=True, text=True, timeout=20,
                                    env=env, stdin=subprocess.DEVNULL)

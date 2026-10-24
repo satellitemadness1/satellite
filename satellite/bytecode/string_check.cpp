@@ -249,4 +249,20 @@ signed long long int string_index_check(const std::vector<std::bitset<16>> &row,
     return types_do_not_meet;
 }
 
+signed long long int text_literal_refused(const std::vector<std::bitset<16>> &row, std::size_t open, int wanted,
+                                          int slot, const std::string &spelling, std::string &why)
+{
+    const std::vector<std::size_t> starts = argument_starts(row, open, wanted);
+    if (slot < 0 || static_cast<std::size_t>(slot) >= starts.size())
+        return success;
+    std::string written;
+    const Lone kind = lone_literal_at(row, starts[static_cast<std::size_t>(slot)], token::right_parenthesis_token, written);
+    if (kind != Lone::binary && kind != Lone::hexadecimal && kind != Lone::percentage && kind != Lone::time)
+        return success;
+    why = spelling + " takes text, and was given " +
+          (kind == Lone::binary ? "a binary" : kind == Lone::hexadecimal ? "a hex number"
+           : kind == Lone::time ? "a time" : "a percentage");
+    return types_do_not_meet;
+}
+
 } // namespace satellite004

@@ -158,6 +158,14 @@ required -- *"we are not that far yet, we have only dropped support for machines
 that do not have monitors"*. NVIDIA stays whatever is decided: *"I will never drop
 support for nvidia GPUs"*.
 
+And with glibc 2.38 or newer -- AlmaLinux 10, not AlmaLinux 9 -- and no C++ library
+at all: built with a clang that has libc++ beside it, as `make` builds it here, satl
+carries LLVM's libc++ inside it, linked statically since 2026-10-22
+(`make_support/010-compiler.mk`), and needs only libc, libm, the loader and the machine's
+libwayland. Built with g++ (`make CXX=g++`), or with a clang that has no libc++ (AlmaLinux's
+`dnf install clang`), it links the machine's libstdc++ instead, GLIBCXX 3.4.32 (gcc 13) or
+newer.
+
 **004's interpreter is `satl`** (`build/satellite-004` is a link to it). A plain
 `make` builds it, with a new BUILD number every time, and then asks whether to
 install it: Enter, `y` or a minute's silence installs, `n` leaves it in `build/`

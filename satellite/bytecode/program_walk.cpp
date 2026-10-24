@@ -162,6 +162,35 @@ std::size_t brace_after(const std::vector<std::bitset<16>> &row, std::size_t at)
     return at;
 }
 
+std::size_t error_block_body(const std::vector<std::bitset<16>> &row, std::size_t at)
+{
+    if (code_at(row, at) != word::code_of(1, 37) || code_at(row, at + 1) != token::left_parenthesis_token ||
+        code_at(row, at + 2) != token::right_parenthesis_token)
+        return kNoErrorBlock;
+    at += 3;
+    while (code_at(row, at) == token::line_end_token || code_at(row, at) == token::comment_token) ++at;
+    return code_at(row, at) == token::left_brace_token ? at + 1 : kNoErrorBlock;
+}
+
+std::size_t error_block_after(const std::vector<std::bitset<16>> &row, std::size_t past)
+{
+    while (code_at(row, past) == token::line_end_token || code_at(row, past) == token::comment_token) ++past;
+    return error_block_body(row, past);
+}
+
+std::size_t past_an_error_block(const std::vector<std::bitset<16>> &row, std::size_t past)
+{
+    const std::size_t body = error_block_after(row, past);
+    return body == kNoErrorBlock ? past : past_matching_brace(row, body - 1);
+}
+
+const char *const kErrorWrittenWrong =
+    "satellite.error is written satellite.error() -- nothing between its brackets, because any error in "
+    "the block above runs it -- and then its lines between { and }";
+const char *const kErrorWithNoBlock =
+    "satellite.error() goes right after the } of a block that runs -- a capsule's, or an if's, else's, "
+    "while's or for's -- and catches that block's errors; nothing like that ends right above this one";
+
 // The header says what this is for. `at` is on the `satellite.statement.for` code.
 // Only a semicolon OUTSIDE nested brackets divides the parts, so a call in the
 // condition keeps its own commas and brackets; a payload is skipped rather than
@@ -217,13 +246,18 @@ bool hands_back_a_value(const BytecodeRegistry &registry, const CapsuleSite &sit
     if (site.hands_back_known)
         return site.hands_back;
     const std::vector<std::bitset<16>> &row = registry[site.row];
-    const std::size_t end = past_matching_brace(row, site.body - 1);
     bool found = false;
-    for (std::size_t at = site.body; at < end && !found;) {
-        const Code code = code_at(row, at);
-        if (token::carries_a_count(code)) { skip_payload(row, at); continue; }
-        found = code == word::code_of(1, 15) && return_value_at(row, at) != 0;
-        ++at;
+    // AND ITS satellite.error() BLOCK'S, whose satellite.return(x) hands x back for it (ERROR_BLOCK_PLAN.md).
+    for (const std::size_t from : {site.body, site.error_body}) {
+        if (from == kNoErrorBlock)
+            break;
+        const std::size_t end = past_matching_brace(row, from - 1);
+        for (std::size_t at = from; at < end && !found;) {
+            const Code code = code_at(row, at);
+            if (token::carries_a_count(code)) { skip_payload(row, at); continue; }
+            found = code == word::code_of(1, 15) && return_value_at(row, at) != 0;
+            ++at;
+        }
     }
     site.hands_back = found;
     site.hands_back_known = true;
@@ -604,15 +638,24 @@ void find_the_last_statements(const std::vector<std::bitset<16>> &row, std::size
         }
         std::vector<std::size_t> bodies;
         const std::size_t here = at;
+        // A BLOCK WITH A satellite.error() AFTER IT (ERROR_BLOCK_PLAN.md) HOLDS NO LAST CALL: made a loop, the call
+        // would run after the block had ended, outside what its error block guards. The block and its error block
+        // are stepped over as one statement, with nothing inside either taken as last.
         if (code == word::code_of(1, 13, 1)) {                                           // if
             at = walk_the_if_chain(row, at, bodies);
+            if (const std::size_t past = past_an_error_block(row, at); past != at) {
+                at = past;
+                bodies.clear();
+            }
             for (const std::size_t body : bodies)
                 find_the_last_statements(row, body, into, false);
         } else if (code == word::code_of(1, 13, 3) || code == word::code_of(1, 13, 2)) { // while, for
             const std::size_t brace = brace_after(row, past_the_statement(row, at));
-            if (code_at(row, brace) == token::left_brace_token)
-                find_the_last_statements(row, brace + 1, into, false);
             at = past_matching_brace(row, brace);
+            const std::size_t past = past_an_error_block(row, at);
+            if (past == at && code_at(row, brace) == token::left_brace_token)
+                find_the_last_statements(row, brace + 1, into, false);
+            at = past;
         } else {
             at = past_the_statement(row, at);
         }
@@ -821,6 +864,51 @@ signed long long int run_block(const BytecodeRegistry &registry,
     }
     made.resize(first);
     return answer;
+}
+
+// THE satellite.error() AFTER AN if's CHAIN, OR A while's OR A for's BODY (ERROR_BLOCK_PLAN.md): the first code in
+// its braces, or kNoErrorBlock. Found once, when the capsule table was made (guarded_statements_in, below): a program
+// that writes no satellite.error pays one bool a block statement, and one that does a search of its row's short list
+// -- never a walk of the statement's bodies, which cost every if 16% (the fresh reader, 2026-10-23).
+std::size_t error_block_of_statement(const CapsuleTable &capsules, std::size_t which_row, std::size_t at)
+{
+    if (!capsules.writes_error_blocks || which_row >= capsules.guarded.size())
+        return kNoErrorBlock;
+    const std::vector<std::pair<std::size_t, std::size_t>> &here = capsules.guarded[which_row];
+    const auto found = std::lower_bound(here.begin(), here.end(), std::make_pair(at, std::size_t{0}));
+    return found != here.end() && found->first == at ? found->second : kNoErrorBlock;
+}
+
+// THE BLOCK STOPPED AT AN ERROR, SO WHAT IT WAS ENDING WITH IS GONE (the fresh reader, 2026-10-23): a break, a continue
+// or a satellite.return(x) reached before a } whose files then could not be saved left their mark, and the error
+// block's first if or loop took it for its own and stopped there.
+void ready_for_the_error_block(Frame &frame)
+{
+    frame.broke = frame.skipped = frame.returned = frame.answered = false;
+}
+
+// A BLOCK THAT HAS A satellite.error() AFTER IT, `error_body` (kNoErrorBlock when it has none): `runs` runs it while
+// the error block waits (s_codes.hpp's ErrorBlockWaits), and an error that block may catch runs the error block
+// instead -- in the names around the block, whose own names have ended -- with `at` just past the error block. The
+// error block's own errors go to whatever waits above it.
+template <class Runs>
+signed long long int run_guarded(const BytecodeRegistry &registry, const CapsuleTable &capsules,
+                                 const FunctionTable &functions, std::size_t which_row, std::size_t &at,
+                                 std::size_t error_body, VariableTable &variables, MachineState &state, Frame &frame,
+                                 Runs &&runs)
+{
+    if (error_body == kNoErrorBlock)
+        return runs();
+    signed long long int ran;
+    {
+        const ErrorBlockWaits waiting;
+        ran = runs();
+    }
+    if (!an_error_block_may_catch(ran))
+        return ran;
+    at = past_matching_brace(registry[which_row], error_body - 1);
+    ready_for_the_error_block(frame);
+    return run_block(registry, capsules, functions, which_row, error_body, variables, state, frame);
 }
 
 signed long long int run_while(const BytecodeRegistry &registry,
@@ -1807,7 +1895,9 @@ signed long long int call_capsule(const BytecodeRegistry &registry,
     const UserDefinedHandle none;
     const UserDefinedHandle &self = site.suit != kNoScope ? variables.self : none;
     const CapsuleSite &runs = capsules.on_the_object(site, self);
-    if (frame.site == &runs && is_last_in(runs, row, started)) {
+    // NOT A CAPSULE WITH A satellite.error() (ERROR_BLOCK_PLAN.md): made a loop, the next turn's arguments would be
+    // judged outside this turn's error block, which guards the line that calls it.
+    if (frame.site == &runs && runs.error_body == kNoErrorBlock && is_last_in(runs, row, started)) {
         frame.arguments = std::move(arguments);
         frame.pending = true;
         frame.called_row = &row;     // the next turn's call is this one
@@ -1939,6 +2029,15 @@ signed long long int run_statements(const BytecodeRegistry &registry,
             return success;
         if (code == token::line_end_token) { ++at; continue; }
 
+        // A satellite.error() REACHED AS A STATEMENT FOLLOWS A BLOCK THAT RAN WITHOUT AN ERROR (ERROR_BLOCK_PLAN.md),
+        // so it is stepped over whole and never run; run_guarded ran it when there was one. The checker refused one
+        // with no block above it.
+        if (code == word::code_of(1, 37)) {
+            const std::size_t body = error_block_body(row, at);
+            at = body == kNoErrorBlock ? past_the_statement(row, at) : past_matching_brace(row, body - 1);
+            continue;
+        }
+
         state.statement_row = &row;       // for a warning's place (M5)
         state.statement_at = at;
 
@@ -2020,7 +2119,9 @@ signed long long int run_statements(const BytecodeRegistry &registry,
 
         if (code == word::code_of(1, 13, 1)) {       // satellite.statement.if
             const signed long long int stopped =
-                run_if(registry, capsules, functions, which_row, at, variables, state, true, frame);
+                run_guarded(registry, capsules, functions, which_row, at,
+                            error_block_of_statement(capsules, which_row, at), variables, state, frame,
+                            [&] { return run_if(registry, capsules, functions, which_row, at, variables, state, true, frame); });
             if (stops_the_program(stopped))
                 return stopped;
             if (frame.ending())
@@ -2039,7 +2140,9 @@ signed long long int run_statements(const BytecodeRegistry &registry,
 
         if (code == word::code_of(1, 13, 3)) {       // satellite.statement.while
             const signed long long int stopped =
-                run_while(registry, capsules, functions, which_row, at, variables, state, frame);
+                run_guarded(registry, capsules, functions, which_row, at,
+                            error_block_of_statement(capsules, which_row, at), variables, state, frame,
+                            [&] { return run_while(registry, capsules, functions, which_row, at, variables, state, frame); });
             if (stops_the_program(stopped))
                 return stopped;
             if (frame.ending())
@@ -2049,7 +2152,9 @@ signed long long int run_statements(const BytecodeRegistry &registry,
 
         if (code == word::code_of(1, 13, 2)) {       // satellite.statement.for
             const signed long long int stopped =
-                run_for(registry, capsules, functions, which_row, at, variables, state, frame);
+                run_guarded(registry, capsules, functions, which_row, at,
+                            error_block_of_statement(capsules, which_row, at), variables, state, frame,
+                            [&] { return run_for(registry, capsules, functions, which_row, at, variables, state, frame); });
             if (stops_the_program(stopped))
                 return stopped;
             if (frame.ending())
@@ -2260,6 +2365,25 @@ signed long long int run_statements(const BytecodeRegistry &registry,
 
 // ONE TURN OF A CAPSULE: its frame, the arguments bound into it, the body, and
 // close_files on the way out.
+// A CAPSULE'S BODY, AND THE satellite.error() WRITTEN AFTER IT (ERROR_BLOCK_PLAN.md). With one, the body runs as a
+// block, so the names it declared have ended by the time the error block runs -- as the checker judged them -- and
+// the error block runs in the capsule's frame: its parameters, its object's fields, and its satellite.return.
+signed long long int run_body(const BytecodeRegistry &registry,
+                              const CapsuleTable &capsules,
+                              const FunctionTable &functions,
+                              const CapsuleSite &site,
+                              VariableTable &variables,
+                              MachineState &state,
+                              Frame &frame)
+{
+    if (site.error_body == kNoErrorBlock)
+        return run_statements(registry, capsules, functions, site.row, site.body, variables, state, frame);
+    std::size_t past = site.body;
+    return run_guarded(registry, capsules, functions, site.row, past, site.error_body, variables, state, frame,
+                       [&] { return run_block(registry, capsules, functions, site.row, site.body, variables, state,
+                                              frame); });
+}
+
 signed long long int run_turn(const BytecodeRegistry &registry,
                               const CapsuleTable &capsules,
                               const FunctionTable &functions,
@@ -2316,8 +2440,7 @@ signed long long int run_turn(const BytecodeRegistry &registry,
         bound = Variable{wants[at].declared(), wants[at].shape, std::move(arguments[at])};
         bound.legal = theirs.legal;
     }
-    return close_files(theirs,
-                       run_statements(registry, capsules, functions, site.row, site.body, theirs, state, frame));
+    return close_files(theirs, run_body(registry, capsules, functions, site, theirs, state, frame));
 }
 
 // ONE TURN PER CALL, and a call to itself made last is the next turn rather than a
@@ -2626,10 +2749,33 @@ signed long long int run_main(const BytecodeRegistry &registry,
     // last is not made a loop, and a return anywhere in it still ends the program.
     Frame frame;
     const signed long long int ended =
-        close_files(variables, run_statements(registry, capsules, functions, main->row, main->body, variables, state, frame));
+        close_files(variables, run_body(registry, capsules, functions, *main, variables, state, frame));
     // satellite.return(satellite), from main's last line or from anywhere below it, is the
     // program ENDING, not failing: satl exits 0.
     return ended == program_returned ? success : ended;
+}
+
+std::vector<std::pair<std::size_t, std::size_t>> guarded_statements_in(const std::vector<std::bitset<16>> &row)
+{
+    std::vector<std::pair<std::size_t, std::size_t>> guarded;
+    for (std::size_t at = 0; at < row.size();) {
+        const Code code = code_at(row, at);
+        if (token::carries_a_count(code)) { skip_payload(row, at); continue; }
+        std::size_t past = kNoErrorBlock;
+        if (code == word::code_of(1, 13, 1)) {
+            std::vector<std::size_t> bodies;
+            past = walk_the_if_chain(row, at, bodies);
+        } else if (code == word::code_of(1, 13, 3) || code == word::code_of(1, 13, 2)) {
+            const std::size_t brace = brace_after(row, past_the_statement(row, at));
+            if (code_at(row, brace) == token::left_brace_token)
+                past = past_matching_brace(row, brace);
+        }
+        if (past != kNoErrorBlock && past < row.size())
+            if (const std::size_t body = error_block_after(row, past); body != kNoErrorBlock)
+                guarded.emplace_back(at, body);
+        ++at;
+    }
+    return guarded;
 }
 
 } // namespace satellite004

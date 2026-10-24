@@ -2,7 +2,7 @@
 
 Written 2026-10-21 from the author's message that day, and from the author's answers to five questions the
 same day. Checked against the working tree on BUILD 0079 (HEAD b48fb5d56 says 0058). FD-1 is built (BUILD 0081); FD-2 is
-in the tree (BUILD 0083) with its gate not finished; nothing after it is built.
+built (BUILD 0083, gated on 0086); FD-3 is built (BUILD 0092) and FD-4 is built (BUILD 0094), neither installed; FD-5 is not.
 
 The author's message, as written:
 
@@ -241,10 +241,14 @@ handle stays FO-8. The numbers are the next free ones. Rows go in `words/words_0
 
   Not FD-1's: check_session.py's "... and its capsule runs" failed on BUILD 0079 too (twice alone, by hand), and
   passed in the final run; its block lines are typed without waiting for the reader.
-- **FD-2:** `satellite.file.delete`, `ask_at_the_console`, `as_another_account` (su on a pty, plus sudo -S).
+- **FD-2 — BUILT 2026-10-21, BUILD 0083; GATED ON BUILD 0086 (installed, committed 66d615d1a, 2026-10-22):**
+  `satellite.file.delete`, `ask_at_the_console`, `as_another_account` (su on a pty, plus sudo -S).
 
-  **IN THE TREE, BUILD 0083, GATE NOT FINISHED (2026-10-21, at the author's /clear).** The snapshot is
-  backups/2026-10-21-before-fd-2/.
+  **AS BUILT.** check.sh on 0086: 1554 passed and 5 failed, all 5 the machine's (no /usr/bin/time ×4, umask 0002
+  ×1). The snapshot is backups/2026-10-21-before-fd-2/. Its patch, fd-2.patch, is FD-2 alone, 22 files. It was
+  made on 2026-10-23 from HEAD with the detach, KEY-5/6 and the detach's final fix taken back off, and it checks
+  against the snapshot's fingerprints. fd-2.patch.draft-12-54, beside it, is the first draft, from before the
+  reader's fixes.
   - **New files:** machine/ask_at_the_console.{hpp,cpp}, machine/as_another_account.{hpp,cpp},
     satellite_variable_file/file_moves.{hpp,cpp} and file_moves_cases.cpp (`make build/file_moves_cases`).
   - **The fresh reader's 9 findings are fixed:**
@@ -258,15 +262,60 @@ handle stays FO-8. The numbers are the next free ones. Rows go in `words/words_0
     - `who_may_delete` exposed and tested;
     - su's and sudo's own lines matched only at the start of a line.
   - **Passing:** file_moves_cases (27 ok), check_session.py alone (63 ok, with 2 new FD-2 rows), and FD-1's and
-    FD-2's check.sh rows. The full check.sh on 0083 was cut off when the session ended.
-  - **NEXT:**
-    - re-run ./check.sh (only the machine's 5 may fail);
-    - `sh fd_diff.sh > fd-2.patch` in the snapshot;
-    - mark FD-2 BUILT here.
-  - **FD-3's code is drafted, not in the tree:** backups/2026-10-21-fd-3-drafts/ (NOTE.md says how to apply it).
-- **FD-3:** `satellite.file.copy`, `paste()`, `paste(d)`, `move`, with the /tmp/.satl/tmp clipboard and the
-  replace question.
-- **FD-4:** `satellite.drive.list()` and the satellite.drive help page.
+    FD-2's check.sh rows; then the whole check.sh on 0086.
+- **FD-3 — BUILT 2026-10-23, BUILD 0092, NOT INSTALLED:** `satellite.file.copy`, `paste()`, `paste(d)`, `move`,
+  with the /tmp/.satl/tmp clipboard and the replace question. It is built on the libc++ gate's tree (BUILD 0089),
+  which waits on the author's word too.
+
+  **AS BUILT.**
+  - The snapshot is backups/2026-10-23-before-fd-3/, and its patch is fd-3.patch (14 files).
+  - The drafts of 2026-10-21 went in with their apply.py. The build found one bug: `move(path, d)` typed at the
+    prompt ran silently, because new's "text"/"binary" test was applied to every two-string word.
+  - check.sh on 0092: 1558 passed and 6 failed. Five are the machine's. The sixth, check_session's "... the loop's
+    name kept what it reached", is older than FD-3 and passed 67 of 67 twice when run alone.
+  - file_moves_cases: 64 ok. check_session: the paste y/n block on a real terminal passes.
+  - utility/check_help_examples.py gives each example its own TMPDIR, so the new example's clipboard goes with it.
+  - **The fresh reader found ten things. Nine are fixed:**
+    - a copy's mode is the one cp gives: never setuid or setgid, and through the umask;
+    - two satl copying at once take turns under an flock of the clipboard folder, each with its own incoming name
+      and a no-replace rename to file-previous (a case runs two processes × 25 copies);
+    - copy and move-across-drives look at what a path is before opening it, and open with O_NONBLOCK|O_NOCTTY, so
+      a FIFO is refused at once;
+    - a hard link of the same file in the folder is refused, as mv refuses it;
+    - a rename or a `names` write that fails puts the clipboard back as it was;
+    - copy, paste and move refuse a NUL themselves;
+    - `names` drops the files the cleaning removed;
+    - an empty folder name is refused (paste() itself passes ".");
+    - a clipboard folder of the person's own that others may read is made 0700.
+  - **The one left, as cp leaves it:** a copy killed half way (a second Ctrl-C, or Ctrl-C in a file run) leaves its
+    hidden `.<name>.satl-<pid>` file in the folder it was going to.
+- **FD-4 — BUILT 2026-10-23, BUILD 0094, NOT INSTALLED:** `satellite.drive.list()` and the satellite.drive help page.
+  It was built while the author was away, at his word: "find something that you can do without my input".
+
+  **AS BUILT.**
+  - The snapshot is backups/2026-10-23-before-fd-4/, and its patch is fd-4.patch.
+  - **New files:**
+    - machine/drive_mounts.{hpp,cpp}: `every_drive(DriveRoots, mounts)`, which reads /sys/class/block,
+      /run/udev/data and mountinfo and nothing else. model_of and disk_under moved here from satl/drives.cpp,
+      which still uses them.
+    - bytecode/drive_calls.{hpp,cpp}: `is_drive_word` is 1 36 1 alone, so mount, release and remount still say
+      not built yet.
+    - machine/drive_mounts_cases.cpp: 9 cases on a fake /sys and udev tree.
+    - satellite.help/satellite.drive, and help.txt's 37.
+  - The table is `drives_listed`, in drives.cpp: name, label, type, size (mb with commas), mounted on ("not
+    mounted"), and drive (model, and "(usb)").
+  - **check.sh on 0094:** 1564 passed and 5 failed, all 5 the machine's.
+    - The FD-4 rows: the prompt and a program each print 15 rows, the same as a count made from /sys and udev.
+    - `list(1)` is refused before the run.
+    - `mount` is not built yet.
+    - directory.system()'s rows are unchanged.
+  - **The fresh reader's three defects, all fixed:**
+    - the table is written under ConsoleHold: unlocked, two threads listing beside a displaying one lost a
+      table or wrote NULs, 4 runs in 15;
+    - a btrfs mount, which names an anonymous 0:NN, is matched by its device;
+    - a partition of a loop device (loop0p1) is not a row.
+  - **Its minor points:** the wording is fixed. `display(satellite.drive.list())` prints the table and then fails
+    at the run, as `display(satellite.time.sleep(1s))` already does; that is older than FD-4.
 - **FD-5:** `satellite.drive.mount`, `release` and `remount`.
 
 **The gate** for each milestone (NEW_MILESTONES.md:217-221, made lean on 2026-10-21):
@@ -295,6 +344,12 @@ handle stays FO-8. The numbers are the next free ones. Rows go in `words/words_0
 - **The folder a sudo mount makes** is /media/<user>/<label, else the device name>. It is left in place after
   release; udisks removes its own.
 - **Previous copies count upward from the highest number left**, so a gap left by the cleaning is not refilled.
+- **A copy's permissions are the ones cp gives** (FD-3's reader, 2026-10-23): the source's nine bits through the
+  umask, and never setuid, setgid or sticky.
+- **A move onto a hard link of the same file is refused**, as mv refuses it.
+- **paste("") and move(path, "") are refused**, not taken for the working directory: paste() is that.
+- **The clipboard's folders are made 0700** when they are the person's own and others may read them. Only when
+  others may write them are they refused.
 
 ## Verification
 

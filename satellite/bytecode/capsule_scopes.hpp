@@ -87,6 +87,8 @@ struct CapsuleParameter {
 };
 
 inline constexpr std::size_t kNoScope = static_cast<std::size_t>(-1);
+// NO satellite.error() AFTER A BLOCK (ERROR_BLOCK_PLAN.md, program_walk.hpp's error_block_after).
+inline constexpr std::size_t kNoErrorBlock = static_cast<std::size_t>(-1);
 
 // ONE CAPSULE: where its body begins, what it takes, and which scope declared it.
 struct CapsuleSite {
@@ -105,6 +107,10 @@ struct CapsuleSite {
     std::size_t suit = kNoScope;
     bool is_public = true;          // false in satellite.protected, or outside any section
     bool constructor = false;       // its satellite.constructor: public, answers nothing
+
+    // ITS satellite.error() (ERROR_BLOCK_PLAN.md): the first code inside the error block written right
+    // after its `}`, found once by the scan, or kNoErrorBlock. Any error its body meets runs it instead.
+    std::size_t error_body = kNoErrorBlock;
 
     // WHERE THE STATEMENTS START THAT ARE THE LAST THING IT DOES (program_walk.cpp's
     // TailCall): worked out by the walker the first time the capsule runs, so a
@@ -239,6 +245,11 @@ struct CapsuleTable {
     std::unordered_map<std::string, std::size_t> keys;   // CapsuleSite::key -> sites
     std::vector<std::vector<std::size_t>> in_row;        // row -> its scopes, in the order they open
     std::vector<ScopeTrouble> troubles;
+    // WHETHER satellite.error IS WRITTEN ANYWHERE IN THE PROGRAM (ERROR_BLOCK_PLAN.md): only then does the walker
+    // look past an if, a while or a for for an error block, so a program without one pays a bool a block statement.
+    bool writes_error_blocks = false;
+    // AND, FOR EACH ROW THAT WRITES ONE, ITS if, while AND for STATEMENTS THAT HAVE ONE (guarded_statements_in).
+    std::vector<std::vector<std::pair<std::size_t, std::size_t>>> guarded;
 
     // The innermost scope holding the code at `at` in `row`, or kNoScope.
     std::size_t scope_at(std::size_t row, std::size_t at) const;

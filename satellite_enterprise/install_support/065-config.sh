@@ -66,11 +66,13 @@ SATELLITE_CONFIG_INI
         if mv -fT -- "$_config.installing" "$_config" 2> /dev/null; then
             step "wrote $_config"
         else
-            rm -f -- "$_config.installing"
+            # `|| :` UNDER set -e (072-icons.sh's same rm, 2026-10-20): a remove that fails --
+            # a folder of that name -- would end install.sh before the line that says why.
+            rm -f -- "$_config.installing" || :
             step "could not put config.ini in place at $_config; satl will use its built-in defaults"
         fi
     else
-        rm -f -- "$_config.installing" 2> /dev/null
+        rm -f -- "$_config.installing" 2> /dev/null || :
         step "could not write $_config; satl will use its built-in defaults"
     fi
     # AND THEN COMPOSE THE REGISTER, by running the satl just installed.

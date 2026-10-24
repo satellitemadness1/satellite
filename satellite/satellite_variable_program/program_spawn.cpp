@@ -20,6 +20,7 @@
 #include <sched.h>
 #include <sys/mman.h>
 #include <sys/stat.h>
+#include <sys/ioctl.h>
 #include <sys/syscall.h>
 #include <sys/wait.h>
 #include <unistd.h>
@@ -41,6 +42,7 @@ struct ChildPlan {
     const char *folder;         // nullptr: it starts where satl is
     volatile int error;
     volatile int in_folder;     // 1 when it was entering `folder` that failed, not the exec
+    int foreground;             // a terminal whose foreground it takes, in a group of its own; -1: satl's group
 };
 
 // THE CHILD, between clone and exec. Only calls that are safe there: no allocation, no lock.
@@ -64,6 +66,14 @@ int the_child(void *given)
             sigaction(signal, &plain, nullptr);
     }
     hand_a_child_the_stack_satl_was_given();   // machine/stack_share.hpp's rule
+    // A GROUP OF ITS OWN, AND THE TERMINAL'S FOREGROUND (ProgramPlace::foreground), taken here as a shell's child
+    // takes it, so it is the foreground before it reads a key. Every signal is still blocked -- SIGTTOU among
+    // them -- so taking the terminal from satl's group cannot stop it. By the raw calls, as chdir below.
+    if (plan->foreground >= 0) {
+        syscall(SYS_setpgid, 0, 0);
+        const pid_t mine = static_cast<pid_t>(syscall(SYS_getpid));
+        syscall(SYS_ioctl, plan->foreground, TIOCSPGRP, &mine);
+    }
     if (dup2(plan->input, 0) < 0 || dup2(plan->out, 1) < 0 || dup2(plan->err, 2) < 0) {
         plan->error = errno;
         syscall(SYS_exit_group, 127);
@@ -231,7 +241,7 @@ ProgramStart start_a_program(const std::vector<std::string> &words, int out, int
         environment = placed.data();
     }
     ChildPlan plan{path.c_str(), arguments.data(), environment, input, stream, errors,
-                   place.folder.empty() ? nullptr : place.folder.c_str(), 0, 0};
+                   place.folder.empty() ? nullptr : place.folder.c_str(), 0, 0, place.foreground};
 
     // EVERY SIGNAL BLOCKED FOR THE CLONE, as glibc's posix_spawn does: the child shares this
     // memory until it execs, and a handler run in it would run on satl's data.

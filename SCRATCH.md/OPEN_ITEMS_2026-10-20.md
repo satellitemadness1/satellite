@@ -149,7 +149,10 @@ Its "Taken without the author's word" list holds the readings the plan took on i
   - The rest are comment and usage text.
   - BUILD is still 66, HEAD is unchanged, and nothing was written into ~/.local/share.
   - Not done: a build of a full copy and a check.sh run. The proofs ran in mini repos.
-  - Its suggestion: 065-config.sh:73 has the same unguarded rm under `set -e`.
+  - Its suggestion: 065-config.sh:73 has the same unguarded rm under `set -e`. **Done 2026-10-23:** 065-config.sh's
+    two rms and 070-desktop.sh's two cleanup rms now end `|| :`. check_install.sh passed 30 and failed 0. The patch is
+    backups/2026-10-23-install-rm-guards/. 060-install-tree.sh:74 is left alone: it removes an old satl-term on
+    purpose, and a failure there prints rm's own reason.
   - The author's next plain make should offer to install the icons.
 - **Side effects on the home folder.** ~/.satl/satellite.log grew from 100,624 to 237,576 bytes. About
   210 lines come from today's read-only probes, which ran satl with the real HOME until the probe

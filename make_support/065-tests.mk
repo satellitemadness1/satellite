@@ -135,6 +135,14 @@ $(BUILD)/file_moves_cases: $(FILE_MOVES_CASES_SOURCES) $(FILE_MOVES_CASES_HEADER
 	@mkdir -p $(BUILD)
 	$(LINK_ENV) $(CXX) $(CXXFLAGS) $(LDFLAGS) $(FILE_MOVES_CASES_SOURCES) -o $@
 
+# satellite.drive.list()'s ROWS, from a fake /sys/class/block and /run/udev/data the cases make in the room it is
+# given (FILE_AND_DRIVE_PLAN.md FD-4), and then this machine's, read without opening a device.
+DRIVE_MOUNTS_CASES_SOURCES = $(MACHINE)/drive_mounts_cases.cpp $(MACHINE)/drive_mounts.cpp
+DRIVE_MOUNTS_CASES_HEADERS = $(MACHINE)/drive_mounts.hpp $(MACHINE)/filesystems.hpp
+$(BUILD)/drive_mounts_cases: $(DRIVE_MOUNTS_CASES_SOURCES) $(DRIVE_MOUNTS_CASES_HEADERS)
+	@mkdir -p $(BUILD)
+	$(LINK_ENV) $(CXX) $(CXXFLAGS) $(LDFLAGS) $(DRIVE_MOUNTS_CASES_SOURCES) -o $@
+
 # THE CONSOLE'S STORE WITH NO CONSOLE AROUND IT (KEY_PLAN.md KEY-1 to KEY-3, KEY-5 and KEY-6): the day's
 # folder, from a clock of its own, made at the first Enter, the console's file claimed in it, every Enter a
 # line of it and of the console's lines, S017 counted where it would be said, and the walk of the consoles

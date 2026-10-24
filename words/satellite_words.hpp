@@ -705,6 +705,8 @@ inline constexpr WordRow kWords[] = {
     {"satellite.drive.mount(d)", {1, 36, 2, 0, 0, 0}, 3},
     {"satellite.drive.release(d)", {1, 36, 3, 0, 0, 0}, 3},
     {"satellite.drive.remount(d)", {1, 36, 4, 0, 0, 0}, 3},
+    {"satellite.console.bash(command)", {1, 5, 13, 0, 0, 0}, 3},
+    {"satellite.error", {1, 37, 0, 0, 0, 0}, 2},
 };
 
 // Removed words, with the numbers they had in 003 06.
@@ -726,7 +728,7 @@ struct NextFree {
 };
 
 inline constexpr NextFree kNextFree[] = {
-    {"satellite", {1, 37, 0, 0, 0, 0, 0}, 2},
+    {"satellite", {1, 38, 0, 0, 0, 0, 0}, 2},
     {"satellite.include", {1, 1, 3, 0, 0, 0, 0}, 3},
     {"satellite.capsule", {1, 2, 2, 0, 0, 0, 0}, 3},
     {"satellite.capsule.launch", {1, 2, 1, 1, 0, 0, 0}, 4},
@@ -758,7 +760,7 @@ inline constexpr NextFree kNextFree[] = {
     {"satellite.container.arguments.first", {1, 4, 3, 8, 1, 0, 0}, 5},
     {"satellite.container.arguments.last", {1, 4, 3, 9, 1, 0, 0}, 5},
     {"satellite.container.result", {1, 4, 4, 1, 0, 0, 0}, 4},
-    {"satellite.console", {1, 5, 13, 0, 0, 0, 0}, 3},
+    {"satellite.console", {1, 5, 14, 0, 0, 0, 0}, 3},
     {"satellite.console.display", {1, 5, 1, 3, 0, 0, 0}, 4},
     {"satellite.console.width", {1, 5, 6, 1, 0, 0, 0}, 4},
     {"satellite.console.height", {1, 5, 7, 1, 0, 0, 0}, 4},
@@ -1076,6 +1078,7 @@ inline constexpr NextFree kNextFree[] = {
     {"satellite.variable.fraction.reverse", {1, 6, 20, 4, 1, 0, 0}, 5},
     {"satellite.convert", {1, 35, 4, 0, 0, 0, 0}, 3},
     {"satellite.drive", {1, 36, 5, 0, 0, 0, 0}, 3},
+    {"satellite.error", {1, 37, 1, 0, 0, 0, 0}, 3},
 };
 
 } // namespace satellite004

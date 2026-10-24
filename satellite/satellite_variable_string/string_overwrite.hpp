@@ -6,9 +6,10 @@
 // decoder that is about to write every one of them pays twice -- and on a fresh
 // allocation the zeros also fault in every page, used or not (measured
 // 2026-09-15: 162 ms against 147 ms encoding 100 MB, the same loop). C++23's
-// resize_and_overwrite skips the zeros; libstdc++ gives C++20 the same thing as
-// __resize_and_overwrite (clang++ and g++ on this machine both use libstdc++).
-// Anywhere else it falls back to resize: correct, only slower.
+// resize_and_overwrite skips the zeros. libstdc++, g++'s, gives C++20 the same thing as
+// __resize_and_overwrite; libc++ -- clang's library here since 2026-10-22 -- gives it to
+// C++23 alone, and satl stays C++20 for now (make_support/010-compiler.mk says why), so
+// under libc++ it falls back to resize, as anywhere else: correct, only slower.
 //
 // USED BY satellite_string.cpp AND by plain_utf16.hpp, the race's plain C++, so
 // the race never compares a trick against code denied it.

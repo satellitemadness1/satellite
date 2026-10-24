@@ -591,7 +591,7 @@ expect "satl imports no network entry point of its own" 0 \
 expect "... and libgio, which CAN reach one, is linked by GTK and never called" "yes" \
        "$(gio_linked=$(readelf -d "$interpreter" 2>/dev/null | grep -c 'libgio-2.0'); gio_called=$(nm -D "$interpreter" 2>/dev/null | awk '{print $NF}' | grep -cE '^g_(socket|network|resolver|inet|tls|proxy)'); if [ "$gio_called" = 0 ] && [ "$gio_linked" -le 1 ]; then echo yes; else echo "linked=$gio_linked called=$gio_called"; fi)"
 # THE RUN-TIME FLOOR, WRITTEN DOWN AS A NUMBER (GTK_AND_NO_DEPENDENCIES.md DEP-3
-# and DEP-4, 2026-09-22). satl, every word inside it, asks the machine's
+# and DEP-4, 2026-09-22). satl built with libstdc++, every word inside it, asks the machine's
 # libc and libstdc++ for these symbol versions and nothing newer: GLIBC_2.38 (the
 # __isoc23_strtol family, strlcat, fmod -- clang 24 against glibc 2.39's headers)
 # and GLIBCXX_3.4.32 (gcc 13's std::ios_base_library_init, one symbol). AlmaLinux
@@ -599,8 +599,27 @@ expect "... and libgio, which CAN reach one, is linked by GTK and never called" 
 # empty root by prove-bare-machine.sh; AlmaLinux 9 (2.34, 3.4.29) cannot. The day
 # a change moves either number, in either direction, this row fails and somebody
 # decides whether the floor moves -- it must not move quietly.
+# A CLANG BUILD ASKS FOR NO GLIBCXX AT ALL SINCE 2026-10-22 (make_support/010-compiler.mk, the
+# author: "port it to libc++"): libc++, libc++abi and gcc's unwinder are inside satl, so its floor
+# is glibc's alone, and a GLIBCXX version -- or a NEEDED libstdc++, libc++, libc++abi, libunwind or
+# libgcc_s -- is a C++ library come back from the machine. WHICH LIBRARY THE BUILD MEANT is its own
+# record, build/.compile-flags, and not the binary's say: a libc++ build that leaked libstdc++ must
+# fail this row, not pass the other one. A g++ build, or a clang with no libc++, is the second
+# branch. A SATL THAT IS NOT build/satl (the review, 2026-10-23: `SATL=<installed>/satl ./check.sh`)
+# is not described by that record, so its own symbols say: libc++'s names are std::__1, mangled
+# NSt3__1, and a binary compiled against libc++ carries them however it was linked -- so a leak
+# still fails the first branch.
+if cmp -s "$interpreter" build/satl; then floor_library=" $(cat build/.compile-flags 2>/dev/null) "
+elif nm "$interpreter" 2>/dev/null | grep -q 'NSt3__1'; then floor_library=" -stdlib=libc++ "
+else floor_library=""; fi
+case $floor_library in
+*" -stdlib=libc++ "*)
+expect "the run-time floor is glibc 2.38 alone, satl with libc++ and its words inside it (EL10, not EL9)" "GLIBC_2.38|none|0" \
+       "$(objdump -T "$interpreter" 2>/dev/null | grep -oE 'GLIBC_2\.[0-9]+' | sort -V | tail -1)|$(objdump -T "$interpreter" 2>/dev/null | grep -oE 'GLIBCXX_3\.4\.[0-9]+' | sort -V | tail -1 | grep . || echo none)|$(readelf -d "$interpreter" 2>/dev/null | grep -cE 'Shared library: \[(libstdc\+\+|libc\+\+|libc\+\+abi|libunwind|libgcc_s)\.so')" ;;
+*)
 expect "the run-time floor is glibc 2.38 and GLIBCXX 3.4.32, satl with its words inside it (DEP-4: EL10, not EL9)" "GLIBC_2.38|GLIBCXX_3.4.32" \
-       "$(objdump -T "$interpreter" 2>/dev/null | grep -oE 'GLIBC_2\.[0-9]+' | sort -V | tail -1)|$(objdump -T "$interpreter" 2>/dev/null | grep -oE 'GLIBCXX_3\.4\.[0-9]+' | sort -V | tail -1)"
+       "$(objdump -T "$interpreter" 2>/dev/null | grep -oE 'GLIBC_2\.[0-9]+' | sort -V | tail -1)|$(objdump -T "$interpreter" 2>/dev/null | grep -oE 'GLIBCXX_3\.4\.[0-9]+' | sort -V | tail -1)" ;;
+esac
 
 # THE BRACED LIST -- `{a, b}` WHERE A VALUE BELONGS (the author, 2026-09-18: "we
 # need to build satellite object definitions to be this: = {series_of_objects,
@@ -2063,6 +2082,15 @@ else
     timeout 300 build/file_moves_cases "${TMPDIR:-/tmp}" > build/file_moves_cases.out 2>&1; code=$?
     expect "satellite.file.delete and its questions: $(grep -c '^ok' build/file_moves_cases.out) cases (build/file_moves_cases.out)" 0 $code
 fi
+# satellite.drive.list()'s ROWS (FILE_AND_DRIVE_PLAN.md FD-4): from a fake /sys/class/block and /run/udev/data it
+# makes in a folder inside $TMPDIR and removes, then this machine's.
+if [ ! -x build/drive_mounts_cases ]; then expect "build/drive_mounts_cases is built (make)" built missing
+elif ! make -sq build/drive_mounts_cases 2>/dev/null; then
+    expect "build/drive_mounts_cases is as new as its sources (make build/drive_mounts_cases)" current stale
+else
+    timeout 60 build/drive_mounts_cases "${TMPDIR:-/tmp}" > build/drive_mounts_cases.out 2>&1; code=$?
+    expect "satellite.drive.list()'s rows: $(grep -c '^ok' build/drive_mounts_cases.out) cases (build/drive_mounts_cases.out)" 0 $code
+fi
 # THE CONSOLE'S STORE WITH NO CONSOLE AROUND IT (KEY_PLAN.md KEY-1 to KEY-3): the day from a clock of
 # its own, the day's folder made 0700 at the first Enter and not before, the console's own file claimed
 # in it at the same Enter, every Enter kept as a line of it, less what the filter drops, and S017 where
@@ -2152,6 +2180,8 @@ opening_note=$(sed -e 's/\x1b\[[0-9;?]*[A-Za-z]//g' -e 's/\r//g' build/opening_n
 note_divider=$(printf '%097d' 0 | tr 0 -)
 expect "the prompt opens with the author's note, then an empty line, his divider, an empty line and the prompt" "1|1|1|1|1" \
        "$(printf '%s\n' "$opening_note" | grep -cx 'FOR DETAILED INFO SEE "satellite.help()"')|$(printf '%s\n' "$opening_note" | grep -cxF "SEE \"satellite.help(\"interpreter\")\" FOR INFO ON THE INTERPRETER'S PROCESSES")|$(printf '%s\n' "$opening_note" | grep -B1 -x -- "$note_divider" | head -1 | grep -cx '')|$(printf '%s\n' "$opening_note" | grep -A1 -x -- "$note_divider" | sed -n 2p | grep -cx '')|$(printf '%s\n' "$opening_note" | grep -A2 -x -- "$note_divider" | sed -n 3p | grep -c '^\[satellite\]\[')"
+expect "... whose first line is satellite.console.bash's, the author's words, after the start-up dashes and an empty line, with one after it" "1|1|1" \
+       "$(printf '%s\n' "$opening_note" | grep -cx 'satellite.console.bash("command") runs a console command')|$(printf '%s\n' "$opening_note" | grep -B2 -x 'satellite.console.bash("command") runs a console command' | head -1 | grep -cE '^-+$')|$(printf '%s\n' "$opening_note" | grep -A2 -x 'satellite.console.bash("command") runs a console command' | sed -n 3p | grep -cx 'FOR DETAILED INFO SEE "satellite.help()"')"
 expect "... and a prompt whose lines are piped in, no terminal, prints no note" 0 \
        "$(printf 'exit\n' | "$interpreter" --repl 2>&1 | grep -c 'FOR DETAILED INFO SEE')"
 # EVERY EXAMPLE IN satellite.help RUNS (ERRORS2 #12, 2026-09-26): before the error sweep the
@@ -6672,6 +6702,125 @@ expect "FD-2 in a program: delete answers true, then false once the file is gone
        "0|true false|gone" "$?|$(paste -sd ' ' "$fd_out")|$([ -e "$fd_room/doomed.txt" ] || echo gone)"
 rm -rf -- "$fd_room"
 
+# FD-3 (the author, 2026-10-21): satellite.file.copy puts the file's bytes into $TMPDIR/.satl/tmp/file-current and
+# the one before it into file-previous-NNN, every one kept; paste puts file-current, under its first name and with
+# its mode, into a folder or the working directory; move moves a file into a folder, across drives too. A name
+# already there is replaced only on a y, so with no console it is kept, and the prompt says so. TMPDIR is the
+# room's, so the person's own /tmp/.satl is never touched.
+fd_room=$(mktemp -d "${TMPDIR:-/tmp}/satl_fd.XXXXXX")
+mkdir "$fd_room/clip" "$fd_room/here" "$fd_room/there"
+printf 'one\n' > "$fd_room/here/a.txt"; chmod 640 "$fd_room/here/a.txt"; printf 'two\n' > "$fd_room/here/b.txt"
+(cd "$fd_room/here" && printf '%s\n' 'satellite.file.copy("b.txt")' 'satellite.file.copy("a.txt")' \
+     'satellite.file.paste("../there")' 'satellite.file.paste("../there")' 'satellite.file.copy("nowhere")' |
+     TMPDIR="$fd_room/clip" "$interpreter" --repl > "$fd_out" 2>/dev/null)
+fd_clip=$fd_room/clip/.satl/tmp
+expect "FD-3 copy: the bytes go to file-current and the copy before to file-previous-001, in folders of the person's alone, each first name kept" \
+       "one|two|700|700|file-current=a.txt|file-previous-001=b.txt" \
+       "$(cat "$fd_clip/file-current")|$(cat "$fd_clip/file-previous-001")|$(stat -c %a "$fd_room/clip/.satl")|$(stat -c %a "$fd_clip")|$(sed 's/\t/=/' "$fd_clip/names" | sort | paste -sd '|')"
+expect "FD-3 paste: file-current goes into the folder under its first name and mode; a second paste, with no console, keeps the one there and says so" \
+       "a.txt|one|640|../there/a.txt is already there, and there is no console to ask whether to replace it, so it was kept|there is no file nowhere" \
+       "$(ls "$fd_room/there" | paste -sd ' ')|$(cat "$fd_room/there/a.txt")|$(stat -c %a "$fd_room/there/a.txt")|$(paste -sd '|' "$fd_out")"
+(cd "$fd_room/there" && printf '%s\n' 'satellite.file.move("a.txt", "../here")' 'satellite.file.move("../here/b.txt", ".")' \
+     'satellite.file.paste()' 'satellite.file.move("nothing.txt", ".")' 'satellite.file.move("b.txt", "../nowhere")' |
+     TMPDIR="$fd_room/clip" "$interpreter" --repl > "$fd_out" 2>/dev/null)
+expect "FD-3 move: a file goes into the folder keeping its name, never over one there unasked; paste() is the working directory's; each refusal says why" \
+       "a.txt|a.txt b.txt|two|../here/a.txt is already there, and there is no console to ask whether to replace it, so it was kept|./a.txt is already there, and there is no console to ask whether to replace it, so it was kept|there is no file nothing.txt|there is no folder ../nowhere" \
+       "$(ls "$fd_room/here" | paste -sd ' ')|$(ls "$fd_room/there" | paste -sd ' ')|$(cat "$fd_room/there/b.txt")|$(paste -sd '|' "$fd_out")"
+# ONLY WHEN /dev/shm IS ANOTHER DRIVE (the review, 2026-10-23): on the same one the move is a rename, and this row
+# would pass without crossing anything.
+fd_far=$([ "$(stat -c %d "$fd_room")" != "$(stat -c %d /dev/shm 2>/dev/null)" ] && mktemp -d /dev/shm/satl_fd.XXXXXX 2>/dev/null)
+if [ -n "$fd_far" ]; then
+    printf 'far\n' > "$fd_room/here/far.txt"
+    (cd "$fd_room/here" && printf 'satellite.file.move("far.txt", "%s")\n' "$fd_far" |
+         TMPDIR="$fd_room/clip" "$interpreter" --repl > "$fd_out" 2>/dev/null)
+    expect "FD-3 move: across drives (here to /dev/shm) the file is copied and the first one removed, saying nothing" \
+           "far|gone|0" "$(cat "$fd_far/far.txt" 2>&1)|$([ -e "$fd_room/here/far.txt" ] || echo gone)|$(wc -c < "$fd_out")"
+    rm -rf -- "$fd_far"
+fi
+cat > "$fd_room/fd3.satl" <<'FD3_EOF'
+satellite.include(satellite)
+satellite.capsule satellite.main()
+{
+    satellite.file.new("p.txt")
+    satellite.directory.create("sub")
+    satellite.console.display(satellite.file.copy("p.txt"))
+    satellite.console.display(satellite.file.paste("sub"))
+    satellite.console.display(satellite.file.paste("sub"))
+    satellite.console.display(satellite.file.move("p.txt", "sub/deeper"))
+    satellite.return(satellite)
+}
+FD3_EOF
+TMPDIR="$fd_room/clip" "$interpreter" "$fd_room/fd3.satl" > "$fd_out" 2>/dev/null < /dev/null
+expect "FD-3 in a program: copy, paste and move answer true or false -- a second paste with nobody to ask is false -- and never stop it" \
+       "0|true true false false|p.txt" "$?|$(paste -sd ' ' "$fd_out")|$(ls "$fd_room/sub")"
+rm -rf -- "$fd_room"
+
+# FD-4 (the author, 2026-10-21: "satellite.drive.list() // lists all drives"): the table at the prompt and in a
+# program, one row for each block device udev says holds a filesystem -- counted here from /sys and udev's own
+# records, loop devices and their partitions left out as the table leaves them -- under the header. It takes nothing, refused before
+# the run; mount is numbered and not built.
+fd4_count=0
+for fd4_block in /sys/class/block/*; do
+    [ -e "$fd4_block/loop" ] || [ -e "$fd4_block/../loop" ] && continue
+    grep -qx 'E:ID_FS_USAGE=filesystem' "/run/udev/data/b$(cat "$fd4_block/dev" 2>/dev/null)" 2>/dev/null &&
+        fd4_count=$((fd4_count + 1))
+done
+fd4_prompt=$(printf 'satellite.drive.list()\n' | "$interpreter" --repl 2>&1)
+fd4_header='^name +label +type +size +mounted on +drive$'
+expect "FD-4 at the prompt: satellite.drive.list() is a table under its header, a row for each drive udev says holds a filesystem" \
+       "1|$fd4_count" \
+       "$(printf '%s\n' "$fd4_prompt" | grep -cE "$fd4_header")|$(printf '%s\n' "$fd4_prompt" | grep -E -A 100000 "$fd4_header" | sed 1d | grep -cE '[0-9] mb  ')"
+fd4_room=$(mktemp -d "${TMPDIR:-/tmp}/satl_fd4.XXXXXX")
+printf '%s\n' 'satellite.include(satellite)' 'satellite.capsule satellite.main()' '{' '    satellite.drive.list()' \
+       '    satellite.console.display("listed")' '    satellite.return(satellite)' '}' > "$fd4_room/list.satl"
+"$interpreter" "$fd4_room/list.satl" > "$fd4_room/list.out" 2>&1 < /dev/null
+expect "FD-4 in a program: the same table, and the program goes on" "0|1|$fd4_count|listed" \
+       "$?|$(grep -cE "$fd4_header" "$fd4_room/list.out")|$(grep -E -A 100000 "$fd4_header" "$fd4_room/list.out" | sed 1d | grep -cE '[0-9] mb  ')|$(tail -n 1 "$fd4_room/list.out")"
+printf '%s\n' 'satellite.include(satellite)' 'satellite.capsule satellite.main()' '{' '    satellite.console.display("ran")' \
+       '    satellite.drive.list(1)' '    satellite.return(satellite)' '}' > "$fd4_room/given.satl"
+"$interpreter" "$fd4_room/given.satl" > "$fd4_room/given.out" 2>&1 < /dev/null
+expect "FD-4: satellite.drive.list(1) is refused before anything runs -- it takes nothing" "13|0|1" \
+       "$?|$(grep -c '^ran$' "$fd4_room/given.out")|$(tr '\n' ' ' < "$fd4_room/given.out" | grep -c 'satellite.drive.list() takes nothing')"
+printf '%s\n' 'satellite.include(satellite)' 'satellite.capsule satellite.main()' '{' '    satellite.drive.mount("sdd1")' \
+       '    satellite.return(satellite)' '}' > "$fd4_room/mount.satl"
+"$interpreter" "$fd4_room/mount.satl" > "$fd4_room/mount.out" 2>&1 < /dev/null
+expect "FD-4: satellite.drive.mount is numbered and not built yet (FD-5)" "14|1" \
+       "$?|$(grep -c 'not_built_yet' "$fd4_room/mount.out")"
+rm -rf -- "$fd4_room"
+
+# satellite.console.bash (the author, 2026-10-23: "I need a satellite.console.bash("bash_command") that runs in the
+# satellite console so I don't have to use a regular console anymore"): bash -c the line on satl's own output, in its
+# turn between the lines displayed around it, its errors too. It answers the exit code -- 3, 0, and 127 for no such
+# command -- and a command that fails never stops the program. Given nothing, it is refused before anything runs.
+# check_session.py types at one on a terminal: a question answered, and Ctrl-C.
+bash_room=$(mktemp -d "${TMPDIR:-/tmp}/satl_bash.XXXXXX")
+expect "console.bash at the prompt: the command's output and errors come in their turn, between the lines around it" "a|b|b2|c" \
+       "$(printf '%s\n' 'satellite.console.display("a")' 'satellite.console.bash("echo b; echo b2 >&2")' 'satellite.console.display("c")' |
+          "$interpreter" --repl 2>&1 | grep -xE 'a|b|b2|c' | paste -sd '|')"
+printf '%s\n' 'satellite.include(satellite)' 'satellite.capsule satellite.main()' '{' \
+       '    satellite.variable.number made = satellite.console.bash("exit 3")' '    satellite.console.display(made)' \
+       '    satellite.console.display(satellite.console.bash("true"))' \
+       '    satellite.console.display(satellite.console.bash("no_such_command_satl_check"))' \
+       '    satellite.return(satellite)' '}' > "$bash_room/code.satl"
+(cd "$bash_room" && "$interpreter" code.satl > out 2>&1 < /dev/null; echo $? > status)
+expect "console.bash in a program: it answers the exit code -- 3, 0, and 127 for no such command -- and the program goes on" \
+       "0|3|0|127|1" \
+       "$(cat "$bash_room/status")|$(grep -xE '[0-9]+' "$bash_room/out" | paste -sd '|')|$(grep -c 'no_such_command_satl_check: command not found' "$bash_room/out")"
+printf '%s\n' 'satellite.include(satellite)' 'satellite.capsule satellite.main()' '{' '    satellite.console.display("ran")' \
+       '    satellite.console.bash()' '    satellite.return(satellite)' '}' > "$bash_room/none.satl"
+"$interpreter" "$bash_room/none.satl" > "$bash_room/none.out" 2>&1 < /dev/null
+expect "console.bash() is refused before anything runs: it takes the command" "13|0" \
+       "$?|$(grep -c '^ran$' "$bash_room/none.out")"
+printf '%s\n' 'satellite.include(satellite)' 'satellite.capsule satellite.main()' '{' '    satellite.console.display("ran")' \
+       '    satellite.console.bash(5)' '    satellite.return(satellite)' '}' > "$bash_room/five.satl"
+"$interpreter" "$bash_room/five.satl" > "$bash_room/five.out" 2>&1 < /dev/null
+expect "console.bash(5) is refused before anything runs: the command is text" "27|0|1" \
+       "$?|$(grep -c '^ran$' "$bash_room/five.out")|$(tr '\n' ' ' < "$bash_room/five.out" | grep -c 'takes the command as text')"
+expect "console.bash with satl's input piped in: the command reads nothing, and the lines after it still run" "read=[]|c" \
+       "$(printf '%s\n' 'satellite.console.bash("read x; echo read=[$x]")' 'satellite.console.display("c")' |
+          "$interpreter" --repl 2>&1 | grep -xE 'read=.*|c' | paste -sd '|')"
+rm -rf -- "$bash_room"
+
 # satellite.variable.info (the author, 2026-09-25, satellite.variable.info/README.md): a
 # list, one index a name -- name, size (a float) and size_type (b kb mb gb tb), a text
 # file's line_count, permissions -- and then type, bytes, a directory's files, sub,
@@ -9090,6 +9239,501 @@ expect "at the prompt satellite.arguments.magic = 9 is saved in config.ini, and 
 printf 'dir("/nowhere/at/all")\nsatellite.console.display("after")\n' | "$interpreter" --repl > build/prompt_dir_missing.out 2>&1; code=$?
 expect "prompt: dir(\"/nowhere/at/all\") says there is no such folder, and the session goes on" "0|1|1" \
        "$code|$(grep -c '^there is no folder /nowhere/at/all -- the prompt stays in ' build/prompt_dir_missing.out)|$(grep -cx after build/prompt_dir_missing.out)"
+
+# satellite.error() (ERROR_BLOCK_PLAN.md, EB-1 and EB-2, 2026-10-23): a block written right after a block's } that runs
+# instead when that block meets an error, and the program carries on after it. Each program is written here and judged
+# by its exit, its lines, and whether a report was printed -- a caught error prints none and writes nothing to the log.
+eb_dir=build/error_blocks
+rm -rf -- "$eb_dir" && mkdir -p -- "$eb_dir"
+eb() {   # eb <name> <the program after its include line>: runs it, answers its exit; $eb_dir/<name>.out is what it said
+    printf 'satellite.include(satellite)\n\n%s\n' "$2" > "$eb_dir/$1.satl"
+    "$interpreter" "$eb_dir/$1.satl" > "$eb_dir/$1.out" 2>&1
+    echo $?
+}
+eb_said() { grep -cx -- "$2" "$eb_dir/$1.out"; }
+eb_reports() { grep -c 'SATELLITE CRITICAL ERROR REPORT' "$eb_dir/$1.out"; }
+eb_refused() { tr '\n' ' ' < "$eb_dir/$1.out" | tr -s ' ' | grep -c -- "$2"; }
+eb_logged() { grep -c DIVISION_BY_ZERO "$HOME/.satl/satellite.log" 2>/dev/null || echo 0; }
+eb_log_before=$(eb_logged)
+expect "satellite.error() after main catches a division by zero in a capsule main calls: no report, main's rest skipped, exit 0" \
+       "0|1|1|0|0" \
+       "$(eb main_catches 'satellite.capsule half(satellite.variable.number n, satellite.variable.number d)
+{
+    satellite.return(n / d)
+}
+
+satellite.capsule satellite.main()
+{
+    satellite.variable.number zero = 0
+    satellite.console.display("before")
+    satellite.console.display(half(10, zero))
+    satellite.console.display("never")
+    satellite.return(satellite)
+}
+
+satellite.error()
+{
+    satellite.console.display("caught")
+}')|$(eb_said main_catches before)|$(eb_said main_catches caught)|$(eb_said main_catches never)|$(eb_reports main_catches)"
+eb_log_caught=$(eb_logged)
+expect "... and the caught error wrote nothing to satellite.log" "$eb_log_before" "$eb_log_caught"
+expect "a capsule's error block sees its parameters, declares again a name its body declared, and hands back its answer" \
+       "0|1|1|0" \
+       "$(eb hands_back 'satellite.capsule safe_half(satellite.variable.number n, satellite.variable.number d)
+{
+    satellite.variable.number answer = 7
+    satellite.return(n / d)
+}
+// a comment, and a blank line, between the } and the error block
+
+satellite.error()
+{
+    satellite.variable.number answer = -1
+    satellite.console.display("n was " + n.satellite.to_string())
+    satellite.return(answer)
+}
+
+satellite.capsule satellite.main()
+{
+    satellite.console.display(safe_half(10, 0))
+    satellite.return(satellite)
+}')|$(eb_said hands_back 'n was 10')|$(eb_said hands_back -1)|$(eb_reports hands_back)"
+expect "the nearest error block catches: the inner capsule's runs, and the outer one carries on" "0|1|1|0" \
+       "$(eb nearest 'satellite.capsule inner()
+{
+    satellite.console.display(1 / 0)
+}
+satellite.error()
+{
+    satellite.console.display("inner caught it")
+}
+
+satellite.capsule outer()
+{
+    inner()
+    satellite.console.display("outer carried on")
+}
+satellite.error()
+{
+    satellite.console.display("outer caught it")
+}
+
+satellite.capsule satellite.main()
+{
+    outer()
+    satellite.return(satellite)
+}')|$(eb_said nearest 'inner caught it')|$(eb_said nearest 'outer carried on')|$(eb_said nearest 'outer caught it')"
+expect "satellite.return(satellite) in a guarded block ends the program and is never caught" "0|1|0" \
+       "$(eb return_not_caught 'satellite.capsule satellite.main()
+{
+    satellite.statement.if (satellite.bool.true)
+    {
+        satellite.console.display("quitting")
+        satellite.return(satellite)
+    }
+    satellite.error()
+    {
+        satellite.console.display("WRONG")
+    }
+    satellite.console.display("WRONG")
+    satellite.return(satellite)
+}')|$(eb_said return_not_caught quitting)|$(eb_said return_not_caught WRONG)"
+expect "an error inside an error block stops the program with its report, and is logged" "22|1|1|1|1" \
+       "$(eb error_in_error_block 'satellite.capsule satellite.main()
+{
+    satellite.console.display(1 / 0)
+    satellite.return(satellite)
+}
+satellite.error()
+{
+    satellite.console.display("in the error block")
+    satellite.console.display(2 / 0)
+}')|$(eb_said error_in_error_block 'in the error block')|$(eb_reports error_in_error_block)|$(grep -c S401 "$eb_dir/error_in_error_block.out")|$([ "$(eb_logged)" -gt "$eb_log_caught" ] && echo 1 || echo 0)"
+expect "what the checker refuses is never caught: a name never declared, in a main with an error block" "25|0|1" \
+       "$(eb checker_not_caught 'satellite.capsule satellite.main()
+{
+    satellite.console.display(var_that_is_non_existent)
+    satellite.return(satellite)
+}
+satellite.error()
+{
+    satellite.console.display("WRONG")
+}')|$(eb_said checker_not_caught WRONG)|$(grep -c S201 "$eb_dir/checker_not_caught.out")"
+expect "EB-2: an error block after an if's else, after an if's condition, after a while and after a for, and one skipped" \
+       "0|1|1|1|0|1|1|1|2|0" \
+       "$(eb statements 'satellite.capsule satellite.main()
+{
+    satellite.variable.number zero = 0
+    satellite.statement.if (satellite.bool.false)
+    {
+        satellite.console.display("if")
+    }
+    satellite.statement.else
+    {
+        satellite.console.display(5 / zero)
+    }
+    satellite.error()
+    {
+        satellite.console.display("caught in the else")
+    }
+    satellite.statement.if (1 / zero == 1)
+    {
+        satellite.console.display("WRONG")
+    }
+    satellite.error()
+    {
+        satellite.console.display("caught in the condition")
+    }
+    satellite.statement.if (satellite.bool.true)
+    {
+        satellite.console.display("fine")
+    }
+    satellite.error()
+    {
+        satellite.console.display("WRONG")
+    }
+    satellite.variable.number i = 0
+    satellite.statement.while (i < 3)
+    {
+        satellite.console.display(6 / (1 - i))
+        i = i + 1
+    }
+    satellite.error()
+    {
+        satellite.console.display("the while stopped at " + i.satellite.to_string())
+    }
+    satellite.statement.for (satellite.variable.number k = 2; k > -2; k - 1)
+    {
+        satellite.console.display(6 / k)
+    }
+    satellite.error()
+    {
+        satellite.console.display("the for stopped")
+    }
+    satellite.return(satellite)
+}')|$(eb_said statements 'caught in the else')|$(eb_said statements 'caught in the condition')|$(eb_said statements fine)|$(eb_said statements WRONG)|$(eb_said statements 'the while stopped at 1')|$(eb_said statements 6/2)|$(eb_said statements 'the for stopped')|$(eb_said statements 6/1)|$(eb_reports statements)"
+expect "a constructor's, a spacesuit capsule's and a namespace capsule's error blocks, and a break from one inside a loop" \
+       "0|1|1|1|1|1|0" \
+       "$(eb suits 'satellite.spacesuit meter()
+{
+    satellite.protected
+    {
+        satellite.variable.number reading = 0
+    }
+
+    satellite.constructor(satellite.variable.number start)
+    {
+        reading = satellite.convert.whole(10 / start)
+    }
+    satellite.error()
+    {
+        reading = -1
+        satellite.console.display("the constructor caught it")
+    }
+
+    satellite.public
+    {
+        satellite.capsule per(satellite.variable.number parts)
+        {
+            satellite.return(satellite.convert.whole(reading / parts))
+        }
+        satellite.error()
+        {
+            satellite.console.display("per caught it, reading is " + reading.satellite.to_string())
+            satellite.return(0)
+        }
+    }
+}
+
+satellite.namespace tools
+{
+    satellite.capsule risky(satellite.variable.number d)
+    {
+        satellite.return(1 / d)
+    }
+    satellite.error()
+    {
+        satellite.return(99)
+    }
+}
+
+satellite.capsule satellite.main()
+{
+    meter m(0)
+    satellite.console.display(m.per(0))
+    satellite.console.display(tools.risky(0))
+    satellite.variable.number i = 0
+    satellite.statement.while (i < 5)
+    {
+        i = i + 1
+        satellite.statement.if (i == 3)
+        {
+            satellite.console.display(1 / 0)
+        }
+        satellite.error()
+        {
+            satellite.statement.break
+        }
+    }
+    satellite.console.display("i is " + i.satellite.to_string())
+    satellite.return(satellite)
+}')|$(eb_said suits 'the constructor caught it')|$(eb_said suits 'per caught it, reading is -1')|$(eb_said suits 0)|$(eb_said suits 99)|$(eb_said suits 'i is 3')|$(eb_reports suits)"
+expect "a thread's capsule catches its own error, and join() answers what its error block handed back" "0|1" \
+       "$(eb thread 'satellite.capsule work(satellite.variable.number d)
+{
+    satellite.return(10 / d)
+}
+satellite.error()
+{
+    satellite.return(-5)
+}
+
+satellite.capsule satellite.main()
+{
+    satellite.variable.thread t = satellite.thread.new(work(0))
+    t.satellite.start()
+    satellite.console.display(t.satellite.join())
+    satellite.return(satellite)
+}')|$(eb_said thread -5)"
+expect "a capsule with an error block that calls itself 20,000 deep: the deepest call catches, and main goes on" "0|1|1" \
+       "$(eb deep 'satellite.capsule down(satellite.variable.number n)
+{
+    satellite.statement.if (n == 0)
+    {
+        satellite.console.display(1 / n)
+    }
+    down(n - 1)
+}
+satellite.error()
+{
+    satellite.console.display("caught at n = " + n.satellite.to_string())
+}
+
+satellite.capsule satellite.main()
+{
+    down(20000)
+    satellite.console.display("back in main")
+    satellite.return(satellite)
+}')|$(eb_said deep 'caught at n = 0')|$(eb_said deep 'back in main')"
+expect "an error block inside a loop catches 42,858 errors out of 300,000 passes, one a pass" "0|1" \
+       "$(eb many 'satellite.capsule satellite.main()
+{
+    satellite.variable.number total = 0
+    satellite.statement.for (satellite.variable.number i = 0; i < 300000; i + 1)
+    {
+        satellite.statement.if (i % 7 == 0)
+        {
+            total = total + satellite.convert.whole(1 / (i % 2))
+        }
+        satellite.error()
+        {
+            total = total + 1
+        }
+    }
+    satellite.console.display(total)
+    satellite.return(satellite)
+}')|$(eb_said many 42858)"
+# THE FRESH READER'S FINDINGS (2026-10-23). A file that cannot be saved is one made unwritable here.
+eb_locked=$PWD/$eb_dir/locked.txt
+printf 'kept\n' > "$eb_locked" && chmod 444 "$eb_locked"
+expect "a file that cannot be saved as satellite.return(satellite) ends the run is still reported, exit 44, and no error block runs" \
+       "44|1|0|0" \
+       "$(eb quitting_save "satellite.capsule quit_with_a_file()
+{
+    satellite.variable.file f = satellite.file.open(\"$eb_locked\")
+    f.satellite.append(\"x\")
+    satellite.return(satellite)
+}
+
+satellite.capsule satellite.main()
+{
+    quit_with_a_file()
+    satellite.console.display(\"WRONG\")
+    satellite.return(satellite)
+}
+satellite.error()
+{
+    satellite.console.display(\"WRONG\")
+}")|$(grep -c 'could not be saved' "$eb_dir/quitting_save.out" | sed 's/^[1-9][0-9]*$/1/')|$(eb_said quitting_save WRONG)|$(eb_reports quitting_save)"
+# The file is tried again when main ends and reported then, exit 44, as it is with no error block at all.
+expect "a break before a } whose file cannot be saved: the error block runs every line, and so does the rest of main" \
+       "44|1|1|1|1" \
+       "$(eb break_then_save "satellite.capsule satellite.main()
+{
+    satellite.variable.number i = 0
+    satellite.statement.while (i < 3)
+    {
+        i = i + 1
+        satellite.statement.if (i == 1)
+        {
+            satellite.variable.file f = satellite.file.open(\"$eb_locked\")
+            f.satellite.append(\"x\")
+            satellite.statement.break
+        }
+    }
+    satellite.error()
+    {
+        satellite.console.display(\"caught, i is \" + i.satellite.to_string())
+        satellite.statement.if (satellite.bool.true)
+        {
+            satellite.console.display(\"inside\")
+        }
+        satellite.console.display(\"after the if in the error block\")
+    }
+    satellite.console.display(\"after the while\")
+    satellite.return(satellite)
+}")|$(eb_said break_then_save 'caught, i is 1')|$(eb_said break_then_save inside)|$(eb_said break_then_save 'after the if in the error block')|$(eb_said break_then_save 'after the while')"
+expect "a capsule whose answer comes only from its error block may be used where its answer goes" "0|-1" \
+       "$(eb answer_from_error_block 'satellite.capsule fallback(satellite.variable.number d)
+{
+    satellite.console.display(10 / d)
+}
+satellite.error()
+{
+    satellite.return(-1)
+}
+
+satellite.capsule satellite.main()
+{
+    satellite.console.display(fallback(0))
+    satellite.return(satellite)
+}')|$(grep -x -- -1 "$eb_dir/answer_from_error_block.out")"
+expect "refused: deleting a parameter of a capsule with an error block, said as that" "13|1" \
+       "$(eb delete_parameter 'satellite.capsule f(satellite.variable.number n)
+{
+    satellite.delete(n)
+}
+satellite.error()
+{
+}
+
+satellite.capsule satellite.main()
+{
+    f(1)
+    satellite.return(satellite)
+}')|$(eb_refused delete_parameter 'has a satellite.error() block, which sees what it was given')"
+printf 'satellite.error()\n' | "$interpreter" --repl > "$eb_dir/prompt.out" 2>&1
+expect "at the prompt, satellite.error() is told it belongs in a program's file" 1 \
+       "$(eb_refused prompt "satellite.error() is written in a program's file")"
+# THE REFUSALS, before anything runs.
+eb_no_block='nothing like that ends right above this one'
+expect "refused: satellite.error() as a body's first line" "13|1" \
+       "$(eb no_block_first 'satellite.capsule satellite.main()
+{
+    satellite.error()
+    {
+    }
+    satellite.return(satellite)
+}')|$(eb_refused no_block_first "$eb_no_block")"
+expect "refused: satellite.error() after a plain line" "13|1" \
+       "$(eb no_block_plain 'satellite.capsule satellite.main()
+{
+    satellite.console.display("a")
+    satellite.error()
+    {
+    }
+    satellite.return(satellite)
+}')|$(eb_refused no_block_plain "$eb_no_block")"
+expect "refused: a second satellite.error() right after the first" "13|1" \
+       "$(eb two_in_a_row 'satellite.capsule satellite.main()
+{
+    satellite.statement.if (satellite.bool.true)
+    {
+    }
+    satellite.error()
+    {
+    }
+    satellite.error()
+    {
+    }
+    satellite.return(satellite)
+}')|$(eb_refused two_in_a_row "$eb_no_block")"
+expect "refused: satellite.error() at a file's top after no capsule" "13|1" \
+       "$(eb top_alone 'satellite.error()
+{
+}
+
+satellite.capsule satellite.main()
+{
+    satellite.return(satellite)
+}')|$(eb_refused top_alone "$eb_no_block")"
+expect "refused: satellite.error() after a namespace's }" "13|1" \
+       "$(eb after_namespace 'satellite.namespace tools
+{
+    satellite.capsule f()
+    {
+    }
+}
+satellite.error()
+{
+}
+
+satellite.capsule satellite.main()
+{
+    satellite.return(satellite)
+}')|$(eb_refused after_namespace "$eb_no_block")"
+expect "refused: something between satellite.error's brackets" "13|1" \
+       "$(eb with_argument 'satellite.capsule satellite.main()
+{
+    satellite.return(satellite)
+}
+satellite.error(5)
+{
+}')|$(eb_refused with_argument 'nothing between its brackets')"
+expect "refused: satellite.error() with no { after it" "13|1" \
+       "$(eb no_body 'satellite.capsule satellite.main()
+{
+    satellite.statement.if (satellite.bool.true)
+    {
+    }
+    satellite.error()
+    satellite.return(satellite)
+}')|$(eb_refused no_body 'and then its lines between { and }')"
+expect "refused: an error block that is never closed" "13|1" \
+       "$(eb unclosed 'satellite.capsule satellite.main()
+{
+    satellite.return(satellite)
+}
+satellite.error()
+{
+    satellite.console.display("a")
+')|$(eb_refused unclosed 'satellite.error() is never closed')"
+expect "refused: a capsule's error block naming what its body declared" "25|1" \
+       "$(eb body_name 'satellite.capsule f()
+{
+    satellite.variable.number kept = 5
+    satellite.console.display(1 / 0)
+}
+satellite.error()
+{
+    satellite.console.display(kept)
+}
+
+satellite.capsule satellite.main()
+{
+    f()
+    satellite.return(satellite)
+}')|$(eb_refused body_name 'kept is not legal here')"
+expect "refused: an else after an error block" "13|1" \
+       "$(eb else_after 'satellite.capsule satellite.main()
+{
+    satellite.statement.if (satellite.bool.false)
+    {
+    }
+    satellite.error()
+    {
+    }
+    satellite.statement.else
+    {
+    }
+    satellite.return(satellite)
+}')|$(eb_refused else_after 'this one follows a satellite.error() block')"
+expect "refused: satellite.error() used as a value" "13|1" \
+       "$(eb as_a_value 'satellite.capsule satellite.main()
+{
+    satellite.variable.number x = satellite.error()
+    satellite.return(satellite)
+}')|$(eb_refused as_a_value 'satellite.error() answers nothing')"
 
 echo "$passed passed, $failed failed"
 [ "$failed" = 0 ]

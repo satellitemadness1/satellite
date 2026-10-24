@@ -3,13 +3,17 @@
 SATELLITE 004: satellite.file
 --------------------------------------------------------------------------------
 
-Making and deleting files, and making folders. Each of these is a whole line by
-itself, typed at the prompt or written in a program:
+Making, copying, moving and deleting files, and making folders. Each of these is
+a whole line by itself, typed at the prompt or written in a program:
 
     satellite.directory.create("/path/dir_name")
     satellite.file.new("filename.ext")
     satellite.file.new("filename.ext", "text")
     satellite.file.new("filename.ext", "binary")
+    satellite.file.copy("filename.ext")
+    satellite.file.paste()
+    satellite.file.paste("/path/dir_name")
+    satellite.file.move("filename.ext", "/path/dir_name")
     satellite.file.delete("filename.ext")
 
 satellite.directory.create makes the folder, and every missing folder above it.
@@ -30,12 +34,25 @@ password is never drawn and never kept. A wrong one, or no console to ask on,
 leaves the file where it is. A folder is not deleted -- delete takes files --
 and a link is deleted itself, never what it points to.
 
+satellite.file.copy puts the file's bytes, and its permissions as cp gives them
+(never setuid or setgid), on the clipboard: $TMPDIR/.satl/tmp/file-current,
+which is /tmp/.satl/tmp/file-current when TMPDIR is not set. The copy there
+before it becomes file-previous-001, then -002 and so on, and every one is kept:
+satl removes none of them.
+satellite.file.paste() puts file-current, under the name it was copied with,
+into the folder you are in, and satellite.file.paste("dir") into that folder.
+satellite.file.move("path", "dir") moves the file into the folder, keeping its
+name, across drives too. A link is moved itself, on the same drive. When a file
+of that name is already there, paste and move ask on the console whether to
+replace it, and only y replaces it; with no console to ask on, the file there is
+kept. A folder is never replaced, and copy and move take files, not folders.
+
 Typed alone at the prompt, a line that could not do its work says why in one
-line, and a line that did says nothing. In a program, create and delete answer
-true or false, and new answers the file, whose .satellite.ok() and
-.satellite.error() say how it went. None of them stops the program. A path in
-a program is found from the folder of the .satl it is written in, as every
-file's path is.
+line, and a line that did says nothing. In a program, create, delete, copy,
+paste and move answer true or false, and new answers the file, whose
+.satellite.ok() and .satellite.error() say how it went. None of them stops the
+program. A path in a program is found from the folder of the .satl it is
+written in, as every file's path is.
 
 example:
 
@@ -44,9 +61,13 @@ example:
     satellite.capsule satellite.main()
     {
         satellite.directory.create("notes/2026/october")
+        satellite.directory.create("notes/old")
         satellite.file.new("notes/2026/october/today.txt", "text")
         satellite.file.new("notes/2026/october/picture.bin", "binary")
-        satellite.file.delete("notes/2026/october/picture.bin")
+        satellite.file.copy("notes/2026/october/today.txt")
+        satellite.file.paste("notes/old")
+        satellite.file.move("notes/2026/october/picture.bin", "notes/old")
+        satellite.file.delete("notes/old/picture.bin")
         satellite.console.display("made")
         satellite.return(satellite)
     }

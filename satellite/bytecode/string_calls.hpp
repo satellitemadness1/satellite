@@ -78,6 +78,14 @@ signed long long int string_method_check(const std::vector<std::bitset<16>> &row
                                          bool bracketed, std::size_t given, token::Code method,
                                          const std::string &spelling, std::string &why);
 
+// AND ONE ARGUMENT OF ANOTHER TYPE'S METHOD JUDGED AS TEXT (the checker gaps of 2026-10-19, OPEN_ITEMS_2026-10-20):
+// a file's append, index_of, search, contains and remove read text in their first argument, and insert and
+// replace in their second (file_calls.cpp's text_of), so a lone binary, hex, percentage or time literal at
+// `slot` is refused before the run, in the walker's sentence. `open` is the method's bracket and `wanted` its
+// count. success otherwise -- a float or a bool there too, for this file's reason above.
+signed long long int text_literal_refused(const std::vector<std::bitset<16>> &row, std::size_t open, int wanted,
+                                          int slot, const std::string &spelling, std::string &why);
+
 // `s[...]` ON A NAME DECLARED A STRING, judged before anything runs: a lone literal in the
 // brackets that is not a whole number, or is 0, refused as s[n] refuses it. `open` is the `[`.
 signed long long int string_index_check(const std::vector<std::bitset<16>> &row, std::size_t open,

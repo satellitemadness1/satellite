@@ -267,7 +267,8 @@ executable's own path cannot be read; check the C++ ABI at load (a library built
 `-D_GLIBCXX_USE_CXX11_ABI=0` loaded and wrote 82 KB of heap memory to stdout). **Dynamic
 linking** was on purpose then: the interpreter and every library had to share one
 libstdc++, or each had its own `std::cout`; with the words inside satl that reason is gone,
-and static linking is a question open again.
+and since 2026-10-22 a clang build links its C++ library into satl statically -- LLVM's
+libc++ (`make_support/010-compiler.mk`) -- while a g++ build links the machine's libstdc++.
 
 ---
 

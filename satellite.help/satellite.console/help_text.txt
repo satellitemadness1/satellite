@@ -55,6 +55,18 @@ italic=. When the input has ended -- a file piped in ran out, or Ctrl-D -- satl
 stops with S830 INPUT_ENDED, exit 55, rather than answering an empty line
 forever.
 
+satellite.console.bash("command") runs a command with bash, as a terminal would,
+on this console: what it writes appears here, what it asks -- sudo's password,
+apt's [Y/n] -- is typed here, and Ctrl-C stops the command and not satl. Typed
+at the prompt, it lets the satellite console stand in for a terminal:
+
+    satellite.console.bash("sudo apt update")
+
+It answers the command's exit code: 0 when it went well, 127 when the command
+or bash is not there, and 128 and the signal's number when a signal ended it.
+Ctrl-Z does not put a command aside: it carries on. With satl's input piped in
+or read from a file, the command reads nothing.
+
 satellite.console.width and .height, with no brackets, are how many characters
 fit across the terminal and lines fit down it, asked fresh every time -- 80 and
 24 when there is no terminal. satellite.console.clear() empties the screen and

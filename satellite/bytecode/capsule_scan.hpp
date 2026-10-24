@@ -57,6 +57,17 @@ void declare_capsule(CapsuleTable &table, std::size_t r, std::size_t file_scope,
                      std::size_t brace, std::string name, std::vector<CapsuleParameter> parameters,
                      Opened suit_part);
 
+// PAST A CAPSULE'S BODY, from its `{` at `brace` -- and past the satellite.error() block written right after
+// it, when there is one (ERROR_BLOCK_PLAN.md), kept on the site the capsule made: `made` is where that site went
+// in table.sites, and nothing is kept when its name was refused and no site was made.
+std::size_t past_the_body_and_its_error_block(CapsuleTable &table, const std::vector<std::bitset<16>> &row,
+                                              std::size_t r, std::size_t brace, std::size_t made);
+
+// A satellite.error AT `i` THAT NO CAPSULE'S } CLAIMED: refused, with the sentence for how it is written
+// wrong or for the block it does not follow, and stepped over whole.
+void refuse_a_lone_error_block(CapsuleTable &table, const std::vector<std::bitset<16>> &row, std::size_t r,
+                               std::size_t &i);
+
 // suit_scan.cpp: `satellite.spacesuit name { ... }` at `i` -- the scope made and opened,
 // `i` left inside its body. Answers false when it has no body, `i` then past its line.
 bool open_suit(CapsuleTable &table, const std::vector<std::bitset<16>> &row, std::size_t r, std::size_t file_scope,

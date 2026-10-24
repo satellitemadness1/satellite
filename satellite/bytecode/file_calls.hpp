@@ -35,10 +35,11 @@
 namespace satellite004 {
 
 // satellite.file.new(path) 1 8 1, open(path, mode) 1 8 2, clear(path) 1 8 3,
-// new(path, mode) 1 8 4, exists(path) 1 8 5, open(path) 1 8 6, delete(path) 1 8 7.
+// new(path, mode) 1 8 4, exists(path) 1 8 5, open(path) 1 8 6, delete(path) 1 8 7, copy(path) 1 8 8,
+// paste() 1 8 9, paste(d) 1 8 10, move(path, d) 1 8 11.
 bool is_file_word(token::Code code);
 
-// How many arguments a file word takes (1 or 2), and the sentence that says so.
+// How many arguments a file word takes (0 for paste(), 1 or 2), and the sentence that says so.
 // The CHECKER reads these too, so a wrong count is refused before anything runs.
 std::size_t file_word_arity(token::Code code);
 std::string file_word_takes(token::Code code);

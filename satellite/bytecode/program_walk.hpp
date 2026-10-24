@@ -60,6 +60,22 @@ std::size_t past_the_statement(const std::vector<std::bitset<16>> &row, std::siz
 std::size_t past_matching_brace(const std::vector<std::bitset<16>> &row, std::size_t from);
 std::size_t brace_after(const std::vector<std::bitset<16>> &row, std::size_t at);
 
+// satellite.error() AFTER A BLOCK (ERROR_BLOCK_PLAN.md). `past` is just past a block's `}`:
+// error_block_after answers the first code INSIDE the error block's braces when, past blank lines
+// and comments, the next thing is `satellite.error()` and its body -- and kNoErrorBlock when it is
+// not. error_block_body reads the same shape from the satellite.error code itself. Shared by the
+// capsule scan, the checker and the walker, so the three cannot disagree about which block has one.
+// kNoErrorBlock is capsule_scopes.hpp's.
+std::size_t error_block_after(const std::vector<std::bitset<16>> &row, std::size_t past);
+std::size_t error_block_body(const std::vector<std::bitset<16>> &row, std::size_t at);
+// EVERY if, while AND for IN A ROW WITH A satellite.error() AFTER IT: where the statement begins, and the first code in
+// its error block, in the row's order -- found once, for the capsule table, so running one is a search and not a walk.
+std::vector<std::pair<std::size_t, std::size_t>> guarded_statements_in(const std::vector<std::bitset<16>> &row);
+// Just past an error block's `}`, or `past` itself when no error block follows.
+std::size_t past_an_error_block(const std::vector<std::bitset<16>> &row, std::size_t past);
+extern const char *const kErrorWrittenWrong;
+extern const char *const kErrorWithNoBlock;
+
 // WHERE A for's THREE PARTS BEGIN. `satellite.statement.for` is the one statement
 // written with semicolons (MILESTONES M20.A, the author's own line):
 //

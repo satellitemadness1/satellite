@@ -231,6 +231,13 @@ void suit_line(CapsuleTable &table, const std::vector<std::bitset<16>> &row, std
         return;
     }
 
+    // A satellite.error() NO CAPSULE'S } CLAIMED (ERROR_BLOCK_PLAN.md): one right after a capsule or the
+    // constructor was stepped over with it.
+    if (code == word::code_of(1, 37)) {
+        refuse_a_lone_error_block(table, row, r, i);
+        return;
+    }
+
     // ITS `}`: a section's, or the spacesuit's own.
     if (code == token::right_brace_token) {
         if (top.what == Opened::suit)
@@ -278,6 +285,7 @@ void suit_line(CapsuleTable &table, const std::vector<std::bitset<16>> &row, std
         }
         if (!trouble.empty())
             refuse(table, r, at, satl_line_not_understood, trouble);
+        const std::size_t made = table.sites.size();
         if (table.scopes[here].constructor != kNoSite) {
             refuse(table, r, at, name_declared_twice,
                    "the spacesuit " + suit + " has two satellite.constructor sections, and an object is made one way");
@@ -298,7 +306,7 @@ void suit_line(CapsuleTable &table, const std::vector<std::bitset<16>> &row, std
             table.keys[site.key] = table.sites.size();
             table.sites.push_back(std::move(site));
         }
-        i = past_matching_brace(row, brace);
+        i = past_the_body_and_its_error_block(table, row, r, brace, made);
         return;
     }
 
@@ -331,8 +339,9 @@ void suit_line(CapsuleTable &table, const std::vector<std::bitset<16>> &row, std
         if (word::is_word_code(code_at(row, at + 1)))
             refuse(table, r, at, satl_line_not_understood,
                    name + " is a word of the language, and a spacesuit's capsule has a name of its own");
+        const std::size_t made = table.sites.size();
         declare_capsule(table, r, file_scope, here, at, brace, name, std::move(parameters), top.what);
-        i = past_matching_brace(row, brace);
+        i = past_the_body_and_its_error_block(table, row, r, brace, made);
         return;
     }
 

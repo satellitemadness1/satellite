@@ -3,8 +3,9 @@
 // EVERYTHING satl ITSELF WRITES WITH std::cout -- a styled display, the prompt's words, a report's
 // flush, satellite.access, a listing -- keeps its 8 KB here, as std::cout always did, and goes to
 // the printing satellite as ONE piece when the 8 KB fills or something flushes: never a hand-off
-// a line. The word libraries share satl's libstdc++ and its std::cout (make_support/048-link.mk),
-// so what they write comes here too. printing_satellite.hpp says why one door keeps the order.
+// a line. The words are inside satl and share its C++ library and its std::cout
+// (make_support/048-link.mk), so what they write comes here too. printing_satellite.hpp says
+// why one door keeps the order.
 
 #include "printing_satellite.hpp"
 

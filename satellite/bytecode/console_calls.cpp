@@ -9,14 +9,22 @@
 #include "word_codes.hpp"
 #include "../machine/input_source.hpp"
 #include "../satellite_variable_infinity/satellite_infinity.hpp"
+#include "../satellite_variable_number/satellite_number.hpp"
+#include "../satellite_variable_program/program_spawn.hpp"
 
 #include <array>
+#include <algorithm>
 #include <cstring>
 #include <iostream>
 #include <string>
 #include <vector>
 
+#include <cerrno>
+#include <cstdlib>
+#include <csignal>
 #include <sys/ioctl.h>
+#include <sys/wait.h>
+#include <termios.h>
 #include <unistd.h>
 
 namespace satellite004 {
@@ -43,7 +51,8 @@ struct ColourWord {
 // over the whole table, and call_word asks is_console_word of EVERY word it runs --
 // sixteen searches a call made a plain display 45% slower (the review, 2026-09-23,
 // measured with callgrind). Built on first use, then one index per question.
-enum Which : unsigned char { not_ours, input_word, clear_word, home_word, width_fact, height_fact, a_colour_word };
+enum Which : unsigned char { not_ours, input_word, clear_word, home_word, width_fact, height_fact, a_colour_word,
+                              bash_word };
 
 struct ConsoleWords {
     Code display = 0;
@@ -57,6 +66,7 @@ struct ConsoleWords {
         mark(word::code_of(1, 5, 3), input_word);
         mark(word::code_of(1, 5, 8), clear_word);
         mark(word::code_of(1, 5, 9), home_word);
+        mark(word::code_of(1, 5, 13), bash_word);
         mark(word::code_of(1, 5, 6), width_fact);
         mark(word::code_of(1, 5, 7), height_fact);
         const struct { int a, b, c; bool terminal, behind; } words[] = {
@@ -395,7 +405,7 @@ signed long long int option_refused(Code word, const std::vector<std::bitset<16>
 bool is_console_word(Code code)
 {
     const Which what = console_words().of(code);
-    return what == input_word || what == clear_word || what == home_word || what == a_colour_word;
+    return what == input_word || what == clear_word || what == home_word || what == a_colour_word || what == bash_word;
 }
 
 bool a_colour_word_given_one(Code code)
@@ -457,6 +467,101 @@ Value call_console_word(Code code, const std::vector<Value> &arguments, const st
             return Value();
         }
         return Value::of_code(success);
+    }
+
+    // satellite.console.bash(command) -- the author, 2026-10-23: "I need a satellite.console.bash("bash_command")
+    // that runs in the satellite console so I don't have to use a regular console anymore, so that I can type like
+    // satellite.console.bash("sudo apt update") and it will run". bash -c the line ON THE CONSOLE ITSELF: its
+    // output and errors are satl's own -- the pty of satl's console, or the terminal satl runs in -- and so is its
+    // input when that is a terminal, so sudo asks for its password there and apt's [Y/n] is answered there, which
+    // satellite.variable.bash's run cannot do: its output comes back through a pipe and its input is pass()'s
+    // (program_calls.hpp). Read from a pipe or a file, satl keeps its input to itself, and the command reads
+    // nothing (/dev/null), or it could eat the lines after its own.
+    //
+    // A JOB OF ITS OWN, AS A SHELL RUNS ONE (the review, 2026-10-23): a process group of its own in the terminal's
+    // foreground (ProgramPlace::foreground), so Ctrl-C, Ctrl-\ and Ctrl-Z reach the command and never satl --
+    // two Ctrl-C at a command that catches the first had ended satl, and left the command running -- and the
+    // terminal is satl's again after, whatever the command did to its foreground: an inner shell killed with
+    // kill -9 had left the session reading nothing but EIO. Ctrl-Z is a job no satl keeps, so a stopped command
+    // is started again where it was.
+    //
+    // What satl displayed before it is on the screen first (display_drain), and what it writes stays ahead of
+    // satl's next line (the_pty_was_written_directly). A last line with no newline is kept, not drawn over by the
+    // next prompt: a whole line of spaces and \r, which wraps only past text -- zsh's way. It answers the code a
+    // shell would: what the command exited with, 128 and the signal for one a signal ended, 127 when bash is not
+    // there.
+    if (what == bash_word) {
+        const std::string bare = spelled.substr(0, spelled.find('('));
+        if (arguments.size() != 1 || !arguments.front().is_string()) {
+            context.refuse(types_do_not_meet, bare + " takes the command as text -- " + bare + "(\"ls -l\") -- and was given " +
+                                                  (arguments.empty() ? std::string("nothing") : arguments.front().kind_name()));
+            return Value();
+        }
+        const std::string line = arguments.front().text_utf8();
+        if (line.find('\0') != std::string::npos) {
+            context.refuse(types_do_not_meet, bare + "'s command holds a NUL, and bash would run only the part before it");
+            return Value();
+        }
+        {
+            const ConsoleHold flushed;
+            std::cout << std::flush;
+        }
+        display_drain();
+        const bool a_terminal = isatty(STDIN_FILENO) == 1;
+        ProgramPlace place;
+        if (a_terminal && tcgetpgrp(STDIN_FILENO) == getpgrp())
+            place.foreground = STDIN_FILENO;
+        if (std::getenv("TERM") == nullptr && isatty(STDOUT_FILENO) == 1)
+            place.environment.push_back("TERM=xterm-256color");   // a launcher's console has none; VTE's own
+        const ProgramStart started = start_a_program({"/bin/bash", "-c", line}, STDOUT_FILENO,
+                                                     a_terminal ? STDIN_FILENO : -1, STDERR_FILENO, place);
+        long long code = started.code;
+        if (started.pid > 0) {
+            int status = 0, unwaited = 0;
+            for (;;) {
+                const pid_t waited = waitpid(started.pid, &status, WUNTRACED);
+                if (waited == started.pid && WIFSTOPPED(status)) {   // Ctrl-Z: started again where it was
+                    kill(place.foreground >= 0 ? -started.pid : started.pid, SIGCONT);
+                    continue;
+                }
+                if (waited == started.pid)
+                    break;
+                if (errno == EINTR)
+                    continue;
+                unwaited = errno;
+                break;
+            }
+            if (started.pidfd >= 0)
+                close(started.pidfd);
+            code = unwaited != 0          ? 1
+                 : WIFEXITED(status)      ? WEXITSTATUS(status)
+                 : WIFSIGNALED(status)    ? 128 + WTERMSIG(status)
+                                          : 1;
+            if (place.foreground >= 0) {
+                // THE TERMINAL BACK: satl is a background group now, and taking it back would stop satl with
+                // SIGTTOU unless that is ignored while it does.
+                struct sigaction ignore {}, before {};
+                ignore.sa_handler = SIG_IGN;
+                sigemptyset(&ignore.sa_mask);
+                sigaction(SIGTTOU, &ignore, &before);
+                tcsetpgrp(STDIN_FILENO, getpgrp());
+                sigaction(SIGTTOU, &before, nullptr);
+            }
+            if (unwaited != 0) {
+                const ConsoleHold said;
+                std::cerr << bare << ": could not wait for bash -- " << std::strerror(unwaited) << "\n" << std::flush;
+            }
+        } else {
+            const ConsoleHold said;
+            std::cerr << bare << ": " << started.why << "\n" << std::flush;
+        }
+        the_pty_was_written_directly();
+        if (isatty(STDOUT_FILENO) == 1) {
+            const ConsoleHold kept;
+            std::cout << std::string(static_cast<std::size_t>(std::max(1, console_parts::terminal_size(true))), ' ')
+                      << '\r' << std::flush;
+        }
+        return Value::of_number(satellite_number::from_signed(code));
     }
 
     // input() AND input(prompt): the prompt, styled by the options, with no newline

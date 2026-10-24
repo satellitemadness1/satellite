@@ -54,6 +54,7 @@
 #include "library_values.hpp"
 #include "random_calls.hpp"
 #include "time_calls.hpp"
+#include "drive_calls.hpp"
 #include "test_calls.hpp"
 #include "window_calls.hpp"
 #include "thread_calls.hpp"
@@ -200,6 +201,25 @@ struct Where {
     // (a_brace_that_opens_nothing, below).
     std::size_t body_brace = kNowhere;
     std::vector<bool> open_blocks;
+    // satellite.error() (ERROR_BLOCK_PLAN.md): the `{` an error block found after its header, so the body loop marks
+    // its block as one; where the last if's, else's, while's or for's `}` stood -- the one place an error block may
+    // follow -- and where the last error block's `}` stood, which an else may not follow.
+    std::size_t error_brace = kNowhere;
+    std::vector<bool> error_blocks;
+    std::size_t block_closed_at = kNowhere;
+    std::size_t error_closed_at = kNowhere;
+    void error_block_opened(std::size_t brace)
+    {
+        error_blocks.push_back(brace == error_brace);
+        if (brace == error_brace) error_brace = kNowhere;
+    }
+    void error_block_closed(std::size_t brace)
+    {
+        const bool an_error_block = !error_blocks.empty() && error_blocks.back();
+        if (!error_blocks.empty()) error_blocks.pop_back();
+        block_closed_at = an_error_block ? kNowhere : brace;
+        error_closed_at = an_error_block ? brace : kNowhere;
+    }
     bool inside_a_loop() const
     {
         for (const bool loop : open_blocks) if (loop) return true;
@@ -489,6 +509,14 @@ signed long long int judge_a_delete(Where &where, DeclaredNames &declared, const
     // leave every later line depending on whether that block ran -- and in a loop, its next pass
     // finding the name already gone.
     const std::unordered_map<std::string, std::size_t>::const_iterator in = where.declared_in.find(name);
+    // A PARAMETER OF A CAPSULE WITH A satellite.error() (ERROR_BLOCK_PLAN.md), whose body is judged as a block: the
+    // error block sees the parameters whichever line the error came on, so none is deleted (the fresh reader).
+    if (in == where.declared_in.end() && where.site != nullptr && where.site->error_body != kNoErrorBlock) {
+        why = "satellite.delete(" + name + ") deletes a name " + where.site->shown + " was given, and " +
+              where.site->shown + " has a satellite.error() block, which sees what it was given whichever line the "
+              "error came on -- so it keeps " + name + " to its end";
+        return satl_line_not_understood;
+    }
     if ((in == where.declared_in.end() ? 0 : in->second) != where.this_block()) {
         why = "satellite.delete(" + name + ") stands in a different block from the line that declared " + name +
               " -- whether " + name + " is there to delete, and whether the lines after it may still use it, "
@@ -735,6 +763,41 @@ bool braces_at(const std::vector<std::bitset<16>> &row, std::size_t open, std::s
     }
     close = at;
     return false;
+}
+
+// A FILE'S KIND WRITTEN AS A LITERAL IS JUDGED BEFORE THE RUN (the checker gaps of 2026-10-19, OPEN_ITEMS_2026-10-20):
+// satellite.file.open(path, "append") or new(path, "list") is refused here, in the run's own sentence (file_calls.cpp's
+// kind_of), and not after the lines above it have run. The second argument is found as brackets_at counts them -- a
+// payload skipped, a comma inside a string, a bracket or a braced list not counted -- and only a string literal
+// standing alone there is judged; a kind worked out from a name is still the walker's to judge.
+signed long long int file_kind_written_wrong(const std::vector<std::bitset<16>> &row, std::size_t open,
+                                             const std::string &spelling, std::string &why)
+{
+    std::size_t depth = 0, braces = 0, at = open;
+    while (at < row.size()) {
+        const Code code = code_at(row, at);
+        if (token::carries_a_count(code)) { text_at(row, at); continue; }
+        if (code == token::line_end_token || code == token::end_of_file_token) return success;
+        if (code == token::left_brace_token) {
+            ++braces;
+        } else if (code == token::right_brace_token) {
+            if (braces > 0) --braces;
+        } else if (code == token::left_parenthesis_token || code == token::left_square_bracket_token) {
+            ++depth;
+        } else if (code == token::right_parenthesis_token || code == token::right_square_bracket_token) {
+            if (--depth == 0) return success;
+        } else if (code == token::comma_token && depth == 1 && braces == 0) {
+            std::size_t k = at + 1;
+            if (code_at(row, k) != token::string_token) return success;
+            const std::string kind = string_at(row, k);
+            if (code_at(row, k) != token::right_parenthesis_token || kind == "text" || kind == "binary")
+                return success;
+            why = spelling + "'s second argument is \"text\" or \"binary\", and it was given \"" + kind + "\"";
+            return types_do_not_meet;
+        }
+        ++at;
+    }
+    return success;
 }
 
 bool brackets_at(const std::vector<std::bitset<16>> &row, std::size_t open, std::size_t &close, std::size_t &count)
@@ -1205,6 +1268,16 @@ signed long long int method_judged(const std::vector<std::bitset<16>> &row, std:
               (bracketed ? ", and was given " + std::to_string(given) : ", in brackets after it");
         return satl_line_not_understood;
     }
+    // A LITERAL THAT CAN NEVER BE TEXT WHERE A FILE'S METHOD READS TEXT (the checker gaps of 2026-10-19):
+    // f.append(1s) is refused here, in the walker's sentence, and not after the lines above it have printed.
+    const int text_slot = method == token::append_token || method == token::index_of_token ||
+                                  method == token::search_token || method == token::contains_token ||
+                                  method == token::remove_token
+                              ? 0
+                          : method == token::insert_token || method == token::replace_token ? 1
+                                                                                            : -1;
+    if (bracketed && text_slot >= 0)
+        return text_literal_refused(row, k + 2, arity, text_slot, spelling, why);
     return success;
 }
 
@@ -1669,7 +1742,8 @@ satelliteObject::Kind kind_a_word_answers(Code code)
         code == word::code_of(1, 8, 6))
         return O::file;
     if (code == word::code_of(1, 8, 5) || code == word::code_of(1, 8, 3) || code == word::code_of(1, 18, 1) ||
-        code == word::code_of(1, 18, 8) || code == word::code_of(1, 8, 7))
+        code == word::code_of(1, 18, 8) || code == word::code_of(1, 8, 7) || code == word::code_of(1, 8, 8) ||
+        code == word::code_of(1, 8, 9) || code == word::code_of(1, 8, 10) || code == word::code_of(1, 8, 11))
         return O::boolean;
     // THE WHOLE PATH LEXES FIRST (bytecode_registry.cpp): satellite.container.list() is the word 1 4 2 with its
     // brackets, never its path() row 1 4 2 0 -- so a word is known here by its family, which holds both.
@@ -2733,6 +2807,13 @@ signed long long int names_in_statement(const std::vector<std::bitset<16>> &row,
             return satl_line_not_understood;
         }
 
+        // satellite.error() IS A BLOCK, NOT A VALUE (ERROR_BLOCK_PLAN.md): said as where it goes, never as a word
+        // still owed a library.
+        if (code == word::code_of(1, 37)) {
+            why = std::string("satellite.error() answers nothing -- ") + kErrorWithNoBlock;
+            return satl_line_not_understood;
+        }
+
         // A WORD USED AS A CALL MUST HAVE A LIBRARY. A word with none is
         // not_built_yet (14) with its own name, which is what 003 did and what a
         // person can act on (function_table.hpp).
@@ -2744,7 +2825,8 @@ signed long long int names_in_statement(const std::vector<std::bitset<16>> &row,
         if (word::is_word_code(code) && code_at(row, at + 1) == token::left_parenthesis_token &&
             functions[code] == nullptr && !is_file_word(code) && !is_infinity_word(code) &&
             !is_window_word(code) && !is_container_word(code) && !is_console_word(code) && !is_info_word(code) &&
-            !is_random_word(code) && !is_test_word(code) && !is_time_word(code) && !is_convert_word(code)) {
+            !is_random_word(code) && !is_test_word(code) && !is_time_word(code) && !is_convert_word(code) &&
+            !is_drive_word(code)) {
             why = std::string(word::spelling_of(code)) + " has no library built for it yet";
             return not_built_yet;
         }
@@ -2819,6 +2901,12 @@ signed long long int names_in_statement(const std::vector<std::bitset<16>> &row,
                     if (refused != success)
                         return refused;
                 }
+                // satellite.drive.list() takes nothing (drive_calls.hpp).
+                if (is_drive_word(code)) {
+                    const signed long long int refused = drive_word_refused(code, given, why);
+                    if (refused != success)
+                        return refused;
+                }
                 // satellite.time's take one each, and sleep(n, unit) -- 003's spelling -- is told to
                 // write the unit on the number (time_calls.hpp); sleep(5), a literal with no unit,
                 // is told the same now, before the lines above it print.
@@ -2838,6 +2926,35 @@ signed long long int names_in_statement(const std::vector<std::bitset<16>> &row,
                 if (is_file_word(code) && given != file_word_arity(code)) {
                     why = file_word_takes(code) + ", and was given " + std::to_string(given) + " arguments";
                     return satl_line_not_understood;
+                }
+                // satellite.console.bash GIVEN A LITERAL THAT IS NOT TEXT -- bash(5), bash(1s) -- refused in the run's
+                // sentence (console_calls.cpp) before anything runs (the review, 2026-10-23).
+                if (code == word::code_of(1, 5, 13) && given == 1) {
+                    std::size_t k = at + 2;
+                    const Code literal = code_at(row, k);
+                    const char *kind = literal == token::number_token        ? "a number"
+                                       : literal == token::binary_token      ? "a binary"
+                                       : literal == token::hexadecimal_token ? "a hex number"
+                                       : literal == token::percentage_token  ? "a percentage"
+                                       : literal == token::time_token        ? "a time"
+                                                                             : nullptr;
+                    if (kind != nullptr) {
+                        const std::string written = text_at(row, k);
+                        if (code_at(row, k) == token::right_parenthesis_token) {
+                            why = std::string("satellite.console.bash takes the command as text -- "
+                                              "satellite.console.bash(\"ls -l\") -- and was given ") +
+                                  (literal == token::number_token && written.find('.') != std::string::npos ? "a float"
+                                                                                                             : kind);
+                            return types_do_not_meet;
+                        }
+                    }
+                }
+                if (code == word::code_of(1, 8, 2) || code == word::code_of(1, 8, 4)) {   // open and new, with a kind
+                    const std::string written(word::spelling_of(code));
+                    const signed long long int refused =
+                        file_kind_written_wrong(row, at + 1, written.substr(0, written.find('(')), why);
+                    if (refused != success)
+                        return refused;
                 }
                 // A WINDOW WORD TAKES ITS OWN COUNT TOO -- three for new, one for
                 // button -- so it is refused here rather than by the one-argument
@@ -2866,7 +2983,7 @@ signed long long int names_in_statement(const std::vector<std::bitset<16>> &row,
                         return linked;
                 }
                 if (!is_file_word(code) && !is_window_word(code) && !is_random_word(code) && !is_test_word(code) &&
-                    !is_time_word(code)) {
+                    !is_time_word(code) && !is_drive_word(code)) {
                     const std::string spelled(word::spelling_of(code));
                     // A WORD THAT TAKES ONE, GIVEN NONE (GTK-12). Since the lexer
                     // stopped answering nothing for empty brackets, `display()`
@@ -3195,6 +3312,38 @@ signed long long int check_statement(const std::vector<std::bitset<16>> &row,
         return success;
     }
 
+    // satellite.error() RIGHT AFTER AN if's, else's, while's OR for's } (ERROR_BLOCK_PLAN.md), with only blank lines
+    // and comments between: the body loop marks each such } as it closes it. An error block's own } is never one, so
+    // two in a row are refused -- and so is one after a list's }, which no body loop closes.
+    if (code == word::code_of(1, 37)) {
+        // AT THE PROMPT A BLOCK RUNS AS SOON AS ITS } IS TYPED, so there is nothing left for one to catch.
+        if (where.typed_line) {
+            why = "satellite.error() is written in a program's file, after a block's } -- at the prompt a block runs "
+                  "as soon as its } is typed, so nothing is left for it to catch";
+            at = past_the_statement(row, at);
+            return satl_line_not_understood;
+        }
+        const std::size_t body = error_block_body(row, at);
+        if (body == kNoErrorBlock) {
+            why = kErrorWrittenWrong;
+            at = past_the_statement(row, at);
+            return satl_line_not_understood;
+        }
+        std::size_t back = at;
+        while (back > 0 && (code_at(row, back - 1) == token::line_end_token ||
+                            code_at(row, back - 1) == token::comment_token))
+            --back;
+        if (back == 0 || back - 1 != where.block_closed_at) {
+            why = kErrorWithNoBlock;
+            at = past_matching_brace(row, body - 1);
+            return satl_line_not_understood;
+        }
+        at = body - 1;              // left ON the brace, as if and while are
+        where.body_brace = at;
+        where.error_brace = at;
+        return success;
+    }
+
     // A LINE THAT BEGINS WITH A SIGN, refused before anything runs (the author's 6 of 2026-10-11, "refuse yes"):
     // the walker steps over a token it has no arm for, so `-n = 9` ran as n = 9 and nobody was told (ERRORS4 003).
     // A minus belongs to the value, after the =; a lone line of the shape name = number is told its spelling.
@@ -3316,6 +3465,12 @@ signed long long int check_statement(const std::vector<std::bitset<16>> &row,
         while (back > 0 && code_at(row, back - 1) == token::line_end_token) --back;
         if (back == 0 || code_at(row, back - 1) != token::right_brace_token) {
             why = "satellite.statement.else with no satellite.statement.if before it";
+            at = past_the_statement(row, at);
+            return satl_line_not_understood;
+        }
+        if (back - 1 == where.error_closed_at) {
+            why = "satellite.statement.else goes right after its if's } -- this one follows a satellite.error() "
+                  "block, which goes after the else";
             at = past_the_statement(row, at);
             return satl_line_not_understood;
         }
@@ -4353,47 +4508,66 @@ signed long long int check_program(const BytecodeRegistry &registry,
             remember_shape(where, takes.name, takes.shape);
         }
         EndingNames ending;
-        std::size_t depth = 0;
         // THE BODY THE FILE ENDS INSIDE is read to the file's end, or to the next thing the
         // file declares -- a capsule written after it is the file's, not a line of this one.
         const bool unclosed = held != nullptr && held->row == site.row && held->at == site.declared_at;
         // THE LAST STATEMENT OF THE BODY ITSELF, for the rule below about main's.
         std::size_t last_statement = kNoStatement, closing = row.size();
-        for (std::size_t at = site.body; at < row.size(); ) {
-            const Code code = code_at(row, at);
-            if (code == token::end_of_file_token)
+        // A BODY WITH A satellite.error() AFTER IT (ERROR_BLOCK_PLAN.md) IS JUDGED AS A BLOCK, so its names end at its
+        // } as they do when it runs, and then the error block is judged the same way: it sees the parameters and the
+        // fields, and nothing the body declared. last_statement and closing stay the body's own.
+        const bool guarded = site.error_body != kNoErrorBlock;
+        for (const std::size_t part : {site.body, site.error_body}) {
+            if (part == kNoErrorBlock)
                 break;
-            if (unclosed && (code == word::code_of(1, 2) || code == word::code_of(1, 10) || code == word::code_of(1, 28)))
-                break;
-            if (code == token::right_brace_token) {
-                if (depth == 0) { closing = at; break; }      // the capsule's own closing brace
-                --depth;
-                close_the_block(where, declared, at);         // its names end here (satellite_legal.hpp)
-                ++at;
-                continue;
-            }
-            if (code == token::left_brace_token) {
+            if (guarded)
+                where.opened();
+            where.block_closed_at = where.error_closed_at = kNowhere;
+            std::size_t depth = 0, last_here = kNoStatement, ends = row.size();
+            for (std::size_t at = part; at < row.size(); ) {
+                const Code code = code_at(row, at);
+                if (code == token::end_of_file_token)
+                    break;
+                if (unclosed && (code == word::code_of(1, 2) || code == word::code_of(1, 10) || code == word::code_of(1, 28)))
+                    break;
+                if (code == token::right_brace_token) {
+                    if (depth == 0) { ends = at; break; }         // the capsule's own closing brace
+                    --depth;
+                    close_the_block(where, declared, at);         // its names end here (satellite_legal.hpp)
+                    where.error_block_closed(at);
+                    ++at;
+                    continue;
+                }
+                if (code == token::left_brace_token) {
+                    std::string why;
+                    where.error_block_opened(at);
+                    if (a_brace_that_opens_nothing(where, at, why))
+                        return raise_at(satl_line_not_understood, why, site.shown, state, row, at, "satl(check)");
+                    ++depth; where.opened(); ++at; continue;
+                }
+                const std::size_t was = at;
+                if (depth == 0) last_here = at;
                 std::string why;
-                if (a_brace_that_opens_nothing(where, at, why))
+                if (habit_from_another_language(row, at, why))
                     return raise_at(satl_line_not_understood, why, site.shown, state, row, at, "satl(check)");
-                ++depth; where.opened(); ++at; continue;
+                const signed long long int code_of_line = check_statement(row, at, where, declared, ending, why);
+                if (stops_the_program(code_of_line))
+                    // THE STATEMENT'S OWN START, AND NOT WHERE `at` ENDED UP. A
+                    // refusal leaves `at` wherever check_statement stopped reading,
+                    // which is not reliably the thing that was wrong -- so the caret
+                    // goes under the start of the statement, which always is. The
+                    // LINE is exact either way, and that is what a person looks for
+                    // first.
+                    return raise_at(code_of_line, why, site.shown, state, row, was, "satl(check)");
+                if (at <= was)                  // a statement must always move forward
+                    ++at;
             }
-            const std::size_t was = at;
-            if (depth == 0) last_statement = at;
-            std::string why;
-            if (habit_from_another_language(row, at, why))
-                return raise_at(satl_line_not_understood, why, site.shown, state, row, at, "satl(check)");
-            const signed long long int code_of_line = check_statement(row, at, where, declared, ending, why);
-            if (stops_the_program(code_of_line))
-                // THE STATEMENT'S OWN START, AND NOT WHERE `at` ENDED UP. A
-                // refusal leaves `at` wherever check_statement stopped reading,
-                // which is not reliably the thing that was wrong -- so the caret
-                // goes under the start of the statement, which always is. The
-                // LINE is exact either way, and that is what a person looks for
-                // first.
-                return raise_at(code_of_line, why, site.shown, state, row, was, "satl(check)");
-            if (at <= was)                  // a statement must always move forward
-                ++at;
+            if (guarded)
+                close_the_block(where, declared, ends);
+            if (part == site.body) {
+                last_statement = last_here;
+                closing = ends;
+            }
         }
         // satellite.main ENDS WITH satellite.return(satellite) (the author, 2026-09-25: "let's
         // refuse a main that doesnt have satellite.return(satellite) as the last line, but still

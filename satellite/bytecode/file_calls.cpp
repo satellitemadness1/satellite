@@ -364,7 +364,10 @@ int file_method_arity(Code method)
 
 std::size_t file_word_arity(Code code)
 {
-    return (code == word::code_of(1, 8, 2) || code == word::code_of(1, 8, 4)) ? 2 : 1;
+    if (code == word::code_of(1, 8, 9))
+        return 0;   // paste(), into the working directory
+    return (code == word::code_of(1, 8, 2) || code == word::code_of(1, 8, 4) || code == word::code_of(1, 8, 11)) ? 2
+                                                                                                                 : 1;
 }
 
 std::string file_word_takes(Code code)
@@ -373,6 +376,10 @@ std::string file_word_takes(Code code)
     const std::string bare = spelling.substr(0, spelling.find('('));
     const bool with_kind = code == word::code_of(1, 8, 1) || code == word::code_of(1, 8, 2) ||
                            code == word::code_of(1, 8, 4) || code == word::code_of(1, 8, 6);
+    if (code == word::code_of(1, 8, 9) || code == word::code_of(1, 8, 10))
+        return bare + " takes nothing, or the folder to paste into";
+    if (code == word::code_of(1, 8, 11))
+        return bare + " takes the file and the folder to move it into";
     return bare + (with_kind ? " takes a path, or a path and \"text\" or \"binary\"" : " takes a path");
 }
 
@@ -381,7 +388,9 @@ bool is_file_word(Code code)
     return code == word::fixed_code<1, 8, 1> || code == word::fixed_code<1, 8, 2> ||
            code == word::fixed_code<1, 8, 3> || code == word::fixed_code<1, 8, 4> ||
            code == word::fixed_code<1, 8, 5> || code == word::fixed_code<1, 8, 6> ||
-           code == word::fixed_code<1, 8, 7>;
+           code == word::fixed_code<1, 8, 7> || code == word::fixed_code<1, 8, 8> ||
+           code == word::fixed_code<1, 8, 9> || code == word::fixed_code<1, 8, 10> ||
+           code == word::fixed_code<1, 8, 11>;
 }
 
 Value call_file_word(Code code, const std::vector<Value> &arguments, const std::vector<std::bitset<16>> &row,
@@ -397,9 +406,35 @@ Value call_file_word(Code code, const std::vector<Value> &arguments, const std::
         return Value();
     }
 
+    // paste() TAKES NOTHING: the working directory, as at the prompt (FILE_AND_DRIVE_PLAN.md FD-3). "." -- an
+    // empty name is refused, so paste("") is not taken for paste().
+    if (code == word::code_of(1, 8, 9))
+        return Value::of_bool(paste_a_file(".").done);
+
     std::string written;
     if (!text_of(arguments[0], written, Said{spelling}, context))
         return Value();
+    if (code == word::code_of(1, 8, 8) || code == word::code_of(1, 8, 10) || code == word::code_of(1, 8, 11)) {
+        if (written.find('\0') != std::string::npos) {
+            context.refuse(path_holds_a_nul, spelling + (code == word::code_of(1, 8, 10)
+                                                             ? ": the folder holds a NUL, which no folder's name can"
+                                                             : ": the path holds a NUL, which no file's name can"));
+            return Value();
+        }
+        if (code == word::code_of(1, 8, 8))
+            return Value::of_bool(copy_a_file(resolved(written, false, row, context)).done);
+        if (code == word::code_of(1, 8, 10))
+            return Value::of_bool(paste_a_file(resolved(written, false, row, context)).done);
+        std::string folder;
+        if (!text_of(arguments[1], folder, Said{spelling}, context))
+            return Value();
+        if (folder.find('\0') != std::string::npos) {
+            context.refuse(path_holds_a_nul, spelling + ": the folder holds a NUL, which no folder's name can");
+            return Value();
+        }
+        return Value::of_bool(move_a_file(resolved(written, false, row, context, false, true),
+                                          resolved(folder, false, row, context)).done);
+    }
 
     const bool making = code == word::code_of(1, 8, 1) || code == word::code_of(1, 8, 4);
     const std::string path = resolved(written, making, row, context, false, code == word::code_of(1, 8, 7));

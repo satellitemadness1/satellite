@@ -91,9 +91,12 @@ GTK_STAGE = $(CURDIR)/vendor/stage
 # for too), not as the path is spelled: EPEL's ccache puts a /usr/lib64/ccache/clang that
 # is a link to ccache first on PATH, and no folder can be read off that name (the review,
 # 2026-10-08). None at all, and build_stack.py names clang among what the machine lacks.
+# AND WITH satl'S C++ LIBRARY (010-compiler.mk's CXX_RUNTIME, 2026-10-22): VTE, simdutf and fmt
+# are C++ archives satl links, so they are compiled against the library satl is -- libc++ for a
+# clang build, libstdc++ for g++'s -- and build_stack.py --stdlib says which.
 VENDOR_CLANG = $(firstword $(wildcard $(LLVM_BIN)/clang) $(shell command -v clang 2>/dev/null))
 VENDOR_CLANG_DIR = $(if $(VENDOR_CLANG),$(or $(patsubst %/bin,%,$(shell $(VENDOR_CLANG) -v 2>&1 | sed -n 's/^InstalledDir: //p')),$(patsubst %/bin/clang,%,$(VENDOR_CLANG))))
-BUILD_CARRIED_GTK = /usr/bin/python3 -u vendor/build_stack.py $(if $(VENDOR_CLANG_DIR),--clang $(VENDOR_CLANG_DIR))
+BUILD_CARRIED_GTK = /usr/bin/python3 -u vendor/build_stack.py $(if $(VENDOR_CLANG_DIR),--clang $(VENDOR_CLANG_DIR)) --stdlib $(CXX_RUNTIME)
 
 ifeq ($(GTK),vendor)
 
@@ -145,8 +148,10 @@ GTK_PC_LIBDIR = $(GTK_BUILD)/meson-uninstalled:$(GTK_STAGE)/lib/pkgconfig:$(GTK_
 # it reaches the old no-window path, which does not link -- and is not a build at all (the author,
 # 2026-10-09: "there is no no-window build").
 CARRIED_GTK_IS_BUILT = $(and $(wildcard $(GTK_BUILD)/gtk/libgtk.a),$(wildcard $(GTK_STAGE)/lib/libvte-2.91-gtk4.a))
+# "0" ONLY IN THE MAKE THAT WAS TYPED, for the goals above: this block's test, and the next one's.
+CARRIED_GTK_MAY_BUILD = $(MAKELEVEL)$(CPU)$(PGO_STAGE)$(filter-out all install check test cpus race,$(MAKECMDGOALS))$(findstring n,$(firstword -$(MAKEFLAGS)))$(findstring q,$(firstword -$(MAKEFLAGS)))$(findstring t,$(firstword -$(MAKEFLAGS)))
 ifeq ($(CARRIED_GTK_IS_BUILT),)
-ifeq ($(MAKELEVEL)$(CPU)$(PGO_STAGE)$(filter-out all install check test cpus race,$(MAKECMDGOALS))$(findstring n,$(firstword -$(MAKEFLAGS)))$(findstring q,$(firstword -$(MAKEFLAGS)))$(findstring t,$(firstword -$(MAKEFLAGS))),0)
+ifeq ($(CARRIED_GTK_MAY_BUILD),0)
 $(info the carried GTK is not built in this checkout -- building it first, once: vendor/build_stack.py, about five minutes)
 CARRIED_GTK_STATUS := $(shell $(BUILD_CARRIED_GTK) --quiet >&2; echo $$?)
 ifneq ($(CARRIED_GTK_STATUS),0)
@@ -154,6 +159,32 @@ $(error the carried GTK was not built -- vendor/build_stack.py says why, above -
 endif
 ifeq ($(CARRIED_GTK_IS_BUILT),)
 $(error vendor/build_stack.py finished, but libgtk.a or libvte-2.91-gtk4.a is not there -- a project marked built whose files are gone; `/usr/bin/python3 vendor/build_stack.py --force --only gtk,vte` builds them again)
+endif
+endif
+endif
+
+# AND ITS C++ BUILT WITH satl'S C++ LIBRARY, OR BUILT AGAIN FIRST (2026-10-22). A libc++ satl cannot
+# link a VTE compiled against libstdc++ -- its std::__cxx11::basic_string is not libc++'s
+# std::__1::basic_string, so the link stops at undefined std::__cxx11 names -- nor a g++ satl a
+# libc++ one. build_stack.py writes the library into the markers of the three C++ projects (its
+# CXX_PROJECTS); a stage built before that day names none, and was libstdc++'s. ALL THREE MARKERS
+# ARE READ (the review, 2026-10-23): a hand `build_stack.py --only vte` leaves fmt and simdutf as
+# they were, and vte's alone would call that stage satl's. When any of them differs from
+# CXX_RUNTIME, the three are built again here, before anything compiles -- --only them, so the
+# rest of GTK is not built again (wayland 1.24: Debian 13 has 1.23; its .pc files are still
+# read), about a minute -- and the stack's C projects are left as they are: C has no C++ library.
+CARRIED_GTK_CXX = $(sort $(foreach p,fmt simdutf vte,$(or $(word 4,$(shell cat $(GTK_STAGE)/.build_stack_done/$(p) 2>/dev/null)),libstdc++)))
+ifneq ($(CARRIED_GTK_IS_BUILT),)
+ifneq ($(CARRIED_GTK_CXX),$(CXX_RUNTIME))
+ifeq ($(CARRIED_GTK_MAY_BUILD),0)
+$(info the carried GTK's C++ (VTE, simdutf, fmt) was built with $(CARRIED_GTK_CXX) and satl is built with $(CXX_RUNTIME) -- building those three again first: vendor/build_stack.py, about a minute)
+CARRIED_GTK_CXX_STATUS := $(shell $(BUILD_CARRIED_GTK) --only fmt,simdutf,vte --quiet >&2; echo $$?)
+ifneq ($(CARRIED_GTK_CXX_STATUS),0)
+$(error the carried GTK's C++ was not built again with $(CXX_RUNTIME) -- vendor/build_stack.py says why, above -- so satl was not built either)
+endif
+ifneq ($(CARRIED_GTK_CXX),$(CXX_RUNTIME))
+$(error vendor/build_stack.py finished, but vendor/stage/.build_stack_done's fmt, simdutf and vte still say $(CARRIED_GTK_CXX), not $(CXX_RUNTIME))
+endif
 endif
 endif
 endif
@@ -254,6 +285,13 @@ GTK_ARCHIVES := $(shell find $(GTK_BUILD) $(GTK_STAGE) -name '*.a' ! -name 'libg
 # SO THE WAY TO SIX IS NOT THIS FLAG. It is to stop dlopening the word libraries
 # and link them into satl (SATELLITE_WINDOW.md WIN-6 shape (i)), which is the
 # author's decision and a real change to DESIGN 3.4, not a link flag.
+#
+# BOTH HAPPENED: the words went inside satl on 2026-10-07, and on 2026-10-22 a clang build
+# links its C++ library statically -- libc++, by 010-compiler.mk's CXXFLAGS, so nothing is
+# added here. There is one std::cout, and check.sh's /dev/full row is still the one that
+# would say otherwise. The GPU driver libepoxy dlopens may bring the machine's libstdc++.so.6
+# with it (mesa's LLVM): another library under other names -- libc++'s are std::__1 -- sharing
+# no state with satl's, which exports none of its C++ symbols (`nm -D build/satl`).
 GTK_LINK_FLAGS =
 
 # -lwayland-client AND -lwayland-egl STAY SHARED, AND THAT IS NOT A COMPROMISE.

@@ -151,7 +151,7 @@ INTERPRETER_SOURCES = $(SATELLITE)/structured-library.cpp \
                       $(SATELLITE)/satellite_variable_program/program_stop.cpp \
                       $(BYTECODE)/random_calls.cpp $(RANDOM_DIR)/random_source.cpp $(RANDOM_DIR)/random_draw.cpp \
                       $(RANDOM_DIR)/random_spin.cpp \
-                      $(BYTECODE)/time_calls.cpp \
+                      $(BYTECODE)/time_calls.cpp $(BYTECODE)/drive_calls.cpp $(MACHINE)/drive_mounts.cpp \
                       $(BYTECODE)/test_calls.cpp $(SATELLITE)/satellite_test/test_run.cpp \
                       $(SATELLITE)/satellite_test/test_programs.cpp \
                       $(SATELLITE)/satellite_test/speed_objects_twins.cpp $(SATELLITE)/satellite_test/speed_values_twins.cpp \
@@ -206,6 +206,7 @@ HEADERS = $(ARGUMENTS)/arguments.hpp $(ARGUMENTS)/argument_words.hpp $(ARGUMENTS
           $(SATELLITE)/satellite_variable_program/program_stop.hpp \
           $(BYTECODE)/random_calls.hpp $(RANDOM_DIR)/random_source.hpp $(RANDOM_DIR)/random_draw.hpp $(RANDOM_DIR)/random_spin.hpp \
           $(BYTECODE)/time_calls.hpp $(SATELLITE)/satellite_variable_time/satellite_time.hpp \
+          $(BYTECODE)/drive_calls.hpp $(MACHINE)/drive_mounts.hpp \
           $(BYTECODE)/test_calls.hpp $(SATELLITE)/satellite_test/test_run.hpp $(SATELLITE)/satellite_test/test_programs.hpp \
           $(SATELLITE)/satellite_test/speed_twins.hpp $(SATELLITE)/satellite_test/speed_objects_twins.hpp \
           $(SATELLITE)/satellite_test/speed_values_twins.hpp \

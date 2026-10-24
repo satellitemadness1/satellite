@@ -396,6 +396,16 @@ interpreter, so they are not external"*. The NEEDED-becomes-six half, `-static-l
 is still his: 050-build.mk's ALLOWED_NEEDED keeps libstdc++ and libgcc_s until he says.
 The text below is as it was written before that day.
 
+**AND THE OTHER HALF, 2026-10-22, for a clang build -- FIVE, not six:** the author, *"port
+it to libc++"*. A clang build compiles against LLVM's libc++ and links libc++, libc++abi
+and gcc's unwinder (libgcc_eh) **into** satl (`make_support/010-compiler.mk` says why each
+flag), so `readelf -d` names libm, libwayland-client, libwayland-egl, libc and ld-linux,
+`objdump -T` names no `GLIBCXX` version, and `ALLOWED_NEEDED` allows exactly those five
+for it. Measured that day on a trial build, and again on BUILD 0088 (2026-10-23): no new warning, and satl 0.7 MB
+larger. A g++ build keeps libstdc++ and libgcc_s as below. The carried C++ -- VTE, simdutf, fmt -- is built with satl's library
+(`vendor/build_stack.py --stdlib`), and rebuilt by the first make that finds it built with
+the other one.
+
 This is the one that removes a dependency rather than vendoring it, and it is
 **the author's call because it changes DESIGN §3.4.**
 
@@ -560,7 +570,7 @@ named its renderer is what is asserted.
 **THE FLOOR, written down once so nobody reopens it — SEVEN:**
 
     ld-linux-x86-64.so.2  libc.so.6  libm.so.6                      glibc, every Linux
-    libstdc++.so.6  libgcc_s.so.1                                   the distribution's; DEP-2 removes them
+    libstdc++.so.6  libgcc_s.so.1                                   the distribution's; a g++ build's only (DEP-2)
     libwayland-client.so.0  libwayland-egl.so.1  (+ libffi.so.8)    the machine's, cannot be carried
 
 **And what "measured" has to mean here, learned the same day:** the archive
@@ -569,7 +579,8 @@ never *who references the symbol* but *who defines it at run time*. `readelf -V`
 answers that in one line, and it is the check to make before any NEEDED entry
 is called a dependency.
 
-and a **version floor: glibc ≥ 2.38 and libstdc++ ≥ `GLIBCXX_3.4.32` (gcc 13)**
+and a **version floor: glibc ≥ 2.38 and libstdc++ ≥ `GLIBCXX_3.4.32` (gcc 13)** —
+the second for a g++ build only since 2026-10-22, a clang build has no libstdc++ to ask (DEP-2)
 — AlmaLinux 10 yes, AlmaLinux 9 no, measured symbol by symbol in DEP-3 and
 asserted by check.sh. The GPU driver is **not** on the floor: without one GTK
 draws with cairo (DEP-3).

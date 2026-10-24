@@ -27,7 +27,7 @@ BARE_MAKE = $(if $(filter-out all,$(MAKECMDGOALS))$(filter-out 0,$(MAKELEVEL))$(
 # make or an install. They do not depend on the build stamp and raise no number.
 ALL_TARGETS = $(BUILD)/satl $(BUILD)/satellite-004 $(BUILD)/exit_status_cases $(BUILD)/arguments_cases \
               $(BUILD)/missing_cases $(BUILD)/count_cases $(BUILD)/prompt_cases $(BUILD)/prompt_reader $(BUILD)/directory_cases \
-              $(BUILD)/file_cases $(BUILD)/file_moves_cases $(BUILD)/console_files_cases $(BUILD)/prompt_run_cases $(BUILD)/infinity_cases \
+              $(BUILD)/file_cases $(BUILD)/file_moves_cases $(BUILD)/drive_mounts_cases $(BUILD)/console_files_cases $(BUILD)/prompt_run_cases $(BUILD)/infinity_cases \
               $(BUILD)/random_cases $(BUILD)/satl-cpu-level
 
 # AN EARLIER BUILD'S satl-term IS REMOVED, with its objects: it would run the
@@ -173,8 +173,9 @@ define shows_the_build_row
 endef
 
 # WHAT satl IS ALLOWED TO NEED AT RUN TIME, WHEN IT CARRIES GTK. Exactly these
-# SEVEN -- six was the target, and DEP-2 (deferred by the author) is the way
-# back to it. Nobody installs any of them: a machine without them cannot draw
+# SEVEN for a g++ build or a clang with no libc++, and FIVE for a libc++ build since
+# 2026-10-22 (010-compiler.mk's CXX_RUNTIME) -- six was the
+# target, and DEP-2 was the way to it (the paragraph before ALLOWED_NEEDED). Nobody installs any of them: a machine without them cannot draw
 # anything at all. PROVED 2026-09-22 (GTK_AND_NO_DEPENDENCIES.md DEP-3):
 # satellite/satellite_variable_window/prove-bare-machine.sh binds exactly these
 # into an EMPTY root -- plus libffi.so.8, which is libwayland-client's own NEEDED
@@ -188,8 +189,9 @@ endef
 # of this comment calling it "a measurement"; the measurement was `readelf -V`,
 # which had no version-needs for libresolv at all. The flag is gone.
 #
-# THE VERSION FLOOR is GLIBC_2.38 and GLIBCXX_3.4.32 (check.sh asserts both):
-# AlmaLinux 10's /lib64 runs this binary, AlmaLinux 9's does not.
+# THE VERSION FLOOR is GLIBC_2.38, and GLIBCXX_3.4.32 for a g++ build (check.sh asserts
+# them; a clang build asks for no GLIBCXX at all): AlmaLinux 10's /lib64 runs this binary,
+# AlmaLinux 9's does not.
 #
 # THIS GATE IS WHY NO GTK HAS TO BE UNINSTALLED from a development machine. The
 # author proposed removing it to force the vendored stack; that would have taken
@@ -206,8 +208,14 @@ endef
 # full device report success (047-window.mk has the whole finding). That day came on
 # 2026-10-07 -- the words are inside satl -- so taking them off, with -static-libstdc++, is
 # the author's decision now (GTK_AND_NO_DEPENDENCIES.md DEP-2), not a defect.
+# AND FOR CLANG HE TOOK THEM OFF, 2026-10-22 ("port it to libc++"): a clang build links
+# libc++, libc++abi and gcc's unwinder INTO satl (010-compiler.mk), so libstdc++ and libgcc_s
+# are allowed only when CXX_RUNTIME says libstdc++ -- g++, or a clang with no libc++ beside it.
+# A libc++.so.1, libc++abi.so.1 or libunwind.so.1 is refused like any other library: it is a
+# link that fell back to the shared ones, which this machine's loader finds through
+# /usr/local/lib/clang-current and almost no other machine does.
 ALLOWED_NEEDED = libm libwayland-client libwayland-egl libc ld-linux \
-                 libstdc++ libgcc_s
+                 $(if $(filter libstdc++,$(CXX_RUNTIME)),libstdc++ libgcc_s)
 
 define carries_its_own_gtk
 @found=$$(readelf -d $(1) | sed -n 's/.*Shared library: \[\([^]]*\)\].*/\1/p'); \

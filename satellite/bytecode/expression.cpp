@@ -39,6 +39,7 @@
 #include "library_values.hpp"
 #include "random_calls.hpp"
 #include "time_calls.hpp"
+#include "drive_calls.hpp"
 #include "test_calls.hpp"
 #include "window_calls.hpp"
 #include "../machine/stop_flag.hpp"
@@ -2248,6 +2249,9 @@ Value call_word(const std::vector<std::bitset<16>> &row, std::size_t &at, Expres
         // thread that sleeps never holds up another thread's lines.
         if (is_time_word(code))
             return call_time_word(code, arguments, context);
+        // ...and satellite.drive.list(), which reads the machine's drives and prints (drive_calls.hpp).
+        if (is_drive_word(code))
+            return call_drive_word(code, arguments, context);
         // ...and satellite.test's, which run child satls and answer whether all was right
         // (test_calls.hpp).
         if (is_test_word(code))
@@ -2275,9 +2279,12 @@ Value call_word(const std::vector<std::bitset<16>> &row, std::size_t &at, Expres
     // words and every numbered library below are called holding the console lock, because
     // std::cout is one stream for every thread -- and a display's hand-off to the printing
     // satellite (display/printing_satellite.hpp) is one line's too. NOT input, which waits for a person:
-    // holding the lock there would stop every other thread's lines until somebody typed.
+    // holding the lock there would stop every other thread's lines until somebody typed. NOR
+    // satellite.console.bash, 1 5 13, for the same reason: a command may wait on its sudo password as long as
+    // input waits on a line (the review, 2026-10-23: every other thread's display stopped for the command).
     // Before any start() the hold holds nothing, and a plain display pays one load.
-    const bool waits_for_a_person = code == word::fixed_code<1, 5, 2> || code == word::fixed_code<1, 5, 3>;
+    const bool waits_for_a_person = code == word::fixed_code<1, 5, 2> || code == word::fixed_code<1, 5, 3> ||
+                                    code == word::fixed_code<1, 5, 13>;
     std::optional<ConsoleHold> one_line;
     if (!waits_for_a_person)
         one_line.emplace();

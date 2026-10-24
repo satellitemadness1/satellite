@@ -688,3 +688,5 @@
 1 36 2	satellite.drive.mount(d)	
 1 36 3	satellite.drive.release(d)	
 1 36 4	satellite.drive.remount(d)	
+1 5 13	satellite.console.bash(command)	
+1 37	satellite.error	

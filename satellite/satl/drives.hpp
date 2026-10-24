@@ -15,6 +15,8 @@
 // ONLY WHAT IS MOUNTED. A partition that is not mounted has no free space anyone can
 // ask about without mounting it, and swap holds no files; neither is a row.
 
+#include "../machine/drive_mounts.hpp"
+
 #include <string>
 #include <vector>
 
@@ -25,5 +27,10 @@ std::vector<std::string> drives_lines(const std::vector<std::string> &points);
 
 // The table for the drives mounted at `points`, in the order given.
 std::string drives_table(const std::vector<std::string> &points);
+
+// satellite.drive.list()'s table (FILE_AND_DRIVE_PLAN.md FD-4): a row a drive that holds a filesystem, mounted
+// or not -- its name, label, type, size, where it is mounted ("not mounted"), and the disk it is on. Sizes are
+// written as every table's here are, mb with commas.
+std::string drives_listed(const std::vector<DriveRow> &drives);
 
 } // namespace satellite004

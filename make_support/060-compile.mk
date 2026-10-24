@@ -71,7 +71,11 @@ $(LICENCE_DATA_SOURCE): $(LICENCE_DATA_INPUTS)
 
 # -w, like the window data: it is 284 KB of other people's licence text in raw
 # string literals, and -Wall -Wextra has nothing useful to say about it.
-$(LICENCE_DATA_OBJECT): $(LICENCE_DATA_SOURCE) | $(BUILD_STAMP)
+# AND THE COMPILE STAMP, as every other object has (2026-10-23): it is C++ -- std::string,
+# std::vector -- so a change of C++ library must compile it again. Without the stamp, the
+# first libc++ make over a libstdc++ build/ linked its old std::__cxx11 object and stopped
+# at `undefined reference to std::__throw_length_error`.
+$(LICENCE_DATA_OBJECT): $(LICENCE_DATA_SOURCE) $(COMPILE_STAMP) | $(BUILD_STAMP)
 	@mkdir -p $(dir $@)
 	$(CXX) $(CXXFLAGS) -w $(DEPENDENCY_FLAGS) -c $< -o $@
 

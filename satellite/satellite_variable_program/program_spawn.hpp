@@ -47,6 +47,11 @@ inline constexpr int kErrorsWithOutput = -2;
 struct ProgramPlace {
     std::string folder;                     // its working directory; "" is satl's own
     std::vector<std::string> environment;   // NAME=value, each one in place of satl's NAME
+    // A TERMINAL TO RUN IN THE FOREGROUND OF, as a shell runs a job (satellite.console.bash, 2026-10-23): the
+    // program gets a process group of its own and that terminal's foreground, so Ctrl-C, Ctrl-\ and Ctrl-Z
+    // typed there are its and never satl's. The caller takes the terminal back when it has ended. -1, every
+    // other caller: it stays in satl's group, as above.
+    int foreground = -1;
 };
 
 // Starts words[0] -- a path, or a name looked up on the PATH -- with every word as an argument.
