@@ -1,5 +1,7 @@
 # 032 -- Each map removal is O(n) (take_entry_out renumbers every row of the hash, and .remove(key) scans the entries), so emptying a map is quadratic: 20,000 remove_last() take 3.5-4 s, against 0.2 s for a list
 
+**FIXED 2026-10-25** (open-work runtime): take_entry_out no longer walks the table when the entry taken out was the last (container_calls.cpp), and .satellite.remove(k) finds its entry by the hash (1.4.1.7.cpp): emptying 20,000 keys from the end takes 0.07 s. remove_first and a removal in the middle still move the rest one place -- holes in `entries` would be the second step, not built.
+
 **Found:** 2026-09-26, satl 004 revision 08 build 0099 (/home/madness/code/cxx/satellite/build/satl), by running ordinary programs against it.  
 **Area:** maps and nesting  
 **Kind:** performance  

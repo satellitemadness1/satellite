@@ -1,5 +1,7 @@
 # 035 -- A comment line after a capsule's last self-call stops it being a tail call: memory grows with depth (1.1 GB at 300,000 levels, 10.9 GB at 3,000,000; 18 MB without the comment)
 
+**FIXED 2026-10-25** (open-work runtime): find_the_last_statements steps over a comment as over a line end (program_walk.cpp), so down(n - 1) then a comment line, with or without satellite.return() after it, is the last statement: 300,000 levels in 12 MB, as without the comment.
+
 **Found:** 2026-09-26, satl 004 revision 08 build 0099 (/home/madness/code/cxx/satellite/build/satl), by running ordinary programs against it.  
 **Area:** control flow and capsules  
 **Kind:** performance  

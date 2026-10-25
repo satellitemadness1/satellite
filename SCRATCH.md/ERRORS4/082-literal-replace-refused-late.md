@@ -1,5 +1,7 @@
 # 082 -- "abc".replace("a", "b") on a string literal is refused (S210) only after earlier lines ran, while s.replace on a name, and .size/.contains on a literal, are refused before anything runs
 
+**FIXED before 2026-10-25** (the open-work re-check found it right on REVISION 11 BUILD 0001): "abc".replace("a", "b") is refused by satl(check) naming .satellite.replace, with nothing printed, and "abc".satellite.replace("a", "b") prints bbc.
+
 **Found:** 2026-09-26, satl 004 revision 08 build 0099 (/home/madness/code/cxx/satellite/build/satl), by running ordinary programs against it.  
 **Area:** strings  
 **Kind:** inconsistency  

@@ -1,5 +1,7 @@
 # 085 -- S728 WAIT_NEVER_ENDS for a circle made only of joins explains it as "the object's lock it needs is held by a thread", though no lock is involved
 
+**FIXED before 2026-10-25** (the open-work re-check found it right on REVISION 11 BUILD 0001): a circle made only of joins is S728 with a paragraph about joins and none about a lock (4 runs of 4).
+
 **Found:** 2026-09-26, satl 004 revision 08 build 0099 (/home/madness/code/cxx/satellite/build/satl), by running ordinary programs against it.  
 **Area:** threads  
 **Kind:** misleading-refusal  

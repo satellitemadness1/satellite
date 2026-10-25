@@ -22,6 +22,7 @@
 #include "../machine/source_position.hpp"
 #include "../satellite_variable_number/number_conversions.hpp"
 #include "../satellite_variable_file/file_moves.hpp"
+#include "../satellite_object/object_lock.hpp"
 
 #include <sys/stat.h>
 
@@ -267,6 +268,25 @@ std::string resolved_path(const std::string &written, bool making, const std::ve
     return resolved(written, making, row, context, folders);
 }
 
+void write_held_appends(const std::string &path, ExpressionContext &context)
+{
+    const std::vector<FileHandle> holding = satellite_file::holding_appends();
+    if (holding.empty())
+        return;
+    struct stat reading {};
+    if (::stat(path.c_str(), &reading) != 0)
+        return;   // nothing there to read: a reader says so itself
+    for (const FileHandle &file : holding) {
+        // ITS LOCK, AS ANY METHOD CALLED ON IT HOLDS IT (expression.cpp): the handle may be another thread's.
+        // One that could not be taken without a circle is left to write its lines at its own save.
+        const ObjectHold one_write(&file->lock, LockUse::writing);
+        if (one_write.circle_broken())
+            warn_circle_broken(context.state);
+        if (one_write.code() == success)
+            (void)file->save_appended_before(reading);
+    }
+}
+
 const char *method_spelling(Code method)
 {
     // THE REGISTRY NAMES EVERY METHOD (INF-1): token::method_name_of is generated
@@ -452,6 +472,8 @@ Value call_file_word(Code code, const std::vector<Value> &arguments, const std::
     satellite_file::Kind kind = satellite_file::Kind::text;
     if (two && !kind_of(arguments[1], kind, spelling, context))
         return Value();
+    if (!making)
+        write_held_appends(path, context);   // ERRORS4 006: another handle's appended lines are read too
     FileHandle handle = making ? satellite_file::make_new(path, kind) : satellite_file::open_existing(path, kind);
     // NULL ONLY WHEN THE HANDLE ITSELF COULD NOT BE ALLOCATED, which is the one
     // failure a handle cannot carry (satellite_file.cpp). A null handle must never

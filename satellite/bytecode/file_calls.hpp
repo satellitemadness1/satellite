@@ -56,6 +56,11 @@ int file_method_arity(token::Code method);
 std::string resolved_path(const std::string &written, bool making, const std::vector<std::bitset<16>> &row,
                           ExpressionContext &context, bool folders = false);
 
+// EVERY OTHER HANDLE'S APPENDED LINES ON THE DISK BEFORE `path` IS READ (ERRORS4 006): an open and
+// satellite.info.file read what a handle that appended to that file is holding, as SATELLITE_FILE_OPERATIONS
+// 3.7 says they do. `path` is resolved already; each handle is written under its own lock.
+void write_held_appends(const std::string &path, ExpressionContext &context);
+
 // One of those words, its arguments already evaluated. `row` is the row the call
 // is written in, which is how a relative path finds the file that wrote it.
 Value call_file_word(token::Code code, const std::vector<Value> &arguments,

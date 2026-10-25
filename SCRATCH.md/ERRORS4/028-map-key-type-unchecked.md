@@ -1,5 +1,7 @@
 # 028 -- A map declared with a key type that can never be a key (list, map, float) is accepted, and satellite.access prints a fill line (m[key] = 1) that is always refused
 
+**FIXED 2026-10-25** (open-work checker): read_type_shape (type_shape.cpp) refuses a map or index whose key type is not a number, a string, a bool, a binary or a percentage (a multiple only of those), in the run's sentence, so the declaration is refused where it is written. check.sh rows "028: ...".
+
 **Found:** 2026-09-26, satl 004 revision 08 build 0099 (/home/madness/code/cxx/satellite/build/satl), by running ordinary programs against it.  
 **Area:** maps and nesting  
 **Kind:** invalid-accepted-silently  

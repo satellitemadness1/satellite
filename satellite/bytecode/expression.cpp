@@ -49,6 +49,7 @@
 #include "word_counts.hpp"
 #include "../satellite_variable_number/number_conversions.hpp"
 #include "../satellite_object/fast_paths.hpp"
+#include "../satellite_object/number_to_string.hpp"
 #include "../satellite_object/satellite_list.hpp"
 #include "../satellite_object/satellite_index.hpp"
 
@@ -450,7 +451,8 @@ Value call_method(const std::vector<std::bitset<16>> &row, std::size_t &at, cons
         // words every object has with `.satellite.` (his A of 2026-10-11) -- call_member judges which,
         // because only the spacesuit says whether a name is his.
         const bool under_satellite = code_at(row, at) == token::satellite_method_token;
-        if ((*live).answers_as_an_object()) {
+        // AND A NAME AFTER NOTHING (ERRORS4 042, a_member_next): call_member says the field holds no object yet.
+        if ((*live).answers_as_an_object() || ((*live).is_nothing() && code_at(row, at + 1) == token::name_token)) {
             Value answer = call_member(row, at, *live, name, context);
             if (context.code != success)
                 return Value();
@@ -460,7 +462,8 @@ Value call_method(const std::vector<std::bitset<16>> &row, std::size_t &at, cons
             continue;
         }
         // A WIDGET BY ITS NAME (the author, 2026-10-09): `main_window.file_display` is the widget made in
-        // main_window with `.satellite.widgets.display.file("file_display")`, and what follows is that widget's.
+        // main_window with `.satellite.window.display.file("file_display")`, and what follows is that widget's.
+        // (In the capsule whose line made it, `file_display` alone is the same widget: SEC-0's rule 4.)
         // HIS OWN NAMES KEEP THEIR PERIOD (2026-10-10 ~21:15): main_window.files_display.satellite.widgets...
         if (code_at(row, at + 1) == token::name_token) {
             if (const WindowHandle *window = (*live).window_handle()) {
@@ -476,11 +479,13 @@ Value call_method(const std::vector<std::bitset<16>> &row, std::size_t &at, cons
                 continue;
             }
         }
-        // A WORD OF PARTS WRITTEN AS ITS PARTS, ON A WINDOW (window_calls.hpp): widgets.display.file and
+        // A WORD OF PARTS WRITTEN AS ITS PARTS, ON A WINDOW (window_calls.hpp): window.section and
         // scroll.vertical are each one word, `.satellite.` once before it, and the lexer reads them so -- so
-        // `main_window.widgets.display.file(...)`, `.satellite.widgets.displays.file(...)` and a scroll alone
-        // reach here as parts, and are told the whole word. Asked before the period's rule, which would name
-        // only the first part.
+        // `main_window.window.section(...)`, `.satellite.window.display.text(...)` and a scroll alone reach here as
+        // parts, and are told the whole word. AND THE OLD SPELLINGS since SEC-0 -- `.satellite.section(...)`,
+        // `.satellite.widgets.display.file(...)` -- told the new one (SATELLITE_WINDOW_SECTIONS.md rule 8), here
+        // where the checker could not see the receiver was a window. Asked before the period's rule, which would
+        // name only the first part.
         if ((*live).is_window() && a_word_in_parts(row, at)) {
             context.refuse(satl_line_not_understood, word_in_parts_written_wrong(row, at, name));
             return Value();
@@ -1061,6 +1066,47 @@ Value index_into(const Value &current, const Value &index, const std::string &wh
     return Value();
 }
 
+// A VALUE WITH A MINUS IN FRONT OF IT, its sign turned over in its own kind -- or refused, at `sign_at`, for
+// a kind with no sign. one_operand's touching minus, and maybe_a_method's for a literal (ERRORS4 007).
+Value turned_over(const Value &inner, std::size_t sign_at, ExpressionContext &context)
+{
+    // A binary KEEPS ITS SIGN and stays a binary (the author, 2026-09-17: "keep
+    // a sign with all of these things"): -b1010 is -b1010, worth -10, width 4.
+    // It was the number -10 until then.
+    if (const satellite_binary_number *bits = inner.as_binary())
+        return Value::of_binary(bits->negated());
+    // satellite.variable.hex (2026-09-22): A HEX KEEPS ITS SIGN and stays a hex, as a
+    // binary does -- -x1F is -x1F, worth -31, width 2. It was the number -31 until then.
+    if (const satellite_hexadecimal_number *hex = inner.as_hexadecimal())
+        return Value::of_hexadecimal(hex->negated());
+    // -50% is a percentage below zero: `200 - -50%` grows 200 by half.
+    if (const satellite_percentage *percent = inner.as_percentage())
+        return Value::of_percentage(satellite_percentage{-percent->scaled});
+    // -infinity IS infinity * -1, ONE VALUE (SATELLITE_INFINITY.md Q20): every count
+    // turned over, the exponents shared. A negative infinity is below every number.
+    if (const satellite_infinity *infinite = inner.as_infinity())
+        return Value::of_infinity(satellite_infinity::negated(infinite));
+    // A FLOAT'S SIGN IS ITS OWN BOOL (the author, 2026-09-22: "plus a sign which
+    // is positive by default"), so -12.5 turns the bool over and keeps the digits.
+    if (const satellite_float *real = inner.as_float())
+        return Value::of_float(real->negated());
+    // A FRACTION'S SIGN RIDES ON ITS NUMERATOR (satellite.variable.fraction,
+    // 2026-09-22): -1/3 is (-1, 3), shown -1/3.
+    if (const satellite_fraction *tied = inner.as_fraction())
+        return Value::of_fraction(tied->negated());
+    // -1s IS A TIME BELOW ZERO, as -50% is a percentage below zero (satellite_time.hpp) -- a
+    // time keeps its sign, and satellite.time.sleep is what refuses to wait one.
+    if (const satellite_time *length = inner.as_time())
+        return Value::of_time(length->negated());
+    if (!inner.is_number()) {
+        if (context.code == success)
+            context.refuse(types_do_not_meet, std::string("a minus sign was put in front of ") + inner.kind_name(),
+                           sign_at);
+        return Value();
+    }
+    return Value::of_number(-*inner.as_number());
+}
+
 // A METHOD MAY FOLLOW A LITERAL, NOT ONLY A NAME.
 //
 // `"abc".reverse()` and `123.reverse()` and `{1, 2}.size` all failed with "could
@@ -1077,6 +1123,13 @@ Value index_into(const Value &current, const Value &index, const std::string &wh
 Value maybe_a_method(const std::vector<std::bitset<16>> &row, std::size_t &at, Value value,
                      const char *what, ExpressionContext &context)
 {
+    // THE LITERAL'S OWN MINUS FIRST (ERRORS4 007; one_operand's touching minus says why).
+    if (context.minus_for_the_literal) {
+        context.minus_for_the_literal = false;
+        value = turned_over(value, context.minus_for_the_literal_at, context);
+        if (context.code != success)
+            return Value();
+    }
     if ((a_method_period(code_at(row, at)) && token::is_method_code(code_at(row, at + 1))) ||
         a_member_next(row, at, value))
         return call_method(row, at, value, what, context);
@@ -1367,42 +1420,26 @@ Value one_operand(const std::vector<std::bitset<16>> &row, std::size_t &at, Expr
     if (code == token::tight_minus_token || code == token::minus_token) {
         const std::size_t sign_at = at;
         ++at;
-        const Value inner = one_operand(row, at, context);
-        // A binary KEEPS ITS SIGN and stays a binary (the author, 2026-09-17: "keep
-        // a sign with all of these things"): -b1010 is -b1010, worth -10, width 4.
-        // It was the number -10 until then.
-        if (const satellite_binary_number *bits = inner.as_binary())
-            return Value::of_binary(bits->negated());
-        // satellite.variable.hex (2026-09-22): A HEX KEEPS ITS SIGN and stays a hex, as a
-        // binary does -- -x1F is -x1F, worth -31, width 2. It was the number -31 until then.
-        if (const satellite_hexadecimal_number *hex = inner.as_hexadecimal())
-            return Value::of_hexadecimal(hex->negated());
-        // -50% is a percentage below zero: `200 - -50%` grows 200 by half.
-        if (const satellite_percentage *percent = inner.as_percentage())
-            return Value::of_percentage(satellite_percentage{-percent->scaled});
-        // -infinity IS infinity * -1, ONE VALUE (SATELLITE_INFINITY.md Q20): every count
-        // turned over, the exponents shared. A negative infinity is below every number.
-        if (const satellite_infinity *infinite = inner.as_infinity())
-            return Value::of_infinity(satellite_infinity::negated(infinite));
-        // A FLOAT'S SIGN IS ITS OWN BOOL (the author, 2026-09-22: "plus a sign which
-        // is positive by default"), so -12.5 turns the bool over and keeps the digits.
-        if (const satellite_float *real = inner.as_float())
-            return Value::of_float(real->negated());
-        // A FRACTION'S SIGN RIDES ON ITS NUMERATOR (satellite.variable.fraction,
-        // 2026-09-22): -1/3 is (-1, 3), shown -1/3.
-        if (const satellite_fraction *tied = inner.as_fraction())
-            return Value::of_fraction(tied->negated());
-        // -1s IS A TIME BELOW ZERO, as -50% is a percentage below zero (satellite_time.hpp) -- a
-        // time keeps its sign, and satellite.time.sleep is what refuses to wait one.
-        if (const satellite_time *length = inner.as_time())
-            return Value::of_time(length->negated());
-        if (!inner.is_number()) {
-            if (context.code == success)
-                context.refuse(types_do_not_meet, std::string("a minus sign was put in front of ") + inner.kind_name(),
-                               sign_at);
-            return Value();
+        // A LITERAL'S METHODS RUN ON THE LITERAL WITH ITS SIGN (ERRORS4 007): the number help writes -7 as
+        // "digits, with a touching - in front for below zero", and -2 ^ 2 above is already (-2) ^ 2. So for a
+        // number, float, hex, binary, percentage or time literal with a TOUCHING minus the sign waits in the
+        // context, and maybe_a_method turns the literal over before its chain -- -5.satellite.add(3) is -2. A
+        // minus in front of a NAME still takes what its chain answers: -n.satellite.add(3) is -(n.add(3)). The lexer
+        // makes a minus touching unless it has blanks on BOTH sides (bytecode_registry.cpp), so `q = - 5.satellite.add(3)`
+        // still takes the chain's answer, -8, while `(- 5.satellite.add(3))`, no blank before its minus, gives -2:
+        // the pair is ERRORS4 007's question for the author.
+        const Code next = code_at(row, at);
+        if (code == token::tight_minus_token &&
+            (next == token::number_token || next == token::hexadecimal_token || next == token::binary_token ||
+             next == token::percentage_token || next == token::time_token)) {
+            context.minus_for_the_literal = true;
+            context.minus_for_the_literal_at = sign_at;
+            Value literal = one_operand(row, at, context);
+            context.minus_for_the_literal = false;   // taken there -- or the literal was refused before it
+            return literal;
         }
-        return Value::of_number(-*inner.as_number());
+        const Value inner = one_operand(row, at, context);
+        return turned_over(inner, sign_at, context);
     }
     if (code == token::not_token) {
         const std::size_t not_at = at;
@@ -2101,6 +2138,11 @@ Value call_directory_word(token::Code code, const Scenarios &scenarios, const Va
     // satellite.file.new("notes/today.txt") in one program name the same folder wherever satl was started.
     if (given && code == word::code_of(1, 18, 8))
         path = resolved_path(path, true, row, context, true);
+    // AND A FOLDER TO LIST AS A FILE TO OPEN IS (ERRORS4 009): list("room") run from another folder read the working
+    // directory's room, and said S520 for the one beside the program. A path with a leading / is read as it was
+    // until the author rules on what "/" names for the directory words (ERRORS4 009's question).
+    else if (given && code == word::code_of(1, 18, 5) && (path.empty() || path.front() != '/'))
+        path = resolved_path(path, false, row, context);
 
     const DirectoryReply reply = scenarios.directory(path, given, stop_flag());
     if (stops_the_program(reply.code)) {
@@ -2236,7 +2278,7 @@ Value call_word(const std::vector<std::bitset<16>> &row, std::size_t &at, Expres
         // ...and satellite.info's words answer a list of indexes, which no library can
         // make either (info_calls.hpp).
         if (is_info_word(code))
-            return call_info_word(code, arguments, context);
+            return call_info_word(code, arguments, row, context);
         // ...and so does satellite.infinity() (infinity_calls.hpp).
         if (is_infinity_word(code))
             return call_infinity_word(code, arguments, context);
@@ -2646,6 +2688,91 @@ Value evaluate_whole_expression(const std::vector<std::bitset<16>> &row, std::si
 Value evaluate_rounded_expression(const std::vector<std::bitset<16>> &row, std::size_t &at, ExpressionContext &context)
 {
     return evaluate_at<AtTheRoot::rounded>(row, at, 1, context);
+}
+
+bool joined_onto_the_name(const std::vector<std::bitset<16>> &row, std::size_t &at, const std::string &name,
+                          Value &target, ExpressionContext &context)
+{
+    if (!target.is_string() || code_at(row, at) != token::name_token)
+        return false;
+    std::size_t k = at;
+    if (text_at(row, k) != name || code_at(row, k) != token::plus_token)
+        return false;
+    // THE SHAPE FIRST, WITH NOTHING RUN: then + and an operand of a tighter level, again and again, to the line's
+    // end -- a - or a == among them is another sum, and evaluate_at's. And the name in none of them, so no operand
+    // reads it half joined.
+    for (std::size_t look = k;;) {
+        const Code here = code_at(row, look);
+        if (here != token::plus_token) {
+            if (here != token::line_end_token && here != token::comment_token && here != token::end_of_file_token)
+                return false;
+            break;
+        }
+        const std::size_t from = ++look;
+        past_the_operand(row, look, precedence_of(token::plus_token));
+        if (look == from)
+            return false;
+        for (std::size_t j = from; j < look;) {
+            if (code_at(row, j) == token::name_token) {
+                if (text_at(row, j) == name)
+                    return false;
+            } else if (token::carries_a_count(code_at(row, j))) {
+                skip_payload(row, j);
+            } else {
+                ++j;
+            }
+        }
+    }
+    // EACH OPERAND JOINED ON AS + JOINS IT (satellite_object.cpp's add, a string on the left): a string as it is, a
+    // number as its digits, the other numbers as their .string -- and anything else through apply, as evaluate_at
+    // would. Every join keeps what was there in front, so a refusal part way puts back the name's first `kept`.
+    const std::size_t kept = target.as_string()->size();
+    const auto refused = [&] {
+        if (satellite_string *now = target.as_string()) {
+            satellite_string was;
+            if (now->substring(0, kept, was) == success)
+                *now = std::move(was);
+        }
+        at = k;
+        return true;
+    };
+    while (code_at(row, k) == token::plus_token) {
+        const std::size_t op_at = k;
+        ++k;
+        const Value right = evaluate_at(row, k, precedence_of(token::plus_token) + 1, context);
+        if (context.code != success)
+            return refused();
+        satellite_string *text = target.as_string();
+        signed long long int code = success;
+        std::string why;
+        if (text != nullptr && right.is_string()) {
+            text->append(*right.as_string());
+        } else if (text != nullptr && (right.is_number() || right.is_float() || right.is_fraction() ||
+                                       right.is_percentage() || right.is_hexadecimal() || right.is_binary())) {
+            satellite_string written;
+            code = right.is_number() ? number_to_string(*right.as_number(), written) : right.to_string(written, why);
+            if (code == success)
+                text->append(written);
+        } else {
+            Value joined = apply(token::plus_token, op_at, target, right, context);
+            if (context.code != success)
+                return refused();
+            target = std::move(joined);
+            continue;
+        }
+        if (code != success) {
+            if (why.empty()) why = "the string and " + std::string(right.kind_name()) + " could not be joined";
+            context.refuse(code, why, op_at);
+            return refused();
+        }
+    }
+    // A TAIL THE SHAPE TOOK FOR PART OF AN OPERAND (`+ t t`, `+ 5 6`) stops the joins short of the line's end: the
+    // name is put back too, and run_assignment's read_to_the_end refuses the line as it does any sum's.
+    const Code end = code_at(row, k);
+    if (end != token::line_end_token && end != token::comment_token && end != token::end_of_file_token)
+        return refused();
+    at = k;
+    return true;
 }
 
 std::string link_spelled(const std::vector<std::bitset<16>> &row, std::size_t dot)

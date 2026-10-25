@@ -281,8 +281,11 @@ inline satelliteObject::Kind kind_a_method_answers(satelliteObject::Kind receive
         case token::choose_a_file_token: case token::menu_token: case token::item_token: case token::separator_token:
         case token::line_token: case token::box_token: case token::circle_token: case token::write_token:
         case token::arc_token: case token::clear_token: case token::save_token: case token::display_token:
-        case token::home_token: case token::listen_token: case token::widgets_display_file_token:
-        case token::widgets_display_input_token: case token::section_token: return O::window;
+        case token::home_token: case token::listen_token: return O::window;
+        // THE MAKERS SINCE SEC-0 (SATELLITE_WINDOW_SECTIONS.md): each answers what it made. The old spellings answer
+        // nothing known here -- the parts rule refuses them first (window_shapes.cpp's a_word_in_parts).
+        case token::window_section_token: case token::window_display_file_token:
+        case token::window_display_text_input_token: return O::window;
         default: return O::how_many_kinds;
         }
 

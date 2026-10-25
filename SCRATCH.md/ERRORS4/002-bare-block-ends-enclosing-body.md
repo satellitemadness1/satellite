@@ -1,5 +1,7 @@
 # 002 -- A bare block ({} or { ... }) ends the enclosing body at its }: the rest of main (satellite.return included) is skipped with exit 0, and inside a while the loop never advances (hang)
 
+**FIXED before 2026-10-25** (the open-work re-check found it right on REVISION 11 BUILD 0001): `{}` alone, `{ ... }` and `{}` inside a while are refused by satl(check), S110 'a line does not begin with { here', before anything runs.
+
 **Found:** 2026-09-26, satl 004 revision 08 build 0099 (/home/madness/code/cxx/satellite/build/satl), by running ordinary programs against it.  
 **Area:** syntax and layout  
 **Kind:** wrong-answer  

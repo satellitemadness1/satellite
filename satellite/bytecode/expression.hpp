@@ -82,6 +82,13 @@ struct ExpressionContext {
     // or a key reads them where they are. Made only when asked: most expressions never are.
     Value the_runs_arguments;
 
+    // A TOUCHING MINUS WAITING FOR ITS LITERAL (ERRORS4 007): one_operand sets it for the number, float, hex,
+    // binary, percentage or time literal straight after a -, and maybe_a_method turns that literal over before the
+    // first method of its chain -- so -5.satellite.add(3) is (-5).add(3), -2, as -5 + 3 is, and -5.satellite.string
+    // is "-5". The method ran on 5 and the sign on its answer: -8, and "a minus sign was put in front of a string".
+    bool minus_for_the_literal = false;
+    std::size_t minus_for_the_literal_at = 0;   // where that - stands, for a caret
+
     // WHERE IT WENT WRONG, for the caret. SATELLITE_ERROR E6.
     //
     // RECORDED ON THE REFUSAL AND NEVER PER TOKEN. A position kept as the
@@ -133,6 +140,15 @@ Value evaluate_whole_expression(const std::vector<std::bitset<16>> &row, std::si
 // .5 and above is one more (the author, 2026-10-12) -- worked out as one whole-number division "at
 // today's speed" (his 9e), with no fraction made, and the S021 warning when something was left over.
 Value evaluate_rounded_expression(const std::vector<std::bitset<16>> &row, std::size_t &at, ExpressionContext &context);
+
+// s = s + a + b ON A STRING NAME, JOINED ONTO ITS OWN STRING (ERRORS4 031). Every + copied its whole left side,
+// and reading s copied it once more, so a loop building a string was quadratic: 40,000 passes of
+// `s = s + i.satellite.string + ","` took 6.2 s, and each doubling four times as long. `at` is on the value after
+// the =, and `target` is the name's own value. False, with nothing read and nothing run, when the value is not
+// the name, then + and operands binding tighter than +, to the line's end, none of them naming it; true when it
+// was, with context.code saying whether a join was refused -- and then `target` is put back as it was.
+bool joined_onto_the_name(const std::vector<std::bitset<16>> &row, std::size_t &at, const std::string &name,
+                          Value &target, ExpressionContext &context);
 
 // One word's call at `at` -- its arguments evaluated, its scenario chosen by the
 // KIND of the argument, its machine code answered as a number. Public because

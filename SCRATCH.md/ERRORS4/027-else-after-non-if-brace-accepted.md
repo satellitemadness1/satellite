@@ -1,5 +1,7 @@
 # 027 -- An else after a } that does not close an if (a while's or for's body, or a second else) passes the checker and is refused only when reached, as a one-line message with no S-code or line
 
+**FIXED 2026-10-25** (open-work checker): the checker's Where marks an if's (and an else if's) body {, and the else look-back refuses an else whose } closed any other block the body loop opened -- a while's, a for's, an else's -- before anything runs. check.sh rows "027: ...".
+
 **Found:** 2026-09-26, satl 004 revision 08 build 0099 (/home/madness/code/cxx/satellite/build/satl), by running ordinary programs against it.  
 **Area:** control flow and capsules, syntax and layout  
 **Kind:** invalid-accepted-silently  

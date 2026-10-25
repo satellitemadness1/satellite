@@ -13,6 +13,7 @@
 #include "../satellite_variable_program/program_spawn.hpp"
 
 #include <array>
+#include <atomic>
 #include <algorithm>
 #include <cstring>
 #include <iostream>
@@ -599,6 +600,11 @@ Value call_console_word(Code code, const std::vector<Value> &arguments, const st
         // a line is kept once, by the reader, or not at all.
         if (!std::getline(std::cin, line))
             got = InputAnswer::ended;
+        // THE FIRST LINE'S BYTE-ORDER MARK IS NOT TEXT (ERRORS4 011), as satellite_file's split_text drops it:
+        // stdin from a file saved with one answered "\xEF\xBB\xBF12", which is not "12" and not a number.
+        static std::atomic<bool> read_a_line{false};
+        if (got == InputAnswer::line && !read_a_line.exchange(true) && line.compare(0, 3, "\xEF\xBB\xBF") == 0)
+            line.erase(0, 3);
         // WHAT A TERMINAL ECHOED, IF ONE DID, went into the pty: in satl's own console the next
         // line is fed past the pty, and must not overtake it (printing_satellite.hpp).
         the_pty_was_written_directly();
@@ -611,6 +617,11 @@ Value call_console_word(Code code, const std::vector<Value> &arguments, const st
         context.refuse(input_ended, spelled + " waited for a line, and the input has ended");
         return Value();
     }
+    // A \r BEFORE THE \n IS PART OF THE NEWLINE (ERRORS4 011): the help answers the line "without its newline",
+    // and a file saved on Windows ends each one \r\n -- "12\r" refused .satellite.number() and was not "12".
+    // SATELLITE_FILE_OPERATIONS says the same of a file's lines.
+    if (!line.empty() && line.back() == '\r')
+        line.pop_back();
     Value answer;
     std::size_t bad = 0;
     const signed long long int made = Value::of_utf8(line, answer, bad);

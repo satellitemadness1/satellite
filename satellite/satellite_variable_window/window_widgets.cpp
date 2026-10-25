@@ -1,7 +1,10 @@
 // satellite/satellite_variable_window/window_widgets.cpp -- THE AUTHOR'S WIDGETS (2026-10-09):
-// `my_window.widgets.displays.file("file_display")` and `.input("text_input")`, each reached after
-// by its name -- `my_window.file_display`, `my_window.file_display.text_input` -- and a file
-// display's `.directory`.
+// `my_window.widgets.displays.file("file_display")` and `.input("text_input")` as he first wrote them, each
+// reached after by its name -- `my_window.file_display`, `my_window.file_display.text_input` -- and a file
+// display's `.directory`. WRITTEN UNDER satellite.window SINCE SEC-0 (SATELLITE_WINDOW_SECTIONS.md, his design of
+// 2026-10-20): `my_window.satellite.window.section("top", 100%, 50%)`, `top.satellite.window.display.file("files")`
+// and `.satellite.window.display.text.input("folder")` -- each name a name of the capsule that wrote it, and a
+// display filling its section (rules 4, 6 and 7, asked below in window_widget_made).
 //
 // HIS WORDS, the day it was asked for: "the next thing I need in the source editor is a gtk file
 // display ... and I need to put another gtk widget on top of the file display -- a text input where
@@ -319,20 +322,40 @@ WindowHandle window_widget_made(satellite_window &owner, satellite_window::Piece
     if (!owner.is_a_window() && owner.piece != satellite_window::file_display &&
         owner.piece != satellite_window::a_section) {
         why = std::string(owner.piece_name()) + " holds no widgets -- a window does, a section does, and a file "
-                                                "display does: my_window.satellite.widgets.display.file(\"files\")";
+                                                "display does: my_window.satellite.window.display.file(\"files\")";
         return nullptr;
     }
     // A FILE DISPLAY'S WIDGETS SIT ACROSS ITS TOP, one under another, as the author asked on 2026-10-09
-    // -- so a section, or a size, is given where there is an area to lay it out in.
+    // -- so a section is made where there is an area to lay it out in.
     if (owner.piece == satellite_window::file_display && kind == satellite_window::a_section) {
         why = "a file display holds widgets across its top, and no sections -- make the section in the window "
-              "or in a section: my_window.satellite.section(\"" + name + "\", 100%, 50%)";
+              "or in a section: my_window.satellite.window.section(\"" + name + "\", 100%, 50%)";
         return nullptr;
     }
-    if (owner.piece == satellite_window::file_display && size != nullptr) {
-        why = "a widget made in a file display sits across its top and takes no size -- give the size to a "
-              "section, and make the widget in it: my_window.satellite.section(\"top\", 100%, 10%)";
-        return nullptr;
+    // WHERE A DISPLAY OR A SECTION MAY GO (SATELLITE_WINDOW_SECTIONS.md SEC-0, rules 6 and 7; the author, 2026-10-25:
+    // "a display always fills the section"): a section shows one display or holds sections, not both, and a window
+    // shows displays across its top or has sections, not both. The checker refused each of these before the run
+    // where it could see the lines (program_check.cpp's where_it_goes_refused); this is every other line -- one
+    // made in a capsule given the window, in a block, through a name the checker stopped seeing -- in the same
+    // sentence. Asked before the `.append` refusal below, so a window that breaks both is told this one, as the
+    // checker tells it. What closed with its window is not counted: it is made again when the window opens again.
+    if (owner.piece == satellite_window::a_section || owner.is_a_window()) {
+        bool shows_a_display = false, holds_sections = false;
+        for (const auto &[named, widget] : owner.widgets) {
+            if (widget == nullptr || widget->widget == nullptr)
+                continue;
+            (widget->piece == satellite_window::a_section ? holds_sections : shows_a_display) = true;
+        }
+        const bool a_section = kind == satellite_window::a_section;
+        const bool in_a_section = owner.piece == satellite_window::a_section;
+        if (a_section ? shows_a_display : (in_a_section && shows_a_display) || holds_sections) {
+            why = a_place_refused(a_section ? (in_a_section ? APlace::a_section_beside_a_display
+                                                            : APlace::a_section_under_displays)
+                                  : !in_a_section  ? APlace::a_display_over_sections
+                                  : shows_a_display ? APlace::a_second_display
+                                                    : APlace::a_display_among_sections);
+            return nullptr;
+        }
     }
     // ONE OR THE OTHER, FOR NOW (satellite_window.hpp): a window that places pieces with `.append` gets
     // no sections, and window_append refuses the other way round.
@@ -456,11 +479,12 @@ WindowHandle window_widget_named(const satellite_window &owner, const std::strin
             return widget;
     why = std::string(owner.piece_name()) + " has no widget named " + name + " -- " +
           (owner.is_a_window() || owner.piece == satellite_window::a_section
-               ? ".satellite.widgets.display.file(\"" + name + "\") or .satellite.section(\"" + name +
-                     "\", 100%, 50%) makes one"
+               ? ".satellite.window.section(\"" + name + "\", 100%, 50%) or .satellite.window.display.file(\"" +
+                     name + "\") makes one"
            : owner.piece == satellite_window::file_display
-               ? ".satellite.widgets.display.file(\"" + name + "\") makes one"
-               : "a window's widgets are made with my_window.satellite.widgets.display.file(\"" + name + "\")");
+               ? ".satellite.window.display.file(\"" + name + "\") or .satellite.window.display.text.input(\"" +
+                     name + "\") makes one"
+               : "a window's widgets are made with my_window.satellite.window.display.file(\"" + name + "\")");
     return nullptr;
 }
 
@@ -468,7 +492,7 @@ bool window_set_directory(satellite_window &which, const std::string &path, bool
 {
     if (which.piece != satellite_window::file_display) {
         why = std::string(which.piece_name()) + " shows no directory -- a file display does: "
-                                                "my_window.satellite.widgets.display.file(\"files\")";
+                                                "my_section.satellite.window.display.file(\"files\")";
         return false;
     }
     if (which.widget == nullptr) {

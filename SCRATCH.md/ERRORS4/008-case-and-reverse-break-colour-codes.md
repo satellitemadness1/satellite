@@ -1,5 +1,7 @@
 # 008 -- .upper() and .reverse() on a coloured string rewrite its embedded terminal codes, so raw escape bytes reach a pipe (ESC[38;2;0;255;0M), and at a terminal ESC[...M deletes lines
 
+**FIXED 2026-10-25** (open-work runtime): string_case copies each ESC[...m through unchanged (string_case.hpp), and reverse_of turns a string holding an ESC round by its characters, each written in the foreground and background it had (container_calls.cpp's reversed_keeping_colours): upper() gives OK and reverse() gives ko, coloured, and plain in a pipe.
+
 **Found:** 2026-09-26, satl 004 revision 08 build 0099 (/home/madness/code/cxx/satellite/build/satl), by running ordinary programs against it.  
 **Area:** strings  
 **Kind:** wrong-answer  

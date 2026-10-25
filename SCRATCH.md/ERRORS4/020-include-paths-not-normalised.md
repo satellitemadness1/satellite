@@ -1,5 +1,7 @@
 # 020 -- Include paths are compared without normalising them: one file included as shapes and as ./shapes is called "two files ... rename one", and a mutual include through ./ grows the path until "cannot locate file"
 
+**FIXED 2026-10-25** (open-work checker): load_program and join_includes compare paths by one_spelling_of (include_shape.hpp: the path as the disk resolves it, weakly_canonical, its links followed -- on the text alone, lexically normal, when the disk cannot answer), so one file is loaded once and a ./ cycle ends. The path opened is still the one written, so `lnk/../shapes` opens what the disk opens for it, as before. check.sh rows "020: ...".
+
 **Found:** 2026-09-26, satl 004 revision 08 build 0099 (/home/madness/code/cxx/satellite/build/satl), by running ordinary programs against it.  
 **Area:** syntax and layout  
 **Kind:** valid-program-refused  

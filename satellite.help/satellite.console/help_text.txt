@@ -77,7 +77,8 @@ Not built yet in satellite 004: .input(prompt, target) and .typed(). A console
 you make yourself, below, has its own .satellite.typed, and that is built.
 
 satellite.console.new(title, width, height) makes a console of your own: a
-window whose whole inside is a terminal. It answers a satellite.variable.window
+window whose whole inside is a terminal, width by height pixels under its title
+bar, as a window's size is its inside. It answers a satellite.variable.window
 and has every method a window has, each written with satellite. in front of it
 as a window's are -- .satellite.close(), .satellite.title, .satellite.resize,
 .satellite.closed, .satellite.key, .satellite.every, .satellite.message,

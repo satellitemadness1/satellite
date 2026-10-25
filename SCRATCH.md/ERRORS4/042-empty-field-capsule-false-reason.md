@@ -1,5 +1,7 @@
 # 042 -- A capsule called on an empty spacesuit field is refused with a false math-sign / undecided-operator reason, and the "holds no object yet" refusal is unreachable
 
+**FIXED 2026-10-25** (open-work runtime): a_member_next answers true for nothing followed by .name, and call_method's chain hands that to call_member (capsule_calls.hpp, expression.cpp), whose refusal now fires at the run: "motor holds no object yet, so it has no get_power -- a field of a spacesuit's type starts empty until something gives it one". A name the body declared itself (an empty window name before a widget's name) is told only "w holds no object yet, so it has no file_display" (capsule_calls.cpp).
+
 **Found:** 2026-09-26, satl 004 revision 08 build 0099 (/home/madness/code/cxx/satellite/build/satl), by running ordinary programs against it.  
 **Area:** spacesuits and library  
 **Kind:** misleading-refusal  

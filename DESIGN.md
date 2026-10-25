@@ -248,11 +248,11 @@ copy over that source code into the function that corresponds to each number"*):
   built in the same way on 2026-10-03 (`satellite/arguments/argument_words.hpp`).
 - **Ends in one function:** `describe_<n_n_n>(LibraryRow *)`, which fills in its name,
   numbers and scenario pointers -- the shape the library's one export had.
-- **The table:** `satellite-numbers/word_table.cpp`, one row for each of the 30 word
+- **The table:** `satellite-numbers/word_table.cpp`, one row for each of the 260 word
   sources, is what the index walks at start-up (`call_number.satellite.cpp`), holding
   each row against its function and against `words/words.tsv`. With the 33 arguments
-  words, each filed at two places, the index holds 96 rows (`satl --debug` says
-  `96 of 548 words have a library`). The other 452 words have no row there: the
+  words, each filed at two places, the index holds 326 rows (`satl --debug` says
+  `326 of 692 words have a library`). The other 366 words have no row there: the
   checker and the walker in `satellite/bytecode/` run the ones satl has by their
   16-bit codes.
 - Nothing is opened beside the binary, so satl alone is the whole language, and the rules

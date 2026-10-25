@@ -1,5 +1,7 @@
 # 013 -- satellite.access drops the inner 'when' condition for a multiple nested under another multiple, so x[n][m] is shown as working when x[n] is a number
 
+**FIXED 2026-10-25** (open-work runtime): reach_into's multiple branch adds an inner arm's condition to the outer one with "and" (access_calls.cpp): x[n][m] is marked "when x holds a list of multiples and x[n] holds a list of numbers".
+
 **Found:** 2026-09-26, satl 004 revision 08 build 0099 (/home/madness/code/cxx/satellite/build/satl), by running ordinary programs against it.  
 **Area:** maps and nesting  
 **Kind:** wrong-answer  

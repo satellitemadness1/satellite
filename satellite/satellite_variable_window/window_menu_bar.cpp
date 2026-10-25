@@ -94,7 +94,8 @@ bool window_menu(satellite_window &which, const WindowHandle &menu, std::string 
     if (on_a_window) {
         on_the_desk([holder, raw] {
             GtkWidget *bar = static_cast<GtkWidget *>(holder->bar);
-            if (bar == nullptr) {
+            const bool made_now = bar == nullptr;
+            if (made_now) {
                 // THE BAR IS MADE ONCE, ON THE FIRST MENU, and it goes ABOVE the
                 // fixed in the window's column -- which is why window_new() has
                 // held a column since GTK-12. A window with no menu never pays
@@ -112,6 +113,17 @@ bool window_menu(satellite_window &which, const WindowHandle &menu, std::string 
             }
             GMenuModel *bar_model = gtk_popover_menu_bar_get_menu_model(GTK_POPOVER_MENU_BAR(bar));
             g_menu_append_submenu(G_MENU(bar_model), raw->text.c_str(), G_MENU_MODEL(model_of(*raw)));
+            // AND THE WINDOW GROWS BY THE BAR, so its inside stays as it was (SEC-1, rule 3) -- measured only now,
+            // with its first item in it: an empty bar measures 0 tall (gtkpopovermenubar.c makes an item per model
+            // entry, gtkmenutracker.c:494, at once). Grown from the size the window has now, not the one asked for,
+            // so a window a person has resized keeps their size (gtkwindow.c:4448-4449 stores it as the default).
+            if (made_now) {
+                GtkWindow *window = GTK_WINDOW(static_cast<GtkWidget *>(holder->widget));
+                int wide = 0, tall = 0, natural = 0;
+                gtk_window_get_default_size(window, &wide, &tall);
+                gtk_widget_measure(bar, GTK_ORIENTATION_VERTICAL, wide, nullptr, &natural, nullptr, nullptr);
+                gtk_window_set_default_size(window, wide, tall + natural);
+            }
             put_the_actions_on(static_cast<GtkWidget *>(holder->widget), *raw);
         });
     } else {

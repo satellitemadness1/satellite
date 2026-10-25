@@ -11,25 +11,33 @@
 #
 #     sh satellite/satellite_variable_window/prove-sections.sh [path/to/satl]
 #
+# WRITTEN AS SEC-0 SPELLS THEM (SATELLITE_WINDOW_SECTIONS.md, 2026-10-25): `.satellite.window.section`,
+# `.satellite.window.display.file` and `.satellite.window.display.text.input`, each name a name of its
+# capsule, written bare after its line; a display takes no size and fills its section.
+#
 # WHAT IT PROVES -- every size read back through `.width` and `.height`, which ask GTK:
 #   1. two 50% by 100% sections sit side by side, each half the window's area, the whole height
-#   2. a widget's share is of its SECTION: a file display at 100% by 50% of the left half
+#   2. a share is of what holds it: a file display filling a 100% by 50% section of the left half
 #   3. sections hold sections: 25% of the left half; pixels are pixels, 300 by 200, and 50% of
 #      those is 150 by 100
 #   4. a share follows the window: resized to 1000 by 700, the halves are 500 wide
-#   5. the author's own lines: a file display at 100% by 100% of a 100% by 50% section; a second
-#      100% by 50% section goes UNDER it (a new row); three 50%s make a row of two and one under
-#   6. a widget given no size in a section is all of it, 100% by 100%
+#   5. the author's own lines: a file display filling a 100% by 50% section; a second 100% by 50%
+#      section goes UNDER it (a new row); three 50%s make a row of two and one under
+#   6. a display in a section is all of it, 100% by 100%
 #   7. WHERE a section goes, which no size can show -- one wrapped under the row and one cut off at
 #      the right edge measure the same: three sections, the third too wide for the first row, and a
 #      REAL CLICK where it must be if it wrapped, on the left under the first -- 10 pixels from the
 #      window's bottom edge, so 100% is all of the window, with no strip left under the sections.
 #      Its capsule says so and closes the window; press-a-button.sh's clicker, mutter's RemoteDesktop.
 #   8. sizes read on the line after `.open()` are the laid-out ones -- nothing here sleeps first
-#   9. a widget made across a window's top AFTER its section is above it: a click at the top of
-#      the window lands in the input, and the section's capsule runs only for a click at the bottom
+#   9. (check 15) a display may not go across the top of a window that has sections (SEC-0, rule 7):
+#      made in a capsule given the window, where the checker cannot see it, it is refused when its
+#      line runs -- exit 13 and its sentence. Until SEC-0 it went above the section, and a click
+#      showed it there.
 #  10. a window does sections or `.append`, one or the other: each way round is refused, by name
 #      (the review of 2026-10-10 found an appended button hidden in a strip under the sections)
+#  11. (check 18) a section shows one display (SEC-0, rule 6): a second, made in a capsule given the
+#      section, is refused when its line runs -- exit 13 and its sentence
 #
 # press-a-button.sh's four traps hold here, and the two that matter are kept: XDG_RUNTIME_DIR is the
 # REAL one, because mutter makes the socket it is told to there, and satl is moved off the private
@@ -51,29 +59,30 @@ satellite.include(satellite)
 satellite.capsule satellite.main()
 {
     satellite.variable.window w = satellite.window.new("sections", "prove-sections.sh", 800, 600)
-    w.satellite.section("left", 50%, 100%)
-    w.satellite.section("right", 50%, 100%)
-    w.left.satellite.widgets.display.file("files", 100%, 50%)
-    w.left.satellite.section("quarter", 100%, 25%)
-    w.right.satellite.section("px", 300, 200)
-    w.right.px.satellite.section("half", 50%, 50%)
+    w.satellite.window.section("left", 50%, 100%)
+    w.satellite.window.section("right", 50%, 100%)
+    left.satellite.window.section("files_half", 100%, 50%)
+    files_half.satellite.window.display.file("files")
+    left.satellite.window.section("quarter", 100%, 25%)
+    right.satellite.window.section("px", 300, 200)
+    px.satellite.window.section("half", 50%, 50%)
     w.satellite.open()
-    satellite.console.display(w.left.satellite.width)
-    satellite.console.display(w.left.satellite.height)
-    satellite.console.display(w.right.satellite.width)
-    satellite.console.display(w.right.satellite.height)
-    satellite.console.display(w.left.files.satellite.width)
-    satellite.console.display(w.left.files.satellite.height)
+    satellite.console.display(left.satellite.width)
+    satellite.console.display(left.satellite.height)
+    satellite.console.display(right.satellite.width)
+    satellite.console.display(right.satellite.height)
+    satellite.console.display(files.satellite.width)
+    satellite.console.display(files.satellite.height)
     satellite.console.display(w.left.quarter.satellite.height)
-    satellite.console.display(w.right.px.satellite.width)
-    satellite.console.display(w.right.px.satellite.height)
+    satellite.console.display(px.satellite.width)
+    satellite.console.display(px.satellite.height)
     satellite.console.display(w.right.px.half.satellite.width)
-    satellite.console.display(w.right.px.half.satellite.height)
+    satellite.console.display(half.satellite.height)
     w.satellite.resize(1000, 700)
     satellite.time.sleep(500ms)
-    satellite.console.display(w.left.satellite.width)
-    satellite.console.display(w.right.satellite.width)
-    satellite.console.display(w.right.px.satellite.width)
+    satellite.console.display(left.satellite.width)
+    satellite.console.display(right.satellite.width)
+    satellite.console.display(px.satellite.width)
     w.satellite.close()
     satellite.return(satellite)
 }
@@ -85,13 +94,13 @@ satellite.include(satellite)
 satellite.capsule satellite.main()
 {
     satellite.variable.window main_window = satellite.window.new("window title", "version", 800, 600)
-    main_window.satellite.section("section_name", 100%, 50%)
-    main_window.section_name.satellite.widgets.display.file("my_file_display", 100%, 100%)
-    main_window.satellite.section("under", 100%, 50%)
-    main_window.under.satellite.section("one", 50%, 50%)
-    main_window.under.satellite.section("two", 50%, 50%)
-    main_window.under.satellite.section("three", 50%, 50%)
-    main_window.under.three.satellite.widgets.display.input("typed_here")
+    main_window.satellite.window.section("section_name", 100%, 50%)
+    section_name.satellite.window.display.file("my_file_display")
+    main_window.satellite.window.section("under", 100%, 50%)
+    under.satellite.window.section("one", 50%, 50%)
+    under.satellite.window.section("two", 50%, 50%)
+    under.satellite.window.section("three", 50%, 50%)
+    three.satellite.window.display.text.input("typed_here")
     main_window.satellite.open()
     satellite.console.display(main_window.section_name.satellite.width)
     satellite.console.display(main_window.section_name.satellite.height)
@@ -131,35 +140,56 @@ satellite.capsule when_three(satellite.variable.window the_piece, satellite.vari
 satellite.capsule satellite.main()
 {
     satellite.variable.window w = satellite.window.new("wrap", "prove-sections.sh", 800, 600)
-    w.satellite.section("one", 50%, 10%)
-    w.satellite.section("two", 50%, 10%)
-    w.satellite.section("three", 50%, 90%)
-    w.one.satellite.clicked(when_one)
-    w.two.satellite.clicked(when_two)
-    w.three.satellite.clicked(when_three)
+    w.satellite.window.section("one", 50%, 10%)
+    w.satellite.window.section("two", 50%, 10%)
+    w.satellite.window.section("three", 50%, 90%)
+    one.satellite.clicked(when_one)
+    two.satellite.clicked(when_two)
+    three.satellite.clicked(when_three)
     w.satellite.open()
     satellite.console.display("ready")
     satellite.return(satellite)
 }
 SATL
 
+# A DISPLAY ACROSS THE TOP OF A WINDOW THAT HAS SECTIONS (SEC-0, rule 7), made in a capsule given the window, where
+# the checker cannot see what the window holds -- so it is refused when its line runs, by window_widget_made.
 cat > "$work/order.satl" <<'SATL'
 satellite.include(satellite)
 
-satellite.capsule when_all(satellite.variable.window the_piece, satellite.variable.window its_window)
+satellite.capsule add_an_input(satellite.variable.window its_window)
 {
-    satellite.console.display(the_piece.satellite.down)
-    its_window.satellite.close()
+    its_window.satellite.window.display.text.input("typed_here")
 }
 
 satellite.capsule satellite.main()
 {
     satellite.variable.window w = satellite.window.new("order", "prove-sections.sh", 800, 600)
-    w.satellite.section("all", 100%, 100%)
-    w.satellite.widgets.display.input("typed_here")
-    w.all.satellite.clicked(when_all)
-    w.satellite.open()
-    satellite.console.display("ready")
+    w.satellite.window.section("all", 100%, 100%)
+    add_an_input(w)
+    satellite.console.display("not refused")
+    w.satellite.close()
+    satellite.return(satellite)
+}
+SATL
+
+# A SECOND DISPLAY IN A SECTION (SEC-0, rule 6), made in a capsule given the section: refused when its line runs.
+cat > "$work/second.satl" <<'SATL'
+satellite.include(satellite)
+
+satellite.capsule add_a_display(satellite.variable.window its_section)
+{
+    its_section.satellite.window.display.file("more")
+}
+
+satellite.capsule satellite.main()
+{
+    satellite.variable.window w = satellite.window.new("second", "prove-sections.sh", 800, 600)
+    w.satellite.window.section("all", 100%, 100%)
+    all.satellite.window.display.file("files")
+    add_a_display(all)
+    satellite.console.display("not refused")
+    w.satellite.close()
     satellite.return(satellite)
 }
 SATL
@@ -170,7 +200,7 @@ satellite.include(satellite)
 satellite.capsule satellite.main()
 {
     satellite.variable.window w = satellite.window.new("append after", "prove-sections.sh", 800, 600)
-    w.satellite.section("top", 100%, 50%)
+    w.satellite.window.section("top", 100%, 50%)
     satellite.variable.window b = satellite.window.button("press me")
     w.satellite.append(b, 400, 300)
     w.satellite.close()
@@ -186,7 +216,7 @@ satellite.capsule satellite.main()
     satellite.variable.window w = satellite.window.new("section after", "prove-sections.sh", 800, 600)
     satellite.variable.window b = satellite.window.button("press me")
     w.satellite.append(b, 400, 300)
-    w.satellite.section("top", 100%, 50%)
+    w.satellite.window.section("top", 100%, 50%)
     w.satellite.close()
     satellite.return(satellite)
 }
@@ -233,7 +263,7 @@ tries=0
 while [ ! -S "$XDG_RUNTIME_DIR/satlsec" ] && [ $tries -lt 60 ]; do sleep 0.25; tries=$((tries + 1)); done
 [ -S "$XDG_RUNTIME_DIR/satlsec" ] || { echo "mutter never made its socket"; kill $mutter_pid; exit 1; }
 mkdir -p "$work/home/.satl"
-for program in sections his append_after section_after; do
+for program in sections his append_after section_after order second; do
     env -u DISPLAY -u DBUS_SESSION_BUS_ADDRESS -u GDK_BACKEND -u XAUTHORITY HOME="$work/home" WAYLAND_DISPLAY=satlsec \
         timeout 30 "$satl" "$work/$program.satl" </dev/null >"$work/$program.out" 2>"$work/$program.err"
     echo $? > "$work/$program.exit"
@@ -259,9 +289,6 @@ clicked() {   # clicked <program> <spot>... -- run it, click, wait for it to end
 # THE THIRD SECTION, IF IT WRAPPED, is the rest of the height on the left: (320, 690) is 80 across
 # and 10 above the window's bottom edge.
 clicked wrap 320,690 320,690
-# THE INPUT ACROSS THE TOP, THEN THE BOTTOM: (640, 157) is 10 under the titlebar, (640, 690) 10 above
-# the bottom edge. The capsule says how far down the section the click that reached it landed.
-clicked order 640,157 640,157 640,690
 kill $mutter_pid 2>/dev/null; wait $mutter_pid 2>/dev/null
 INSIDE
 work="$work" satl="$satl" dbus-run-session -- sh "$work/inside.sh" >/dev/null 2>&1
@@ -276,7 +303,7 @@ check "the first program exits 0 ($(cat "$work/sections.exit"))" "$(is "$(cat "$
 left_w=$(said sections 1); left_h=$(said sections 2); right_w=$(said sections 3); right_h=$(said sections 4)
 check "two 50% x 100% sections side by side: ${left_w}x${left_h} and ${right_w}x${right_h}" \
       "$( [ "$(is "$left_w" "$right_w")" = true ] && [ "$(is "$left_h" "$right_h")" = true ] && [ "${left_w:-0}" -ge 395 ] && [ "${left_w:-0}" -le 400 ] && echo true || echo false)"
-check "a file display at 100% x 50% of the left half: $(said sections 5)x$(said sections 6)" \
+check "a file display filling a 100% x 50% section of the left half: $(said sections 5)x$(said sections 6)" \
       "$( [ "$(is "$(said sections 5)" "$left_w")" = true ] && [ "$(is "$(said sections 6)" $((left_h / 2)))" = true ] && echo true || echo false)"
 check "a section at 25% of the left half's height: $(said sections 7)" "$(is "$(said sections 7)" $((left_h / 4)))"
 check "pixels are pixels: $(said sections 8)x$(said sections 9)" \
@@ -288,29 +315,30 @@ check "resized to 1000 x 700, the halves follow: $(said sections 12) and $(said 
 
 check "the author's program exits 0 ($(cat "$work/his.exit"))" "$(is "$(cat "$work/his.exit")" 0)"
 top_w=$(said his 1); top_h=$(said his 2)
-check "his file display is 100% x 100% of his 100% x 50% section: $(said his 3)x$(said his 4) in ${top_w}x${top_h}" \
+check "his file display fills his 100% x 50% section: $(said his 3)x$(said his 4) in ${top_w}x${top_h}" \
       "$( [ "$(is "$(said his 3)" "$top_w")" = true ] && [ "$(is "$(said his 4)" "$top_h")" = true ] && echo true || echo false)"
 check "a second 100% x 50% section goes under the first, as tall: $(said his 5)" "$(is "$(said his 5)" "$top_h")"
 check "three 50% sections: two in a row, the third under them, as wide: $(said his 6) and $(said his 7)" \
       "$(is "$(said his 6)" "$(said his 7)")"
-check "an input given no size fills its section: $(said his 9) tall in $(said his 8)" \
+check "an input fills its section: $(said his 9) tall in $(said his 8)" \
       "$( [ "${top_h:-0}" -gt 0 ] && [ "$(said his 9)" -ge $(( $(said his 8) - 4 )) ] 2>/dev/null && echo true || echo false)"
 
 check "a real click 10 pixels from the window's bottom, on the left, lands in the third section -- it wrapped, and 100% is the whole window: $(grep '^clicked' "$work/wrap.out" | tr '\n' ' ')" \
       "$( [ "$(grep -c '^clicked three$' "$work/wrap.out")" -ge 1 ] && [ "$(grep -c '^clicked one$\|^clicked two$' "$work/wrap.out")" -eq 0 ] && echo true || echo false)"
 check "... and its capsule closed the window, so the run ended with 0 ($(cat "$work/wrap.exit"))" "$(is "$(cat "$work/wrap.exit")" 0)"
 
-down=$(grep -x '[0-9]*' "$work/order.out" | head -1)
-check "an input made across the top after a section is above it: a click at the top missed the section, one at the bottom reached it ${down:-?} down" \
-      "$( [ "${down:-0}" -gt 300 ] && echo true || echo false)"
+check "an input made across the top of a sectioned window, in a capsule given it where the checker cannot see it, is refused when its line runs ($(cat "$work/order.exit"))" \
+      "$( [ "$(is "$(cat "$work/order.exit")" 13)" = true ] && [ "$(grep -c 'not refused' "$work/order.out")" -eq 0 ] && [ "$(tr '\n' ' ' < "$work/order.err" | sed 's/  */ /g' | grep -c 'its_window.satellite.window.display.text.input could not be done -- the window has sections, and a window shows displays across its top or has sections, not both')" -ge 1 ] && echo true || echo false)"
 check "a window with a section refuses .append, by name ($(cat "$work/append_after.exit"))" \
       "$( [ "$(is "$(cat "$work/append_after.exit")" 27)" = true ] && [ "$(tr '\n' ' ' < "$work/append_after.err" | grep -c 'is laid out in sections')" -ge 1 ] && echo true || echo false)"
 check "a window with an appended piece refuses a section, by name ($(cat "$work/section_after.exit"))" \
       "$( [ "$(is "$(cat "$work/section_after.exit")" 13)" = true ] && [ "$(tr '\n' ' ' < "$work/section_after.err" | grep -c 'one or the other')" -ge 1 ] && echo true || echo false)"
+check "a second display in a section, made in a capsule given the section, is refused when its line runs ($(cat "$work/second.exit"))" \
+      "$( [ "$(is "$(cat "$work/second.exit")" 13)" = true ] && [ "$(grep -c 'not refused' "$work/second.out")" -eq 0 ] && [ "$(tr '\n' ' ' < "$work/second.err" | sed 's/  */ /g' | grep -c 'its_section.satellite.window.display.file could not be done -- the section shows a display already')" -ge 1 ] && echo true || echo false)"
 
 if [ $failed -ne 0 ]; then
-    echo "--- what satl printed:"; cat "$work/sections.out" "$work/his.out" "$work/wrap.out" "$work/order.out"
-    echo "--- its errors:"; grep -v '^$\|frame_timings' "$work/sections.err" "$work/his.err" "$work/wrap.err" "$work/order.err" "$work/append_after.err" "$work/section_after.err" | head -40
+    echo "--- what satl printed:"; cat "$work/sections.out" "$work/his.out" "$work/wrap.out" "$work/order.out" "$work/second.out"
+    echo "--- its errors:"; grep -v '^$\|frame_timings' "$work/sections.err" "$work/his.err" "$work/wrap.err" "$work/order.err" "$work/second.err" "$work/append_after.err" "$work/section_after.err" | head -40
     echo "--- the clicker:"; cat "$work/click.log"
 fi
 rm -rf "$work"

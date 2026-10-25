@@ -147,9 +147,13 @@ METHODS = method_words()
 UNDER = {kind: numbered(path, function) for kind, path, function in NUMBER_SWITCHES}
 # A WINDOW'S WORDS OF PARTS (the author's final syntax, 2026-10-10 ~21:15): widgets.display.file and
 # scroll.vertical are each one word, `.satellite.` once before it -- so the first part takes it, as a numbered
-# method does, and answer_of says the parts after it are the word's (window_calls.hpp).
-UNDER["window"] |= {"widgets_token", "scroll_token"}
-WINDOW_PART_HEADS = {"widgets_token", "scroll_token"}
+# method does, and answer_of says the parts after it are the word's (window_calls.hpp). SINCE SEC-0
+# (SATELLITE_WINDOW_SECTIONS.md, 2026-10-25) a window's sections and displays are window.section,
+# window.display.file and window.display.text.input: `window` is their first part, so a run leaves
+# main_window.satellite.window.section(...) as it is -- it wrote main_window.satellite.window.satellite.section(
+# until it knew -- and gives the bare main_window.window.section(...) its .satellite.
+UNDER["window"] |= {"widgets_token", "scroll_token", "window_token"}
+WINDOW_PART_HEADS = {"widgets_token", "scroll_token", "window_token"}
 # AN INFINITY'S PERIOD IS ITS OWN WORDS AND THE NUMBER'S (method_periods.hpp's number_a_method_runs): its name
 # may hold a plain number (SATELLITE_INFINITY.md Q24), and the checker judges the name where the walker
 # judges the value.
@@ -499,6 +503,18 @@ def answer_of(kind, method, given=False):
             return kind if given else WINDOW_READS[method]
         return UNKNOWN
     if k == "part":
+        # SEC-0'S WORDS: window.section answers the section it made; window.display is a part, and so is
+        # window.display.text until SEC-3; .file and .text.input answer the display they made.
+        if kind[1] == "window_token" and method == "section_token":
+            return ("window",)
+        if kind[1] == "window_token" and method == "display_token":
+            return ("part", "window.display")
+        if kind[1] == "window.display" and method == "file_piece_token":
+            return ("window",)
+        if kind[1] == "window.display" and method == "text_token":
+            return ("part", "window.display.text")
+        if kind[1] == "window.display.text" and method == "input_piece_token":
+            return ("window",)
         if kind[1] == "widgets_token" and method in ("display_token", "displays_token"):
             return ("part", "display")
         if kind[1] == "display" and method in ("file_piece_token", "input_piece_token"):
@@ -1265,8 +1281,28 @@ class Reader:
                     i = written[0] + 1
                     continue
             elif t.kind == "punct" and t.text == ".":
+                named = self.a_section_or_display_named(i)
+                if named:
+                    self.declare(named, ("window",), False)
                 self.a_period(i)
             i += 1
+
+    def a_section_or_display_named(self, i):
+        """SEC-0 (SATELLITE_WINDOW_SECTIONS.md rule 4, 2026-10-25): `.window.section("top", ...)`,
+        `.window.display.file("files")` and `.window.display.text.input("folder")` -- `i` the period before
+        `window` -- each declare their name, a window's, in the capsule that wrote them, as satl's checker does, so a
+        line after it that writes the name bare is read as a window's. The name, or None."""
+        made = ("window.section", "window.display.file", "window.display.text.input")
+        parts, k = [], i
+        while self.is_punct(k, ".") and self.tok(k + 1).kind == "ident" and len(parts) < 4:
+            parts.append(self.tok(k + 1).text)
+            k += 2
+            if ".".join(parts) in made:
+                break
+        named = self.tok(k + 1)
+        if ".".join(parts) not in made or not self.is_punct(k, "(") or named.kind != "str":
+            return None
+        return named.text.strip('"')
 
     def options_in(self, open_at, names):
         """HIS B: DISPLAY'S AND INPUT'S NAMED OPTIONS, UNDER SATELLITE -- each argument of the call whose `(` is at

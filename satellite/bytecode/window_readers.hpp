@@ -60,8 +60,11 @@ bool place_of(const Value &value, long long int &out, const std::string &what,
 Value a_percentage_of(long long int millionths);
 bool millionths_of(const satellite_percentage &from, long long int &out);
 
-// A SECTION'S WIDTH OR HEIGHT, OR A WIDGET'S IN ONE (the author, 2026-10-10): a percentage is a share
-// of what holds it and a whole number is pixels, each above 0.
+// A SECTION'S WIDTH OR HEIGHT (the author, 2026-10-10 and 2026-10-20): a percentage or a fraction is a share of
+// what holds it, above 0 and up to all of it, and a whole number is pixels, 1 to 32767 -- SATELLITE_WINDOW_SECTIONS.md
+// rule 2. extent_refused needs no run, so the checker asks it of a size written as a literal; extent_of is it at the
+// run, refusing through `context`.
+signed long long int extent_refused(const Value &value, AnExtent &out, const std::string &what, std::string &why);
 bool extent_of(const Value &value, AnExtent &out, const std::string &what, ExpressionContext &context);
 
 // THE WORDS THAT MAKE A PIECE, in one sentence, written out of the table in
@@ -92,10 +95,10 @@ satellite_window *ready_to_do(token::Code method, const WindowHandle &which, con
 Value done(bool went, const std::string &why, const satellite_window &window, const WindowHandle &which,
            const std::string &what, ExpressionContext &context);
 
-// A PIECE MADE, AND ANSWERED SO A CHAIN GOES ON WITH IT: .satellite.widgets.display.file("a_name"),
-// .satellite.widgets.display.input("a_name") and .satellite.section("a_name", 100%, 50%) -- ONE case of
-// call_window_method's for the three, moved here whole for the three numbers that ran it: the name, a size when
-// there is one, and the refusal when the desk would not make it.
+// A PIECE MADE, AND ANSWERED SO A CHAIN GOES ON WITH IT: .satellite.window.display.file("a_name"),
+// .satellite.window.display.text.input("a_name") and .satellite.window.section("a_name", 100%, 50%) (SEC-0) -- ONE
+// case of call_window_method's for the three, moved here whole for the three numbers that ran it: the name, a size
+// when there is one, the refusal when the desk would not make it, and the name declared in the running capsule.
 Value a_piece_made(satellite_window::Piece kind, satellite_window &window, const std::vector<Value> &arguments,
                    const std::string &what, ExpressionContext &context);
 #else

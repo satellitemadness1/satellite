@@ -1,5 +1,7 @@
 # 022 -- A touching operator (n+1, 4+3, n**3, a*2) is refused only when its line runs: it is accepted silently in a branch not taken or a capsule never called, and refused after earlier lines have printed
 
+**FIXED 2026-10-25** (open-work checker): names_in_statement (program_check.cpp) refuses a touching + * ^ % before anything runs, in refuse_if_reserved's sentences (the ** power sentence too); a for's step stays for_step_moves_by's (Where::for_step), so i++ runs. check.sh rows "022: ...".
+
 **Found:** 2026-09-26, satl 004 revision 08 build 0099 (/home/madness/code/cxx/satellite/build/satl), by running ordinary programs against it.  
 **Area:** integers, syntax and layout  
 **Kind:** invalid-accepted-silently  

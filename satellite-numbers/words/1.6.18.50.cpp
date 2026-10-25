@@ -36,7 +36,7 @@ Value method(const Value &receiver, Value *, const TypeShape *, const std::vecto
             context.refuse(types_do_not_meet, what + " -- " +
                                                   std::string(piece != nullptr ? piece->piece_name() : "nothing") +
                                                   " shows no directory; a file display does: "
-                                                  "my_window.satellite.widgets.display.file(\"files\")");
+                                                  "my_section.satellite.window.display.file(\"files\")");
             return Value();
         }
         Value out;

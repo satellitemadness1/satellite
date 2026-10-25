@@ -1,5 +1,7 @@
 # 038 -- A capsule whose name is not a name (x1, xa, b1, 5) gets no refusal on its header: the capsule is dropped silently, and the first line of its body is refused as "outside every capsule" or "satellite.return(satellite) goes inside satellite.main"
 
+**FIXED 2026-10-25** (open-work checker): the file scan (capsule_scopes.cpp) refuses satellite.capsule followed by something that is not a name at the header's own line -- a hex or binary literal is named as one ("x1, which is read as a hex -- x and then hex digits -- and not as a name") -- and steps over its body; with nothing after it on its line, "satellite.capsule needs a name", the spacesuit scan's words. The x1/b1 wording waits on 037's ruling. check.sh rows "038: ...".
+
 **Found:** 2026-09-26, satl 004 revision 08 build 0099 (/home/madness/code/cxx/satellite/build/satl), by running ordinary programs against it.  
 **Area:** control flow and capsules, syntax and layout  
 **Kind:** misleading-refusal  

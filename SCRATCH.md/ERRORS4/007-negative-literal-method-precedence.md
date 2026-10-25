@@ -1,5 +1,9 @@
 # 007 -- A method on a negative literal runs before the touching minus: -5.add(3) is -(5.add(3)) = -8, not -2, and -5.string is refused as "a minus sign was put in front of a string"
 
+**FIXED 2026-10-25** (open-work runtime): one_operand's touching minus hands a number, float, hex, binary, percentage or time literal its sign before maybe_a_method runs its chain (expression.cpp), so -5.satellite.add(3) is -2 and -5.satellite.string is -5; -n.satellite.add(3) on a name is still -(n.add(3)).
+
+**Question for the author (open):** the lexer calls a minus touching unless it has blanks on both sides, so a minus with a blank only after it now takes the literal's side: `satellite.console.display(- 5.satellite.add(3))` prints -2, while `satellite.variable.number q = - 5.satellite.add(3)` holds -8 (both -8 before). Recommended: a sign reaches the literal only when it touches the literal, so both are -8; that needs the lexer to record whether a minus touches what follows it. Until then the pair stays as it is.
+
 **Found:** 2026-09-26, satl 004 revision 08 build 0099 (/home/madness/code/cxx/satellite/build/satl), by running ordinary programs against it.  
 **Area:** number string conversion  
 **Kind:** wrong-answer  

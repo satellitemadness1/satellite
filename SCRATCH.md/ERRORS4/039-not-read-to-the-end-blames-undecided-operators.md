@@ -1,5 +1,7 @@
 # 039 -- An expression that stops early for any reason gets the fixed "& | << >> !! are undecided" (or "math sign spacing") sentence at run time: n = n -1, n = 5 6, if (n = 5), 5., 0x1F, 0b101, and 1.2.3 with its caret past the end of the line
 
+**FIXED 2026-10-25** (open-work checker): the walker's fixed kNotReadToTheEnd is not_read_to_the_end(row, stop) (program_walk.cpp): it names what the read stopped at -- a touching minus, a second value, an = where == compares, a hex or binary after a value, a point with nothing after it, a comma, a ~ ("it stops at ~, which has no meaning there yet") -- and & | << >> !! only when one of them is there. NOT DONE: the checker does not yet refuse these shapes before anything runs (two values side by side, = in a condition; 0x/0b and 5. are page 054's). check.sh rows "039: ...".
+
 **Found:** 2026-09-26, satl 004 revision 08 build 0099 (/home/madness/code/cxx/satellite/build/satl), by running ordinary programs against it.  
 **Area:** binary hex color infinity bool, floats fractions percent, integers  
 **Kind:** misleading-refusal  

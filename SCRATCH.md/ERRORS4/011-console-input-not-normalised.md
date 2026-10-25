@@ -1,5 +1,7 @@
 # 011 -- satellite.console.input() takes its line as raw bytes: it keeps the \r of a CRLF line ("12\r" refuses .number and != "12") and a leading UTF-8 BOM, both of which satellite.file drops
 
+**FIXED 2026-10-25** (open-work runtime): console.input() drops one \r before the newline, on both ways of reading a line, and a byte-order mark at the start of the first line read from stdin (console_calls.cpp): "12\r\n" and BOM+"12\n" both answer 12.
+
 **Found:** 2026-09-26, satl 004 revision 08 build 0099 (/home/madness/code/cxx/satellite/build/satl), by running ordinary programs against it.  
 **Area:** files and io, number string conversion  
 **Kind:** wrong-answer  

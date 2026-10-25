@@ -1,5 +1,7 @@
 # 034 -- Every started thread stays in the process-wide registry until satellite.return: a joined thread keeps its answer (614 MB at 80 rounds, against 44 MB for direct calls), and a finished thread that was never joined keeps ~17 KB of stack (1 GB at 60,000)
 
+**FIXED 2026-10-25** (open-work runtime): join() takes its thread off the list of running threads when it is the last one started (in O(1); a thread joined from further in waits for the sweep, so joining many in start order stays linear), and start() sweeps the list each time it has doubled -- reaping ended threads, which frees their stacks, and dropping those no name holds unless they failed unjoined (thread_calls.cpp). 40 joined 50,000-item answers: 314 MB before, 36 MB now; 10,000 never joined: 177 MB before, 12 MB now.
+
 **Found:** 2026-09-26, satl 004 revision 08 build 0099 (/home/madness/code/cxx/satellite/build/satl), by running ordinary programs against it.  
 **Area:** threads  
 **Kind:** performance  

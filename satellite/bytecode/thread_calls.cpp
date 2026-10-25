@@ -36,10 +36,14 @@ token::Code code_here(const std::vector<std::bitset<16>> &row, std::size_t at)
     return at < row.size() ? static_cast<token::Code>(row[at].to_ulong()) : 0;
 }
 
-// EVERY THREAD start() HAS MADE AND close_every_thread HAS NOT CLOSED YET.
+// EVERY THREAD start() HAS MADE AND close_every_thread HAS NOT CLOSED YET -- but for one a join() has
+// answered as the last one started, and one that ended where no name holds it (ERRORS4 034): kept here, each held its
+// answer and its stack to the program's end, 311 MB for 40 threads handing back a 50,000-item list in turn,
+// where the same 40 calls made directly took 31 MB.
 struct Running {
     std::mutex lock;
     std::vector<ThreadHandle> threads;
+    std::size_t swept_to = 0;   // how many were left when the list was last swept (start(), below)
 };
 
 Running &running()
@@ -164,7 +168,30 @@ Value start(const ThreadHandle &which, const std::string &name, ExpressionContex
         Launch{which, context.state.program, context.state.capsules, &context.functions, context.state});
     {
         const std::lock_guard<std::mutex> hold(running().lock);
-        running().threads.push_back(which);
+        // SWEPT EACH TIME IT HAS DOUBLED (ERRORS4 034), so a start costs the same however many came before: a
+        // thread that has ended is reaped, which gives its stack back, and leaves the list when the list alone
+        // still holds it -- no name can join it now. One that failed and was never joined stays, for
+        // close_every_thread to say so, as it says it today.
+        std::vector<ThreadHandle> &threads = running().threads;
+        if (threads.size() >= 2 * running().swept_to + 8) {
+            std::size_t kept = 0;
+            for (ThreadHandle &each : threads) {
+                bool ended = false, failed = false;
+                {
+                    const std::lock_guard<std::mutex> its(each->lock);
+                    ended = each->ended && each->launched;
+                    failed = !each->joined_once && each->code != thread_stopped && each->code != program_returned &&
+                             stops_the_program(each->code);
+                }
+                if (ended)
+                    reap(*each);
+                if (!ended || failed || each.use_count() > 1)
+                    threads[kept++] = std::move(each);
+            }
+            threads.resize(kept);
+            running().swept_to = kept;
+        }
+        threads.push_back(which);
     }
     pthread_attr_t shape;
     pthread_attr_init(&shape);
@@ -246,6 +273,17 @@ Value join(const ThreadHandle &which, const std::string &name, const std::string
         answered = thread.answered;
         if (answered)
             answer = thread.answer;
+    }
+    // JOINED AS THE LAST ONE STARTED, IT LEAVES THE LIST OF RUNNING THREADS (ERRORS4 034): its answer is the
+    // joiner's now, and stays with the thread for a second join (S724) only while a name holds the thread. A failure
+    // is this join's to say, below, so close_every_thread has nothing of it left to wait for or report. One joined
+    // from further in is left for start()'s sweep, which drops it once no name holds it: taken out of the middle
+    // here, joining many in the order they started cost the square of their number (the reader, 2026-10-25).
+    {
+        const std::lock_guard<std::mutex> hold(running().lock);
+        std::vector<ThreadHandle> &threads = running().threads;
+        if (!threads.empty() && threads.back() == which)
+            threads.pop_back();
     }
     // AN ANSWER THAT IS AN OBJECT IS THE SAME OBJECT TO EVERY JOINER (T2): sharing is
     // allowed, and the object's .lock() is what makes two joiners' writes to it safe --

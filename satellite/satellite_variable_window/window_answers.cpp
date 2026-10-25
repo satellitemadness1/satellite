@@ -330,11 +330,11 @@ bool window_changed(satellite_window &which, const std::string &capsule, std::st
 
 bool window_listen(satellite_window &which, const std::string &capsule, std::string &why)
 {
-    // A TEXT INPUT LISTENS -- one made with .widgets.displays.input("a_name"), or a text box, which is
+    // A TEXT INPUT LISTENS -- one made with .satellite.window.display.text.input("a_name"), or a text box, which is
     // the same widget. Anything else is refused by name rather than left listening to nothing.
     if (which.piece != satellite_window::text_box) {
         why = std::string(which.piece_name()) + " has no keys typed in it -- a text input listens: "
-                                                "my_window.satellite.widgets.display.input(\"a_name\")";
+                                                "my_section.satellite.window.display.text.input(\"a_name\")";
         return false;
     }
     if (which.widget == nullptr) {

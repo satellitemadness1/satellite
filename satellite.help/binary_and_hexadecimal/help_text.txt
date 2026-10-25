@@ -28,7 +28,6 @@ they are built is the author's to schedule):
 COMING, ruled by the author on 2026-09-22 ("let's use c symbols as much as we
 can for this then, and also allow .and() .or() like we allow .power()"):
 
-- conditions: && || !
 - bits: & | ~ << >>
 - methods beside them, as .satellite.power() is beside ^: .satellite.and()
   .satellite.or(), and with them .satellite.not() .satellite.shift_left(n)
@@ -36,11 +35,14 @@ can for this then, and also allow .and() .or() like we allow .power()"):
 - exclusive or gets no symbol, because ^ is power (ruled 2026-09-16), so it
   is the method .satellite.xor()
 
+The same ruling's conditions are built, and run today: && and || take two
+bools, and ! turns a bool round.
+
 Still to be decided when they are built: what a bit operator does with a
-binary's sign (-b0101), since a binary keeps one. None of this reads today:
-satellite.variable.binary mask = b1100 & b1010 is refused at run time, as
-"something with no meaning there yet (& | << >> !! are undecided)", and the
-methods are refused before anything runs.
+binary's sign (-b0101), since a binary keeps one. No bit operator or method
+reads today: satellite.variable.binary mask = b1100 & b1010 is refused at run
+time, as "something with no meaning there yet (& | << >> !! are undecided)",
+and the methods are refused before anything runs.
 
 example, of what runs today:
 

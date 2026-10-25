@@ -52,6 +52,7 @@
 
 #include "expression.hpp"
 
+#include <bitset>
 #include <vector>
 
 namespace satellite004 {
@@ -63,7 +64,9 @@ namespace satellite004 {
 // df's Avail, what a person who is not root may still write there.
 bool is_info_word(token::Code code);
 
-// One of those three words, its one argument already evaluated.
-Value call_info_word(token::Code code, const std::vector<Value> &arguments, ExpressionContext &context);
+// One of those three words, its one argument already evaluated. `row` is the row the call is written in:
+// a relative path is found from the folder of the .satl it is written in, as every file's is (ERRORS4 009).
+Value call_info_word(token::Code code, const std::vector<Value> &arguments, const std::vector<std::bitset<16>> &row,
+                     ExpressionContext &context);
 
 } // namespace satellite004

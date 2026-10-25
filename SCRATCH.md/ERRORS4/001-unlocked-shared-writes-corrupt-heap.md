@@ -1,5 +1,7 @@
 # 001 -- Without .lock(), two threads writing one shared object field (string, list, big number) or appending to one file take no hold at all: glibc heap corruption (134), segfault (139) or a false S999, and the appended file is left empty
 
+**FIXED before 2026-10-25** (the open-work re-check found it right on REVISION 11 BUILD 0001): two threads writing one string, list, big-number or number field, or appending to one file, run to exit 0 with every write kept: satl takes its own hold once a thread starts (object_lock.hpp).
+
 **Found:** 2026-09-26, satl 004 revision 08 build 0099 (/home/madness/code/cxx/satellite/build/satl), by running ordinary programs against it.  
 **Area:** threads  
 **Kind:** crash  

@@ -1,5 +1,7 @@
 # 006 -- Lines appended through one file handle stay in its 64 KiB buffer when a second handle or satellite.info reads the path: the reader sees too few lines, and the second handle's writes land before the held lines, out of program order
 
+**FIXED 2026-10-25** (open-work runtime): a handle holding appended lines is on a list of such handles (satellite_file.cpp), and satellite.file.open, satellite.info.file and info.directory's line counts write every other handle's held lines to that file first, under its lock (file_calls.cpp's write_held_appends), so r.size is 1 and log.txt reads first, second.
+
 **Found:** 2026-09-26, satl 004 revision 08 build 0099 (/home/madness/code/cxx/satellite/build/satl), by running ordinary programs against it.  
 **Area:** files and io  
 **Kind:** wrong-answer  

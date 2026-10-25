@@ -690,3 +690,9 @@
 1 36 4	satellite.drive.remount(d)	
 1 5 13	satellite.console.bash(command)	
 1 37	satellite.error	
+1 6 18 54	satellite.variable.window.window	
+1 6 18 54 1	satellite.variable.window.window.section(name, width, height)	
+1 6 18 54 2	satellite.variable.window.window.display	
+1 6 18 54 2 1	satellite.variable.window.window.display.file(name)	
+1 6 18 54 2 2	satellite.variable.window.window.display.text	
+1 6 18 54 2 2 1	satellite.variable.window.window.display.text.input(name)	

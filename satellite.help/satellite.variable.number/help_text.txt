@@ -85,5 +85,5 @@ satellite.console.display(4+3)
 prints:
 
 S110: LINE_NOT_UNDERSTOOD
-satl(run): every math operation is written with a space on both sides of the
-sign, and this + has none
+satl(check): in satellite.main, every math operation is written with a space on
+both sides of the sign, and this + has none

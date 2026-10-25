@@ -43,9 +43,13 @@
 #include <string>
 #include <vector>
 
+#include <sys/stat.h>
+
 namespace satellite004 {
 
-class satellite_file {
+// SHARED FROM ITSELF (ERRORS4 006): a handle holding appended lines is kept in a list of them by a
+// weak_ptr, so another handle's open can write those lines out without keeping this one alive.
+class satellite_file : public std::enable_shared_from_this<satellite_file> {
 public:
     // THE AUTHOR'S LOCK (satellite_object/object_lock.hpp): OFF until f.lock(). While it is
     // on, every method called on this file holds it -- a file is shared by every name for it.
@@ -180,6 +184,21 @@ public:
     // true and nothing happens.
     bool reopen();
 
+    // ---------------------------------------------------------------------
+    // THE LINES ANOTHER HANDLE HOLDS (ERRORS4 006). SATELLITE_FILE_OPERATIONS 3.7 writes
+    // the append buffer out "before anything reads the file", and only this handle's own
+    // reads did: a second open of log.txt read 0 lines while w held "first", and its own
+    // "second", saved, landed before it. The interpreter asks for every handle holding
+    // appended lines (file_calls.cpp's write_held_appends), holds each one's lock, and
+    // hands it the file about to be read.
+    // ---------------------------------------------------------------------
+    static std::vector<std::shared_ptr<satellite_file>> holding_appends();
+    // Writes the appended lines out when this handle holds some and `reading` is its file
+    // (the same device and inode, so ./log.txt and log.txt are one file). True when there
+    // was nothing to write or the write landed; a failed write is in code() and error(),
+    // as the automatic 64 KiB write's is.
+    bool save_appended_before(const struct stat &reading) noexcept;
+
 private:
     satellite_file() = default;
 
@@ -227,6 +246,11 @@ private:
     static constexpr std::size_t kFlushBytes = 64 * 1024;
     std::size_t pending_bytes_ = 0;               // appended bytes not yet on the disk, while only_appended_
     std::size_t flush_after_ = kFlushBytes;
+    // ON THE LIST OF HANDLES HOLDING APPENDED LINES (ERRORS4 006): put there by the append that
+    // starts a batch, taken off when it is saved, and always when the handle ends.
+    bool holding_listed_ = false;
+    void list_as_holding() noexcept;
+    void unlist_as_holding() noexcept;
 
     mutable signed long long int code_ = 0;
     mutable std::string error_;

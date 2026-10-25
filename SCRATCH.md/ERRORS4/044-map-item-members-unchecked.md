@@ -1,5 +1,7 @@
 # 044 -- The checker does not judge a member reached through a map item or a nested container item (m[k].x, m[k].secret(), a wrong argument count): a field read is S201 "undeclared variable", and a protected capsule or a wrong count is refused only after earlier lines ran. Through a list item, both are refused before anything runs
 
+**FIXED before 2026-10-25** (the open-work re-check found it right on REVISION 11 BUILD 0001): byname["a"].secret() on a map, grid[1][1].secret(), byname["a"].get(1, 2) and byname["a"].v are each refused by satl(check) before anything runs.
+
 **Found:** 2026-09-26, satl 004 revision 08 build 0099 (/home/madness/code/cxx/satellite/build/satl), by running ordinary programs against it.  
 **Area:** spacesuits and library  
 **Kind:** contradicts-help  

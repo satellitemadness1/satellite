@@ -5,7 +5,10 @@ message (the whole window must be sectioned off), and from a third message that 
 progress bar. Sections are built (NM-7, 2026-10-10). This plan changes how they are written, lets a
 fraction size them, makes their names names, adds that rule, and adds the displays that go in them.
 Checked against the working tree on 2026-10-20 (build/satl prints BUILD 0066; HEAD b48fb5d56 says
-0058), and reviewed the same day.
+0058), and reviewed the same day. Updated 2026-10-25 with the author's answers to four of Section 6's
+questions: a display fills its section, every display takes a name, 800x600 is the inside, and the
+source view is spelled `display.source()`. SEC-0 is built (REVISION 11 BUILD 0005, 2026-10-25), and SEC-1
+(BUILD 0006, the same day); SEC-2 to SEC-6 are not.
 
 ---
 
@@ -43,8 +46,9 @@ section.satellite.window.display.console()
 > displays from 1 - 100 and then we update it with name_of_display(1-100)"*
 
 The same lines as one program, under the rules below. The example's one section is half the window,
-so a second section names the other half. In this plan a section shows one display (Section 6 asks
-about that), so the text goes in the second section:
+so a second section names the other half. A display fills its section (the author, 2026-10-25), so
+the text goes in the second section. Every display takes its name first (the author, 2026-10-25), so
+the text display is given one, "greeting":
 
 ```
 satellite.variable.percent fifty_percent = 50%
@@ -54,8 +58,11 @@ main_window.satellite.window.section("section_name_here", fifty_percent, 100%)
 main_window.satellite.window.section("right_half", fifty_percent, 100%)
 
 section_name_here.satellite.window.display.file("my_file_list_name")
-right_half.satellite.window.display.text("str1", "str2")
+right_half.satellite.window.display.text("greeting", "str1", "str2")
 ```
+
+Written as in the author's sketch, `display.text("str1", "str2")` would be a text display named str1
+showing only "str2".
 
 What it shows: a window with "window title" over "window secondary text" in its bar, 800 by 600
 pixels inside it. The left half lists the files of your home folder, folders first; the right half
@@ -139,8 +146,8 @@ the entire window
    - It ends where a declaration ends: at the `}` of the block it was made in.
    - `main_window.top` still reaches it, there and in any capsule given the window (`its_window.top`).
      There are no globals, so that is how another capsule reaches it.
-   - A file display's or a progress display's name, `display.file("files")` or
-     `display.progress("bar", 1)`, is a name in the same way.
+   - Every display's name is a name in the same way: `display.file("files")`,
+     `display.image("photo", "a.png")`, `display.progress("bar", 0)` and the rest (rule 6).
 
 5. **The whole window is sectioned off.** A window that has a section has all of it in sections.
    Laid out at its own size (rule 3):
@@ -213,49 +220,62 @@ the entire window
 6. **A display fills the section it is made in.**
 
    ```
-   name.satellite.window.display.file("a_name")      the files of a folder
-   name.satellite.window.display.text("str1", ...)   lines of text
-   name.satellite.window.display.image("a.png")      a picture
-   name.satellite.window.display.console()           a console of the program's own
-   name.satellite.window.display.text.input()        a one-line text input
-   name.satellite.window.display.text.view()         a text view
-   name.satellite.window.display.source.view()       a text view for satellite source
-   name.satellite.window.display.button("OK", go)    a button that runs a capsule
-   name.satellite.window.display.progress("bar", 0)  a progress bar, set with bar(75)
+   name.satellite.window.display.file("files")                  the files of a folder
+   name.satellite.window.display.text("greeting", "str1", ...)  lines of text
+   name.satellite.window.display.image("photo", "a.png")        a picture
+   name.satellite.window.display.console("output")              a console of the program's own
+   name.satellite.window.display.text.input("typed")            a one-line text input
+   name.satellite.window.display.text.view("notes")             a text view
+   name.satellite.window.display.source("code")                 a text view for satellite source
+   name.satellite.window.display.button("ok", "OK", go)         a button that runs a capsule
+   name.satellite.window.display.progress("bar", 0)             a progress bar, set with bar(75)
    ```
 
    - A display takes no size: its section is its size. A section shows one display or holds
-     sections, not both.
-   - Each display word answers the display it made. A program that needs a display later holds it in
-     a name: `satellite.variable.window out = right.satellite.window.display.console()`.
+     sections, not both. The author, 2026-10-25: "a display always fills the section".
+   - **Every display takes its name in quotes first.** The author, 2026-10-25: "always take a name,
+     because what if the user wants to change an image that is displayed in the image display?" The
+     name is a name, as a section's is (rule 4), so the lines after it write it bare:
+
+     ```
+     right.satellite.window.display.image("photo", "a.png")
+     photo.satellite.path("b.png")
+     ```
+
+     shows a.png, then b.png in its place. Another capsule given the window reaches it as
+     `its_window.right.photo`. Each display word also answers the display it made.
    - **file**: the file display built on 2026-10-09: a folder's files, folders first, starting in
      your home folder, and `.satellite.directory("/tmp/")` as today. Its name is a name (rule 4).
-   - **text**: each string on a line of its own, from the section's top left corner. It takes at
-     least one string. `.satellite.text` reads the lines as one string with a newline between them,
+   - **text**: its name, then each string on a line of its own, from the section's top left corner.
+     It takes at least one string after its name. `.satellite.text` reads the lines as one string with a newline between them,
      and `.satellite.text("x")` replaces them. It is a GtkLabel, as `satellite.window.label` makes.
-   - **image**: the picture in the file, as big as the section lets it be, keeping its shape. It
+   - **image**: its name, then the picture in the file, as big as the section lets it be, keeping
+     its shape. It
      reads what `satellite.window.picture` reads, through the same code: PNG, JPEG, TIFF, GIF and
      ANI (their first frame), BMP, ICO, TGA, PNM, XPM and XBM. Its path is read the way
      `satellite.file` reads a path. A file that is not there is refused when the line runs (S510
      FILE_NOT_THERE, exit 39), and one that is not a picture with S513. `.satellite.path` reads and
      changes it, as a picture's does.
-   - **console**: what `satellite.console.new` makes, without a window of its own. It has the
-     console's words: `.satellite.display("words")`, `.typed`, `.clear()`, `.home()`, `.columns`,
+   - **console**: what `satellite.console.new` makes, without a window of its own, named by its
+     one argument: after `display.console("output")`, `output.satellite.display("words")` writes into
+     it. It has the console's words: `.satellite.display("words")`, `.typed`, `.clear()`, `.home()`, `.columns`,
      `.rows`, `.colour`, `.background`, `.font` and `.scroll.vertical` / `.horizontal`. It has none
      of a window's words, and it closes with its window. It talks to the program, not to a shell, and
      `satellite.console.display` still writes to satl's own console, never into this one. It takes
      the keyboard when it is clicked, not when it is made.
-   - **text.input**: today's `widgets.display.input`, under its new name. `.satellite.text`,
+   - **text.input**: today's `widgets.display.input`, under its new name, keeping its name in
+     quotes: `display.text.input("folder")`. `.satellite.text`,
      `.listen(capsule)` and `.changed(capsule)` work as today.
-   - **text.view**: a text view a person can type in, which scrolls when its text is longer than the
+   - **text.view**: its name, then a text view a person can type in, which scrolls when its text is longer than the
      section. `.satellite.text` reads and sets the whole text, and `.changed(capsule)` works.
-   - **source.view**: a text view, as `text.view` is, whose satellite source is coloured by satl's
+   - **source**: `display.source("code")`, spelled as the author answered on 2026-10-25. A text
+     view, as `text.view` is, whose satellite source is coloured by satl's
      own lexer as it is typed: the language's words (`satellite.` words and every `.satellite.`
      word), text in quotes, numbers of every kind, and comments, each in a colour of its own.
      Proposed colours, the author's to change: words #0000FF, text #A31515, numbers #098658,
      comments #008000.
-   - **button**: the text on it, then the capsule a press runs, as the author wrote it (Section 6
-     asks about the order). The capsule may declare nothing, the button, or the button and its
+   - **button**: its name, the text on it, then the capsule a press runs, as the author wrote it
+     (Section 6 asks about the order). The capsule may declare nothing, the button, or the button and its
      window, as a `.satellite.pressed` capsule may, and it runs as a press runs today: after main
      returns, in the order the presses came. `.satellite.text` reads and changes its text,
      `.satellite.press()` presses it, and `.satellite.pressed(other)` gives it another capsule, as on
@@ -274,7 +294,7 @@ the entire window
 
    A window shows displays across its top or has sections, not both, and a section shows one display
    or holds sections, not both (rule 6). The new displays (text, image, console, text.view,
-   source.view, button, progress) go only in a section. Each of these is refused before the run where
+   source, button, progress) go only in a section. Each of these is refused before the run where
    the checker can see the lines, and otherwise when the line runs.
 
 8. **The old spellings are refused, and the sentence names the new** (the author's ruling D of
@@ -284,7 +304,7 @@ the entire window
    |---|---|
    | `w.satellite.section("top", 100%, 50%)` | `w.satellite.window.section("top", 100%, 50%)` |
    | `.satellite.widgets.display.file("files")` | `.satellite.window.display.file("files")` |
-   | `.satellite.widgets.display.input("folder")` | `.satellite.window.display.text.input()` |
+   | `.satellite.widgets.display.input("folder")` | `.satellite.window.display.text.input("folder")` |
    | `.file("files", 100%, 100%)`, a display given a size | a section of that size, with the display in it |
 
    Their rows stay in words.tsv (1 6 18 49 1 1, 49 1 2 and 52): taking a row out would move the code
@@ -495,7 +515,25 @@ the entire window
 
 ## 4. The milestones
 
-### SEC-0 — the new spellings, and a section's name is a name
+### SEC-0 — the new spellings, and a section's name is a name — BUILT 2026-10-25 (BUILD 0005)
+
+Built as written, with these differences. The three old number files went: their code is in 1.6.18.54.1,
+54.2.1 and 54.2.2.1 now, and 52, 49 1 1 and 49 1 2 run nothing, as 49 does, because the parts rule refuses
+their spellings first. `section_written_wrong` left the checker's anonymous namespace, where window_calls.hpp's
+declaration of it had never reached, so check_program's pass over every name can refuse a
+`.satellite.window.section` line wherever it is written, as it refuses a display's; no object's capsule can be
+called that. Its sentence cannot name the receiver, but on an item, a call's answer or `satellite.window.new(...)`
+itself no other check reaches the line before the run. `satellite` and a hex or binary shape are refused by
+`a_widget_name_fits`, so the run refuses them too. A section's or a display's name written bare in another
+capsule is told that a capsule given the window reaches it as `its_window.top`. The run also refuses a display
+given a size with the checker's sentence, which names a section of the size as written, or `a_width, a_height`
+where the run has only the values. For rules 6 and 7, the checker sees a window only from
+`satellite.variable.window w = satellite.window.new(...)` with nothing after its brackets, and a section or a
+display from its own line, whatever it was made in. It stops seeing a name, and everything made in it, at any
+other use of that name: an argument, a value, a block, `w = ...`, `.close()` or `.open()`, which puts back a
+window a person closed without its sections. `.satellite.window.display.` that is no word is told the two words
+`window.display` begins.
+utility/satellite_spelling.py also learned that a section's or a display's line declares a window's name.
 
 No picture changes: sections, the file display and the text input are written the new way and are
 reached by their names.
@@ -522,7 +560,7 @@ reached by their names.
   1 6 18 54 2        satellite.variable.window.window.display
   1 6 18 54 2 1      satellite.variable.window.window.display.file(name)
   1 6 18 54 2 2      satellite.variable.window.window.display.text
-  1 6 18 54 2 2 1    satellite.variable.window.window.display.text.input()
+  1 6 18 54 2 2 1    satellite.variable.window.window.display.text.input(name)
   ```
 
   1 6 18 54, 54 2 and 54 2 2 run nothing, as 49 and 49 1 run nothing today. Each word that runs gets
@@ -530,22 +568,18 @@ reached by their names.
   1.6.18.49.1.1 and 1.6.18.49.1.2. Each needs its row in word_table.cpp and .hpp and its name in
   WORD_SOURCES. These follow too:
   - window_number_of and its static_assert (window_methods.cpp:30-101);
-  - window_method_arity (3, 1 and 0), makes_a_widget and kind_a_method_answers;
+  - window_method_arity (3, 1 and 1), makes_a_widget and kind_a_method_answers;
   - section_written_wrong's three callers, which test section_token (program_check.cpp:1136-1137,
     2360-2365, 2433-2438), test the new window.section code;
   - the checker's name pass (program_check.cpp:4212-4297);
   - check.sh:8476-8477's counts.
-- A display with no name: `display.text.input()` is the first, and SEC-3 to SEC-6 make the rest the
-  same way, all but the progress display, which has a name.
-  - A maker beside a_piece_made reads no name and no size.
-  - window_widget_made takes an empty name to mean none, asking neither a_widget_name_fits nor the
-    duplicate check.
-  - window_holds_appended_pieces counts only what `.satellite.append` placed, so a display never
-    counts as appended. It can do that with a flag set in window_append, or by filing a nameless
-    display in owner.widgets under "".
-  - Rule 7's refusals are asked before the `.append` refusal (window_widgets.cpp:340).
-- Rule 4, in the checker: check_statement declares the names that a section line and a
-  `display.file` line make. It uses a_name_it_may_take's and declared twice's refusals, and two that
+- Every display has a name (the author, 2026-10-25), so SEC-0 to SEC-6 need no maker without one.
+  Each display is read by a_piece_made, which takes the first argument as its name
+  (window_methods.cpp:186-190), and made and filed under that name by window_widget_made
+  (window_widgets.cpp:310-427), as the file display and the text input are today. Rule 7's refusals
+  are asked before the `.append` refusal (window_widgets.cpp:340).
+- Rule 4, in the checker: check_statement declares the names that a section line and a display line
+  (`display.file`, `display.text.input`) make. It uses a_name_it_may_take's and declared twice's refusals, and two that
   a widget name never had: `satellite`, and the shape of a hex or binary number. declared twice
   (program_check.cpp:1830-1844) learns a name that a section or file display line declared, and says
   so (rule 4). S202's standing sentence (s_codes.hpp:176-180) names a section or display line among
@@ -553,8 +587,8 @@ reached by their names.
 - Rule 4, in the walker: each of those words declares its name in context.variables, holding
   Value::of_window of what it made. A block ends the name as it ends any name (run_block,
   program_walk.cpp:794-824).
-- Rules 6 and 7 for the two displays that exist: `display.file` takes one argument and
-  `display.text.input` takes none. Four things are refused:
+- Rules 6 and 7 for the two displays that exist: `display.file` and `display.text.input` each take
+  one argument, the name. Four things are refused:
   - a second display in a section;
   - a display in a section that holds sections;
   - a section in a section that shows a display;
@@ -588,8 +622,8 @@ reached by their names.
 **Done when** check.sh passes with rows for:
 - the author's percent, window, section and display.file lines, in the new spelling, passing the
   checker;
-- a section and a file display reached by their bare names, and a section reached as `its_window.top`
-  in a capsule given the window;
+- a section, a file display and a text input reached by their bare names, and a section reached as
+  `its_window.top` in a capsule given the window;
 - each old spelling refused, naming the new, and a `.satellite.window.` that is no word refused;
 - refused names: two sections called "top" in one capsule, a section named like a variable,
   `satellite`, `xff`, and a declaration of the name a section line has declared, with its own
@@ -605,7 +639,21 @@ its input across the top of a sectioned window in a capsule given the window, wh
 cannot see it, and shows it refused when its line runs (exit 13 and its sentence). One new check
 does the same for a second display in a section.
 
-### SEC-1 — fractions, the author's ranges, and a window's size is its inside
+### SEC-1 — fractions, the author's ranges, and a window's size is its inside — BUILT 2026-10-25 (BUILD 0006)
+
+Built as written, with these differences. A size keeps only the millionths the layout uses, not also the exact
+value the program wrote: nothing reads the exact value before SEC-2, it would bring the number types into
+satellite_window.hpp (which includes only std headers), and millionths already decide SEC-2's half-pixel tolerance
+(each section is within a millionth of its holder, 0.03 pixels of the widest window). SEC-2 adds the exact value if
+it needs it. A spaced `1 / 3` is a fraction at the run (since 2026-10-12), so it is judged there as a share. The
+sentences name the section, `top's width`, before the run and at it. A hex, a binary, a time and a spaced minus are
+judged before the run too, as the run judges them, and a size is judged in its line's turn, after the lines before it
+(the fresh reader). A first menu grows its window by the bar once the bar has an item in it, from the size the window
+has, so a size a person gave it is kept. press-a-button.sh, prove-canvas-tabs-menus.sh
+and prove-sections.sh were NOT re-aimed for the taller window: where the corner moves can only be measured on mutter,
+which is not installed. NOT PROVEN HERE, for want of a compositor: the realize-time sizing, `.resize`, a menu bar
+growing the window, `.width`/`.height` answering the inside, and the run's refusals of a size (pixels past what
+holds them among them). check.sh proves the checker's half.
 
 - extent_of (window_readers.cpp:97-129) takes a fraction. Every size keeps the exact value the
   program gave it (a percent's 10^-32 units, a fraction's two parts, or pixels) beside the millionths
@@ -716,7 +764,7 @@ On mutter, prove-sections.sh shows:
 
 ### SEC-3 — `display.text` and `display.image`
 
-- `display.text` needs a new shape of argument count, at least one. window_method_arity gives one
+- `display.text` needs a new shape of argument count, at least two: its name and one string. window_method_arity gives one
   count and window_method_also_takes one more (window_shapes.cpp:63-161), so the checker
   (program_check.cpp:1127-1132) and the walker (window_methods.cpp:144-149) learn it.
 - `display.text` makes a label: its strings joined with newlines into one GtkLabel
@@ -725,7 +773,7 @@ On mutter, prove-sections.sh shows:
   first method spelling that does both; the word satellite.console.display (1 5 1), with `.center`
   under it, is the precedent.
   - a_part (window_shapes.cpp:173-178) stays as it is. It takes one code with no context, so adding
-    this one would refuse every right `display.text("str1")`.
+    this one would refuse every right `display.text("greeting", "str1")`.
   - a_word_in_parts (:187-192) takes `window.display.text` as a part only when a method period
     follows it, as its display_token clause already looks two codes on.
   - word_in_parts_written_wrong's begun-and-not-finished sentence (:226-230) then names the words it
@@ -742,29 +790,31 @@ On mutter, prove-sections.sh shows:
 - REGISTRY gains `window.display.text`, which now runs, and `window.display.image`. Words:
 
   ```
-  1 6 18 54 2 2 2    satellite.variable.window.window.display.text(words)
-  1 6 18 54 2 3      satellite.variable.window.window.display.image(path)
+  1 6 18 54 2 2 2    satellite.variable.window.window.display.text(name, words)
+  1 6 18 54 2 3      satellite.variable.window.window.display.image(name, path)
   ```
 
 - satellite.help/satellite.window describes `display.text` and `display.image`.
 
 **Done when** check.sh passes with rows for:
-- text with one string and with three, and an image, passing the checker;
-- refused before the run: text with no string, an unfinished `display.text.` written with nothing
+- text with one string and with three, an image, and `photo.satellite.path("b.png")`, passing the
+  checker;
+- refused before the run: text with a name and no string, an unfinished `display.text.` written with nothing
   after it, a text display made on a window with no sections, and one made in a file display.
 
 On mutter, prove-sections.sh shows:
 - the text display's `.satellite.text` reading "str1\nstr2";
-- an image as wide or as tall as its section;
+- an image as wide or as tall as its section, and `photo.satellite.path("b.png")` showing b.png in
+  its place;
 - an image file that is not there exiting 39.
 
-### SEC-4 — `display.text.view` and `display.source.view`
+### SEC-4 — `display.text.view` and `display.source`
 
 - `display.text.view` is text_area's GtkTextView (window_pieces.cpp:65-77) inside a
   GtkScrolledWindow, with no 300x150 request, because the layout never gives a child less than its
   minimum. The handle keeps the text view beside the scroller, because window_asks.cpp:42 and 184
   and window_answers.cpp:81 cast the widget to one.
-- `display.source.view` is a text view whose buffer has four tags. On every change, satl lexes each
+- `display.source` is a text view whose buffer has four tags. On every change, satl lexes each
   line that changed with tokenise_one_line and puts the tags on by byte offset
   (gtk_text_buffer_get_iter_at_line_index):
   - a word (word::is_word_code) and a method after `.satellite.` (token::is_method_code);
@@ -781,18 +831,15 @@ On mutter, prove-sections.sh shows:
   no GTK in it. Its check is built for check.sh the way build/count_cases is, linking
   bytecode_registry.cpp.
 - Each view made on anything but a section is refused, as SEC-3's displays are.
-- REGISTRY gains `window.display.text.view` and `window.display.source.view`, and the parts rule
-  names both among the words that `window.display` and `window.display.text` begin.
-  `window.display.source` gets no spelling, as `window.display.text` had none before SEC-3, and its
-  word row 1 6 18 54 2 4 runs nothing. Words:
+- REGISTRY gains `window.display.text.view` and `window.display.source`, and the parts rule names
+  them among the words that `window.display.text` and `window.display` begin. Words:
 
   ```
-  1 6 18 54 2 2 3    satellite.variable.window.window.display.text.view()
-  1 6 18 54 2 4      satellite.variable.window.window.display.source
-  1 6 18 54 2 4 1    satellite.variable.window.window.display.source.view()
+  1 6 18 54 2 2 3    satellite.variable.window.window.display.text.view(name)
+  1 6 18 54 2 4      satellite.variable.window.window.display.source(name)
   ```
 
-- satellite.help/satellite.window describes `display.text.view` and `display.source.view`.
+- satellite.help/satellite.window describes `display.text.view` and `display.source`.
 
 **Done when** check.sh passes with rows for:
 - both views passing the checker;
@@ -832,7 +879,7 @@ a text longer than its section leaving the view as tall as the section.
 - REGISTRY gains `window.display.console`. Words:
 
   ```
-  1 6 18 54 2 5      satellite.variable.window.window.display.console()
+  1 6 18 54 2 5      satellite.variable.window.window.display.console(name)
   ```
 
 - satellite.help/satellite.window and satellite.help/satellite.console describe `display.console`.
@@ -855,8 +902,8 @@ It comes after SEC-3, whose refusal of a display made outside a section it uses,
 before SEC-4 and SEC-5. The word numbers below follow the milestones' order; built in another order,
 each takes the next free number then.
 
-- `display.button` makes a button: a GtkButton of the piece kind button, through SEC-0's maker of a
-  display with no name. a_widget_for, which makes today's button, sits in an anonymous namespace
+- `display.button` makes a button: a GtkButton of the piece kind button, named and filed as SEC-0
+  makes a display. a_widget_for, which makes today's button, sits in an anonymous namespace
   (window_pieces.cpp:34-146), so its gtk_button_new_with_label call is shared or made again. The
   click is wired as window_pressed wires one (window_answers.cpp:271-298), with the key worked out as
   `.pressed(go)` works one out (capsule_key_at, capsule_reach.cpp:274-285).
@@ -866,7 +913,7 @@ each takes the next free number then.
   Every other word that takes a capsule's name keeps it first, as today.
   - In the checker, the word joins window_method_takes_a_capsule_name (window_shapes.cpp:275-282).
     The block that wants the name at the first argument (program_check.cpp:2116-2152) looks at the
-    last one instead. It also counts the word's two arguments there, because the count check at
+    last one instead. It also counts the word's three arguments there, because the count check at
     1127-1132 steps over every word that takes a capsule's name.
   - The name pass (2290-2327) knows the capsule's place from where the word was met, as it already
     remembers places (2050-2052), and never by reading backwards into a payload (the warning at
@@ -877,7 +924,8 @@ each takes the next free number then.
     built once, for both. The sentences that say a capsule's name goes first then say where it goes:
     window_shapes.cpp:284-295, window_calls.hpp:72-89, GTK_AND_NO_DEPENDENCIES.md:1443-1450 and
     1751-1756, and satellite.help/satellite.window/help_text.txt:87.
-  - If the author keeps GTK-11 (Section 6), the button is written `display.button(when_ok, "OK")`.
+  - If the author keeps GTK-11 (Section 6), the button is written
+    `display.button(when_ok, "ok", "OK")`.
     It joins window_method_takes_a_capsule_name and window_method_takes_more_after_the_name, its two
     arguments are counted in the 2116 block, and a_press_can_run judges its capsule. The rest of this
     bullet is not needed.
@@ -885,7 +933,7 @@ each takes the next free number then.
   300-pixel request, because the layout never gives a child less than its minimum. It is made
   through a maker that reads a name and a value, and its first value is judged and set as rule 9
   judges and sets one.
-- Its name is declared as SEC-0 declares a section's or a file display's: in check_statement, in
+- Its name is declared as SEC-0 declares a section's or a display's: in check_statement, in
   declared twice's sentence, in context.variables holding Value::of_window, and in the checker's
   name pass (program_check.cpp:4213-4296). That pass takes the progress word's two arguments; today
   it allows a display word 1 or 3 (:4282-4283). The "no widget is named" sentences
@@ -918,7 +966,7 @@ each takes the next free number then.
 - REGISTRY gains `window.display.button` and `window.display.progress`. Words:
 
   ```
-  1 6 18 54 2 6      satellite.variable.window.window.display.button(text, capsule)
+  1 6 18 54 2 6      satellite.variable.window.window.display.button(name, text, capsule)
   1 6 18 54 2 7      satellite.variable.window.window.display.progress
   1 6 18 54 2 7 1    satellite.variable.window.window.display.progress(name, value)
   1 6 18 54 2 7 2    satellite.variable.window.window.display.progress.value(number)
@@ -928,12 +976,13 @@ each takes the next free number then.
 - satellite.help/satellite.window describes `display.button`, `display.progress` and `bar(75)`.
 
 **Done when** check.sh passes with rows for:
-- passing the checker: a button, one whose text is held in a name (`display.button(label, go)`), a
+- passing the checker: a button, one whose text is held in a name (`display.button("ok", label, go)`), a
   progress display, `bar(75)`, and `its_window.right.bar.satellite.value(75%)` in a capsule given
   the window;
 - refused before the run:
-  - `display.button("OK")` and `display.button("OK", go, 1)`, and `display.button(go, "OK")` with a
-    sentence that shows the button's own shape, `display.button("OK", go)`;
+  - `display.button("ok", "OK")` and `display.button("ok", "OK", go, 1)`, and
+    `display.button(go, "ok", "OK")` with a sentence that shows the button's own shape,
+    `display.button("ok", "OK", go)`;
   - a button whose capsule is not there, and one whose capsule declares three windows;
   - `display.progress("bar", 150)` and `display.progress("bar", "x")`;
   - `bar(75)` inside an expression; `bar(150)`, `bar(-1)` and `bar("x")`; and `bar(75%)`, with its
@@ -952,7 +1001,7 @@ On mutter, prove-sections.sh shows:
 
 ## 5. Not in this plan
 
-- A shell prompt in a window: GTK-18, `satellite.terminal.new`. `display.console()` is the program's
+- A shell prompt in a window: GTK-18, `satellite.terminal.new`. `display.console("output")` is the program's
   own console, which talks to the program.
 - Line numbers in a source view, and colouring any language but satellite.
 - SVG, WebP and moving pictures in `display.image`.
@@ -966,31 +1015,25 @@ On mutter, prove-sections.sh shows:
 
 ## 6. For the author
 
-To answer before the milestone named:
+Answered by the author on 2026-10-25, and written into the rules and milestones above:
+
+- **One display in a section (SEC-0):** "a display always fills the section". As this plan had it.
+- **A name for every display (SEC-0):** "always take a name, because what if the user wants to change
+  an image that is displayed in the image display?" Every display takes its name in quotes first,
+  and the name is reached bare (rules 4 and 6). So `display.text("str1", "str2")` is a display named
+  str1 showing "str2", and today's `widgets.display.input("folder")` keeps its name as
+  `display.text.input("folder")`.
+- **800x600 is the inside (SEC-1):** yes. As this plan had it (rule 3).
+- **The source view's spelling (SEC-4):** `display.source()`, now `display.source("code")` with its
+  name.
+
+Still open. The author was not sure of these five on 2026-10-25, and they were explained again in
+chat that day with examples. Each is needed only before the milestone named, so SEC-0 can be built:
 
 - **Every window, or only a window with sections? (SEC-2)** The author's rule says the code must use
   100% of the window in sections. Taken word for word, it refuses every window that has no sections:
   windows of buttons placed with `.append`, consoles, and 5 of the 6 window programs in the tree.
   This plan judges only a window that has a section.
-- **One display in a section, or several? (SEC-0)** The author's lines put a file display and a text
-  display in `section_name_here`. This plan lets a section show one display, which fills it, and
-  refuses a second; Section 1 moves the text to a second section. The other way: the displays made
-  in one section share it top to bottom, in the order they are made, as the author ruled on
-  2026-10-09 for a widget's own widgets.
-- **A name for every display? (SEC-0)** `display.file("my_file_list_name")` names its display. The
-  author's text, image, console, text.input and text.view take none. This plan writes them as the
-  author did: each answers its display, and a program that needs it later holds it, as in
-  `satellite.variable.window out = right.satellite.window.display.console()`. That takes today's
-  name away from the text input (`widgets.display.input("folder")`). The other way is a name in
-  quotes first in each, as in `display.console("output")`, reached bare like a section. The author's
-  2026-10-12 sketch gave its source view a name in quotes first,
-  `widget.source_view("satellite_source_view1", 100x100)`, and reached it through its window:
-  `source_editor_window.satellite_source_view1.write(...)`. On 2026-10-20 the author gave the
-  progress display a name in quotes, "this takes a value so you pick a name for it", and gave the
-  button none; this plan follows that for both.
-- **800x600 is the inside? (SEC-1)** For pixels to run "to the width/height of the window", the
-  window's 600 has to be the sections' 600. This plan makes every window's size its inside. Every
-  window keeps the title bar it has today and gets taller than today by that bar.
 - **Rows as NM-7 built them? (SEC-2)** The whole-window rule follows NM-7's rows, which are A, still
   the author's to confirm. A left column beside two stacked sections is written with the two inside
   a right section:
@@ -1007,9 +1050,6 @@ To answer before the milestone named:
   person resizes it, and chooses them again only when the program's `.satellite.resize` gives it a
   new size; today a row is decided again at every size. Say if sections should be laid out another
   way.
-- **The source view's spelling (SEC-4).** This plan writes `display.source.view()`, from the author's
-  2026-10-12 `source_view` and the author's "view is for a text_view in GTK". The author's 2026-10-09
-  sketch wrote `widgets.text.source(...)`.
 - **The capsule last, or first? (SEC-6)** The author wrote `display.button("text", capsule_to_run)`.
   Today a capsule's name comes first in every window word, as in `.every(go, 1000)` and
   `.ask(when_answered, "delete it?")`: "one rule a person can hold in their head beats one line that
@@ -1017,7 +1057,9 @@ To answer before the milestone named:
   GTK-11 were built on 2026-09-21, not the author's ruling: their plans had written
   `every(1000, when_a_second_passes)` and `ask("delete it?", when_answered)`. The author has put the
   capsule last both times since, in `link("some", capsule_name)` and here. This plan writes it the
-  author's way. Keeping the rule makes it `display.button(capsule_to_run, "text")`. LINK_PLAN's
+  author's way, which with the name every display now takes is
+  `display.button("ok", "text", capsule_to_run)`. Keeping the rule makes it
+  `display.button(capsule_to_run, "ok", "text")`. LINK_PLAN's
   Section 6 asks the same about `link`, so one answer settles both.
 - **A number or a percentage? (SEC-6)** The author wrote `display.progress("name_of_display",
   1-100)` and `name_of_display(1-100)`, plain numbers. Today's progress bar takes only a percentage,
@@ -1040,7 +1082,7 @@ Taken without the author's word, so say if one is wrong:
 - Rows that together pass the window's bottom edge are refused with S157, as gaps are: a section past
   the window is never seen.
 - A section's own sections need not cover it.
-- `display.text` takes any number of strings, one to a line. The other reading is two only: a
+- `display.text` takes any number of strings after its name, one to a line. The other reading is two only: a
   heading over a line, as `new` takes a title and the words under it.
 - A section of 0 is refused, as today.
 - A progress display runs from 0, an empty bar, to 100. The author wrote 1-100.

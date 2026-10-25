@@ -154,7 +154,7 @@ bool window_set_text(satellite_window &which, const std::string &text, std::stri
     // taken, shown by nothing, and wiped by the next read.
     if (which.piece == satellite_window::a_section) {
         why = "a section has no words of its own -- what is made in it does: "
-              "my_section.satellite.widgets.display.input(\"words\")";
+              "my_section.satellite.window.display.text.input(\"words\")";
         return false;
     }
     if (which.piece == satellite_window::file_display) {

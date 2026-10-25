@@ -201,12 +201,12 @@ signed long long int describe_1_6_18_46(LibraryRow *row);   // satellite.variabl
 signed long long int describe_1_6_18_47(LibraryRow *row);   // satellite.variable.window.rows
 signed long long int describe_1_6_18_48_1(LibraryRow *row);   // satellite.variable.window.scroll.vertical(on)
 signed long long int describe_1_6_18_48_2(LibraryRow *row);   // satellite.variable.window.scroll.horizontal(on)
-signed long long int describe_1_6_18_49_1_1(LibraryRow *row);   // satellite.variable.window.widgets.display.file(name)
-signed long long int describe_1_6_18_49_1_2(LibraryRow *row);   // satellite.variable.window.widgets.display.input(name)
 signed long long int describe_1_6_18_50(LibraryRow *row);   // satellite.variable.window.directory(path)
 signed long long int describe_1_6_18_51(LibraryRow *row);   // satellite.variable.window.listen(capsule)
-signed long long int describe_1_6_18_52(LibraryRow *row);   // satellite.variable.window.section(name, width, height)
 signed long long int describe_1_6_18_53(LibraryRow *row);   // satellite.variable.window.ok
+signed long long int describe_1_6_18_54_1(LibraryRow *row);   // satellite.variable.window.window.section(name, width, height)
+signed long long int describe_1_6_18_54_2_1(LibraryRow *row);   // satellite.variable.window.window.display.file(name)
+signed long long int describe_1_6_18_54_2_2_1(LibraryRow *row);   // satellite.variable.window.window.display.text.input(name)
 signed long long int describe_1_6_3_1(LibraryRow *row);   // satellite.variable.time.string
 signed long long int describe_1_6_5_1(LibraryRow *row);   // satellite.variable.binary.to_number
 signed long long int describe_1_6_5_2(LibraryRow *row);   // satellite.variable.binary.width

@@ -85,9 +85,38 @@ bool read_to_the_end(const std::vector<std::bitset<16>> &row, std::size_t at)
     return code == token::line_end_token || code == token::comment_token || code == token::end_of_file_token;
 }
 
-const char *const kNotReadToTheEnd =
-    "could not be read to the end -- it stops at something with no meaning there yet "
-    "(& | << >> !! are undecided), so the part before it is not the whole value";
+// AND WHAT IT STOPPED AT IS SAID (ERRORS4 039). The sentence was written when an undecided
+// sign was the only way to stop early, and it went on naming & | << >> !! for every stop:
+// `n = n -1` (a minus touching the 1), `n = 5 6` (a second value), `if (n = 5)` (an = where
+// == compares), 0x1F (a 0 and then the hex x1F), `x = 5.` (a point with no digit after it).
+// `stop` is the code the read stopped at; the undecided signs are named only when one is there, and a ~ by itself.
+std::string not_read_to_the_end(const std::vector<std::bitset<16>> &row, std::size_t stop)
+{
+    const Code code = code_at(row, stop);
+    const char *at =
+        code == token::bit_and_token || code == token::bit_or_token ||
+                code == token::shift_left_token || code == token::shift_right_token ||
+                code == token::bit_run_join_token
+            ? "it stops at something with no meaning there yet (& | << >> !! are undecided)"
+        : code == token::bit_not_token
+            ? "it stops at ~, which has no meaning there yet"
+        : code == token::tight_minus_token
+            ? "it stops at a - with no space after it -- a math sign has a space on both sides, n - 1, and a "
+              "minus touching a number makes it negative, -1"
+        : code == token::assign_token
+            ? "it stops at =, which gives a name its value -- two values are compared with =="
+        : code == token::hexadecimal_token || code == token::binary_token
+            ? "it stops at a hex or a binary straight after another value -- a hex is written x1F and a binary "
+              "b101, with nothing before the x or the b"
+        : token::carries_a_count(code) || word::is_word_code(code)
+            ? "it stops at a second value, with no sign between it and the one before"
+        : code == token::method_token
+            ? "it stops at a . that reaches nothing -- a number with a point has a digit after it, 5.0"
+        : code == token::comma_token
+            ? "it stops at a comma -- a comma goes between the values a call is given"
+            : "it stops at something with no meaning there";
+    return std::string("could not be read to the end -- ") + at + ", so the part before it is not the whole value";
+}
 
 // AN EXPRESSION'S REFUSAL, SHOWN ONCE: raise_at, unless a capsule the expression called
 // already printed the report (ExpressionContext::reported).
@@ -156,9 +185,13 @@ std::size_t past_matching_brace(const std::vector<std::bitset<16>> &row, std::si
 
 // The `{` that opens a body after `at`, past any line ends. The author writes
 // the brace on its own line, so this cannot simply be the next code.
+// AND PAST ANY COMMENT (ERRORS4 016), as a capsule's header steps over one (header_rest): `else // not one`
+// above its {, a comment line between if(...) and {, and `else { // not six` -- whose { the lexer moves to the
+// next line -- were each "has no body". A comment is one code, a marker with no text behind it.
 std::size_t brace_after(const std::vector<std::bitset<16>> &row, std::size_t at)
 {
-    while (at < row.size() && code_at(row, at) == token::line_end_token) ++at;
+    while (at < row.size() && (code_at(row, at) == token::line_end_token || code_at(row, at) == token::comment_token))
+        ++at;
     return at;
 }
 
@@ -412,11 +445,14 @@ signed long long int load_program(const std::string &main_file,
         const std::string asked_by = waiting.front().second;
         waiting.erase(waiting.begin());
 
+        // ONE FILE IS LOADED ONCE, HOWEVER IT WAS SPELLED (ERRORS4 020): `shapes` and `./shapes` were two files
+        // "both named shapes", and a cycle through ./ grew until "cannot locate file: ./././...".
+        const std::string same = one_spelling_of(path);
         bool already = false;
-        for (const std::string &done : loaded) already = already || done == path;
+        for (const std::string &done : loaded) already = already || done == same;
         if (already)
             continue;   // a cycle of includes ends here instead of running forever
-        loaded.push_back(path);
+        loaded.push_back(same);
 
         // CANNOT LOCATE FILE (the author, 2026-09-16), said before load_satl is
         // asked, so the message names the file the program meant rather than
@@ -576,7 +612,8 @@ std::size_t walk_the_if_chain(const std::vector<std::bitset<16>> &row, std::size
         bodies.push_back(brace + 1);
         const std::size_t past = past_matching_brace(row, brace);
         std::size_t next = past;
-        while (code_at(row, next) == token::line_end_token) ++next;
+        // `} // end if` and a comment line before the else are stepped over, as the checker's look-back does (ERRORS4 016).
+        while (code_at(row, next) == token::line_end_token || code_at(row, next) == token::comment_token) ++next;
         if (code_at(row, next) != word::code_of(1, 13, 4))
             return past;
         const std::size_t after_else = brace_after(row, next + 1);
@@ -623,7 +660,9 @@ void find_the_last_statements(const std::vector<std::bitset<16>> &row, std::size
     std::size_t last = kNoStatement;
     std::vector<std::size_t> last_bodies;
     for (std::size_t at = from;;) {
-        while (code_at(row, at) == token::line_end_token) ++at;
+        // A COMMENT ON A LINE OF ITS OWN IS NO STATEMENT (ERRORS4 035): taken for the block's last one, it made
+        // `down(n - 1)` above it a call in the middle, and 300,000 levels held 1 GB where they held 11 MB.
+        while (code_at(row, at) == token::line_end_token || code_at(row, at) == token::comment_token) ++at;
         const Code code = code_at(row, at);
         if (at >= row.size() || code == token::right_brace_token)
             break;
@@ -957,7 +996,8 @@ signed long long int run_while(const BytecodeRegistry &registry,
         bool closed = true;
         if (opened) closed = code_at(row, here++) == token::right_parenthesis_token;
         if (!closed || !read_to_the_end(row, here))
-            return report_error(std::string("satl(run): satellite.statement.while's condition ") + kNotReadToTheEnd,
+            return report_error(std::string("satl(run): satellite.statement.while's condition ") +
+                                    not_read_to_the_end(row, closed ? here : here - 1),
                                 satl_line_not_understood);
         if (!holds.is_bool())
             return report_error(std::string("satl(run): satellite.statement.while was given ") +
@@ -1023,7 +1063,8 @@ signed long long int run_if(const BytecodeRegistry &registry,
         bool closed = true;
         if (opened) closed = code_at(row, here++) == token::right_parenthesis_token;
         if (!closed || !read_to_the_end(row, here))
-            return report_error(std::string("satl(run): satellite.statement.if's condition ") + kNotReadToTheEnd,
+            return report_error(std::string("satl(run): satellite.statement.if's condition ") +
+                                    not_read_to_the_end(row, closed ? here : here - 1),
                                 satl_line_not_understood);
         if (!holds.is_bool())
             return report_error(std::string("satl(run): satellite.statement.if was given ") + holds.kind_name() +
@@ -1040,9 +1081,9 @@ signed long long int run_if(const BytecodeRegistry &registry,
 
     // THE else IS THIS STATEMENT'S, and it is stepped over whether it runs or
     // not: leaving it for run_statements would make it a statement of its own,
-    // which is what "an else with no if before it" means.
+    // which is what "an else with no if before it" means. A comment before it is stepped over (ERRORS4 016).
     std::size_t next = past;
-    while (code_at(row, next) == token::line_end_token) ++next;
+    while (code_at(row, next) == token::line_end_token || code_at(row, next) == token::comment_token) ++next;
     if (code_at(row, next) != word::code_of(1, 13, 4))
         return success;
 
@@ -1137,7 +1178,8 @@ signed long long int run_for_step(const std::vector<std::bitset<16>> &row,
                         state, row,
                         context.placed ? context.refused_at : at);
     if (at != parts.closing)
-        return report_error(std::string("satl(run): satellite.statement.for's third part ") + kNotReadToTheEnd,
+        return report_error(std::string("satl(run): satellite.statement.for's third part ") +
+                                not_read_to_the_end(row, at),
                             satl_line_not_understood);
     if (!answer.is_number())
         return raise_at(types_do_not_meet,
@@ -1210,7 +1252,8 @@ signed long long int run_for(const BytecodeRegistry &registry,
                         state, row,
                         opening.placed ? opening.refused_at : k);
     if (k != parts.condition - 1)
-        return report_error(std::string("satl(run): satellite.statement.for's first part ") + kNotReadToTheEnd,
+        return report_error(std::string("satl(run): satellite.statement.for's first part ") +
+                                not_read_to_the_end(row, k),
                             satl_line_not_understood);
     if (!start.is_number())
         return report_error("satl(run): satellite.statement.for declares " +
@@ -1258,7 +1301,8 @@ signed long long int run_for(const BytecodeRegistry &registry,
             break;
         }
         if (here != parts.step - 1) {
-            stopped = report_error(std::string("satl(run): satellite.statement.for's condition ") + kNotReadToTheEnd,
+            stopped = report_error(std::string("satl(run): satellite.statement.for's condition ") +
+                                       not_read_to_the_end(row, here),
                                    satl_line_not_understood);
             break;
         }
@@ -1351,11 +1395,16 @@ signed long long int run_assignment(const std::vector<std::bitset<16>> &row,
 
     ExpressionContext context{variables, functions, state};
     Value value;
+    // s = s + a + b ON ONE OF THIS BODY'S STRINGS IS JOINED ONTO ITS OWN STRING (ERRORS4 031, expression.hpp's
+    // joined_onto_the_name), and nothing is copied: it was quadratic. A field is left to the sum, since a capsule
+    // an operand calls may read it; only the time differs.
+    const bool joined = declared == 0 && !found.field && found.declared == word::code_of(1, 6, 1) &&
+                        joined_onto_the_name(row, at, name, *found.value, context);
     // satellite.variable.color (2026-09-22): A COLOUR NAME READS ITS OWN VALUE -- `c =
     // 000000` and `c = ff00aa` as six hex digits, and `c = x000000, 50` with its
     // transparency after the comma, the author's second way (color_values.cpp). It
     // answers false for every other name, which is read here as it always was.
-    if (!color_reads_its_value(declared != 0 ? declared : found.declared, row, at, value, context))
+    if (!joined && !color_reads_its_value(declared != 0 ? declared : found.declared, row, at, value, context))
         value = evaluate_expression(row, at, context);
     if (context.code != success) {
         const std::size_t blame = context.placed ? context.refused_at : at;
@@ -1364,8 +1413,13 @@ signed long long int run_assignment(const std::vector<std::bitset<16>> &row,
                         state, row, blame);
     }
     if (!read_to_the_end(row, at)) {
+        const std::string said = "satl(run): " + name + " = ... " + not_read_to_the_end(row, at);
         at = past_the_statement(row, at);
-        return report_error("satl(run): " + name + " = ... " + kNotReadToTheEnd, satl_line_not_understood);
+        return report_error(said, satl_line_not_understood);
+    }
+    if (joined) {
+        at = past_the_statement(row, at);
+        return success;
     }
 
     // THE DECLARED TYPE OUTLIVES THE LINE THAT WROTE IT. `n = "text"` on a
@@ -1508,7 +1562,7 @@ signed long long int run_indexed_assignment(const std::vector<std::bitset<16>> &
         ++at;
         Value value = evaluate_expression(row, at, context);
         if (context.code == success && !read_to_the_end(row, at))
-            context.refuse(satl_line_not_understood, name + "[...] = ... " + kNotReadToTheEnd, opened_at);
+            context.refuse(satl_line_not_understood, name + "[...] = ... " + not_read_to_the_end(row, at), opened_at);
         if (context.code == success && !row_key.empty() && indices.size() == 1)
             write_an_argument(row_key, std::move(value), name, *found.value, context, where);
         else if (context.code == success)
@@ -1569,7 +1623,8 @@ signed long long int run_argument_assignment(const std::vector<std::bitset<16>> 
         blame = ++at;                                // `a.access = 2` is refused under the 2
         Value value = evaluate_expression(row, at, context);
         if (context.code == success && !read_to_the_end(row, at))
-            context.refuse(satl_line_not_understood, name + "." + key + " = ... " + kNotReadToTheEnd, opened_at);
+            context.refuse(satl_line_not_understood, name + "." + key + " = ... " + not_read_to_the_end(row, at),
+                           opened_at);
         if (context.code == success && slot != nullptr)
             write_through_index(*slot, indices, std::move(value), name + "." + key, opened_at, TypeShape{}, context);
         else if (context.code == success)
@@ -1626,7 +1681,7 @@ signed long long int run_argument_call(const std::vector<std::bitset<16>> &row,
                                "(value)",
                            opened_at);
         if (context.code == success && !read_to_the_end(row, ++at))
-            context.refuse(satl_line_not_understood, written + "(...) " + kNotReadToTheEnd, opened_at);
+            context.refuse(satl_line_not_understood, written + "(...) " + not_read_to_the_end(row, at), opened_at);
         if (context.code == success)
             write_an_argument(key, std::move(value), name, arguments, context, where);
     }
@@ -1674,7 +1729,8 @@ signed long long int run_setting_assignment(const std::vector<std::bitset<16>> &
                         state, row,
                         context.placed ? context.refused_at : at);
     if (!read_to_the_end(row, at))
-        return report_error("satl(run): " + spelling + " = ... " + kNotReadToTheEnd, satl_line_not_understood);
+        return report_error("satl(run): " + spelling + " = ... " + not_read_to_the_end(row, at),
+                            satl_line_not_understood);
 
     // A TRUE/FALSE SETTING TAKES TRUE OR FALSE AND NOTHING ELSE. 1 and 0 are not
     // quietly taken for them: the author's own spelling is
@@ -1886,7 +1942,7 @@ signed long long int call_capsule(const BytecodeRegistry &registry,
     }
     if (code_at(row, a) != token::right_parenthesis_token) {
         at = past_the_statement(row, k);
-        return report_error("satl(run): " + written + "(...) " + kNotReadToTheEnd, satl_line_not_understood);
+        return report_error("satl(run): " + written + "(...) " + not_read_to_the_end(row, a), satl_line_not_understood);
     }
     at = past_the_statement(row, k);
     // ITS OWN CAPSULE, CALLED LAST: the arguments were worked out in this frame,
@@ -2094,7 +2150,10 @@ signed long long int run_statements(const BytecodeRegistry &registry,
                     return raise_context(context, "satellite.return(...)", state, row,
                                     context.placed ? context.refused_at : value_at);
                 if (code_at(row, k) != token::right_parenthesis_token || !read_to_the_end(row, k + 1))
-                    return report_error(std::string("satl(run): satellite.return(...) ") + kNotReadToTheEnd,
+                    return report_error(std::string("satl(run): satellite.return(...) ") +
+                                            not_read_to_the_end(row, code_at(row, k) != token::right_parenthesis_token
+                                                                         ? k
+                                                                         : k + 1),
                                         satl_line_not_understood);
                 frame.answer = std::move(handed);
                 frame.answered = true;
@@ -2110,7 +2169,8 @@ signed long long int run_statements(const BytecodeRegistry &registry,
             if (code_at(row, k) == token::left_parenthesis_token && code_at(row, k + 1) == token::right_parenthesis_token)
                 k += 2;
             if (!read_to_the_end(row, k))
-                return report_error(std::string("satl(run): ") + word::spelling_of(code) + " " + kNotReadToTheEnd,
+                return report_error(std::string("satl(run): ") + word::spelling_of(code) + " " +
+                                        not_read_to_the_end(row, k),
                                     satl_line_not_understood);
             at = past_the_statement(row, at);
             (code == word::code_of(1, 13, 5) ? frame.broke : frame.skipped) = true;
@@ -2221,7 +2281,8 @@ signed long long int run_statements(const BytecodeRegistry &registry,
                                 context.placed ? context.refused_at : started);
             if (!read_to_the_end(row, k))
                 return raise_at(satl_line_not_understood,
-                                std::string(word::spelling_of(code)) + "(...) " + kNotReadToTheEnd, std::string(),
+                                std::string(word::spelling_of(code)) + "(...) " + not_read_to_the_end(row, k),
+                                std::string(),
                                 state, row, k);
             continue;
         }
@@ -2325,8 +2386,9 @@ signed long long int run_statements(const BytecodeRegistry &registry,
                     return raise_context(context, name, state, row, blame);
                 }
                 if (!read_to_the_end(row, e)) {
+                    const std::string said = "satl(run): " + name + "... " + not_read_to_the_end(row, e);
                     at = past_the_statement(row, e);
-                    return report_error("satl(run): " + name + "... " + kNotReadToTheEnd, satl_line_not_understood);
+                    return report_error(said, satl_line_not_understood);
                 }
                 at = past_the_statement(row, e);
                 continue;

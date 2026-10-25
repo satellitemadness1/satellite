@@ -1,5 +1,7 @@
 # 025 -- A container type split after its < (list< newline number>) is not joined across lines: "a type was expected here"
 
+**FIXED 2026-10-25** (open-work checker): join_statements_across_lines (bytecode_registry.cpp) carries a line that ends in < or > on into the next, so a type split after its < or its > is one statement. check.sh rows "025: ...".
+
 **Found:** 2026-09-26, satl 004 revision 08 build 0099 (/home/madness/code/cxx/satellite/build/satl), by running ordinary programs against it.  
 **Area:** syntax and layout  
 **Kind:** valid-program-refused  

@@ -88,8 +88,8 @@ inline std::vector<satellite_argument_row> return_arguments_vector()
     // (satellite/bytecode/argument_switches.hpp); this row is what every other program gets.
     arguments_vector.push_back({"arguments.missing", 0, true, true});
     arguments_vector.push_back({"arguments.version", 4, false, false});
-    arguments_vector.push_back({"arguments.revision", 10, false, false});
-    arguments_vector.push_back({"arguments.build", 100, false, false});
+    arguments_vector.push_back({"arguments.revision", 11, false, false});
+    arguments_vector.push_back({"arguments.build", 9, false, false});
     arguments_vector.push_back({"arguments.object_bytes_max", 34359738368, false, false});
     arguments_vector.push_back({"arguments.threads_max", 1000000, false, false});
     // HOW MANY WARM THREADS START: THE MACHINE'S CORES TIMES THIS (the author, 2026-10-03): "set

@@ -1,5 +1,7 @@
 # 070 -- A fraction name given a spaced slash is always told it is "whole-number division", even for 1.0 / 3, and after 2/4 it names a pair "4 / 2" that was never written
 
+**FIXED before 2026-10-25** (the open-work re-check found it right on REVISION 11 BUILD 0001): fraction f = 1.0 / 3 is told it holds a float (S301), 2/4 / 2 is S210 at the check, and 1 / 3 is 1/3.
+
 **Found:** 2026-09-26, satl 004 revision 08 build 0099 (/home/madness/code/cxx/satellite/build/satl), by running ordinary programs against it.  
 **Area:** floats fractions percent  
 **Kind:** misleading-refusal  

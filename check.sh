@@ -31,6 +31,10 @@ passed=0 failed=0
 CHECK_HOME=$PWD/build/check-home
 rm -rf -- "$CHECK_HOME"
 mkdir -p -- "$CHECK_HOME/.satl"
+# BUT make IS ASKED WITH THE HOME THE SUITE WAS STARTED WITH (open-work tools, 2026-10-25): 010-compiler.mk
+# finds the compiler there ($(HOME)/opt/clang-current), and a harness built with one compiler is stale
+# to a make that would use another (065-tests.mk's flags stamp).
+STARTED_HOME=$HOME
 export HOME=$CHECK_HOME
 
 # AND NO WINDOW OF satl'S OWN, FOR THE WHOLE SUITE (WIN-9, ruled 2026-09-22, and
@@ -2021,7 +2025,7 @@ done
 # `make` alone does not rebuild it, and an old one reports on sources it was not built from
 # (the count review, 2026-09-17). make -q only asks; it builds nothing.
 if [ ! -x build/count_cases ]; then expect "build/count_cases is built (make build/count_cases)" built missing
-elif ! make -sq build/count_cases 2>/dev/null; then
+elif ! HOME="$STARTED_HOME" make -sq build/count_cases 2>/dev/null; then
     expect "build/count_cases is as new as its sources (make build/count_cases)" current stale
 else
     build/count_cases > build/count_cases.out 2>&1; code=$?
@@ -2032,7 +2036,7 @@ fi
 # checked on the screen a person would see. Stale harnesses are refused as above.
 for harness in prompt_cases prompt_reader; do
     if [ ! -x build/$harness ]; then expect "build/$harness is built (make build/$harness)" built missing
-    elif ! make -sq build/$harness 2>/dev/null; then expect "build/$harness is as new as its sources (make build/$harness)" current stale
+    elif ! HOME="$STARTED_HOME" make -sq build/$harness 2>/dev/null; then expect "build/$harness is as new as its sources (make build/$harness)" current stale
     elif [ $harness = prompt_cases ]; then
         timeout 120 build/prompt_cases > build/prompt_cases.out 2>&1; code=$?
         expect "the prompt with no terminal: $(grep -c '^ok' build/prompt_cases.out) cases (build/prompt_cases.out)" 0 $code
@@ -2046,7 +2050,7 @@ done
 # directory_cases checks the header all three libraries are built from, with no
 # interpreter around it; check_session.py types at a real satl through a pty.
 if [ ! -x build/directory_cases ]; then expect "build/directory_cases is built (make)" built missing
-elif ! make -sq build/directory_cases 2>/dev/null; then
+elif ! HOME="$STARTED_HOME" make -sq build/directory_cases 2>/dev/null; then
     expect "build/directory_cases is as new as its sources (make build/directory_cases)" current stale
 else
     timeout 300 build/directory_cases "${TMPDIR:-/tmp}" > build/directory_cases.out 2>&1; code=$?
@@ -2056,7 +2060,7 @@ fi
 # the spec's tables print is shown as the oracle shows it, every pair is ordered as the
 # oracle orders it, and a chain 100,000 exponents deep goes through every walk.
 if [ ! -x build/infinity_cases ]; then expect "build/infinity_cases is built (make)" built missing
-elif ! make -sq build/infinity_cases 2>/dev/null; then
+elif ! HOME="$STARTED_HOME" make -sq build/infinity_cases 2>/dev/null; then
     expect "build/infinity_cases is as new as its sources (make build/infinity_cases)" current stale
 else
     timeout 600 python3 satellite/satellite_variable_infinity/check_infinity.py > build/check_infinity.out 2>&1; code=$?
@@ -2066,7 +2070,7 @@ fi
 # Part 3): lines from 1, the endings a file had, strict UTF-8, and the two saves, in a
 # folder it makes inside $TMPDIR and removes.
 if [ ! -x build/file_cases ]; then expect "build/file_cases is built (make)" built missing
-elif ! make -sq build/file_cases 2>/dev/null; then
+elif ! HOME="$STARTED_HOME" make -sq build/file_cases 2>/dev/null; then
     expect "build/file_cases is as new as its sources (make build/file_cases)" current stale
 else
     timeout 300 build/file_cases "${TMPDIR:-/tmp}" > build/file_cases.out 2>&1; code=$?
@@ -2076,7 +2080,7 @@ fi
 # through stand-ins the cases write -- never a real su or sudo -- and the hidden question and the yes-or-no on a
 # pty, in a folder it makes inside $TMPDIR and removes.
 if [ ! -x build/file_moves_cases ]; then expect "build/file_moves_cases is built (make)" built missing
-elif ! make -sq build/file_moves_cases 2>/dev/null; then
+elif ! HOME="$STARTED_HOME" make -sq build/file_moves_cases 2>/dev/null; then
     expect "build/file_moves_cases is as new as its sources (make build/file_moves_cases)" current stale
 else
     timeout 300 build/file_moves_cases "${TMPDIR:-/tmp}" > build/file_moves_cases.out 2>&1; code=$?
@@ -2085,7 +2089,7 @@ fi
 # satellite.drive.list()'s ROWS (FILE_AND_DRIVE_PLAN.md FD-4): from a fake /sys/class/block and /run/udev/data it
 # makes in a folder inside $TMPDIR and removes, then this machine's.
 if [ ! -x build/drive_mounts_cases ]; then expect "build/drive_mounts_cases is built (make)" built missing
-elif ! make -sq build/drive_mounts_cases 2>/dev/null; then
+elif ! HOME="$STARTED_HOME" make -sq build/drive_mounts_cases 2>/dev/null; then
     expect "build/drive_mounts_cases is as new as its sources (make build/drive_mounts_cases)" current stale
 else
     timeout 60 build/drive_mounts_cases "${TMPDIR:-/tmp}" > build/drive_mounts_cases.out 2>&1; code=$?
@@ -2097,7 +2101,7 @@ fi
 # either cannot be made or a line cannot be written -- in a folder it makes inside $TMPDIR and removes,
 # with HOME pointed into it.
 if [ ! -x build/console_files_cases ]; then expect "build/console_files_cases is built (make)" built missing
-elif ! make -sq build/console_files_cases 2>/dev/null; then
+elif ! HOME="$STARTED_HOME" make -sq build/console_files_cases 2>/dev/null; then
     expect "build/console_files_cases is as new as its sources (make build/console_files_cases)" current stale
 else
     timeout 300 build/console_files_cases "${TMPDIR:-/tmp}" > build/console_files_cases.out 2>&1; code=$?
@@ -2229,7 +2233,7 @@ expect "satellite.exit leaves the prompt as exit does" "0|0" "$code|$(grep -c '^
 # watched by a stand-in for satl: its words, its folder, its session, its streams, no wait, nothing left to
 # reap, and why one could not start. Stale harnesses are refused as above.
 if [ ! -x build/prompt_run_cases ]; then expect "build/prompt_run_cases is built (make)" built missing
-elif ! make -sq build/prompt_run_cases 2>/dev/null; then
+elif ! HOME="$STARTED_HOME" make -sq build/prompt_run_cases 2>/dev/null; then
     expect "build/prompt_run_cases is as new as its sources (make build/prompt_run_cases)" current stale
 else
     timeout 300 build/prompt_run_cases "${TMPDIR:-/tmp}" > build/prompt_run_cases.out 2>&1; code=$?
@@ -2476,10 +2480,12 @@ expect "a no-break space before a declaration is refused by name, and nothing ru
 "$interpreter" build/stray_undeclared.satl > build/stray.out 2>&1; code_run=$?
 expect "a no-break space before an undeclared name is refused by name, before anything runs" "13|1|" \
        "$code_run|$(tr '\n' ' ' < build/stray.out | grep -c 'U+00A0, a no-break space, has no meaning')|$(grep -x before build/stray.out)"
+# REBASED 2026-10-25 (ERRORS4 003): a line no longer begins with a ), so the stray ) is refused itself, by the check
+# and before anything runs -- where it was stepped over and the undeclared name after it refused.
 for name in paren; do
     "$interpreter" build/stray_$name.satl > build/stray.out 2>&1; code_run=$?
     expect "a stray character before an undeclared name ($name) is refused by the check, before anything runs" \
-           "25|1|" "$code_run|$(grep -c 'satl(check).*undeclared has no satellite.variable line' build/stray.out)|$(grep -x before build/stray.out)"
+           "13|1|" "$code_run|$(grep -c 'satl(check).*a line does not begin with )' build/stray.out)|$(grep -x before build/stray.out)"
 done
 "$interpreter" tests/declared_twice.satl > /dev/null 2>&1; expect "a name declared twice" 26 $?
 # REBASED 2026-09-25: a string with a number added to it joins the number as text (the author:
@@ -2671,56 +2677,149 @@ expect "an x that is not between two numbers is a hex literal or a name, as befo
 # A file display and a text input on top of it, each reached by the name it was given in quotes,
 # and a capsule run on every key typed in the input -- the source editor's first lines. The whole
 # shape passes the checker and stops only for want of a screen; each wrong spelling of it is
-# refused before anything runs, by name.
+# refused before anything runs, by name. WRITTEN AS SEC-0 SPELLS THEM (SATELLITE_WINDOW_SECTIONS.md,
+# 2026-10-25): a window's sections and displays are under satellite.window, and a display takes its
+# name and no size -- the rows below were these words' rows before, in the old spelling.
 widget_says() {   # widget_says <tag> <main's body, one line a \n>
     printf 'satellite.include(satellite)\n\nsatellite.capsule when_typed(satellite.variable.window text_input, satellite.variable.window main_window)\n{\n    satellite.console.display(text_input.satellite.text)\n}\n\nsatellite.capsule satellite.main(satellite.variable.arguments arguments)\n{\n    satellite.console.display("before")\n    satellite.variable.window main_window = satellite.window.new("EDITOR", "VERSION 001", 800x600)\n%b\n    satellite.return(satellite)\n}\n' "$2" > "build/widgets_$1.satl"
     headless "build/widgets_$1.satl" > "build/widgets_$1.out" 2>&1
     echo "$?|$(grep -cx before "build/widgets_$1.out")"
 }
+widget_said() {   # widget_said <tag> <words> -> how many times the refusal says them, lines joined
+    tr '\n' ' ' < "build/widgets_$1.out" | sed 's/  */ /g' | grep -cF -- "$2"
+}
 expect "the source editor's widgets pass the checker and stop only for want of a screen" "50|1" \
-       "$(widget_says right '    main_window.satellite.widgets.display.file("file_display")\n    main_window.file_display.satellite.widgets.display.input("text_input")\n    main_window.file_display.text_input.satellite.listen(when_typed)\n    main_window.file_display.text_input.satellite.listen()')"
+       "$(widget_says right '    main_window.satellite.window.display.file("file_display")\n    file_display.satellite.window.display.text.input("text_input")\n    text_input.satellite.listen(when_typed)\n    main_window.file_display.text_input.satellite.listen()')"
 expect "a widget's name nobody gave is refused before anything runs, with the line that gives it" "25|0|1" \
-       "$(widget_says misspelled '    main_window.satellite.widgets.display.file("file_display")\n    main_window.file_dispaly.satellite.directory("/tmp/")')|$(tr '\n' ' ' < build/widgets_misspelled.out | grep -cF 'no widget is named file_dispaly')"
+       "$(widget_says misspelled '    main_window.satellite.window.display.file("file_display")\n    main_window.file_dispaly.satellite.directory("/tmp/")')|$(widget_said misspelled 'no widget is named file_dispaly')"
 expect "a widget's name worked out by the run is refused: it is written in quotes" "13|0|1" \
-       "$(widget_says unquoted '    satellite.variable.string n = "x"\n    main_window.satellite.widgets.display.file(n)')|$(grep -c "takes the widget's name, in quotes" build/widgets_unquoted.out)"
+       "$(widget_says unquoted '    satellite.variable.string n = "x"\n    main_window.satellite.window.display.file(n)')|$(widget_said unquoted "takes the display's name, in quotes")"
 expect "... and the sentence spells the word as it is written, under satellite (the sweep of 2026-10-11)" "1" \
-       "$(tr '\n' ' ' < build/widgets_unquoted.out | sed 's/  */ /g' | grep -c '.satellite.widgets.display.file takes the widget.s name, in quotes, first -- .satellite.widgets.display.file("file_display")')"
-expect "the word is .satellite.widgets.display.file -- .display.file alone, or .widgets.file, is refused" "13|0|13|0" \
-       "$(widget_says no_widgets '    main_window.satellite.display.file("files")')|$(widget_says no_displays '    main_window.satellite.widgets.file("files")')"
+       "$(widget_said unquoted '.satellite.window.display.file takes the display'"'"'s name, in quotes -- .satellite.window.display.file("file_display")')"
+expect "the word is .satellite.window.display.file -- .display.file alone, or .widgets.file, is refused naming it" "13|0|13|0|1|1" \
+       "$(widget_says no_widgets '    main_window.satellite.display.file("files")')|$(widget_says no_displays '    main_window.satellite.widgets.file("files")')|$(widget_said no_widgets 'main_window.satellite.display.file is written main_window.satellite.window.display.file now')|$(widget_said no_displays 'main_window.satellite.widgets.file is written main_window.satellite.window.display.file now')"
 expect "a name with a space, or a method's own word, cannot name a widget" "13|0|13|0|1" \
-       "$(widget_says spaced '    main_window.satellite.widgets.display.file("my files")')|$(widget_says a_method '    main_window.satellite.widgets.display.input("text")')|$(grep -c "is a method's own word" build/widgets_a_method.out)"
+       "$(widget_says spaced '    main_window.satellite.window.display.file("my files")')|$(widget_says a_method '    main_window.satellite.window.display.text.input("text")')|$(widget_said a_method "is a method's own word")"
 expect ".listen names a capsule that is there, as .changed does" "13|0|1" \
-       "$(widget_says listen_nobody '    main_window.satellite.widgets.display.input("box_input")\n    main_window.box_input.satellite.listen(nobody)')|$(grep -c 'no capsule named nobody' build/widgets_listen_nobody.out)"
+       "$(widget_says listen_nobody '    main_window.satellite.window.display.text.input("box_input")\n    box_input.satellite.listen(nobody)')|$(widget_said listen_nobody 'no capsule named nobody')"
 expect "arguments.directory still reads, with directory a method's word now" "0|true" \
        "$(printf 'satellite.include(satellite)\nsatellite.capsule satellite.main()\n{\n    satellite.console.display(satellite.arguments.directory.satellite.size() > 0)\n    satellite.return(satellite)\n}\n' > build/widgets_arguments.satl; headless build/widgets_arguments.satl > build/widgets_arguments.out 2>&1; echo "$?|$(grep -x -e true -e false build/widgets_arguments.out)")"
 # SECTIONS (the author, 2026-10-10): "main_window.section("section_name", 100%, 50%) ... we can accept
 # plain numbers as pixels, and percentages get converted into pixels". His lines, a section in a
-# section and a sized widget pass the checker and stop only for want of a screen; each wrong shape is
-# refused before anything runs. WHERE GTK PUTS THEM is proved on a compositor of its own by
+# section and a display filling each pass the checker and stop only for want of a screen; each wrong
+# shape is refused before anything runs. WHERE GTK PUTS THEM is proved on a compositor of its own by
 # satellite/satellite_variable_window/prove-sections.sh -- check.sh never opens a window.
 expect "section: section_token is registry row 0x0B79, and token_codes.hpp agrees" "1|1" \
        "$(grep -c '^0000101101111001  section_token ' REGISTRY.satellite)|$(grep -c 'Code section_token = 0x0B79;' satellite/bytecode/token_codes.hpp)"
-expect "section: his sections, a section in one and sized widgets pass the checker and stop only for want of a screen" "50|1" \
-       "$(widget_says sections '    main_window.satellite.section("section_name", 100%, 50%)\n    main_window.section_name.satellite.widgets.display.file("my_file_display", 100%, 100%)\n    main_window.satellite.section("bottom", 100%, 50%)\n    main_window.bottom.satellite.section("inner", 300, 200)\n    main_window.bottom.inner.satellite.widgets.display.input("folder")\n    main_window.bottom.inner.folder.satellite.listen(when_typed)')"
+expect "section: his sections, a section in one and a display filling each pass the checker and stop only for want of a screen" "50|1" \
+       "$(widget_says sections '    main_window.satellite.window.section("section_name", 100%, 50%)\n    section_name.satellite.window.display.file("my_file_display")\n    main_window.satellite.window.section("bottom", 100%, 50%)\n    bottom.satellite.window.section("inner", 300, 200)\n    inner.satellite.window.display.text.input("folder")\n    main_window.bottom.inner.folder.satellite.listen(when_typed)')"
 expect "section: a section's name nobody gave is refused before anything runs" "25|0|1" \
-       "$(widget_says section_misspelled '    main_window.satellite.section("top", 100%, 50%)\n    main_window.tpo.satellite.widgets.display.file("files", 100%, 100%)')|$(tr '\n' ' ' < build/widgets_section_misspelled.out | grep -cF 'no widget is named tpo')"
-expect "section: .section takes a name, a width and a height -- two is refused before anything runs" "13|0|1" \
-       "$(widget_says section_two '    main_window.satellite.section("top", 100%)')|$(tr '\n' ' ' < build/widgets_section_two.out | grep -cF 'main_window.satellite.section takes 3 arguments, and was given 2')"
+       "$(widget_says section_misspelled '    main_window.satellite.window.section("top", 100%, 50%)\n    main_window.tpo.satellite.window.display.file("files")')|$(widget_said section_misspelled 'no widget is named tpo')"
+expect "section: .window.section takes a name, a width and a height -- two is refused before anything runs" "13|0|1" \
+       "$(widget_says section_two '    main_window.satellite.window.section("top", 100%)')|$(widget_said section_two '.satellite.window.section takes 3 arguments -- a name, a width and a height -- and was given 2')"
 expect "section: a section is written on the window or the section, not after .widgets.display" "13|0|1" \
-       "$(widget_says section_displays '    main_window.satellite.widgets.display.section("top", 100%, 50%)')|$(tr '\n' ' ' < build/widgets_section_displays.out | grep -cF 'main_window.satellite.widgets.display -- widgets.display is the start of a word')"
+       "$(widget_says section_displays '    main_window.satellite.widgets.display.section("top", 100%, 50%)')|$(widget_said section_displays "main_window.satellite.widgets.display -- a window's sections and displays are under satellite.window now")"
 # THE REVIEW OF THE SECTIONS (2026-10-10): what the checker let through is refused before anything
 # runs -- a size with one extent, a section's name worked out by the run or a method's own word, on
 # the window and after a section's name -- and an object's own capsule called section is untouched.
-expect "section: .file with a name and one extent is refused before anything runs -- 1 or 3 arguments" "13|0|1" \
-       "$(widget_says file_two '    main_window.satellite.widgets.display.file("files", 100%)')|$(tr '\n' ' ' < build/widgets_file_two.out | grep -cF '1 or 3 arguments')"
+expect "section: a display given a name and one extent is refused before anything runs -- it takes its name and no size" "13|0|1" \
+       "$(widget_says file_two '    main_window.satellite.window.section("top", 100%, 100%)\n    top.satellite.window.display.file("files", 100%)')|$(widget_said file_two 'takes its name and no size')"
 expect "section: a section's name worked out by the run is refused before anything runs" "13|0|1" \
-       "$(widget_says section_worked_out '    satellite.variable.string n = "top"\n    main_window.satellite.section(n, 50%, 50%)')|$(tr '\n' ' ' < build/widgets_section_worked_out.out | grep -cF "takes the section's name, in quotes, first")"
+       "$(widget_says section_worked_out '    satellite.variable.string n = "top"\n    main_window.satellite.window.section(n, 50%, 50%)')|$(widget_said section_worked_out "takes the section's name, in quotes, first")"
 expect "section: a method's own word, or a name after a section's, is refused before anything runs" "13|0|13|0|1" \
-       "$(widget_says section_method_word '    main_window.satellite.section("text", 100%, 50%)')|$(widget_says section_inner_name '    main_window.satellite.section("top", 100%, 50%)\n    main_window.top.satellite.section("2nd", 1, 1)')|$(tr '\n' ' ' < build/widgets_section_inner_name.out | grep -cF 'is not a name a widget can have')"
+       "$(widget_says section_method_word '    main_window.satellite.window.section("text", 100%, 50%)')|$(widget_says section_inner_name '    main_window.satellite.window.section("top", 100%, 50%)\n    top.satellite.window.section("2nd", 1, 1)')|$(widget_said section_inner_name 'is not a name a widget can have')"
 printf 'satellite.include(satellite)\n\nsatellite.spacesuit thing()\n{\n    satellite.public\n    {\n        satellite.capsule section(satellite.variable.number n)\n        {\n            satellite.console.display(n)\n        }\n    }\n}\n\nsatellite.capsule satellite.main()\n{\n    thing t\n    t.section(5)\n    satellite.return(satellite)\n}\n' > build/section_capsule.satl
 headless build/section_capsule.satl > build/section_capsule.out 2>&1
 expect "section: an object's own capsule called section still checks and runs" "0|5" \
        "$?|$(grep -x 5 build/section_capsule.out)"
+
+# SEC-0 (SATELLITE_WINDOW_SECTIONS.md, built 2026-10-25): A WINDOW'S SECTIONS AND DISPLAYS ARE UNDER satellite.window,
+# AND A SECTION'S NAME IS A NAME. The author's design of 2026-10-20 -- "so this gives a section of the window called
+# "section_name_here" so we can type this: section_name_here.satellite.window.display.file("my_file_list_name")" --
+# and his answers of 2026-10-25: "a display always fills the section", and every display takes its name. check.sh
+# proves what the checker says before anything runs; the run's half of rules 6 and 7, where the checker cannot see
+# the lines, is prove-sections.sh's, on a compositor.
+sec0_says() {   # sec0_says <tag> <capsules before main, \n> <main's body, \n> -> exit | "before" printed
+    printf 'satellite.include(satellite)\n\n%b\nsatellite.capsule satellite.main()\n{\n    satellite.console.display("before")\n    satellite.variable.window main_window = satellite.window.new("window title", "window secondary text", 800x600)\n%b\n    satellite.return(satellite)\n}\n' "$2" "$3" > "build/sec0_$1.satl"
+    headless "build/sec0_$1.satl" > "build/sec0_$1.out" 2>&1
+    echo "$?|$(grep -cx before "build/sec0_$1.out")"
+}
+sec0_said() {   # sec0_said <tag> <words> -> how many times the output says them, lines joined
+    tr '\n' ' ' < "build/sec0_$1.out" | sed 's/  */ /g' | grep -cF -- "$2"
+}
+expect "SEC-0: window, window.display, window.section, window.display.file and window.display.text.input are registry rows 0x0B9B to 0x0B9F, and token_codes.hpp agrees" "1|1|1|1|1|1|1|1|1|1" \
+       "$(for n in 'window 0B9B 0000101110011011' 'window_display 0B9C 0000101110011100' 'window_section 0B9D 0000101110011101' 'window_display_file 0B9E 0000101110011110' 'window_display_text_input 0B9F 0000101110011111'; do set -- $n; printf '%s|%s|' "$(grep -c "^$3  ${1}_token " REGISTRY.satellite)" "$(grep -c "Code ${1}_token = 0x$2;" satellite/bytecode/token_codes.hpp)"; done | sed 's/|$//')"
+expect "SEC-0: its six words are words.tsv's rows 1 6 18 54 ..., and each that runs is a file under satellite-numbers/words/" "6|3" \
+       "$(grep -cP '^1 6 18 54( 1| 2| 2 1| 2 2| 2 2 1)?\tsatellite\.variable\.window\.window(\.section\(name, width, height\)|\.display|\.display\.file\(name\)|\.display\.text|\.display\.text\.input\(name\))?\t' words/words.tsv)|$(ls satellite-numbers/words/1.6.18.54.1.cpp satellite-numbers/words/1.6.18.54.2.1.cpp satellite-numbers/words/1.6.18.54.2.2.1.cpp | wc -l)"
+expect "SEC-0: the author's percent, window, section and display.file lines, in the new spelling, pass the checker and stop only for want of a screen" "50|1|1" \
+       "$(sec0_says his '' '    satellite.variable.percent fifty_percent = 50%\n    main_window.satellite.window.section("section_name_here", fifty_percent, 100%)\n    main_window.satellite.window.section("right_half", fifty_percent, 100%)\n    section_name_here.satellite.window.display.file("my_file_list_name")')|$(sec0_said his 'S730: NO_DISPLAY')"
+expect "SEC-0: a section, a file display and a text input reached by their bare names, and its_window.top in a capsule given the window, pass the checker" "50|1|1" \
+       "$(sec0_says bare 'satellite.capsule fill(satellite.variable.window its_window)\n{\n    its_window.top.satellite.window.display.file("files")\n    its_window.top.files.satellite.directory("/tmp/")\n}\n' '    main_window.satellite.window.section("top", 100%, 50%)\n    main_window.satellite.window.section("bottom", 100%, 50%)\n    satellite.variable.number wide = top.satellite.width\n    bottom.satellite.window.display.file("listing")\n    listing.satellite.directory("/tmp/")\n    listing.satellite.window.display.text.input("folder")\n    folder.satellite.listen()\n    fill(main_window)')|$(sec0_said bare 'S730: NO_DISPLAY')"
+expect "SEC-0: a section's name ends at the } of the block its line stands in, as any name does" "25|0|1" \
+       "$(sec0_says ended '' '    satellite.statement.if (1 == 1)\n    {\n        main_window.satellite.window.section("inside", 100%, 100%)\n    }\n    inside.satellite.window.display.file("files")')|$(sec0_said ended 'inside is not legal here -- it was declared inside the block that ended at the }')"
+# RULE 8: EACH OLD SPELLING IS REFUSED BEFORE ANYTHING RUNS, NAMING THE NEW (the author's ruling D of 2026-10-10) -- and
+# a `.satellite.window.` that is no word, and `.window.display.text(`, which is no word until SEC-3, are told the
+# words they begin.
+expect "SEC-0: .satellite.section is refused before anything runs, naming .satellite.window.section" "13|0|1" \
+       "$(sec0_says old_section '' '    main_window.satellite.section("top", 100%, 50%)')|$(sec0_said old_section "main_window.satellite.section is written main_window.satellite.window.section now -- a window's sections and displays are under satellite.window")"
+expect "SEC-0: .satellite.widgets.display.file and .input are refused before anything runs, naming .window.display.file and .window.display.text.input" "13|0|1|13|0|1" \
+       "$(sec0_says old_file '' '    main_window.satellite.widgets.display.file("files")')|$(sec0_said old_file 'main_window.satellite.widgets.display.file is written main_window.satellite.window.display.file now')|$(sec0_says old_input '' '    main_window.satellite.widgets.display.input("folder")')|$(sec0_said old_input 'main_window.satellite.widgets.display.input is written main_window.satellite.window.display.text.input now')"
+expect "SEC-0: a display given a size is refused before anything runs, pointing at a section of that size" "13|0|1" \
+       "$(sec0_says old_sized '' '    main_window.satellite.window.section("top", 100%, 100%)\n    top.satellite.window.display.file("files", 100%, 50%)')|$(sec0_said old_sized '.satellite.window.display.file("files", ...) takes its name and no size -- a display fills the section it is made in (the author, 2026-10-25), so the size is a section'"'"'s: .satellite.window.section("files_section", 100%, 50%)')"
+expect "SEC-0: a .satellite.window. that is no word is refused, told the words window begins" "13|0|1" \
+       "$(sec0_says no_word '' '    main_window.satellite.window.nothing("x")')|$(sec0_said no_word 'main_window.satellite.window -- window is the start of a word: main_window.satellite.window.section(...) or main_window.satellite.window.display.file(...)')"
+expect "SEC-0: .satellite.window.display.text(, no word until SEC-3, is the parts rule's, never a crash" "13|0|1" \
+       "$(sec0_says display_text '' '    main_window.satellite.window.section("right", 100%, 100%)\n    right.satellite.window.display.text("greeting", "str1")')|$(sec0_said display_text 'right.satellite.window.display.text -- window.display is the start of a word: right.satellite.window.display.file(...) or right.satellite.window.display.text.input(...)')"
+# RULE 4: A SECTION'S AND A DISPLAY'S NAME IS A NAME, so it is refused before anything runs where a name would be: a
+# second of one name in one capsule (even in two windows), a name the capsule has, `satellite`, a number's shape --
+# and a declaration of the name, which is told its own sentence (the plan's wording, the author's to change).
+expect "SEC-0: two sections called top in one capsule, in two windows, are refused before anything runs" "26|0|1" \
+       "$(sec0_says two_tops '' '    satellite.variable.window other = satellite.window.new("other", 400, 300)\n    main_window.satellite.window.section("top", 100%, 50%)\n    other.satellite.window.section("top", 100%, 50%)')|$(sec0_said two_tops 'S202: NAME_DECLARED_TWICE')"
+expect "SEC-0: ... and told the first section's line declared it" "1" \
+       "$(sec0_said two_tops 'top is declared by its section line already, and a name is declared once in a capsule -- give this section a name of its own')"
+expect "SEC-0: a section named like a variable of its capsule is refused before anything runs" "26|0|1" \
+       "$(sec0_says like_a_variable '' '    satellite.variable.number top = 5\n    main_window.satellite.window.section("top", 100%, 50%)')|$(sec0_said like_a_variable "top is declared in this capsule already, and a section's name is a name, declared by its line -- give the section a name of its own")"
+expect "SEC-0: a section named satellite, and a display named xff or a section b01, are refused before anything runs" "13|0|1|13|0|1|13|0|1" \
+       "$(sec0_says named_satellite '' '    main_window.satellite.window.section("satellite", 100%, 50%)')|$(sec0_said named_satellite "\"satellite\" is the language's own name")|$(sec0_says named_hex '' '    main_window.satellite.window.display.file("xff")')|$(sec0_said named_hex '"xff" is how a hex number is written')|$(sec0_says named_binary '' '    main_window.satellite.window.section("b01", 100%, 50%)')|$(sec0_said named_binary '"b01" is how a binary number is written')"
+expect "SEC-0: a declaration of the name a section's line declared is refused, with its own sentence" "26|0|1" \
+       "$(sec0_says declared_again '' '    main_window.satellite.window.section("top", 100%, 50%)\n    satellite.variable.window top = main_window.top')|$(sec0_said declared_again 'top is declared by its section line already -- write top, bare, where the section is wanted')"
+expect "SEC-0: ... and so is one on the section's own line" "26|0|1" \
+       "$(sec0_says declared_with '' '    satellite.variable.window top = main_window.satellite.window.section("top", 100%, 50%)')|$(sec0_said declared_with 'top is declared by its section line already -- write top, bare, where the section is wanted')"
+# RULES 6 AND 7, BEFORE THE RUN WHERE THE CHECKER CAN SEE THE LINES: straight down main, on names declared there and
+# never given another value. A section shows one display or holds sections, not both, and a window shows displays
+# across its top or has sections, not both.
+expect "SEC-0: two displays in one section are refused before anything runs" "13|0|1" \
+       "$(sec0_says two_displays '' '    main_window.satellite.window.section("top", 100%, 100%)\n    top.satellite.window.display.file("files")\n    top.satellite.window.display.text.input("folder")')|$(sec0_said two_displays 'top.satellite.window.display.text.input -- the section shows a display already, and a display fills its section, so each display goes in a section of its own')"
+expect "SEC-0: a display in a section that holds sections is refused before anything runs" "13|0|1" \
+       "$(sec0_says display_in_sections '' '    main_window.satellite.window.section("top", 100%, 100%)\n    top.satellite.window.section("inner", 100%, 100%)\n    top.satellite.window.display.file("files")')|$(sec0_said display_in_sections 'top.satellite.window.display.file -- the section holds sections, and a section shows one display or holds sections, not both')"
+expect "SEC-0: a section in a section that shows a display is refused before anything runs" "13|0|1" \
+       "$(sec0_says section_in_display '' '    main_window.satellite.window.section("top", 100%, 100%)\n    top.satellite.window.display.file("files")\n    top.satellite.window.section("inner", 100%, 100%)')|$(sec0_said section_in_display 'top.satellite.window.section -- the section shows a display, and a section shows one display or holds sections, not both')"
+expect "SEC-0: a display across the top of a sectioned window is refused before anything runs" "13|0|1" \
+       "$(sec0_says display_over_sections '' '    main_window.satellite.window.section("top", 100%, 100%)\n    main_window.satellite.window.display.file("files")')|$(sec0_said display_over_sections 'main_window.satellite.window.display.file -- the window has sections, and a window shows displays across its top or has sections, not both')"
+expect "SEC-0: a section in a window that shows a display across its top is refused before anything runs" "13|0|1" \
+       "$(sec0_says section_under_display '' '    main_window.satellite.window.display.file("files")\n    main_window.satellite.window.section("top", 100%, 100%)')|$(sec0_said section_under_display 'main_window.satellite.window.section -- the window shows a display across its top, and a window shows displays across its top or has sections, not both')"
+expect "SEC-0: where the checker cannot see the lines -- a capsule given the window, or one the window was handed to first -- it passes them, for the run to judge" "50|1|50|1" \
+       "$(sec0_says unseen_capsule 'satellite.capsule add_an_input(satellite.variable.window its_window)\n{\n    its_window.satellite.window.display.text.input("folder")\n}\n' '    main_window.satellite.window.section("all", 100%, 100%)\n    add_an_input(main_window)')|$(sec0_says unseen_handed 'satellite.capsule look(satellite.variable.window its_window)\n{\n    satellite.console.display(its_window.satellite.width)\n}\n' '    main_window.satellite.window.section("all", 100%, 100%)\n    look(main_window)\n    main_window.satellite.window.display.file("files")')"
+# SEC-1 (SATELLITE_WINDOW_SECTIONS.md, built 2026-10-25): A SECTION'S SIZE IS A PERCENT, A FRACTION OR PIXELS, IN THE
+# AUTHOR'S RANGES -- "a percent, a fraction, a pixel, so we have from 0% to 100% and from 0/1 to 1/1 in fractions, and
+# from 0pixels to the width/height of the window" (2026-10-20). A size written as a literal is judged before anything
+# runs, in the run's own sentence; pixels past what holds them, and a window's inside, are the run's, on a compositor.
+expect "SEC-1: 1/2, 1 / 3, a fraction name, and 1/2 beside 250 pixels pass the checker and stop only for want of a screen" "50|1|50|1|50|1|50|1" \
+       "$(sec0_says sec1_half '' '    main_window.satellite.window.section("left", 1/2, 100%)\n    main_window.satellite.window.section("right", 1/2, 100%)')|$(sec0_says sec1_third '' '    main_window.satellite.window.section("a", 1 / 3, 100%)')|$(sec0_says sec1_name '' '    satellite.variable.fraction half = 1/2\n    main_window.satellite.window.section("a", half, 100%)')|$(sec0_says sec1_beside '' '    main_window.satellite.window.section("a", 1/2, 250)')"
+expect "SEC-1: 0%, 150%, 3/2 and 0 pixels are refused before anything runs, S410, each told its range" "19|0|1|19|0|1|19|0|1|19|0|1" \
+       "$(sec0_says sec1_none '' '    main_window.satellite.window.section("a", 0%, 100%)')|$(sec0_said sec1_none "a's width is a share of what holds it, above 0% -- 50% is half of it -- and was given 0%")|$(sec0_says sec1_over '' '    main_window.satellite.window.section("a", 100%, 150%)')|$(sec0_said sec1_over "a's height is a share of what holds it, up to 100% -- all of it -- and was given 150%")|$(sec0_says sec1_over_f '' '    main_window.satellite.window.section("a", 3/2, 100%)')|$(sec0_said sec1_over_f "a's width is a share of what holds it, up to 1/1 -- all of it -- and was given 3/2")|$(sec0_says sec1_zero '' '    main_window.satellite.window.section("a", 0, 100%)')|$(sec0_said sec1_zero "a's width was given 0 pixels, and it is 1 to 32767 of them")"
+expect "SEC-1: \"wide\" and 2.5 are refused before anything runs, S301, told what a size takes" "27|0|1|27|0|1" \
+       "$(sec0_says sec1_text '' '    main_window.satellite.window.section("a", "wide", 100%)')|$(sec0_said sec1_text "a's width takes a share of what holds it, 50% or 1/2, or a whole number of pixels, 400, and was given a string")|$(sec0_says sec1_float '' '    main_window.satellite.window.section("a", 100%, 2.5)')|$(sec0_said sec1_float "a's height takes a share of what holds it, 50% or 1/2, or a whole number of pixels, 400, and was given a float")"
+expect "SEC-1: a minus before a size, and a fraction finer than a millionth, are refused before anything runs, S410" "19|0|1|19|0|1" \
+       "$(sec0_says sec1_minus '' '    main_window.satellite.window.section("a", 100%, -1/2)')|$(sec0_said sec1_minus "a's height is a share of what holds it, above 0/1 -- 1/2 is half of it -- and was given -1/2")|$(sec0_says sec1_fine '' '    main_window.satellite.window.section("a", 1/2000000, 100%)')|$(sec0_said sec1_fine "the least is 1/1000000")"
+expect "SEC-1: a hex, a binary, a time and a spaced minus are refused before anything runs, as the run refuses them" "27|0|1|27|0|1|19|0|1" \
+       "$(sec0_says sec1_hex '' '    main_window.satellite.window.section("a", xff, 100%)')|$(sec0_said sec1_hex "a's width takes a share of what holds it, 50% or 1/2, or a whole number of pixels, 400, and was given a hex")|$(sec0_says sec1_time '' '    main_window.satellite.window.section("a", 100%, 5s)')|$(sec0_said sec1_time "and was given a time")|$(sec0_says sec1_spaced '' '    main_window.satellite.window.section("a", - 50%, 100%)')|$(sec0_said sec1_spaced "and was given -50%")"
+expect "SEC-1: sizes the run works out pass the checker -- a percent name, 100% / 3, 50% + 10%, 1 / 3 -- on a window, a bare section and its_window.top" "50|1" \
+       "$(sec0_says sec1_worked 'satellite.capsule fill(satellite.variable.window its_window)\n{\n    its_window.top.satellite.window.section("inner", 100% / 3, 50% + 10%)\n}\n' '    satellite.variable.percent half = 50%\n    main_window.satellite.window.section("top", half, 100% / 3)\n    top.satellite.window.section("deeper", 1 / 3, 100%)\n    fill(main_window)')"
+expect "SEC-1: past a width the run works out, the height written out is still judged -- on a bare section and in a capsule given the window" "19|0|1|19|0|1" \
+       "$(sec0_says sec1_past '' '    main_window.satellite.window.section("top", 100%, 100%)\n    top.satellite.window.section("inner", (100% / 3), 0%)')|$(sec0_said sec1_past "in satellite.main, inner's height is a share of what holds it, above 0%")|$(sec0_says sec1_given 'satellite.capsule fill(satellite.variable.window its_window)\n{\n    its_window.top.satellite.window.section("inner", 100%, 150%)\n}\n' '    main_window.satellite.window.section("top", 100%, 100%)\n    fill(main_window)')|$(sec0_said sec1_given "in fill, inner's height is a share of what holds it, up to 100%")"
+expect "SEC-1: an error on an earlier line is told before a size on a later one" "27|0|1" \
+       "$(sec0_says sec1_order '' '    satellite.variable.number n = "x"\n    main_window.satellite.window.section("a", 0%, 100%)')|$(sec0_said sec1_order "n was declared satellite.variable.number, and it holds a string")"
 # PINNED IN THE SOURCE: the widgets' file is built, and a capsule a window runs after main runs as
 # a run of its own -- the author's ruling of 2026-10-05; without it every key, press and click
 # after main exited 64 (prove-console.sh's piece stage, which now passes).
@@ -8077,7 +8176,7 @@ expect "the display buffer: ... holding no more than the buffer: under 256 MiB a
 # __int128, the generator's balance, the sampler's uniformity, the spin's windows
 # (build/random_cases says what each case is).
 if [ ! -x build/random_cases ]; then expect "build/random_cases is built (make)" built missing
-elif ! make -sq build/random_cases 2>/dev/null; then
+elif ! HOME="$STARTED_HOME" make -sq build/random_cases 2>/dev/null; then
     expect "build/random_cases is as new as its sources (make build/random_cases)" current stale
 else
     build/random_cases > build/random_cases.out 2>&1; code=$?
@@ -8756,13 +8855,15 @@ nm8_window() {   # nm8_window <tag> <main's body lines> <sentence> -> machine co
     headless "$sweep/$1.satl" > "$sweep/$1.out" 2>&1; code_run=$?
     printf '%s|%s|%s' "$code_run" "$(tr '\n' ' ' < "$sweep/$1.out" | sed 's/  */ /g' | grep -c -- "$3")" "$(grep -cx before "$sweep/$1.out")"
 }
-expect "window: 58 words under 1 6 18, and a file under satellite-numbers/words/ for each of the 55 that run one" "58|55" \
+# SINCE SEC-0 (2026-10-25): six words more -- 1 6 18 54 and five under it -- of which three run, and the three old
+# spellings' numbers (49 1 1, 49 1 2 and 52) run nothing, so 64 words and still 55 files.
+expect "window: 64 words under 1 6 18, and a file under satellite-numbers/words/ for each of the 55 that run one" "64|55" \
        "$(grep -c '^1 6 18 ' words/words.tsv)|$(ls satellite-numbers/words/1.6.18.*.cpp | wc -l)"
 expect "window: main_window.open() is refused before anything runs, naming main_window.satellite.open" "13|1|0" \
        "$(nm8_window nm8_window_bare '    main_window.open()' 'main_window.open is written main_window.satellite.open now -- a window.s own words are under satellite')"
-expect "window: his lines of 2026-10-10 ~21:15, line 14 written main_window.satellite.open(), pass the checker and stop only for want of a screen" "50|1|1" \
-       "$(nm8_window nm8_window_his '    main_window.satellite.section("files_display", 100%, 250)
-    main_window.files_display.satellite.widgets.display.file("list_of_files", 100%, 100%)
+expect "window: his lines of 2026-10-10 ~21:15 in SEC-0's spelling, line 14 written main_window.satellite.open(), pass the checker and stop only for want of a screen" "50|1|1" \
+       "$(nm8_window nm8_window_his '    main_window.satellite.window.section("files_display", 100%, 250)
+    files_display.satellite.window.display.file("list_of_files")
     main_window.satellite.open()' 'S730: NO_DISPLAY')"
 expect "window: a chain's second link is judged before anything runs: main_window.satellite.open().focus()" "13|1|0" \
        "$(nm8_window nm8_window_chain '    main_window.satellite.open().focus()' 'main_window.satellite.open().focus is written main_window.satellite.open().satellite.focus now')"
@@ -8775,10 +8876,10 @@ expect "window: an item of a list<window> is judged by the list's <type>, in a b
 expect "window: a window has no .find, said as that: main_window.satellite.find" "13|1|0" \
        "$(nm8_window nm8_window_none '    main_window.satellite.find("x")' 'main_window.satellite.find -- a window has no find')"
 expect "window: the family's old name is refused, naming the new (his D of 2026-10-10): .satellite.widgets.displays.file" "13|1|0" \
-       "$(nm8_window nm8_window_displays '    main_window.satellite.widgets.displays.file("files")' 'is written main_window.satellite.widgets.display.file -- the widgets. family is display now')"
+       "$(nm8_window nm8_window_displays '    main_window.satellite.widgets.displays.file("files")' 'is written main_window.satellite.window.display.file now -- a window.s sections and displays are under satellite.window')"
 expect "window: a word of parts written bare after his own name is told the whole word" "13|1|0" \
-       "$(nm8_window nm8_window_parts '    main_window.satellite.section("files_display", 100%, 250)
-    main_window.files_display.widgets.display.file("list_of_files", 100%, 100%)' 'main_window.files_display.widgets.display.file is written main_window.files_display.satellite.widgets.display.file now')"
+       "$(nm8_window nm8_window_parts '    main_window.satellite.window.section("files_display", 100%, 250)
+    main_window.files_display.window.display.file("list_of_files")' 'main_window.files_display.window.display.file is written main_window.files_display.satellite.window.display.file now')"
 expect "window: a word of parts begun and not finished is told the words it begins: main_window.satellite.scroll" "13|1|0" \
        "$(nm8_window nm8_window_scroll '    satellite.console.display(main_window.satellite.scroll)' 'scroll is the start of a word: main_window.satellite.scroll.vertical(on)')"
 expect "window: a window word's answer is judged before anything runs: satellite.window.button(\"x\").title(\"t\")" "13|1|0" \
@@ -8793,15 +8894,15 @@ expect "window: .satellite.scroll.vertical, a console's .satellite.display and a
 # "files", as the walker reads it, and the word after it a window's -- it was refused as an undeclared variable, so
 # no spelling of it could run. A name no widget has is refused as it always was.
 expect "window: ws[1].files.satellite.directory(...) passes the checker, and stops only for want of a screen" "50|1|1" \
-       "$(nm8_window nm8_window_item_widget '    main_window.satellite.widgets.display.file("files")
+       "$(nm8_window nm8_window_item_widget '    main_window.satellite.window.display.file("files")
     satellite.container.list<satellite.variable.window> ws = {main_window}
     ws[1].files.satellite.directory("/tmp/")' 'S730: NO_DISPLAY')"
 expect "window: ws[1].files.directory(...) is refused before anything runs, naming .satellite.directory" "13|1|0" \
-       "$(nm8_window nm8_window_item_widget_bare '    main_window.satellite.widgets.display.file("files")
+       "$(nm8_window nm8_window_item_widget_bare '    main_window.satellite.window.display.file("files")
     satellite.container.list<satellite.variable.window> ws = {main_window}
     ws[1].files.directory("/tmp/")' 'files.directory is written files.satellite.directory now')"
 expect "window: a name no widget has, after an item, is refused as an undeclared name, as before" "25|1|0" \
-       "$(nm8_window nm8_window_item_nowidget '    main_window.satellite.widgets.display.file("files")
+       "$(nm8_window nm8_window_item_nowidget '    main_window.satellite.window.display.file("files")
     satellite.container.list<satellite.variable.window> ws = {main_window}
     ws[1].nowhere.satellite.directory("/tmp/")' 'nowhere has no satellite.variable line declaring it')"
 # THE OTHER SCALARS' WORDS ARE UNDER SATELLITE (NM-8, 2026-10-11; the author: "we still need to get the word
@@ -9734,6 +9835,690 @@ expect "refused: satellite.error() used as a value" "13|1" \
     satellite.variable.number x = satellite.error()
     satellite.return(satellite)
 }')|$(eb_refused as_a_value 'satellite.error() answers nothing')"
+
+# open-work checker (2026-10-25)
+# The checker batch of the author's "anything that isn't done" (2026-10-25): each row is an ERRORS4 page, named (the
+# M3 rows are OPEN_ITEMS_2026-10-20's checker gaps of 2026-10-19, which have no page), whose program was accepted,
+# refused on the wrong line, or refused only once its line ran. Each program is written here and judged by its exit,
+# the words of its refusal, and whether "before" -- main's first line -- printed: nothing runs before a refusal
+# satl(check) can make.
+owc_dir=build/open_work_checker
+rm -rf -- "$owc_dir" && mkdir -p -- "$owc_dir"
+owc() {   # owc <name> <main's lines after its first> <words> -> machine code | words found | "before" printed
+    printf 'satellite.include(satellite)\n\nsatellite.capsule satellite.main()\n{\n    satellite.console.display("before")\n%s\n    satellite.return(satellite)\n}\n' "$2" > "$owc_dir/$1.satl"
+    "$interpreter" "$owc_dir/$1.satl" > "$owc_dir/$1.out" 2>&1; code_run=$?
+    printf '%s|%s|%s' "$code_run" "$(tr '\n' ' ' < "$owc_dir/$1.out" | tr -s ' ' | grep -cF -- "$3")" "$(grep -cx before "$owc_dir/$1.out")"
+}
+owc_file() {   # owc_file <name> <the program after its include line> <words> -> the same three, for a program of its own
+    mkdir -p -- "$(dirname "$owc_dir/$1")"
+    printf 'satellite.include(satellite)\n\n%s\n' "$2" > "$owc_dir/$1.satl"
+    "$interpreter" "$owc_dir/$1.satl" > "$owc_dir/$1.out" 2>&1; code_run=$?
+    printf '%s|%s|%s' "$code_run" "$(tr '\n' ' ' < "$owc_dir/$1.out" | tr -s ' ' | grep -cF -- "$3")" "$(grep -cx before "$owc_dir/$1.out")"
+}
+owc_last() { tail -n 1 "$owc_dir/$1.out" | cut -c 1-80; }
+# ERRORS4 003: a line that begins with a code no statement begins with is refused, and no longer stepped over a code
+# at a time -- which ran `2 n = 9` as n = 9 and the lines of a /* ... */ block, and let a lone "text" do nothing.
+expect "003: a /* ... */ block is refused before anything runs, and its lines do not run" "13|1|0" \
+       "$(owc c003_block '    /*
+    satellite.console.display("commented out")
+    */' 'a line does not begin with /* -- a comment is written //')"
+expect "003: 2 n = 9 is refused -- it ran as n = 9" "13|1|0" \
+       "$(owc c003_number '    satellite.variable.number n = 5
+    2 n = 9' 'a line does not begin with a value')"
+expect "003: \"x\" n = 9 is refused -- it ran as n = 9" "13|1|0" \
+       "$(owc c003_text '    satellite.variable.number n = 5
+    "x" n = 9' 'a line does not begin with a value')"
+expect "003: !n = 9 is refused -- it ran as n = 9" "13|1|0" \
+       "$(owc c003_not '    satellite.variable.number n = 5
+    !n = 9' 'a line does not begin with ! --')"
+expect "003: a line of only \"text\" is refused -- it did nothing and said nothing" "13|1|0" \
+       "$(owc c003_alone '    "text"' 'a line does not begin with a value')"
+expect "003: a line of only == 3 is refused" "13|1|0" "$(owc c003_equals '    == 3' 'a line does not begin with ==')"
+expect "003: a line of only ) is refused" "13|1|0" "$(owc c003_bracket '    )' 'a line does not begin with )')"
+expect "003: a .method a blank line below its value is refused -- its add was dropped and 100 printed" "13|1|0" \
+       "$(owc c003_period '    satellite.variable.number n = 100
+
+    .satellite.add(5)
+    satellite.console.display(n)' 'a line does not begin with a . -- a .method goes on its value'"'"'s line, or on the very next line')"
+expect "003: 2 + 3 is refused for its 2, not as a line that begins with +" "13|1|0|0" \
+       "$(owc c003_sum '    2 + 3' 'a line does not begin with a value')|$(grep -c 'begin with +' "$owc_dir/c003_sum.out")"
+# ERRORS4 016: a comment is stepped over between a header and its {, and between an if's } and its else.
+expect "016: satellite.statement.else // a comment, then its { -- runs the else" "0|0|1|not one" \
+       "$(owc c016_else '    satellite.variable.number n = 7
+    satellite.statement.if(n == 1)
+    {
+        satellite.console.display("one")
+    }
+    satellite.statement.else // anything but one
+    {
+        satellite.console.display("not one")
+    }' 'has no body')|$(owc_last c016_else)"
+expect "016: } // end if, then the else -- runs the else" "0|0|1|small" \
+       "$(owc c016_end_if '    satellite.variable.number n = 5
+    satellite.statement.if(n > 9)
+    {
+        satellite.console.display("big")
+    } // end if
+    satellite.statement.else
+    {
+        satellite.console.display("small")
+    }' 'no satellite.statement.if before it')|$(owc_last c016_end_if)"
+expect "016: a comment line between an if's } and its else -- runs the else" "0|0|1|small" \
+       "$(owc c016_between '    satellite.variable.number n = 5
+    satellite.statement.if(n > 9)
+    {
+        satellite.console.display("big")
+    }
+    // otherwise
+    satellite.statement.else
+    {
+        satellite.console.display("small")
+    }' 'no satellite.statement.if before it')|$(owc_last c016_between)"
+expect "016: a comment line between if(...) and its { -- runs the body" "0|0|1|six" \
+       "$(owc c016_if '    satellite.statement.if(1 == 1)
+    // the body:
+    {
+        satellite.console.display("six")
+    }' 'has no body')|$(owc_last c016_if)"
+expect "016: a comment line between while(...) and its { -- runs the loop" "0|0|1|2" \
+       "$(owc c016_while '    satellite.variable.number i = 0
+    satellite.statement.while(i < 2)
+    // the body:
+    {
+        i = i + 1
+    }
+    satellite.console.display(i)' 'has no body')|$(owc_last c016_while)"
+expect "016: satellite.statement.else { // a comment -- runs the else" "0|0|1|not six" \
+       "$(owc c016_else_brace '    satellite.variable.number n = 5
+    satellite.statement.if(n == 6)
+    {
+        satellite.console.display("six")
+    }
+    satellite.statement.else { // not six
+        satellite.console.display("not six")
+    }' 'has no body')|$(owc_last c016_else_brace)"
+# ERRORS4 019: a blank line or a comment between satellite.return(satellite) and main's } is not main's last line.
+expect "019: a blank line before main's } -- runs, not S103" "0|0|1" \
+       "$(owc_file c019_blank 'satellite.capsule satellite.main()
+{
+    satellite.console.display("before")
+    satellite.return(satellite)
+
+}' 'FILE_HAS_NO_RETURN')"
+expect "019: a comment line before main's } -- runs, not S103" "0|0|1" \
+       "$(owc_file c019_comment 'satellite.capsule satellite.main()
+{
+    satellite.console.display("before")
+    satellite.return(satellite)
+    // the end
+}' 'FILE_HAS_NO_RETURN')"
+# ERRORS4 020: one file included under two spellings is one file, and a cycle through ./ ends.
+mkdir -p -- "$owc_dir/inc" "$owc_dir/cycle"
+printf 'satellite.capsule area(satellite.variable.number w, satellite.variable.number h)\n{\n    satellite.return(w * h)\n}\n' > "$owc_dir/inc/shapes.satl"
+expect "020: include(shapes) and include(./shapes) are one file -- 20, not \"either of two files\"" "0|0|1|20" \
+       "$(owc_file inc/dot 'satellite.include(shapes)
+satellite.include(./shapes)
+
+satellite.capsule satellite.main()
+{
+    satellite.console.display("before")
+    satellite.console.display(shapes.area(4, 5))
+    satellite.return(satellite)
+}' 'either of two files')|$(owc_last inc/dot)"
+expect "020: include(shapes) and include(../inc/shapes) are one file" "0|0|1|20" \
+       "$(owc_file inc/up 'satellite.include(shapes)
+satellite.include(../inc/shapes)
+
+satellite.capsule satellite.main()
+{
+    satellite.console.display("before")
+    satellite.console.display(shapes.area(4, 5))
+    satellite.return(satellite)
+}' 'either of two files')|$(owc_last inc/up)"
+printf 'satellite.include(./a)\n\nsatellite.capsule two()\n{\n    satellite.return(2)\n}\n' > "$owc_dir/cycle/b.satl"
+expect "020: a.satl and b.satl including each other through ./ -- 2, where the path grew until it could not be opened" "0|0|1|2" \
+       "$(owc_file cycle/a 'satellite.include(./b)
+
+satellite.capsule satellite.main()
+{
+    satellite.console.display("before")
+    satellite.console.display(b.two())
+    satellite.return(satellite)
+}' 'cannot locate file')|$(owc_last cycle/a)"
+# ERRORS4 022: a touching sign is refused before anything runs, wherever its line stands.
+expect "022: n = n+1 in an if that is never taken is refused before anything runs" "13|1|0" \
+       "$(owc c022_plus '    satellite.variable.number n = 5
+    satellite.statement.if(n > 10)
+    {
+        n = n+1
+    }' 'every math operation is written with a space on both sides of the sign, and this + has none')"
+expect "022: display(a*2) in an if that is never taken is refused before anything runs" "13|1|0" \
+       "$(owc c022_times '    satellite.variable.number a = 7
+    satellite.statement.if(a == 0)
+    {
+        satellite.console.display(a*2)
+    }' 'and this * has none')"
+expect "022: display(4+3) is refused before \"before\" prints" "13|1|0" \
+       "$(owc c022_display '    satellite.console.display(4+3)' 'and this + has none')"
+expect "022: n = n**3 is refused before anything runs, naming power" "13|1|0" \
+       "$(owc c022_power '    satellite.variable.number n = 2
+    n = n**3' 'power is written with a space on both sides -- 2 ** 3 or 2 ^ 3, never 2**3')"
+expect "022: ... and a for's i++ still runs" "0|0|1|1" \
+       "$(owc c022_for '    satellite.statement.for(satellite.variable.number i = 0; i < 2; i++)
+    {
+        satellite.console.display(i)
+    }' 'has none')|$(owc_last c022_for)"
+# ERRORS4 023: .reverse() takes nothing, and something in its brackets is refused before anything runs.
+expect "023: s.satellite.reverse(\"x\") is refused before anything runs -- it answered cba" "13|1|0" \
+       "$(owc c023_string '    satellite.variable.string s = "abc"
+    satellite.console.display(s.satellite.reverse("x"))' 's.satellite.reverse() takes nothing in its brackets')"
+expect "023: \"abc\".satellite.reverse(1, 2, 3) is refused before anything runs" "13|1|0" \
+       "$(owc c023_literal '    satellite.console.display("abc".satellite.reverse(1, 2, 3))' 'takes 0 arguments, and was given 3')"
+expect "023: n.satellite.reverse(99) is refused before anything runs -- it answered 321" "13|1|0" \
+       "$(owc c023_number '    satellite.variable.number n = 123
+    satellite.console.display(n.satellite.reverse(99))' 'n.satellite.reverse() takes nothing in its brackets')"
+# ERRORS4 038: a capsule whose name is not a name is refused on its header's line, and its body is not judged.
+expect "038: satellite.capsule x1() is refused at its own line, as a hex" "13|1|0|1" \
+       "$(owc_file c038_hex 'satellite.capsule x1()
+{
+    satellite.return(5)
+}
+
+satellite.capsule satellite.main()
+{
+    satellite.console.display("before")
+    satellite.return(satellite)
+}' 'satellite.capsule is followed by x1, which is read as a hex')|$(grep -c '^directory: .*c038_hex.satl:3$' "$owc_dir/c038_hex.out")"
+expect "038: satellite.capsule b1() is refused at its own line, as a binary" "13|1|0" \
+       "$(owc_file c038_binary 'satellite.capsule b1()
+{
+    satellite.return(5)
+}
+
+satellite.capsule satellite.main()
+{
+    satellite.console.display("before")
+    satellite.return(satellite)
+}' 'b1, which is read as a binary')"
+expect "038: satellite.capsule 5() is refused at its own line, not as a line outside every capsule" "13|1|0|1" \
+       "$(owc_file c038_number 'satellite.capsule 5()
+{
+    satellite.console.display("in")
+}
+
+satellite.capsule satellite.main()
+{
+    satellite.console.display("before")
+    satellite.return(satellite)
+}' 'satellite.capsule is followed by something that is not a name')|$(grep -c '^directory: .*c038_number.satl:3$' "$owc_dir/c038_number.out")"
+expect "038: a bare satellite.capsule as the file's last line needs a name -- the program ran" "13|1|0|1" \
+       "$(owc_file c038_bare 'satellite.capsule satellite.main()
+{
+    satellite.console.display("before")
+    satellite.return(satellite)
+}
+
+satellite.capsule' 'satellite.capsule needs a name')|$(grep -c '^directory: .*c038_bare.satl:9$' "$owc_dir/c038_bare.out")"
+# ERRORS4 039: an expression that stops early is told what it stopped at, and & | << >> !! only when one is there.
+expect "039: n = n -1 is told its minus touches the 1, not that & | << >> !! are undecided" "13|1|1|0" \
+       "$(owc c039_minus '    satellite.variable.number n = 5
+    n = n -1' 'it stops at a - with no space after it')|$(grep -c 'undecided' "$owc_dir/c039_minus.out")"
+expect "039: n = 5 6 is told it stops at a second value" "13|1|1" \
+       "$(owc c039_two '    satellite.variable.number n = 5
+    n = 5 6' 'it stops at a second value')"
+expect "039: satellite.statement.if(n = 5) is told == compares" "13|1|1" \
+       "$(owc c039_assign '    satellite.variable.number n = 5
+    satellite.statement.if(n = 5)
+    {
+    }' 'it stops at =, which gives a name its value -- two values are compared with ==')"
+expect "039: n = 0x1F is told how a hex is written" "13|1|1" \
+       "$(owc c039_hex '    satellite.variable.number n = 0x1F' 'a hex is written x1F and a binary b101')"
+expect "039: n = 5 ~ 3 is told it stops at ~, not that & | << >> !! are undecided" "13|1|1|0" \
+       "$(owc c039_tilde '    satellite.variable.number n = 5 ~ 3' 'it stops at ~, which has no meaning there yet')|$(grep -c 'undecided' "$owc_dir/c039_tilde.out")"
+# M3 (OPEN_ITEMS_2026-10-20, the checker gaps of 2026-10-19: a.make().secret()): a protected capsule called on an
+# object a capsule handed back is refused before anything runs, in a sentence true whatever object the answer is.
+owc_boxes='satellite.spacesuit box()
+{
+    satellite.protected
+    {
+        satellite.capsule secret()
+        {
+            satellite.return(9)
+        }
+    }
+    satellite.public
+    {
+        satellite.capsule open()
+        {
+            satellite.return(7)
+        }
+    }
+}
+
+satellite.spacesuit maker()
+{
+    satellite.public
+    {
+        satellite.capsule make()
+        {
+            box b
+            satellite.return(b)
+        }
+    }
+}
+'
+expect "M3: a.make().secret() is S230 before anything runs, as b.secret() is" "52|1|0" \
+       "$(owc_file cM3_secret "$owc_boxes
+satellite.capsule satellite.main()
+{
+    maker a
+    satellite.console.display(\"before\")
+    satellite.console.display(a.make().secret())
+    satellite.return(satellite)
+}" 'satl(check): in satellite.main, secret is inside the satellite.protected part of box')"
+expect "M3: ... and a.make().open() still runs" "0|0|1|7" \
+       "$(owc_file cM3_open "$owc_boxes
+satellite.capsule satellite.main()
+{
+    maker a
+    satellite.console.display(\"before\")
+    satellite.console.display(a.make().open())
+    satellite.return(satellite)
+}" 'S230')|$(owc_last cM3_open)"
+expect "M3: ... and when make() hands back a jar, which has no secret, the sentence still holds -- no 'move it to satellite.public'" "52|1|0|0" \
+       "$(owc_file cM3_jar "$owc_boxes
+satellite.spacesuit jar()
+{
+    satellite.public
+    {
+        satellite.capsule open()
+        {
+            satellite.return(1)
+        }
+    }
+}
+
+satellite.spacesuit jar_maker()
+{
+    satellite.public
+    {
+        satellite.capsule make()
+        {
+            jar j
+            satellite.return(j)
+        }
+    }
+}
+
+satellite.capsule satellite.main()
+{
+    jar_maker a
+    satellite.console.display(\"before\")
+    satellite.console.display(a.make().secret())
+    satellite.return(satellite)
+}" 'no spacesuit has a secret this line can reach -- whatever object comes before the ., its secret() cannot be called here')|$(grep -c 'move it to satellite.public' "$owc_dir/cM3_jar.out")"
+# ERRORS4 025: a type split across lines after its < or its > is joined, as one split after its comma is.
+expect "025: satellite.container.list< on one line and the rest on the next -- runs" "0|0|1|{1, 2}" \
+       "$(owc c025_list '    satellite.container.list<
+        satellite.variable.number> xs = {1, 2}
+    satellite.console.display(xs)' 'a type was expected')|$(owc_last c025_list)"
+expect "025: satellite.container.map< split the same way -- runs" '0|0|1|{"a": 1}' \
+       "$(owc c025_map '    satellite.container.map<
+        satellite.variable.string, satellite.variable.number> xs = {"a": 1}
+    satellite.console.display(xs)' 'a type was expected')|$(owc_last c025_map)"
+expect "025: a type split after its >, with the name on the next line -- runs" "0|0|1|{1, 2}" \
+       "$(owc c025_name '    satellite.container.list<satellite.variable.number>
+        xs = {1, 2}
+    satellite.console.display(xs)' 'no name after the >')|$(owc_last c025_name)"
+# ERRORS4 027: an else follows an if's } and no other.
+expect "027: an else after a while's } is refused before anything runs" "13|1|0|1" \
+       "$(owc c027_while '    satellite.statement.while(1 == 2)
+    {
+    }
+    satellite.statement.else
+    {
+        satellite.console.display("else")
+    }' 'satellite.statement.else with no satellite.statement.if before it')|$(grep -c 'SATELLITE CRITICAL ERROR REPORT' "$owc_dir/c027_while.out")"
+expect "027: a second else after an if and its else is refused before anything runs" "13|1|0" \
+       "$(owc c027_second '    satellite.statement.if(1 == 2)
+    {
+    }
+    satellite.statement.else
+    {
+    }
+    satellite.statement.else
+    {
+    }' 'satellite.statement.else with no satellite.statement.if before it')"
+expect "027: ... and if, else if, else still runs" "0|0|1|two" \
+       "$(owc c027_chain '    satellite.variable.number n = 2
+    satellite.statement.if(n == 1)
+    {
+        satellite.console.display("one")
+    }
+    satellite.statement.else satellite.statement.if(n == 2)
+    {
+        satellite.console.display("two")
+    }
+    satellite.statement.else
+    {
+        satellite.console.display("other")
+    }' 'no satellite.statement.if before it')|$(owc_last c027_chain)"
+# ERRORS4 028: a map's key type is one a key can be, or the declaration is refused.
+expect "028: map<list<number>, number> is refused where it is declared" "13|1|0" \
+       "$(owc c028_list '    satellite.container.map<satellite.container.list<satellite.variable.number>, satellite.variable.number> m
+    satellite.access(m)' 'a key must be a number, a string, a bool, a binary or a percentage')"
+expect "028: map<float, string> is refused where it is declared" "13|1|0" \
+       "$(owc c028_float '    satellite.container.map<satellite.variable.float, satellite.variable.string> m' 'a key must be a number, a string, a bool, a binary or a percentage')"
+
+# open-work runtime (2026-10-25)
+#
+# TWELVE PAGES OF SCRATCH.md/ERRORS4, one row or more each, every one red on the satl before them: 006 007 008
+# 009 011 013 031 032 033 034 035 042. Their programs are written under build/open_runtime; a time is a ratio of two
+# sizes, as "append is linear" above is, and a peak is read with getrusage, which needs no /usr/bin/time.
+ow_dir=$PWD/build/open_runtime
+rm -rf -- "$ow_dir"
+mkdir -p -- "$ow_dir"
+ow_main() {   # ow_main <file> <main's body lines>: a program of its own, main and nothing else
+    printf 'satellite.include(satellite)\n\nsatellite.capsule satellite.main()\n{\n%s\n    satellite.return(satellite)\n}\n' "$2" > "$1"
+}
+ow_peak() {   # ow_peak <program>: "exit|peak KiB" of one run
+    python3 -c '
+import resource, subprocess, sys
+p = subprocess.run([sys.argv[2], sys.argv[1]], stdin=subprocess.DEVNULL, stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
+print("%d|%d" % (p.returncode, resource.getrusage(resource.RUSAGE_CHILDREN).ru_maxrss))' "$1" "$interpreter"
+}
+ow_time() { { TIMEFORMAT=%R; time "$interpreter" "$1" > "$1.out" 2>&1; } 2>&1; }
+ow_linear() {   # ow_linear <small seconds> <big seconds> <times as much work>: linear, or what it took
+    awk -v s="$1" -v b="$2" -v x="$3" 'BEGIN { print (b < s * x * 2 + 0.1) ? "linear" : "QUADRATIC: " b "s vs " s "s" }'
+}
+
+# ERRORS4 006: LINES ONE HANDLE APPENDED ARE ON THE DISK BEFORE ANOTHER HANDLE OR satellite.info READS THE FILE
+# (SATELLITE_FILE_OPERATIONS 3.7). A second open read 0 lines, and its own line, saved, landed before the held one.
+mkdir -p -- "$ow_dir/006"
+ow_main "$ow_dir/006/order.satl" '    satellite.variable.file w = satellite.file.new("log.txt")
+    w.satellite.append("first")
+    satellite.variable.file r = satellite.file.open("log.txt")
+    satellite.console.display(r.satellite.size)
+    r.satellite.append("second")
+    r.satellite.save'
+ow_main "$ow_dir/006/info.satl" '    satellite.variable.file w = satellite.file.new("log2.txt")
+    w.satellite.append("alpha")
+    w.satellite.append("beta")
+    satellite.variable.info i = satellite.info.file("log2.txt")
+    satellite.console.display(w.satellite.size.satellite.string + " " + i[1]["line_count"].satellite.string)
+    satellite.variable.file r = satellite.file.open("log2.txt")
+    satellite.console.display(r.satellite.size)'
+"$interpreter" "$ow_dir/006/order.satl" > "$ow_dir/006/order.out" 2>&1
+ow_code=$?
+expect "ERRORS4 006: a second open reads the line another handle appended, and the file keeps the order it was written in" \
+       "0|1|first,second" "$ow_code|$(tail -1 "$ow_dir/006/order.out")|$(paste -sd, "$ow_dir/006/log.txt" 2>/dev/null)"
+"$interpreter" "$ow_dir/006/info.satl" > "$ow_dir/006/info.out" 2>&1
+ow_code=$?
+expect "ERRORS4 006: satellite.info.file counts the lines a handle holds, and so does a second open" \
+       "0|2 2|2" "$ow_code|$(tail -2 "$ow_dir/006/info.out" | paste -sd'|')"
+
+# ERRORS4 007: A LITERAL'S METHODS RUN ON THE LITERAL WITH ITS SIGN -- -5.satellite.add(3) is (-5).add(3), as -5 + 3 is.
+# A minus in front of a name still takes what its chain answers.
+ow_main "$ow_dir/007.satl" '    satellite.variable.number n = -5
+    satellite.console.display(-5.satellite.add(3))
+    satellite.console.display(-5.satellite.add(10))
+    satellite.console.display(-5 + 3 == -5.satellite.add(3))
+    satellite.console.display(-5.satellite.string)
+    satellite.console.display(-12.5.satellite.string)
+    satellite.console.display(-x1F.satellite.string)
+    satellite.console.display(-5 ^ 2)
+    satellite.console.display(-n.satellite.add(3))'
+"$interpreter" "$ow_dir/007.satl" > "$ow_dir/007.out" 2>&1
+ow_code=$?
+expect "ERRORS4 007: -5.satellite.add(3) is -2, -5.satellite.string is -5, and -n.satellite.add(3) is still -(n.add(3))" \
+       "0|-2|5|true|-5|-12.5|-x1F|25|2" "$ow_code|$(tail -8 "$ow_dir/007.out" | paste -sd'|')"
+
+# ERRORS4 008: .upper() AND .reverse() CHANGE A COLOURED STRING'S TEXT AND NOT ITS TERMINAL CODES, so display still
+# writes it plain into a pipe. The m of ESC[...m became M, and reverse wrote the codes backwards.
+ow_main "$ow_dir/008.satl" '    satellite.variable.string g = "ok".satellite.foreground(x00FF00)
+    satellite.console.display(g.satellite.upper())
+    satellite.console.display(g.satellite.reverse())
+    satellite.console.display(g.satellite.reverse().satellite.reverse() == g)
+    satellite.console.display(("a".satellite.foreground(xFF0000) + "b".satellite.background(x0000FF)).satellite.reverse())'
+"$interpreter" "$ow_dir/008.satl" > "$ow_dir/008.out" 2>&1
+ow_code=$?
+expect "ERRORS4 008: a coloured string's upper() and reverse() reach a pipe plain -- OK, ko -- and reversed twice it is itself" \
+       "0|OK|ko|true|ba|0" "$ow_code|$(tail -4 "$ow_dir/008.out" | paste -sd'|')|$(tail -4 "$ow_dir/008.out" | grep -c $'\033')"
+
+# ERRORS4 009: satellite.info.file, satellite.info.directory AND satellite.directory.list FIND A PATH FROM THE
+# PROGRAM'S FOLDER, as file.open does -- run from another folder they read the working directory.
+mkdir -p -- "$ow_dir/009/p1/room" "$ow_dir/009/other"
+printf 'one\ntwo\n' > "$ow_dir/009/p1/notes.txt"
+printf 'x\n' > "$ow_dir/009/p1/room/x.txt"
+ow_main "$ow_dir/009/p1/info.satl" '    satellite.variable.file f = satellite.file.open("notes.txt")
+    satellite.variable.info i = satellite.info.file("notes.txt")
+    satellite.variable.info d = satellite.info.directory("room")
+    satellite.console.display(f.satellite.size.satellite.string + " " + i[1]["line_count"].satellite.string + " " + d[1]["name"])
+    satellite.console.display(satellite.directory.list("room"))'
+( cd "$ow_dir/009/other" && "$interpreter" "$ow_dir/009/p1/info.satl" > "$ow_dir/009/info.out" 2>&1; echo $? > "$ow_dir/009/info.code" )
+expect "ERRORS4 009: run from another folder, info.file and info.directory read the program's own, and list(d) reads its room" \
+       "14|2 2 x.txt|1" \
+       "$(cat "$ow_dir/009/info.code")|$(grep -m1 '^2 ' "$ow_dir/009/info.out")|$(grep -c 'read 1 names' "$ow_dir/009/info.out")"
+
+# ERRORS4 011: satellite.console.input() ANSWERS A LINE WITHOUT ITS NEWLINE -- a \r before the \n is part of it, and
+# the first line's byte-order mark is not text, as satellite.file reads them.
+ow_main "$ow_dir/011.satl" '    satellite.variable.string a = satellite.console.input()
+    satellite.variable.string b = satellite.console.input()
+    satellite.console.display("[" + a + "][" + b + "]")
+    satellite.console.display(a == "12")
+    satellite.console.display(a.satellite.number() * 2)'
+printf '\xef\xbb\xbf12\r\nbob\r\n' > "$ow_dir/011.in"
+"$interpreter" "$ow_dir/011.satl" < "$ow_dir/011.in" > "$ow_dir/011.out" 2>&1
+ow_code=$?
+expect "ERRORS4 011: input() given a file saved on Windows, with a byte-order mark, answers 12 and bob" \
+       "0|[12][bob]|true|24" "$ow_code|$(tail -3 "$ow_dir/011.out" | paste -sd'|')"
+
+# ERRORS4 013: satellite.access MARKS A MULTIPLE INSIDE A MULTIPLE WITH BOTH CONDITIONS.
+ow_main "$ow_dir/013.satl" '    satellite.container.multiple<satellite.variable.string, satellite.container.list<satellite.container.multiple<satellite.variable.number, satellite.container.list<satellite.variable.number>>>> x = {1, {2, 3}}
+    satellite.access(x)'
+"$interpreter" "$ow_dir/013.satl" > "$ow_dir/013.out" 2>&1
+ow_code=$?
+expect "ERRORS4 013: access says x[n][m] works when x holds a list of multiples and x[n] holds a list of numbers" \
+       "0|2" "$ow_code|$(grep -c -- '-- when x holds a list of multiples and x\[n\] holds a list of numbers$' "$ow_dir/013.out")"
+
+# ERRORS4 031: s = s + ... IN A LOOP IS LINEAR -- each + copied the whole string, four times the time per doubling.
+for ow_n in 5000 20000; do
+    ow_main "$ow_dir/031_$ow_n.satl" '    satellite.variable.string s = ""
+    satellite.statement.for(satellite.variable.number i = 0; i < '"$ow_n"'; i++)
+    {
+        s = s + i.satellite.string + ","
+    }
+    satellite.console.display(s.satellite.size)
+    satellite.console.display(s.satellite.find("4999,"))'
+done
+ow_small=$(ow_time "$ow_dir/031_5000.satl")
+ow_big=$(ow_time "$ow_dir/031_20000.satl")
+expect "ERRORS4 031: s = s + i.satellite.string + \",\" builds the same string -- 108890 characters, 4999 at 23886" \
+       "108890|23886" "$(tail -2 "$ow_dir/031_20000.satl.out" | paste -sd'|')"
+expect "ERRORS4 031: ... in linear time (4x the passes: ${ow_small}s -> ${ow_big}s)" \
+       "linear" "$(ow_linear "$ow_small" "$ow_big" 4)"
+ow_main "$ow_dir/031_back.satl" '    satellite.variable.string s = "kept"
+    satellite.statement.if(satellite.bool.true)
+    {
+        s = s + "more" + satellite.infinity()
+    }
+    satellite.error()
+    {
+        satellite.console.display("caught")
+    }
+    satellite.console.display(s)'
+"$interpreter" "$ow_dir/031_back.satl" > "$ow_dir/031_back.out" 2>&1
+ow_code=$?
+expect "ERRORS4 031: a join refused part way, and caught, leaves the string as it was" \
+       "0|caught|kept" "$ow_code|$(tail -2 "$ow_dir/031_back.out" | paste -sd'|')"
+ow_main "$ow_dir/031_tail.satl" '    satellite.variable.string s = "kept"
+    satellite.variable.string t = "y"
+    satellite.statement.if(satellite.bool.true)
+    {
+        s = s + "more" + t t
+    }
+    satellite.error()
+    {
+        satellite.console.display("caught")
+    }
+    satellite.console.display(s)'
+"$interpreter" "$ow_dir/031_tail.satl" > "$ow_dir/031_tail.out" 2>&1
+ow_code=$?
+expect "ERRORS4 031: a line not read to the end after its joins, and caught, leaves the string as it was" \
+       "0|caught|kept" "$ow_code|$(tail -2 "$ow_dir/031_tail.out" | paste -sd'|')"
+
+# ERRORS4 032: EMPTYING A MAP FROM ITS END IS LINEAR -- remove_last walked the whole table, and remove(k) the entries.
+for ow_n in 5000 20000; do
+    for ow_how in remove_last remove; do
+        ow_main "$ow_dir/032_${ow_how}_$ow_n.satl" '    satellite.container.map<satellite.variable.number, satellite.variable.number> m
+    satellite.statement.for(satellite.variable.number i = 1; i <= '"$ow_n"'; i++)
+    {
+        m[i] = i
+    }
+    satellite.statement.for(satellite.variable.number i = '"$ow_n"'; i >= 1; i--)
+    {
+        m.satellite.'"$ow_how"'('"$([ $ow_how = remove ] && echo i)"')
+    }
+    satellite.console.display(m.satellite.size)'
+    done
+done
+ow_small=$(ow_time "$ow_dir/032_remove_last_5000.satl")
+ow_big=$(ow_time "$ow_dir/032_remove_last_20000.satl")
+expect "ERRORS4 032: a 20,000-key map emptied with remove_last in linear time (4x the keys: ${ow_small}s -> ${ow_big}s)" \
+       "0|linear" "$(tail -1 "$ow_dir/032_remove_last_20000.satl.out")|$(ow_linear "$ow_small" "$ow_big" 4)"
+ow_small=$(ow_time "$ow_dir/032_remove_5000.satl")
+ow_big=$(ow_time "$ow_dir/032_remove_20000.satl")
+expect "ERRORS4 032: ... and with remove(k) from the last key back (4x the keys: ${ow_small}s -> ${ow_big}s)" \
+       "0|linear" "$(tail -1 "$ow_dir/032_remove_20000.satl.out")|$(ow_linear "$ow_small" "$ow_big" 4)"
+
+# ERRORS4 033: A TYPED LIST HANDED TO A NAME OF ITS OWN TYPE IS NOT WALKED AGAIN EACH TIME -- 5,000 calls cost
+# about the same with 1,000 items as with 16,000. Re-checked, they cost sixteen times as much.
+for ow_n in 1000 16000; do
+    printf '%s\n' 'satellite.include(satellite)' '' \
+        'satellite.capsule first_of(satellite.container.list<satellite.variable.number> a)' '{' \
+        '    satellite.return(a[1])' '}' '' 'satellite.capsule satellite.main()' '{' \
+        '    satellite.container.list<satellite.variable.number> xs = satellite.container.list()' \
+        "    satellite.statement.for(satellite.variable.number i = 1; i <= $ow_n; i++)" '    {' \
+        '        xs.satellite.append(i)' '    }' '    satellite.variable.number total = 0' \
+        '    satellite.statement.for(satellite.variable.number t = 1; t <= 5000; t++)' '    {' \
+        '        total = total + first_of(xs)' \
+        '        satellite.container.list<satellite.variable.number> view = xs' \
+        '        total = total + view[2] - 2' '    }' \
+        '    xs.satellite.append(0)' '    xs[1] = 7' '    satellite.console.display(total + first_of(xs))' \
+        '    satellite.return(satellite)' '}' > "$ow_dir/033_$ow_n.satl"
+done
+ow_small=$(ow_time "$ow_dir/033_1000.satl")
+ow_big=$(ow_time "$ow_dir/033_16000.satl")
+expect "ERRORS4 033: 5,000 typed calls and declarations cost the same with 16x the items (${ow_small}s -> ${ow_big}s)" \
+       "5007|5007|flat" \
+       "$(tail -1 "$ow_dir/033_1000.satl.out")|$(tail -1 "$ow_dir/033_16000.satl.out")|$(awk -v s="$ow_small" -v b="$ow_big" 'BEGIN { print (b < s * 3 + 0.1) ? "flat" : "WALKED: " b "s vs " s "s" }')"
+ow_main "$ow_dir/033_changed.satl" '    satellite.container.list xs = {}
+    satellite.statement.for(satellite.variable.number i = 1; i <= 200; i++)
+    {
+        xs.satellite.append(i)
+    }
+    satellite.container.list<satellite.variable.number> typed = xs
+    xs[100] = "not a number"
+    satellite.container.list<satellite.variable.number> again = xs'
+"$interpreter" "$ow_dir/033_changed.satl" > "$ow_dir/033_changed.out" 2>&1
+ow_code=$?
+expect "ERRORS4 033: a list changed since it was found to fit is walked again -- its item 100 is refused" \
+       "27|1" "$ow_code|$(tr '\n' ' ' < "$ow_dir/033_changed.out" | grep -c 'item 100 of it does not fit')"
+
+# ERRORS4 034: A JOINED THREAD, AND ONE THAT ENDED WHERE NO NAME HOLDS IT, LEAVE THE LIST OF RUNNING THREADS --
+# kept there, each held its answer and its stack to the program's end.
+printf '%s\n' 'satellite.include(satellite)' '' 'satellite.capsule build(satellite.variable.number n)' '{' \
+    '    satellite.container.list<satellite.variable.number> l = {}' \
+    '    satellite.statement.for(satellite.variable.number i = 0; i < n; i++)' '    {' \
+    '        l.satellite.append(i)' '    }' '    satellite.return(l)' '}' '' \
+    'satellite.capsule satellite.main()' '{' '    satellite.variable.number total = 0' \
+    '    satellite.statement.for(satellite.variable.number round = 0; round < 40; round++)' '    {' \
+    '        satellite.variable.thread t = satellite.thread.new(build(50000))' '        t.satellite.start()' \
+    '        satellite.container.list<satellite.variable.number> got = t.satellite.join()' \
+    '        total = total + got.satellite.size' '    }' '    satellite.console.display(total)' \
+    '    satellite.return(satellite)' '}' > "$ow_dir/034_joined.satl"
+printf '%s\n' 'satellite.include(satellite)' '' 'satellite.capsule echo(satellite.variable.number n)' '{' \
+    '    satellite.return(n)' '}' '' 'satellite.capsule satellite.main()' '{' \
+    '    satellite.statement.for(satellite.variable.number round = 0; round < 10000; round++)' '    {' \
+    '        satellite.variable.thread t = satellite.thread.new(echo(round))' '        t.satellite.start()' \
+    '    }' '    satellite.return(satellite)' '}' > "$ow_dir/034_left.satl"
+ow_joined=$(ow_peak "$ow_dir/034_joined.satl")
+ow_left=$(ow_peak "$ow_dir/034_left.satl")
+expect "ERRORS4 034: 40 threads joined in turn, each answering 50,000 items, peak under 100 MB (${ow_joined#*|} KiB)" \
+       "0|yes" "${ow_joined%|*}|$([ "${ow_joined#*|}" -lt 102400 ] && echo yes || echo no)"
+expect "ERRORS4 034: 10,000 threads started and never joined, peak under 64 MB (${ow_left#*|} KiB)" \
+       "0|yes" "${ow_left%|*}|$([ "${ow_left#*|}" -lt 65536 ] && echo yes || echo no)"
+
+# ERRORS4 035: A COMMENT ON A LINE OF ITS OWN AFTER A CAPSULE'S LAST SELF-CALL KEEPS IT A TAIL CALL -- 300,000 levels
+# held 1 GB with the comment, and 11 MB without it.
+for ow_how in comment return; do
+    printf '%s\n' 'satellite.include(satellite)' '' 'satellite.capsule down(satellite.variable.number n)' '{' \
+        '    satellite.statement.if(n == 0)' '    {' '        satellite.console.display("bottom")' \
+        '        satellite.return()' '    }' '    down(n - 1)' '    // the last thing it does' \
+        "$([ $ow_how = return ] && echo '    satellite.return()')" '}' '' \
+        'satellite.capsule satellite.main()' '{' '    down(300000)' '    satellite.console.display("back")' \
+        '    satellite.return(satellite)' '}' > "$ow_dir/035_$ow_how.satl"
+done
+ow_comment=$(ow_peak "$ow_dir/035_comment.satl")
+ow_return=$(ow_peak "$ow_dir/035_return.satl")
+expect "ERRORS4 035: down(n - 1) then a comment line stays a loop: under 200 MB at 300,000 levels (${ow_comment#*|} KiB)" \
+       "0|yes" "${ow_comment%|*}|$([ "${ow_comment#*|}" -lt 204800 ] && echo yes || echo no)"
+expect "ERRORS4 035: ... and so does a comment line then satellite.return() (${ow_return#*|} KiB)" \
+       "0|yes" "${ow_return%|*}|$([ "${ow_return#*|}" -lt 204800 ] && echo yes || echo no)"
+
+# ERRORS4 042: A CAPSULE CALLED ON AN EMPTY SPACESUIT FIELD IS TOLD THE FIELD HOLDS NO OBJECT YET -- not that a math
+# sign wants spaces, or that & | << >> !! are undecided. At the run, since being empty is a fact of the run.
+for ow_how in display declare bare; do
+    case $ow_how in
+        display) ow_line='            satellite.console.display(motor.get_power())' ;;
+        declare) ow_line='            satellite.variable.number n = motor.get_power()' ;;
+        bare)    ow_line='            motor.get_power()' ;;
+    esac
+    printf '%s\n' 'satellite.include(satellite)' '' 'satellite.spacesuit engine()' '{' '    satellite.public' '    {' \
+        '        satellite.capsule get_power()' '        {' '            satellite.return(5)' '        }' '    }' '}' '' \
+        'satellite.spacesuit car()' '{' '    satellite.protected' '    {' '        engine motor' '    }' \
+        '    satellite.public' '    {' '        satellite.capsule power()' '        {' \
+        '            satellite.console.display("before")' "$ow_line" '        }' '    }' '}' '' \
+        'satellite.capsule satellite.main()' '{' '    car d' '    d.power()' '    satellite.return(satellite)' '}' \
+        > "$ow_dir/042_$ow_how.satl"
+    "$interpreter" "$ow_dir/042_$ow_how.satl" > "$ow_dir/042_$ow_how.out" 2>&1
+    ow_code=$?
+    expect "ERRORS4 042: motor.get_power() on an empty field ($ow_how) is told motor holds no object yet" \
+           "13|1|1|0" "$ow_code|$(grep -c '^before$' "$ow_dir/042_$ow_how.out")|$(tr '\n' ' ' < "$ow_dir/042_$ow_how.out" | grep -c 'motor holds no object yet, so it has no get_power')|$(grep -c 'math sign\|undecided' "$ow_dir/042_$ow_how.out")"
+done
+ow_main "$ow_dir/042_window.satl" '    satellite.variable.window w
+    satellite.statement.if(satellite.bool.false)
+    {
+        w = satellite.window.new("t", 800, 600)
+        w.satellite.window.display.file("file_display")
+    }
+    satellite.console.display("before")
+    satellite.console.display(w.file_display)'
+"$interpreter" "$ow_dir/042_window.satl" > "$ow_dir/042_window.out" 2>&1
+ow_code=$?
+expect "ERRORS4 042: an empty window name before a widget's name is told w holds no object yet, and not that it is a field" \
+       "13|1|1|0" "$ow_code|$(grep -c '^before$' "$ow_dir/042_window.out")|$(tr '\n' ' ' < "$ow_dir/042_window.out" | grep -c 'w holds no object yet, so it has no file_display')|$(tr '\n' ' ' < "$ow_dir/042_window.out" | grep -c 'spacesuit')"
+
+# open-work tools (2026-10-25)
+# A HARNESS IS STALE TO A make WITH OTHER FLAGS (065-tests.mk's flags stamp): before it, build/prompt_cases
+# was current to OPT=-O0 and to CXX=g++ as well -- 0|0|0 -- and check.sh ran what other flags had made.
+# THE OTHER FLAGS ARE NEVER THE BUILD'S OWN: -O0 and g++, or -O2 and clang++ when the stamp says it was
+# built with those (`CXX=g++ ./check.sh` on a g++ build). And only make's answer is kept: 010-compiler.mk
+# writes a note on stdout when a clang has no libc++.
+harness_flags=$(cat build/.harness-flags 2>/dev/null)
+other_opt=-O0; case " $harness_flags " in *" -O0 "*) other_opt=-O2 ;; esac
+other_cxx=g++; [ "${harness_flags%% *}" = g++ ] && other_cxx=clang++
+expect "a harness is current to make under the flags it was built with, and stale under another OPT or another CXX (065-tests.mk)" \
+       "0|1|1" \
+       "$(HOME="$STARTED_HOME" make -sq build/prompt_cases >/dev/null 2>&1; echo $?)|$(HOME="$STARTED_HOME" make -sq OPT=$other_opt build/prompt_cases >/dev/null 2>&1; echo $?)|$(HOME="$STARTED_HOME" make -sq CXX=$other_cxx build/prompt_cases >/dev/null 2>&1; echo $?)"
+# && || ! RUN, AND THE ONE HELP PAGE THAT NAMES THEM SAYS SO (ERRORS4 053): it listed them under COMING,
+# and said "None of this reads today".
+printf 'satellite.include(satellite)\n\nsatellite.capsule satellite.main()\n{\n    satellite.variable.bool done = satellite.bool.false\n    satellite.console.display(!done)\n    satellite.console.display(satellite.bool.true && done)\n    satellite.console.display(satellite.bool.true || done)\n    satellite.return(satellite)\n}\n' > build/conditions_run.satl
+"$interpreter" build/conditions_run.satl > build/conditions_run.out 2> build/conditions_run.err; code=$?
+printf 'satellite.help(binary_and_hexadecimal)\n' | "$interpreter" --repl > build/help_conditions.out 2>&1
+expect "&& || ! run, and satellite.help(binary_and_hexadecimal) says they run today and lists them under COMING no more (ERRORS4 053)" \
+       "0|true false true|1|0|0" \
+       "$code|$(tr '\n' ' ' < build/conditions_run.out | sed 's/ $//')|$(grep -c "^The same ruling's conditions are built, and run today: && and || take two$" build/help_conditions.out)|$(grep -c '^- conditions: && || !$' build/help_conditions.out)|$(grep -c 'None of this reads today' build/help_conditions.out)"
 
 echo "$passed passed, $failed failed"
 [ "$failed" = 0 ]

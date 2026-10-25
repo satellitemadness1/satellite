@@ -57,12 +57,14 @@
 #include "drive_calls.hpp"
 #include "test_calls.hpp"
 #include "window_calls.hpp"
+#include "window_readers.hpp"
 #include "thread_calls.hpp"
 #include "program_calls.hpp"
 #include "word_codes.hpp"
 #include "delete_calls.hpp"
 #include "../machine/s_codes.hpp"
 #include "../machine/source_position.hpp"
+#include "../satellite_variable_number/number_conversions.hpp"
 
 #include <algorithm>
 #include <string>
@@ -124,6 +126,40 @@ bool habit_from_another_language(const std::vector<std::bitset<16>> &row, std::s
         return true;
     }
     return false;
+}
+
+// WHY A LINE CANNOT BEGIN WITH THIS CODE (ERRORS4 003): a value, a sign or a closing bracket, which check_statement
+// has no arm for -- said as the sign line's sentence is, "a line does not begin with ...".
+std::string a_line_does_not_begin_with(Code code)
+{
+    if (code == token::comment_start_token || code == token::comment_end_token)
+        return std::string("a line does not begin with ") + (code == token::comment_start_token ? "/*" : "*/") +
+               " -- a comment is written //, and runs to the end of its line";
+    if (token::carries_a_count(code))
+        return "a line does not begin with a value -- a value on a line of its own does nothing: give it to a name, "
+               "n = 5";
+    if (code == token::method_token || code == token::satellite_method_token)
+        return "a line does not begin with a . -- a .method goes on its value's line, or on the very next line";
+    const char *sign = code == token::not_token                   ? "!"
+                     : code == token::right_parenthesis_token     ? ")"
+                     : code == token::right_square_bracket_token  ? "]"
+                     : code == token::left_parenthesis_token      ? "("
+                     : code == token::left_square_bracket_token   ? "["
+                     : code == token::equals_token                ? "=="
+                     : code == token::not_equals_token            ? "!="
+                     : code == token::less_than_token             ? "<"
+                     : code == token::greater_than_token          ? ">"
+                     : code == token::less_or_equal_token         ? "<="
+                     : code == token::greater_or_equal_token      ? ">="
+                     : code == token::assign_token                ? "="
+                     : code == token::times_token || code == token::tight_times_token ? "*"
+                     : code == token::divide_token || code == token::path_separator_token ? "/"
+                     : code == token::modulus_token || code == token::tight_modulus_token ? "%"
+                     : code == token::power_token || code == token::tight_power_token ? "^"
+                     : code == token::comma_token                 ? ","
+                                                                  : nullptr;
+    return std::string("a line does not begin with ") + (sign != nullptr ? sign : "this") +
+           " -- a line begins with a name or a word of the language";
 }
 
 // HOW MANY ONE-CHARACTER CHANGES TURN a INTO b (Levenshtein), for a misspelled word.
@@ -208,10 +244,18 @@ struct Where {
     std::vector<bool> error_blocks;
     std::size_t block_closed_at = kNowhere;
     std::size_t error_closed_at = kNowhere;
+    // AND THE `{` AN if FOUND AFTER ITS HEADER -- an else if's too -- marked the same way, and where the last if's `}`
+    // stood: the one `}` an else may follow (ERRORS4 027). A while's `}`, or an else's, let an else through to the
+    // run, which refused it after the lines above it had printed.
+    std::size_t if_brace = kNowhere;
+    std::vector<bool> if_blocks;
+    std::size_t if_closed_at = kNowhere;
     void error_block_opened(std::size_t brace)
     {
         error_blocks.push_back(brace == error_brace);
         if (brace == error_brace) error_brace = kNowhere;
+        if_blocks.push_back(brace == if_brace);
+        if (brace == if_brace) if_brace = kNowhere;
     }
     void error_block_closed(std::size_t brace)
     {
@@ -219,6 +263,9 @@ struct Where {
         if (!error_blocks.empty()) error_blocks.pop_back();
         block_closed_at = an_error_block ? kNowhere : brace;
         error_closed_at = an_error_block ? brace : kNowhere;
+        const bool an_if = !if_blocks.empty() && if_blocks.back();
+        if (!if_blocks.empty()) if_blocks.pop_back();
+        if_closed_at = an_if ? brace : kNowhere;
     }
     bool inside_a_loop() const
     {
@@ -254,6 +301,9 @@ struct Where {
         if (!block_numbers.empty()) block_numbers.pop_back();
     }
     std::size_t statement = kNowhere;    // where the statement being judged starts
+    // WHERE A for's STEP BEGINS, while its condition and step are judged: a touching sign there is
+    // for_step_moves_by's to judge -- i++ is right -- and names_in_statement leaves it alone (ERRORS4 022).
+    std::size_t for_step = kNowhere;
     const Arguments *arguments = nullptr;  // the rows satl holds, which `argz.row = x` may not write
     bool typed_line = false;             // at the prompt: declaring a kept name again replaces it
     // AT THE PROMPT, FOR THE ARGUMENTS (2026-10-06): a setting a line there changes is saved for good. A typed
@@ -265,6 +315,27 @@ struct Where {
     // one, as the walker works it out, so `satellite.variable.string words =
     // words.join(",")` over a kept list is judged as the list's join.
     std::vector<std::pair<std::string, Code>> replacing;
+    // A SECTION'S OR A DISPLAY'S NAME IS A NAME (SATELLITE_WINDOW_SECTIONS.md SEC-0, rule 4): each name such a line
+    // declared here, with what made it -- "section", "file display", "text input" -- for the sentence a second
+    // declaration of it is told (declared_twice). Forgotten when the name is declared afresh (declares).
+    std::unordered_map<std::string, std::string> made_by;
+    // AND WHERE A DISPLAY OR A SECTION MAY GO (rules 6 and 7), judged before the run only where the checker can see
+    // the lines: what is in each window, section and display whose lines run STRAIGHT DOWN this capsule -- at the
+    // body's own level, in no block, which `straight_down` says of the line being judged (check_program's body loop
+    // sets it; a typed line and a field are never straight down). A window is seen from the line that declares it
+    // from satellite.window.new, and a section or a display from its own line. A name stops being seen -- with
+    // everything made in it -- the moment a line uses it as anything but the receiver of its own line straight down:
+    // handed to a capsule, put in a list, given to another name, given a value, closed, or written in a block. What
+    // is not seen is refused when its line runs, by window_widget_made (where_it_goes_refused says the rest).
+    struct SeenWhole {
+        bool a_window = false;       // from satellite.window.new; otherwise a section or a display
+        bool a_section = false;
+        bool holds_sections = false;
+        bool shows_a_display = false;   // a section: the one that fills it; a window: one across its top
+        std::string made_in;         // the name of what it was made in, when that was a name
+    };
+    std::unordered_map<std::string, SeenWhole> seen_whole;
+    bool straight_down = false;
 };
 
 // A `{` THAT OPENS NO BODY, refused before anything runs (the author, 2026-10-12: "fix this as the next thing that
@@ -320,6 +391,7 @@ bool declares(Where &where, DeclaredNames &declared, const std::string &name, Co
         return false;
     if (declared.emplace(name, code).second) {   // written into its place in satellite.legal (LegalNames)
         where.declared_in[name] = where.this_block();
+        where.made_by.erase(name);              // the_names_a_line_makes writes it again for a section's line
         where.deleted_in.erase(name);
         where.deleted_on_line.erase(name);
         where.ended_at.erase(name);
@@ -350,9 +422,21 @@ std::size_t line_a_person_wrote(const Where &where, const std::vector<std::bitse
     return line;
 }
 
+// A SECTION'S OR A DISPLAY'S NAME WRITTEN BARE WHERE NO LINE DECLARED IT (SEC-0, rule 4): most often in another
+// capsule, which is told how that capsule reaches it -- "a satellite.variable line" alone was wrong advice, since the
+// capsule that made it had none either (the fresh reader of SEC-0, 2026-10-25). "" for any other name.
+std::string a_name_made_elsewhere(const Where &where, const std::string &name)
+{
+    if (where.widget_names == nullptr || where.widget_names->count(name) == 0)
+        return std::string();
+    return " -- a section's or a display's name is a name in the capsule whose line made it; a capsule given the "
+           "window reaches it as its_window." + name;
+}
+
 // A NAME NO LONGER LEGAL HERE, NAMED AGAIN: one whose block ended is told the } that ended it and its place in
 // satellite.legal; one satellite.delete took, the line it went on -- and, when it went inside a block that has
-// ended, that only that block may declare it again. Any other name is told what it always was.
+// ended, that only that block may declare it again. Any other name is told what it always was, and a section's or a
+// display's how another capsule reaches it.
 std::string not_declared_why(const Where &where, const std::vector<std::bitset<16>> &row, const std::string &name)
 {
     if (where.ended_at.count(name) == 0 && where.ended_earlier.count(name) != 0)
@@ -367,7 +451,7 @@ std::string not_declared_why(const Where &where, const std::vector<std::bitset<1
                "; declare it above that block to use it after it";
     const std::unordered_map<std::string, std::size_t>::const_iterator gone = where.deleted_on_line.find(name);
     if (gone == where.deleted_on_line.end())
-        return name_not_declared_why(name);
+        return name_not_declared_why(name) + a_name_made_elsewhere(where, name);
     return name + " was deleted by satellite.delete(" + name + ") on line " + std::to_string(gone->second) +
            ", and no line after that one can use it -- " +
            (deleted_in_another_block(where, name) ? "it went inside a block, and only that block may declare it again"
@@ -710,6 +794,95 @@ signed long long int after_the_name(const std::vector<std::bitset<16>> &row, std
 // string is not one of theirs.
 bool brackets_at(const std::vector<std::bitset<16>> &row, std::size_t open, std::size_t &close, std::size_t &count);
 
+// ONE SIZE OF A SECTION, AT `at`, WHEN IT IS A LITERAL ALONE -- 50%, 1/2, 400, a minus before one of them, touching
+// or spaced, as the run's own unary minus takes both (expression.cpp); "wide", 2.5, a hex, a binary, a time,
+// satellite.bool.true -- made into the value the run would make (expression.cpp's literals) and judged as the run
+// judges it (SEC-1). `at` is left on the comma or the bracket after the argument either way, so the next one can
+// be judged. Anything else is an expression the run works out, and passes here.
+signed long long int size_literal_refused(const std::vector<std::bitset<16>> &row, std::size_t &at,
+                                          const std::string &what, std::string &why)
+{
+    std::size_t k = at;
+    const bool below_zero = code_at(row, k) == token::tight_minus_token || code_at(row, k) == token::minus_token;
+    if (below_zero)
+        ++k;
+    const Code code = code_at(row, k);
+    Value made;
+    bool a_literal = true;
+    if (code == token::percentage_token) {
+        satellite_percentage percent;
+        a_literal = satellite_percentage::from_digits(text_at(row, k), percent) == success;
+        if (below_zero)
+            percent.scaled = -percent.scaled;
+        made = Value::of_percentage(std::move(percent));
+    } else if (code == token::number_token) {
+        const std::string digits = text_at(row, k);
+        std::string unused;
+        if (code_at(row, k) == token::fraction_token) {
+            a_literal = fraction_literal(digits, row, k, made, unused) == success;
+            if (a_literal && below_zero)
+                made = Value::of_fraction(made.as_fraction()->negated());
+        } else if (digits.find('.') != std::string::npos) {
+            a_literal = float_literal(digits, made, unused) == success;
+        } else {
+            satellite_number number;
+            a_literal = number_fast_path::from_token_text(digits, 10, number) == success;
+            made = Value::of_number(below_zero ? -number : number);
+        }
+    } else if (code == token::string_token && !below_zero) {
+        satellite_string text;
+        std::size_t bad_character = 0;
+        a_literal = string_literal_at(row, k, text, bad_character) == success;
+        made = Value::of_string(std::move(text));
+    } else if (code == token::hexadecimal_token && !below_zero) {
+        std::string unused;
+        a_literal = hexadecimal_literal(text_at(row, k), made, unused) == success;
+    } else if (code == token::binary_token && !below_zero) {
+        satellite_binary_number bits;
+        a_literal = satellite_binary_number::from_digits(text_at(row, k), bits) == success;
+        made = Value::of_binary(std::move(bits));
+    } else if (code == token::time_token && !below_zero) {
+        const std::string written = text_at(row, k);
+        satellite_time::Unit unit = satellite_time::Unit::second;
+        std::size_t suffix = 0;
+        satellite_time length;
+        a_literal = satellite_time::unit_at_the_end(written, unit, suffix) &&
+                    satellite_time::from_digits(written.substr(0, written.size() - suffix), unit, length) == success;
+        made = Value::of_time(std::move(length));
+    } else if ((code == word::code_of(1, 17, 1) || code == word::code_of(1, 17, 2)) && !below_zero) {
+        made = Value::of_bool(code == word::code_of(1, 17, 2));
+        ++k;
+    } else {
+        a_literal = false;
+    }
+    // ALONE: the comma or the bracket straight after it. `1 / 3` and `50% / 2` go on past it, and are the run's.
+    a_literal = a_literal && (code_at(row, k) == token::comma_token || code_at(row, k) == token::right_parenthesis_token);
+    std::size_t depth = 0;
+    while (k < row.size() && !(depth == 0 && (code_at(row, k) == token::comma_token ||
+                                              code_at(row, k) == token::right_parenthesis_token))) {
+        const Code next = code_at(row, k);
+        if (next == token::line_end_token || next == token::end_of_file_token)
+            break;
+        if (token::carries_a_count(next)) { text_at(row, k); continue; }
+        if (next == token::left_parenthesis_token || next == token::left_square_bracket_token ||
+            next == token::left_brace_token)
+            ++depth;
+        else if ((next == token::right_parenthesis_token || next == token::right_square_bracket_token ||
+                  next == token::right_brace_token) && depth > 0)
+            --depth;
+        ++k;
+    }
+    at = k;
+    if (!a_literal)
+        return success;
+    AnExtent unused;
+    return extent_refused(made, unused, what, why);
+}
+
+} // namespace
+
+// THE ONE window_calls.hpp DECLARES, outside the anonymous namespace since SEC-0: check_program's pass over every name
+// a program gives a widget asks it too, wherever `.satellite.window.section` is written.
 signed long long int section_written_wrong(const std::vector<std::bitset<16>> &row, std::size_t open,
                                           const std::string &spelling, std::string &why)
 {
@@ -731,8 +904,21 @@ signed long long int section_written_wrong(const std::vector<std::bitset<16>> &r
     const std::string named = text_at(row, k);
     if (!a_widget_name_fits(named, why))
         return satl_line_not_understood;
+    // ITS WIDTH AND ITS HEIGHT, WHEN EACH IS WRITTEN AS A LITERAL (SATELLITE_WINDOW_SECTIONS.md SEC-1): refused before
+    // anything runs, in the sentence the run would say (window_readers.cpp's extent_refused). A size worked out by the
+    // run -- a name, `100% / 3`, `1 / 3` -- is the run's to judge.
+    for (const char *which : {"'s width", "'s height"}) {
+        if (code_at(row, k) != token::comma_token)
+            return success;
+        ++k;
+        const signed long long int judged = size_literal_refused(row, k, named + which, why);
+        if (judged != success)
+            return judged;
+    }
     return success;
 }
+
+namespace {
 
 // THE BRACES THAT OPEN AT `open`, a list or a map written whole where a value goes: `close` on the `}` that closes
 // them, and `a_map` when a `:` follows their first item at their own depth, which is how the walker tells a map
@@ -998,8 +1184,16 @@ signed long long int method_judged(const std::vector<std::bitset<16>> &row, std:
                              declared_as == word::code_of(1, 6, 21) ||   // the arguments: an index
                              declared_as == word::code_of(1, 6, 22);     // an info: a list of indexes
 
-    if (method == token::reverse_token)
+    // .reverse() TAKES NOTHING, on every type that has one (ERRORS4 023): s.reverse("x") and n.reverse(99) ran with
+    // what they were given dropped, where s.upper(1) is refused in this sentence (below).
+    if (method == token::reverse_token) {
+        std::size_t close = k + 2, given = 0;
+        if (code_at(row, k + 2) == token::left_parenthesis_token && (!brackets_at(row, k + 2, close, given) || given != 0)) {
+            why = spelling + "() takes nothing in its brackets";
+            return satl_line_not_understood;
+        }
         return success;                  // every type with an order has one
+    }
     // object.satellite.pointer() AND .satellite.reference() ARE AN OBJECT'S (pointer_calls.hpp) -- an object
     // of a satellite.spacesuit, the one kind `b = a` shares -- and a name declared any other type has
     // neither. Said as that, and not as a method not built yet; method_on_a_name asks it first, with the
@@ -1194,9 +1388,8 @@ signed long long int method_judged(const std::vector<std::bitset<16>> &row, std:
             return satl_line_not_understood;
         }
         // A SECTION'S NAME, ON A NAME THAT HOLDS A WINDOW (the review, 2026-10-10): judged here and in a
-        // widget's chain after one, where the receiver is known -- an object's capsule may be called
-        // section too, and is left alone.
-        if (method == token::section_token)
+        // widget's chain after one. `.satellite.window.section` since SEC-0, which no object's capsule can be.
+        if (method == token::window_section_token)
             return section_written_wrong(row, k + 2, spelling, why);
         return success;
     }
@@ -1900,9 +2093,18 @@ signed long long int a_name_it_may_take(const CapsuleTable &capsules, std::size_
     return name_declared_twice;
 }
 
+// THE SENTENCE FOR A NAME A SECTION'S OR A DISPLAY'S LINE DECLARED, declared again by a declaration (SEC-0, rule 4;
+// the plan's wording, which is the author's to change): `top` is the section's name, and a line writes it bare.
+std::string declared_by_its_line(const std::string &name, const std::string &made_by)
+{
+    return name + " is declared by its " + made_by + " line already -- write " + name + ", bare, where the " + made_by +
+           " is wanted";
+}
+
 // A NAME DECLARED A SECOND TIME, said for what it already is: a field of the object the
-// capsule runs on, or another variable of the capsule.
-std::string declared_twice(const Where &where, const std::string &name)
+// capsule runs on, or another variable of the capsule. `maker`, when a section's or a
+// display's line is what declares it now (SEC-0, rule 4): "section", "file display".
+std::string declared_twice(const Where &where, const std::string &name, const char *maker = nullptr)
 {
     if (deleted_in_another_block(where, name))
         return name + " was deleted by satellite.delete(" + name + ") on line " +
@@ -1912,9 +2114,20 @@ std::string declared_twice(const Where &where, const std::string &name)
     if (where.site != nullptr && where.site->suit != kNoScope) {
         const CapsuleScope &suit = where.capsules.scopes[where.site->suit];
         if (suit.layout->slot_of(name) != kNoSlot)
-            return name + " is a field of " + suit.layout->shown + ", and a name is declared once -- a variable or a "
-                          "parameter of its capsule cannot be named " + name + " as well";
+            return name + " is a field of " + suit.layout->shown + ", and a name is declared once -- a " +
+                   (maker != nullptr ? std::string(maker) + " made in" : "variable or a parameter of") +
+                   " its capsule cannot be named " + name + " as well";
     }
+    // A SECTION'S OR A DISPLAY'S NAME IS A NAME (SEC-0): two sections of one name in one capsule are refused, even in
+    // two windows, and so is a name the capsule has already -- a variable, a parameter -- given to one.
+    const std::unordered_map<std::string, std::string>::const_iterator made = where.made_by.find(name);
+    if (made != where.made_by.end())
+        return maker == nullptr ? declared_by_its_line(name, made->second)
+                                : name + " is declared by its " + made->second + " line already, and a name is "
+                                  "declared once in a capsule -- give this " + maker + " a name of its own";
+    if (maker != nullptr)
+        return name + " is declared in this capsule already, and a " + maker + "'s name is a name, declared by its "
+               "line -- give the " + maker + " a name of its own";
     return name + " is declared twice in the same capsule";
 }
 
@@ -1951,6 +2164,39 @@ bool some_suit_has(const CapsuleTable &capsules, const std::string &name)
         if (scope.is_a_suit() && scope.capsules.count(name) != 0)
             return true;
     return false;
+}
+
+// AND ONE THIS LINE CAN REACH (OPEN_ITEMS_2026-10-20, the checker gaps of 2026-10-19: `a.make().secret()`): when every
+// spacesuit that has a capsule of that name keeps it in its satellite.protected part, the call is refused before
+// anything runs, S230, as `b.secret()` is through a named object -- `a.make().secret()` printed the lines above it
+// first. Whose object the answer is is known only running, so the sentence names every spacesuit that keeps it
+// protected and holds for any answer: one whose spacesuit has no such capsule cannot be asked for it either. One
+// public one anywhere leaves the call to the run, which knows whose object the answer is (the satellite.spacesuit
+// help: "a protected capsule reached from outside").
+signed long long int a_capsule_this_line_reaches(const Where &where, const std::string &name, std::string &why)
+{
+    const CapsuleTable &capsules = where.capsules;
+    const token::Code as_a_method = token::method_code_of(name);
+    std::vector<std::string> keeping;   // the spacesuits whose own capsules hold it, protected
+    for (std::size_t suit = 0; suit < capsules.scopes.size(); ++suit) {
+        const CapsuleScope &of = capsules.scopes[suit];
+        if (!of.is_a_suit()) continue;
+        if (capsules.declares(suit, name, where.scope)) return success;
+        if (!capsules.declares(suit, name, kNoScope)) continue;
+        bool own = of.capsules.count(name) != 0;
+        for (auto spelled = of.capsules.begin(); !own && as_a_method != 0 && spelled != of.capsules.end(); ++spelled)
+            own = token::method_code_of(spelled->first) == as_a_method;
+        if (own) keeping.push_back(of.layout != nullptr ? of.layout->shown : of.within);
+    }
+    if (keeping.empty()) return success;
+    std::string parts = keeping.front();
+    for (std::size_t k = 1; k < keeping.size(); ++k)
+        parts += (k + 1 == keeping.size() ? " and of " : ", of ") + keeping[k];
+    why = name + " is inside the satellite.protected part of " + parts + ", so only " +
+          (keeping.size() == 1 ? keeping.front() + "'s" : std::string("their")) + " own capsules can reach it, and no "
+          "spacesuit has a " + name + " this line can reach -- whatever object comes before the ., its " + name +
+          "() cannot be called here";
+    return member_is_protected;
 }
 
 // A CAPSULE CALLED WHERE ITS ANSWER IS USED (2026-09-22): given what it takes, reachable
@@ -2146,6 +2392,27 @@ signed long long int names_in_statement(const std::vector<std::bitset<16>> &row,
             }
         }
 
+        // A TOUCHING SIGN IS REFUSED WHEREVER IT IS WRITTEN (ERRORS4 022), in the walker's own sentences
+        // (expression.cpp, refuse_if_reserved): `n = n+1` in an if never taken ran to exit 0, and `display(4+3)`
+        // was refused only after the lines above it had printed. This loop visits every code of every statement
+        // and skips every payload, so a code here is a real sign. A for's step is for_step_moves_by's, and a %
+        // pressed against a number's digits is a percentage before it is ever a sign (the lexer).
+        if ((code == token::tight_plus_token || code == token::tight_times_token || code == token::tight_power_token ||
+             code == token::tight_modulus_token) &&
+            (where.for_step == kNowhere || at < where.for_step)) {
+            if (code == token::tight_times_token && code_at(row, at + 1) == token::tight_times_token) {
+                why = "power is written with a space on both sides -- 2 ** 3 or 2 ^ 3, never 2**3";
+                return satl_line_not_understood;
+            }
+            why = std::string("every math operation is written with a space on both sides of the sign, and this ") +
+                  (code == token::tight_plus_token    ? "+"
+                   : code == token::tight_times_token ? "*"
+                   : code == token::tight_power_token ? "^"
+                                                      : "%") +
+                  " has none";
+            return satl_line_not_understood;
+        }
+
         // A NAMED OPTION WRITTEN UNDER SATELLITE -- satellite.end= -- is stepped over whole, to its value: the word,
         // its period and the name are the option's, judged with its word below (the author's B of 2026-10-11).
         bool an_option_under = false;
@@ -2167,14 +2434,16 @@ signed long long int names_in_statement(const std::vector<std::bitset<16>> &row,
         // method is never reached. Here there is no receiver to be gated on --
         // this loop walks every statement and skips every payload, so a
         // `pressed_token` it visits is a real one, wherever it was written.
-        // THE AUTHOR'S WIDGET WORDS (2026-10-09), judged wherever they are written: widgets.display.file and
-        // widgets.display.input are each ONE word, `.satellite.` once before it (his final syntax, 2026-10-10
-        // ~21:15), and the lexer reads them so -- so a `.displays`, a `.file` or an `.input` that reaches this walk,
-        // or a `.widgets` or a `.display` with the rest of the word after it, is the word written as its parts, on
-        // whatever it was written on (window_calls.hpp says the sentence). A name declared a window, or anything
-        // else whose kind is known, was told already with its own name; here there is no receiver to name.
+        // THE AUTHOR'S WIDGET WORDS (2026-10-09), judged wherever they are written: the old family's parts -- a
+        // `.displays`, a `.file` or an `.input`, or a `.widgets` or a `.display` with the rest of the word after it --
+        // and SINCE SEC-0 the old one-code words .satellite.widgets.display.file and .satellite.widgets.display.input
+        // (SATELLITE_WINDOW_SECTIONS.md rule 8), which only a window ever had: each is refused, on whatever it was
+        // written on, naming the word it is now (window_calls.hpp says the sentence). `.section` is not asked here:
+        // an object's capsule may be called that. A name declared a window, or anything else whose kind is known,
+        // was told already with its own name; here there is no receiver to name.
         if (a_method_period(before_this) && a_method_period(code_at(row, at - 1)) &&
             (code == token::displays_token || code == token::file_piece_token || code == token::input_piece_token ||
+             code == token::widgets_display_file_token || code == token::widgets_display_input_token ||
              (code == token::widgets_token && a_method_period(code_at(row, at + 1)) &&
               (code_at(row, at + 2) == token::display_token || code_at(row, at + 2) == token::displays_token)) ||
              (code == token::display_token && a_word_in_parts(row, at - 1)))) {
@@ -2419,9 +2688,9 @@ signed long long int names_in_statement(const std::vector<std::bitset<16>> &row,
                     const std::string member = text_at(row, n);
                     if (where.widget_names->count(member) == 0) {
                         why = reached + "." + member + " -- no widget is named " + member + " in this program: "
-                              ".satellite.widgets.display.file(\"" + member + "\"), "
-                              ".satellite.widgets.display.input(\"" + member + "\") or .satellite.section(\"" +
-                              member + "\", 100%, 50%) makes one";
+                              ".satellite.window.section(\"" + member + "\", 100%, 50%), "
+                              ".satellite.window.display.file(\"" + member + "\") or "
+                              ".satellite.window.display.text.input(\"" + member + "\") makes one";
                         return name_not_declared;
                     }
                     reached += "." + member;
@@ -2432,9 +2701,9 @@ signed long long int names_in_statement(const std::vector<std::bitset<16>> &row,
                         window_link_periods(row, m, reached, file_of(where), why, &where);
                     if (linked != success)
                         return linked;
-                    if (code_at(row, m + 1) == token::section_token) {
+                    if (code_at(row, m + 1) == token::window_section_token) {
                         const signed long long int judged =
-                            section_written_wrong(row, m + 2, reached + ".satellite.section", why);
+                            section_written_wrong(row, m + 2, reached + ".satellite.window.section", why);
                         if (judged != success)
                             return judged;
                     }
@@ -2487,27 +2756,27 @@ signed long long int names_in_statement(const std::vector<std::bitset<16>> &row,
                         const std::string member = text_at(row, n);
                         if (where.widget_names != nullptr && where.widget_names->count(member) == 0) {
                             why = reached + "." + member + " -- no widget is named " + member + " in this program: "
-                                  ".satellite.widgets.display.file(\"" + member + "\"), "
-                                  ".satellite.widgets.display.input(\"" + member + "\") or .satellite.section(\"" +
-                                  member + "\", 100%, 50%) makes one";
+                                  ".satellite.window.section(\"" + member + "\", 100%, 50%), "
+                                  ".satellite.window.display.file(\"" + member + "\") or "
+                                  ".satellite.window.display.text.input(\"" + member + "\") makes one";
                             return name_not_declared;
                         }
                         reached += "." + member;
                         m = n;
                     }
                     // AND THE WORD AFTER THEM, ON THE WIDGET THEY REACH -- a window value, so a window's word:
-                    // written `.satellite.` (his line, 2026-10-10 ~21:15:
-                    // main_window.files_display.satellite.widgets.display.file("list_of_files", 100%, 100%)), a word
-                    // of parts whole, a section made in one with its name in quotes --
-                    // main_window.top.satellite.section("inner", 50%, 50%) -- and every link of its chain after it.
+                    // written `.satellite.` (his line, 2026-10-10 ~21:15, in SEC-0's spelling:
+                    // main_window.files_display.satellite.window.display.file("list_of_files")), a word of parts
+                    // whole, a section made in one with its name in quotes --
+                    // main_window.top.satellite.window.section("inner", 50%, 50%) -- and every link of its chain.
                     if (a_method_period(code_at(row, m)) && token::is_method_code(code_at(row, m + 1))) {
                         const signed long long int linked =
                             window_link_periods(row, m, reached, file_of(where), why, &where);
                         if (linked != success)
                             return linked;
-                        if (code_at(row, m + 1) == token::section_token) {
+                        if (code_at(row, m + 1) == token::window_section_token) {
                             const signed long long int judged =
-                                section_written_wrong(row, m + 2, reached + ".satellite.section", why);
+                                section_written_wrong(row, m + 2, reached + ".satellite.window.section", why);
                             if (judged != success)
                                 return judged;
                         }
@@ -2561,6 +2830,8 @@ signed long long int names_in_statement(const std::vector<std::bitset<16>> &row,
                 // running, so here it must be a capsule of SOME spacesuit, and the walker
                 // judges the rest. Anything else is told what it was always told.
                 if (after_a_dot && some_suit_has(capsules, name)) {
+                    const signed long long int reached = a_capsule_this_line_reaches(where, name, why);
+                    if (reached != success) return reached;
                     at = k;
                     continue;
                 }
@@ -3292,12 +3563,12 @@ signed long long int check_object_declaration(const std::vector<std::bitset<16>>
 }
 
 // One statement, judged without running it. `at` is left on the code after it.
-signed long long int check_statement(const std::vector<std::bitset<16>> &row,
-                                     std::size_t &at,
-                                     Where &where,
-                                     DeclaredNames &declared,
-                                     EndingNames &ending,
-                                     std::string &why)
+signed long long int judge_a_statement(const std::vector<std::bitset<16>> &row,
+                                       std::size_t &at,
+                                       Where &where,
+                                       DeclaredNames &declared,
+                                       EndingNames &ending,
+                                       std::string &why)
 {
     const CapsuleTable &capsules = where.capsules;
     const std::size_t scope = where.scope;
@@ -3452,18 +3723,25 @@ signed long long int check_statement(const std::vector<std::bitset<16>> &row,
         }
         at = brace;                 // left ON the brace, as while is: the loop counts it
         where.body_brace = brace;
+        where.if_brace = brace;     // the } it closes with is one an else may follow (ERRORS4 027)
         return success;
     }
 
     // satellite.statement.else, which has no condition of its own. A REAL ONE
     // FOLLOWS AN if's `}` -- looking back one code refuses one standing alone here,
     // where nothing has run yet, instead of at the moment the walker reaches it.
-    // (A `}` that closed a while's body slips through this and is refused when it
-    // runs; both say the same sentence.)
+    // A COMMENT IS STEPPED OVER ON THE WAY BACK (ERRORS4 016): `} // end if`, or a comment
+    // line before the else, hid the if. AND A `}` THE BODY LOOP CLOSED MUST BE AN if's
+    // (ERRORS4 027): a while's, a for's or an else's `}` slipped through this and was refused
+    // only when it ran, in the same sentence. At the prompt, where no body loop marks them,
+    // any `}` is let through as before.
     if (code == word::code_of(1, 13, 4)) {
         std::size_t back = at;
-        while (back > 0 && code_at(row, back - 1) == token::line_end_token) --back;
-        if (back == 0 || code_at(row, back - 1) != token::right_brace_token) {
+        while (back > 0 && (code_at(row, back - 1) == token::line_end_token ||
+                            code_at(row, back - 1) == token::comment_token))
+            --back;
+        if (back == 0 || code_at(row, back - 1) != token::right_brace_token ||
+            (back - 1 == where.block_closed_at && back - 1 != where.if_closed_at)) {
             why = "satellite.statement.else with no satellite.statement.if before it";
             at = past_the_statement(row, at);
             return satl_line_not_understood;
@@ -3596,7 +3874,9 @@ signed long long int check_statement(const std::vector<std::bitset<16>> &row,
             at = stop;
             return satl_line_not_understood;
         }
+        where.for_step = parts.step;
         held = names_in_statement(row, parts.condition, parts.closing, declared, where, why);
+        where.for_step = kNowhere;
         if (held != success) { at = stop; return held; }
         // THE STEP'S SHAPE, which is `i++`, `i--` or a math operation and nothing
         // else. The move itself is a run-time fact; which of the three it is, is
@@ -4063,7 +4343,8 @@ signed long long int check_statement(const std::vector<std::bitset<16>> &row,
             why = where.deleted_on_line.count(name) != 0 || where.ended_at.count(name) != 0 ||
                           where.ended_earlier.count(name) != 0
                       ? not_declared_why(where, row, name)
-                      : name + " has no satellite.variable line declaring it";
+                      : name + " has no satellite.variable line declaring it" +
+                            a_name_made_elsewhere(where, name);
             at = stop;
             return name_not_declared;
         }
@@ -4183,9 +4464,266 @@ signed long long int check_statement(const std::vector<std::bitset<16>> &row,
     // it -- a no-break space pasted as indentation made a declared n "not declared" --
     // and let `undeclared = 5` after one run past the check (the payload sweep,
     // 2026-09-17). A comment line still passes: its token steps to the line's end.
+    //
+    // AND ONLY THOSE TWO ARE STEPPED OVER (ERRORS4 003): any other code no statement begins with is refused. The
+    // author's "refuse yes" of 2026-10-11 answered the item that named -, +, !, /* and ) together, and only the signs
+    // were built (the line that begins with one, above) -- `2 n = 9`, `"x" n = 9` and `!n = 9` still ran as n = 9,
+    // the lines of a /* ... */ block ran, and a line of only "text", == 3 or ) did nothing and said nothing.
+    if (code != token::comment_token && code != token::error_token && code != token::end_of_file_token) {
+        why = a_line_does_not_begin_with(code);
+        at = past_the_statement(row, at);
+        return satl_line_not_understood;
+    }
     if (token::carries_a_count(code)) { text_at(row, at); return success; }
     ++at;
     return success;
+}
+
+// ---------------------------------------------------------------------------
+// A SECTION'S AND A DISPLAY'S NAME IS A NAME, AND WHERE EACH MAY GO (SATELLITE_WINDOW_SECTIONS.md SEC-0)
+// ---------------------------------------------------------------------------
+
+// A DISPLAY'S SIZE AS IT WAS WRITTEN, for the sentence that says the size is a section's (rule 8): the width and the
+// height between the comma after its name, `comma`, and its `)`, `close` -- "100%, 50%" -- read back from the loaded
+// text of `file` as method_as_written reads a method (source_position.hpp), and "" when either cannot be: a file
+// never loaded, or a size over two lines.
+std::string the_size_written(const std::vector<std::bitset<16>> &row, std::size_t comma, std::size_t close,
+                             const std::string &file)
+{
+    const auto written = [&row, &file](std::size_t from, std::size_t to) {
+        std::size_t line = line_of(row, from), column = 0, to_line = line_of(row, to), to_column = 0;
+        std::string text, to_text;
+        if (!written_place(file, row, from, line, column, text)) {
+            text = source_line(file, line);
+            column = column_of(row, from, text);
+        }
+        if (!written_place(file, row, to, to_line, to_column, to_text))
+            to_column = column_of(row, to, source_line(file, to_line));
+        if (text.empty() || line != to_line || to_column <= column || to_column > text.size())
+            return std::string();
+        const std::string between = text.substr(column, to_column - column);
+        const std::size_t first = between.find_first_not_of(" \t"), last = between.find_last_not_of(" \t");
+        return first == std::string::npos ? std::string() : between.substr(first, last - first + 1);
+    };
+    // THE COMMA BETWEEN THE WIDTH AND THE HEIGHT, at the call's own depth: `section(1, f(2, 3))` has one more.
+    std::size_t between = comma + 1, depth = 0;
+    while (between < close) {
+        const Code code = code_at(row, between);
+        if (token::carries_a_count(code)) { skip_payload(row, between); continue; }
+        if (code == token::left_parenthesis_token || code == token::left_square_bracket_token ||
+            code == token::left_brace_token)
+            ++depth;
+        else if (code == token::right_parenthesis_token || code == token::right_square_bracket_token ||
+                 code == token::right_brace_token)
+            depth = depth > 0 ? depth - 1 : 0;
+        else if (code == token::comma_token && depth == 0)
+            break;
+        ++between;
+    }
+    const std::string wide = written(comma + 1, between), tall = between < close ? written(between + 1, close) : "";
+    return wide.empty() || tall.empty() ? std::string() : wide + ", " + tall;
+}
+
+// WHAT A MAKER'S WORD MAKES, as a sentence names it -- "" for a code that makes nothing.
+const char *what_it_makes(Code code)
+{
+    return code == token::window_section_token              ? "section"
+           : code == token::window_display_file_token       ? "file display"
+           : code == token::window_display_text_input_token ? "text input"
+                                                            : "";
+}
+
+// RULE 4: THE NAMES A LINE'S SECTIONS AND DISPLAYS DECLARE, in the capsule that wrote it -- the author's design of
+// 2026-10-20, "so this gives a section of the window called "section_name_here" so we can type this:
+// section_name_here.satellite.window.display.file(...)", and his answer of 2026-10-25 that every display takes a
+// name. Declared HERE, in check_statement, because names_in_statement is handed the names it judges as const; and
+// AFTER the line is judged, as the walker declares the name once the line has made what it names
+// (window_method_parts::a_piece_made) -- so a line's own arguments cannot use it. Each maker on the line with its name
+// in quotes declares that name as a satellite.variable.window, with a_name_it_may_take's refusals and declared
+// twice's, and two a widget's name never had: `satellite`, and the shape of a hex or binary number
+// (a_widget_name_fits, asked again here for a line typed at the prompt, which check_program's pass never reads).
+// It ends where any name a line declares ends: at the } of its block (close_the_block).
+signed long long int the_names_a_line_makes(const std::vector<std::bitset<16>> &row, std::size_t from,
+                                            std::size_t stop, Where &where, DeclaredNames &declared, std::string &why)
+{
+    constexpr Code kAWindow = word::fixed_code<1, 6, 18>;
+    for (std::size_t at = from; at < stop && at < row.size();) {
+        const Code code = code_at(row, at);
+        if (token::carries_a_count(code)) {
+            skip_payload(row, at);
+            continue;
+        }
+        const char *made = a_method_period(code) ? what_it_makes(code_at(row, at + 1)) : "";
+        if (*made == '\0' || code_at(row, at + 2) != token::left_parenthesis_token ||
+            code_at(row, at + 3) != token::string_token) {
+            ++at;
+            continue;
+        }
+        std::size_t k = at + 3;
+        const std::string name = text_at(row, k);
+        if (!a_widget_name_fits(name, why))
+            return satl_line_not_understood;
+        const signed long long int may = a_name_it_may_take(where.capsules, where.scope, name, why);
+        if (may != success)
+            return may;
+        if (!declares(where, declared, name, kAWindow)) {
+            // `satellite.variable.window top = main_window.satellite.window.section("top", ...)`: the line's own
+            // declaration took the name first, and the plan's sentence is the one for it.
+            std::size_t named_at = from + 1;
+            const bool its_own_declaration = word::is_word_code(code_at(row, from)) &&
+                                             code_at(row, named_at) == token::name_token &&
+                                             text_at(row, named_at) == name;
+            why = its_own_declaration ? declared_by_its_line(name, made) : declared_twice(where, name, made);
+            return name_declared_twice;
+        }
+        where.made_by[name] = made;
+        remember_shape(where, name, plain_shape(kAWindow));
+        at = k;
+    }
+    return success;
+}
+
+// A NAME THE CHECKER NO LONGER SEES WHOLE, and everything made in it: anything that could change what is in a
+// window can change what is in its sections too.
+void stop_seeing(Where &where, const std::string &name)
+{
+    std::vector<std::string> going{name};
+    while (!going.empty()) {
+        const std::string one = going.back();
+        going.pop_back();
+        where.seen_whole.erase(one);
+        for (const std::pair<const std::string, Where::SeenWhole> &each : where.seen_whole)
+            if (each.second.made_in == one)
+                going.push_back(each.first);
+    }
+}
+
+// RULES 6 AND 7, BEFORE THE RUN, WHERE THE CHECKER CAN SEE THE LINES (SEC-0): a second display in a section, a display
+// in a section that holds sections, a section in a section that shows a display, a display across the top of a
+// window that has sections, and a section in a window that shows a display across its top -- each said in
+// window_shapes.cpp's sentence, the one window_widget_made says when the line runs.
+//
+// IT SEES ONLY WHAT IS SURE. A line is judged when it runs straight down the capsule (Where::straight_down), its
+// receiver is a name seen whole, and the line is that name, `.satellite.`, the maker, and its name in quotes. What
+// that line makes is seen from then on, empty, when nothing follows its brackets. A window is seen from
+// `satellite.variable.window w = satellite.window.new(...)` straight down. And every other place a seen name stands
+// in a line -- an argument, a value, a capsule's call, a block, `w = ...`, `w.satellite.close()` -- stops it being
+// seen, with what was made in it: from there only the run knows what it holds. So does `w.satellite.open()`, which
+// puts back a window a person closed without the sections that closed with it (window_open.cpp, window_widgets.cpp's
+// "what closed with its window is not counted"; the fresh reader of SEC-0, 2026-10-25). So the checker refuses only
+// a line the run would refuse too, and the run refuses the rest (window_widget_made).
+signed long long int where_it_goes_refused(const std::vector<std::bitset<16>> &row, std::size_t from,
+                                           std::size_t stop, Where &where, std::string &why)
+{
+    // ITS OWN LINE: `top.satellite.window.display.file("files")`, straight down -- or `w.satellite.close()`, `.open()`.
+    std::size_t k = from;
+    const bool led_by_a_name = where.straight_down && code_at(row, from) == token::name_token;
+    if (led_by_a_name)
+        skip_payload(row, k);
+    const bool its_own = led_by_a_name && code_at(row, k) == token::satellite_method_token;
+    const Code method = its_own ? code_at(row, k + 1) : Code{0};
+    // EVERY OTHER NAME THE LINE WRITES, and the receiver of a line that is not its own: no longer seen. Read only
+    // while something is seen, so a capsule with no window costs this nothing but the walk.
+    for (std::size_t at = its_own ? k : from; !where.seen_whole.empty() && at < stop && at < row.size();) {
+        if (code_at(row, at) == token::name_token) {
+            const std::string name = text_at(row, at);
+            stop_seeing(where, name);
+            continue;
+        }
+        if (token::carries_a_count(code_at(row, at))) {
+            skip_payload(row, at);
+            continue;
+        }
+        ++at;
+    }
+    if (!where.straight_down)
+        return success;
+    // A WINDOW FROM satellite.window.new, given to the name its line declares, and nothing after the brackets.
+    if (code_at(row, from) == word::fixed_code<1, 6, 18> && code_at(row, from + 1) == token::name_token) {
+        std::size_t n = from + 1;
+        const std::string name = text_at(row, n);
+        const Code maker = code_at(row, n + 1);
+        std::size_t close = n + 2, given = 0;
+        if (code_at(row, n) == token::assign_token &&
+            (maker == word::fixed_code<1, 27, 1> || maker == word::fixed_code<1, 27, 24>) &&
+            brackets_at(row, n + 2, close, given) &&
+            (code_at(row, close + 1) == token::line_end_token || code_at(row, close + 1) == token::comment_token ||
+             code_at(row, close + 1) == token::end_of_file_token)) {
+            Where::SeenWhole window;
+            window.a_window = true;
+            where.seen_whole[name] = window;
+        }
+        return success;
+    }
+    const char *made = what_it_makes(method);
+    const bool closes_or_opens = method == token::close_token || method == token::open_token;
+    if (!its_own || (!closes_or_opens && *made == '\0'))
+        return success;
+    std::size_t r = from;
+    const std::string receiver = text_at(row, r);
+    if (closes_or_opens) {
+        stop_seeing(where, receiver);
+        return success;
+    }
+    if (code_at(row, k + 2) != token::left_parenthesis_token || code_at(row, k + 3) != token::string_token)
+        return success;
+    std::size_t m = k + 3;
+    const std::string name = text_at(row, m);
+    std::size_t close = k + 2, given = 0;
+    const bool ends_there = brackets_at(row, k + 2, close, given) &&
+                            (code_at(row, close + 1) == token::line_end_token ||
+                             code_at(row, close + 1) == token::comment_token ||
+                             code_at(row, close + 1) == token::end_of_file_token);
+    const bool a_section = method == token::window_section_token;
+    const std::unordered_map<std::string, Where::SeenWhole>::iterator holder = where.seen_whole.find(receiver);
+    if (holder != where.seen_whole.end()) {
+        Where::SeenWhole &in = holder->second;
+        const std::string spelled = receiver + ".satellite." + token::method_name_of(method);
+        if (in.a_section || in.a_window) {
+            const bool refused = a_section ? in.shows_a_display : (in.a_section && in.shows_a_display) || in.holds_sections;
+            if (refused) {
+                const APlace place = a_section ? (in.a_window ? APlace::a_section_under_displays
+                                                              : APlace::a_section_beside_a_display)
+                                     : in.a_window      ? APlace::a_display_over_sections
+                                     : in.shows_a_display ? APlace::a_second_display
+                                                          : APlace::a_display_among_sections;
+                why = spelled + " -- " + a_place_refused(place);
+                return satl_line_not_understood;
+            }
+            (a_section ? in.holds_sections : in.shows_a_display) = true;
+        }
+    }
+    // WHAT THE LINE MADE IS SEEN FROM HERE, EMPTY -- made in whatever its receiver holds, seen or not -- when nothing
+    // after its brackets could have changed it.
+    if (ends_there) {
+        Where::SeenWhole fresh;
+        fresh.a_section = a_section;
+        fresh.made_in = receiver;
+        where.seen_whole[name] = fresh;
+    }
+    return success;
+}
+
+// EVERY STATEMENT, judged (judge_a_statement), and then what SEC-0 adds to it: the names its sections and displays
+// declare (rule 4), and whether each may go where it was made (rules 6 and 7). `at` is left where the statement's
+// judgement left it -- an if's and a while's on its brace -- so a maker in an if's header declares its name at the
+// level the if stands at, where the walker declares it.
+signed long long int check_statement(const std::vector<std::bitset<16>> &row,
+                                     std::size_t &at,
+                                     Where &where,
+                                     DeclaredNames &declared,
+                                     EndingNames &ending,
+                                     std::string &why)
+{
+    const std::size_t from = at;
+    const signed long long int judged = judge_a_statement(row, at, where, declared, ending, why);
+    if (judged != success || at <= from)
+        return judged;
+    const signed long long int named = the_names_a_line_makes(row, from, at, where, declared, why);
+    if (named != success)
+        return named;
+    return where.seen_whole.empty() && !where.straight_down ? success
+                                                            : where_it_goes_refused(row, from, at, where, why);
 }
 
 } // namespace
@@ -4367,9 +4905,11 @@ signed long long int check_program(const BytecodeRegistry &registry,
     }
 
     // EVERY NAME A WIDGET IS GIVEN, IN EVERY FILE (the author's .widgets, 2026-10-09):
-    // `.satellite.widgets.display.file("file_display")` anywhere makes `my_window.file_display` a name the
-    // program may write anywhere -- in main, and in the capsule a key runs. THE NAME IS WRITTEN IN
-    // QUOTES, so it is known before the run: a name worked out by the run could never be checked.
+    // `.satellite.window.display.file("file_display")` anywhere makes `my_window.file_display` a name the
+    // program may write anywhere -- in main, and in the capsule a key runs, as `its_window.file_display`. THE NAME
+    // IS WRITTEN IN QUOTES, so it is known before the run: a name worked out by the run could never be checked.
+    // (Since SEC-0 the line also declares the name in its own capsule, to be written bare there --
+    // the_names_a_line_makes; this set is the names reached through a window, in every capsule.)
     std::unordered_set<std::string> widget_names;
     {
         std::unordered_set<std::size_t> read_rows;
@@ -4377,25 +4917,34 @@ signed long long int check_program(const BytecodeRegistry &registry,
             if (!read_rows.insert(site.row).second)
                 continue;
             const std::vector<std::bitset<16>> &row = registry[site.row];
+            const std::string file_of_row = state.program_files != nullptr && site.row < state.program_files->size()
+                                                ? (*state.program_files)[site.row]
+                                                : std::string();
             for (std::size_t at = 0; at < row.size(); ) {
                 const Code code = code_at(row, at);
-                // `.satellite.widgets.display.file(...)` and `.satellite.widgets.display.input(...)`, one word each
-                // (2026-10-10 ~21:15) -- and `.satellite.section(...)` on a window or a section (2026-10-10), whose
-                // name is reached after in the same way: main_window.top. Either period: a word written the old
-                // way is refused where it is written, by its spelling.
-                const bool a_display = a_method_period(code) && makes_a_widget(code_at(row, at + 1));
-                const bool a_section = a_method_period(code) && code_at(row, at + 1) == token::section_token;
-                // THE WIDGET WORD WRITTEN AS ITS PARTS -- `.display.file("files")`, `.displays.input(...)` -- names
-                // its widget too, and is not judged here: its line is refused for its spelling, and a name it gave
-                // must not be refused again, wherever it is used, as one nobody gave.
-                if ((code == token::display_token || code == token::displays_token) &&
-                    a_method_period(code_at(row, at + 1)) &&
-                    (code_at(row, at + 2) == token::file_piece_token ||
-                     code_at(row, at + 2) == token::input_piece_token)) {
-                    std::size_t k = at + 4;
+                // `.satellite.window.display.file(...)`, `.satellite.window.display.text.input(...)` and
+                // `.satellite.window.section(...)` (SATELLITE_WINDOW_SECTIONS.md SEC-0), one word each, which the lexer
+                // reads whole only after `.satellite.` -- so none of them is ever an object's capsule, and each is
+                // judged here, wherever it is written, before anything runs.
+                const Code made = a_method_period(code) ? code_at(row, at + 1) : Code{0};
+                const bool a_display = makes_a_widget(made);
+                const bool a_section = made == token::window_section_token;
+                // AN OLD SPELLING -- `.section`, `.satellite.widgets.display.file`, or the display word written as its
+                // parts, `.display.file("files")`, `.displays.input(...)` -- names its widget too, and is not judged
+                // here: its line is refused for its spelling, naming the new one (rule 8), and a name it gave must not
+                // be refused again, wherever it is used, as one nobody gave. `.section` is an object's capsule's name
+                // as well, so it is never refused here.
+                const bool written_as_parts = (code == token::display_token || code == token::displays_token) &&
+                                              a_method_period(code_at(row, at + 1)) &&
+                                              (code_at(row, at + 2) == token::file_piece_token ||
+                                               code_at(row, at + 2) == token::input_piece_token);
+                const bool an_old_spelling = made == token::section_token || made == token::widgets_display_file_token ||
+                                             made == token::widgets_display_input_token;
+                if (written_as_parts || an_old_spelling) {
+                    const std::size_t open = written_as_parts ? at + 3 : at + 2;
+                    std::size_t k = open + 1;
                     std::string why;
-                    if (code_at(row, at + 3) == token::left_parenthesis_token &&
-                        code_at(row, k) == token::string_token) {
+                    if (code_at(row, open) == token::left_parenthesis_token && code_at(row, k) == token::string_token) {
                         const std::string named = text_at(row, k);
                         if (a_widget_name_fits(named, why))
                             widget_names.insert(named);
@@ -4405,41 +4954,49 @@ signed long long int check_program(const BytecodeRegistry &registry,
                 }
                 if (a_display || a_section) {
                     const std::size_t made_at = at + 1;
-                    const std::string spelled = std::string(".satellite.") + token::method_name_of(code_at(row, made_at));
-                    // THE NAME FIRST, IN QUOTES, and then the bracket -- or, with a size after it, a comma:
-                    // .file("files", 100%, 100%), .section("top", 100%, 50%).
-                    std::size_t k = made_at + 2;
+                    const std::string spelled = std::string(".satellite.") + token::method_name_of(made);
                     std::string named, why;
+                    // A SECTION: its name in quotes, a width and a height (section_written_wrong, which the line's
+                    // own check asks again with the receiver it was written on). ASKED HERE, where the sentence
+                    // cannot name the receiver, because on an item, a call's answer or satellite.window.new(...)
+                    // itself -- `ws[1].satellite.window.section("top", 100%)` -- no line's own check reaches it,
+                    // and it would wait for the run (the fresh reader of SEC-0 and the probes after, 2026-10-25).
+                    //
+                    // ITS NAME AND ITS SHAPE ONLY, HERE (SEC-1's fresh reader): this pass runs over every capsule
+                    // before any line is checked, so a size it refused would be told ahead of a real error on an
+                    // earlier line. A size written as a literal is the line's own check's to refuse, in its turn; on
+                    // an item or a call's answer, which no line's check reaches, the run refuses it.
+                    if (a_section) {
+                        const signed long long int judged = section_written_wrong(row, made_at + 1, spelled, why);
+                        if (judged != success && judged != not_a_position && judged != types_do_not_meet)
+                            return raise_at(judged, why, std::string(), state, row, made_at, "satl(check)");
+                    }
+                    // A DISPLAY: THE NAME IN QUOTES, AND NOTHING AFTER IT -- it fills its section (the author,
+                    // 2026-10-25), so a display given a size is told the size is a section's (rule 8), as written.
+                    std::size_t k = made_at + 2;
                     if (code_at(row, made_at + 1) == token::left_parenthesis_token && code_at(row, k) == token::string_token)
                         named = text_at(row, k);
-                    const bool in_quotes = code_at(row, made_at + 1) == token::left_parenthesis_token &&
-                                           code_at(row, made_at + 2) == token::string_token &&
-                                           (code_at(row, k) == token::right_parenthesis_token ||
-                                            code_at(row, k) == token::comma_token);
-                    // `.section` IS ALSO A WORD AN OBJECT'S CAPSULE MAY BE CALLED -- the lexer makes it the
-                    // method on any name -- so nothing is refused here: a name in quotes that can be one is
-                    // taken as a section's, and the walker, which knows what it was written on, judges the
-                    // rest (window_widget_made asks a_widget_name_fits again).
-                    if (a_section) {
-                        if (in_quotes && a_widget_name_fits(named, why))
-                            widget_names.insert(named);
-                        ++at;
-                        continue;
-                    }
-                    if (!in_quotes)
-                        why = spelled + " takes the widget's name, in quotes, first -- " + spelled +
-                              "(\"file_display\"), or with a size, " + spelled + "(\"file_display\", 100%, 100%) -- "
-                              "a name worked out by the run could not be checked before it";
-                    else if (!a_widget_name_fits(named, why))
-                        ;
-                    // THE NAME, OR THE NAME AND A SIZE -- counted here, where the chain is known to be a
-                    // window's (the review, 2026-10-10: `.file("x", 100%)` reached the run).
                     std::size_t close = made_at + 1, given = 0;
-                    if (why.empty() && brackets_at(row, made_at + 1, close, given) && given != 1 && given != 3)
-                        why = spelled + " takes the widget's name, or its name, a width and a height -- 1 or 3 "
-                              "arguments -- and was given " + std::to_string(given);
-                    if (!why.empty())
-                        return raise_at(satl_line_not_understood, why, std::string(), state, row, made_at, "satl(check)");
+                    const bool closed = brackets_at(row, made_at + 1, close, given);
+                    if (a_display) {
+                        const bool in_quotes = code_at(row, made_at + 1) == token::left_parenthesis_token &&
+                                               code_at(row, made_at + 2) == token::string_token &&
+                                               (code_at(row, k) == token::right_parenthesis_token ||
+                                                code_at(row, k) == token::comma_token);
+                        if (!in_quotes)
+                            why = spelled + " takes the display's name, in quotes -- " + spelled +
+                                  "(\"file_display\") -- a name worked out by the run could not be checked before it";
+                        else if (closed && given > 1)
+                            why = a_display_takes_no_size(made, spelled + "(\"" + named + "\", ...)", named,
+                                                          given == 3 && code_at(row, k) == token::comma_token
+                                                              ? the_size_written(row, k, close, file_of_row)
+                                                              : std::string());
+                        else
+                            a_widget_name_fits(named, why);
+                        if (!why.empty())
+                            return raise_at(satl_line_not_understood, why, std::string(), state, row, made_at,
+                                            "satl(check)");
+                    }
                     widget_names.insert(named);
                 }
                 if (token::carries_a_count(code)) {
@@ -4522,7 +5079,9 @@ signed long long int check_program(const BytecodeRegistry &registry,
                 break;
             if (guarded)
                 where.opened();
-            where.block_closed_at = where.error_closed_at = kNowhere;
+            where.block_closed_at = where.error_closed_at = where.if_closed_at = kNowhere;
+            // WHAT THE CHECKER SEES WHOLE (SEC-0) is the body's: an error block runs after whatever line failed.
+            where.seen_whole.clear();
             std::size_t depth = 0, last_here = kNoStatement, ends = row.size();
             for (std::size_t at = part; at < row.size(); ) {
                 const Code code = code_at(row, at);
@@ -4546,10 +5105,14 @@ signed long long int check_program(const BytecodeRegistry &registry,
                     ++depth; where.opened(); ++at; continue;
                 }
                 const std::size_t was = at;
-                if (depth == 0) last_here = at;
+                // A BLANK LINE OR A COMMENT IS NOT A STATEMENT (ERRORS4 019), so neither is main's last one: one
+                // between satellite.return(satellite) and main's } was S103, asking for the return already there.
+                if (depth == 0 && code != token::line_end_token && code != token::comment_token) last_here = at;
                 std::string why;
                 if (habit_from_another_language(row, at, why))
                     return raise_at(satl_line_not_understood, why, site.shown, state, row, at, "satl(check)");
+                // A LINE AT THE BODY'S OWN LEVEL RUNS STRAIGHT DOWN, once and in order (SEC-0, where_it_goes_refused).
+                where.straight_down = depth == 0 && part == site.body;
                 const signed long long int code_of_line = check_statement(row, at, where, declared, ending, why);
                 if (stops_the_program(code_of_line))
                     // THE STATEMENT'S OWN START, AND NOT WHERE `at` ENDED UP. A

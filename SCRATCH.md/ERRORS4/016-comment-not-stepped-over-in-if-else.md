@@ -1,5 +1,7 @@
 # 016 -- A // comment in a place where only line ends are stepped over breaks an if/else/while/for: a comment line between a header and its {, a comment after else, or a comment after an if's } or before the else gives "has no body" or "else with no satellite.statement.if before it"
 
+**FIXED 2026-10-25** (open-work checker): brace_after (program_walk.cpp) steps over a comment as well as a line end; the checker's else look-back and the walker's two scans for an else (walk_the_if_chain, run_if) step over one too. check.sh rows "016: ...".
+
 **Found:** 2026-09-26, satl 004 revision 08 build 0099 (/home/madness/code/cxx/satellite/build/satl), by running ordinary programs against it.  
 **Area:** control flow and capsules, realistic programs, syntax and layout  
 **Kind:** valid-program-refused  

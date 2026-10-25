@@ -91,6 +91,7 @@ int number_method_arity(token::Code method)
     case token::truncate_token:
     case token::sqrt_token:
     case token::digits_token:
+    case token::reverse_token:   // counted as the others are (ERRORS4 023): n.reverse(99) ran with the 99 dropped
     case token::bytes_token: return 0;
     default: return -1;
     }

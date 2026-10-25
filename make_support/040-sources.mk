@@ -87,9 +87,9 @@ WORD_SOURCES = $(NUMBERS)/word_table.cpp \
                $(NUMBERS)/words/1.6.18.40.cpp $(NUMBERS)/words/1.6.18.41.cpp $(NUMBERS)/words/1.6.18.42.cpp \
                $(NUMBERS)/words/1.6.18.43.cpp $(NUMBERS)/words/1.6.18.44.cpp $(NUMBERS)/words/1.6.18.45.cpp \
                $(NUMBERS)/words/1.6.18.46.cpp $(NUMBERS)/words/1.6.18.47.cpp $(NUMBERS)/words/1.6.18.48.1.cpp \
-               $(NUMBERS)/words/1.6.18.48.2.cpp $(NUMBERS)/words/1.6.18.49.1.1.cpp $(NUMBERS)/words/1.6.18.49.1.2.cpp \
-               $(NUMBERS)/words/1.6.18.50.cpp $(NUMBERS)/words/1.6.18.51.cpp $(NUMBERS)/words/1.6.18.52.cpp \
-               $(NUMBERS)/words/1.6.18.53.cpp \
+               $(NUMBERS)/words/1.6.18.48.2.cpp $(NUMBERS)/words/1.6.18.50.cpp $(NUMBERS)/words/1.6.18.51.cpp \
+               $(NUMBERS)/words/1.6.18.53.cpp $(NUMBERS)/words/1.6.18.54.1.cpp $(NUMBERS)/words/1.6.18.54.2.1.cpp \
+               $(NUMBERS)/words/1.6.18.54.2.2.1.cpp \
                $(NUMBERS)/words/1.6.3.1.cpp $(NUMBERS)/words/1.6.5.1.cpp $(NUMBERS)/words/1.6.5.2.cpp \
                $(NUMBERS)/words/1.6.5.3.cpp $(NUMBERS)/words/1.6.5.4.cpp $(NUMBERS)/words/1.6.5.5.cpp \
                $(NUMBERS)/words/1.6.5.6.cpp $(NUMBERS)/words/1.6.5.8.cpp $(NUMBERS)/words/1.6.5.9.cpp \

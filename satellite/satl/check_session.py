@@ -250,13 +250,20 @@ check(t.wait_for(lambda t: any(r.startswith('m is a map (string -> list of numbe
 # CTRL-C STOPS A LOOP TYPED AT THE PROMPT (the author's testers, 2026-09-26, ERRORS3 7): it
 # kept a core at 100% and the prompt never came back. Now the loop stops, the prompt returns,
 # and the loop's name keeps what it reached.
+# EACH LINE OF THE LOOP WAITS FOR THE "..." (open-work tools, 2026-10-25), as the if's lines above do:
+# spin > 0 now and then came back false, and the output cannot say why. Typed straight after the header,
+# `spin = spin + 1` could reach a session still busy with it, and D0.6.5 would drop it (never caught in
+# the act here); or Ctrl-C, pressed after a fixed second, could land before the loop ran. AND Ctrl-C
+# NOW WAITS FOR THE } TO BE HANDED OFF, and a moment more, as the sleep below does.
 t.at_prompt()
 t.type(b'satellite.variable.number spin = 0\r')
 t.at_prompt()
-t.type(b'satellite.statement.while (spin > -1)\r')
-t.type(b'spin = spin + 1\r')
+t.type(b'satellite.statement.while (spin > -1)\r'); in_the_block()
+t.type(b'spin = spin + 1\r'); in_the_block()
+handed_off = t.raw.count(b'\x1b[?2004l')
 t.type(b'}\r')
-time.sleep(1.0)
+t.wait_for(lambda t: t.raw.count(b'\x1b[?2004l') > handed_off)
+time.sleep(0.3)   # the loop has run, and the session's flag is cleared
 t.type(b'\x03')
 check(t.wait_for('Ctrl-C stopped satellite.statement.while'), 'Ctrl-C stops a while typed at the prompt')
 t.at_prompt()

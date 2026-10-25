@@ -2,6 +2,7 @@
 
 #include "info_calls.hpp"
 
+#include "file_calls.hpp"
 #include "word_codes.hpp"
 #include "../machine/filesystems.hpp"
 #include "../machine/shown.hpp"
@@ -142,7 +143,8 @@ bool is_info_word(Code code)
            code == word::fixed_code<1, 18, 7>;
 }
 
-Value call_info_word(Code code, const std::vector<Value> &arguments, ExpressionContext &context)
+Value call_info_word(Code code, const std::vector<Value> &arguments, const std::vector<std::bitset<16>> &row,
+                     ExpressionContext &context)
 {
     const std::string written_as(word::spelling_of(code));
     const std::string spelling = written_as.substr(0, written_as.find('('));
@@ -153,11 +155,17 @@ Value call_info_word(Code code, const std::vector<Value> &arguments, ExpressionC
                                                                      : std::string()));
         return Value();
     }
-    const std::string path = arguments[0].text_utf8();
-    if (path.find('\0') != std::string::npos) {
+    const std::string written = arguments[0].text_utf8();
+    if (written.find('\0') != std::string::npos) {
         context.refuse(path_holds_a_nul, spelling + ": the path holds a NUL, which no name can");
         return Value();
     }
+    // A RELATIVE PATH IS FOUND AS EVERY FILE'S IS (ERRORS4 009), from the folder of the .satl the call is written
+    // in. Handed to lstat as written, it was the working directory's -- run from another folder, file.open("notes.txt")
+    // found the file and info.file("notes.txt") on the next line said nothing was there. A leading / is read as it
+    // was until the author rules on what "/" names here (ERRORS4 009's question). A refusal names what was written.
+    const std::string path = !written.empty() && written.front() == '/' ? written
+                                                                        : resolved_path(written, false, row, context);
 
     // satellite.directory.free(d): the free space where d is, as the listing's line says it.
     if (code == word::code_of(1, 18, 7)) {
@@ -165,7 +173,7 @@ Value call_info_word(Code code, const std::vector<Value> &arguments, ExpressionC
         if (::statvfs(path.c_str(), &about) != 0) {
             const int why = errno;
             context.refuse(why == ENOENT ? directory_not_found : directory_unreadable,
-                           spelling + " " + shown(path) + ": " + std::strerror(why));
+                           spelling + " " + shown(written) + ": " + std::strerror(why));
             return Value();
         }
         const unsigned long long int block = about.f_frsize != 0 ? about.f_frsize : about.f_bsize;
@@ -178,14 +186,15 @@ Value call_info_word(Code code, const std::vector<Value> &arguments, ExpressionC
     std::vector<unsigned char> piece;   // count_lines' read buffer, one for the whole call
     std::vector<Value> entries;
     const auto stopped = [&]() {
-        context.refuse(interrupted, spelling + " " + shown(path) + " -- stopped by Ctrl-C");
+        context.refuse(interrupted, spelling + " " + shown(written) + " -- stopped by Ctrl-C");
         return Value();
     };
 
     if (code == word::code_of(1, 30, 1)) {
+        write_held_appends(path, context);   // ERRORS4 006: the lines a handle holds are counted too
         struct stat about;
         if (::lstat(path.c_str(), &about) != 0) {
-            context.refuse(file_not_found, spelling + ": nothing is at " + shown(path));
+            context.refuse(file_not_found, spelling + ": nothing is at " + shown(written));
             return Value();
         }
         Value entry;
@@ -205,11 +214,12 @@ Value call_info_word(Code code, const std::vector<Value> &arguments, ExpressionC
     }
     const DirectoryReply reply = library->scenarios.directory(path, true, stop_flag());
     if (stops_the_program(reply.code)) {
-        context.refuse(reply.code, spelling + " " + shown(path) + (reply.reason.empty() ? std::string() : ": " + reply.reason));
+        context.refuse(reply.code, spelling + " " + shown(written) + (reply.reason.empty() ? std::string() : ": " + reply.reason));
         return Value();
     }
     entries.reserve(reply.names.size());
     for (const std::string &name : reply.names) {
+        write_held_appends(path + "/" + name, context);   // and a directory's line counts (ERRORS4 006)
         Value entry;
         if (!one_entry(path + "/" + name, name, piece, entry))
             return stopped();

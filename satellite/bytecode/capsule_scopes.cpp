@@ -607,6 +607,39 @@ void scan_row(CapsuleTable &table, const std::vector<std::bitset<16>> &row, std:
             std::string name, trouble;
             std::vector<CapsuleParameter> parameters;
             const std::size_t brace = capsule_header(row, i, name, parameters, trouble);
+            // A NAME THAT IS NOT A NAME -- `satellite.capsule 5()`, and x1, b1 and xff, which lex as a hex and a
+            // binary -- is refused on its own line (ERRORS4 038). It was dropped without a word, its { taken for a
+            // block at the file's top, and its first line refused as outside every capsule, or as a
+            // satellite.return(satellite) that goes inside satellite.main. The body goes with the header, so none of
+            // its lines is judged as the file's.
+            if (brace == 0 && !word::is_word_code(code_at(row, i + 1)) && code_at(row, i + 1) != token::name_token) {
+                std::size_t k = i + 1;
+                const Code named = code_at(row, k);
+                const std::string written = named == token::hexadecimal_token || named == token::binary_token
+                                                ? (named == token::binary_token ? "b" : "x") + text_at(row, k)
+                                                : std::string();
+                const bool nothing = named == token::line_end_token || named == token::comment_token ||
+                                     named == token::end_of_file_token;   // the spacesuit scan's own words then
+                refuse(table, r, i, satl_line_not_understood,
+                       nothing ? std::string("satellite.capsule needs a name")
+                       : written.empty()
+                           ? std::string("satellite.capsule is followed by something that is not a name -- a name is "
+                                         "made of a-z, A-Z, 0-9 and _, and does not start with a digit")
+                           : "satellite.capsule is followed by " + written + ", which is read as " +
+                                 (named == token::binary_token ? "a binary -- b and then binary digits"
+                                                               : "a hex -- x and then hex digits") +
+                                 " -- and not as a name");
+                for (k = i + 1; k < row.size() && code_at(row, k) != token::left_brace_token &&
+                                code_at(row, k) != token::right_brace_token;) {
+                    if (token::carries_a_count(code_at(row, k))) { skip_payload(row, k); continue; }
+                    ++k;
+                }
+                i = code_at(row, k) == token::left_brace_token
+                        ? past_the_body_and_its_error_block(table, row, r, k, table.sites.size())
+                        : past_the_statement(row, i);
+                line_begins = true;
+                continue;
+            }
             if (brace == 0) { ++i; continue; }
             if (!trouble.empty())
                 refuse(table, r, i, satl_line_not_understood, trouble);
@@ -844,8 +877,8 @@ void join_includes(CapsuleTable &table, const BytecodeRegistry &registry, const 
             if (shape.kind == IncludeShape::Kind::none || shape.kind == IncludeShape::Kind::main_marker)
                 continue;
             for (std::size_t q = 0; q < filenames.size(); ++q) {
-                if (filenames[q] != shape.resolved)
-                    continue;
+                if (one_spelling_of(filenames[q]) != one_spelling_of(shape.resolved))
+                    continue;   // the row load_program read it into, however either was spelled (ERRORS4 020)
                 std::vector<std::size_t> &under = table.included[r][shape.name];
                 const std::size_t theirs = table.file_scope[q];
                 bool already = false;

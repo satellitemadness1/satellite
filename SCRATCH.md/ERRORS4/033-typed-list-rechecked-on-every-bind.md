@@ -1,5 +1,7 @@
 # 033 -- Passing a list<number> to a list<number> parameter or declaration re-checks every item each time: 20,000 calls with a 20,000-item list take 15+ s typed, against 0.19 s untyped
 
+**FIXED 2026-10-25** (open-work runtime): a list body remembers the shape it was last found to fit (satelliteList::fits, numbered by type_shape.cpp's number_of_shape), set back to 0 by about_to_change: value_fits does not walk a list of 64 items or more again for the same shape. 20,000 typed calls and declarations over 5,000 items: 10.3 s before, 0.12 s now.
+
 **Found:** 2026-09-26, satl 004 revision 08 build 0099 (/home/madness/code/cxx/satellite/build/satl), by running ordinary programs against it.  
 **Area:** realistic programs  
 **Kind:** performance  

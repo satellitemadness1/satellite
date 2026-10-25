@@ -1,5 +1,9 @@
 # 009 -- satellite.info.file, satellite.info.directory and satellite.directory.list resolve a relative path against the working directory, while satellite.file.* resolve it against the program's folder, so info can describe a different file from the one that was opened
 
+**FIXED 2026-10-25** (open-work runtime): satellite.info.file, satellite.info.directory, satellite.directory.free and satellite.directory.list(d) in a program resolve a RELATIVE path with resolved_path, from the folder of the .satl the call is written in (info_calls.cpp, expression.cpp's call_directory_word); a refusal still names the path as written. A path with a leading / is read as before.
+
+**Question for the author (open):** what should a leading / name in these four words? The file rule (a leading / under the program's folder first) would make info.directory("/"), directory.list("/") and directory.free("/") the program's own folder, so a program could no longer reach the filesystem's root through them; directory.create follows FD-1's rule instead (only the first folder must be under the program's, and "/" alone stays the filesystem's root). Recommended: the directory words (info.directory, list(d), free(d)) take create's rule; info.file takes the file rule, finding a link itself as delete does, so info.file("/dangling") describes a dangling link in the program's folder.
+
 **Found:** 2026-09-26, satl 004 revision 08 build 0099 (/home/madness/code/cxx/satellite/build/satl), by running ordinary programs against it.  
 **Area:** files and io  
 **Kind:** wrong-answer  

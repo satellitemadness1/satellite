@@ -8,7 +8,11 @@
 #include "window_readers.hpp"
 
 #include "../machine/s_codes.hpp"
+#include "../satellite_object/object_fraction.hpp"
+#include "../satellite_variable_float/float_scaled.hpp"
 #include "../satellite_variable_number/number_conversions.hpp"
+
+#include <algorithm>
 
 #include <string>
 #include <utility>
@@ -88,46 +92,98 @@ bool millionths_of(const satellite_percentage &from, long long int &out)
     return true;
 }
 
-// A SECTION'S WIDTH OR HEIGHT, OR A WIDGET'S IN ONE (the author, 2026-10-10: "we can accept plain
-// numbers as pixels, and percentages get converted into pixels"). A PERCENTAGE IS A SHARE OF WHAT
-// HOLDS IT -- the window, or the section -- and, as a text box's width may (2026-10-07: "allow it to
-// take a percent value higher than... 100"), more than 100% reaches past its edge, where it is cut
-// off. A WHOLE NUMBER IS PIXELS. Nothing at or below zero: a section of no size is not one anybody
-// meant, and is refused where it is written. Up to 3276700% and 32767 pixels, GTK's own int.
-bool extent_of(const Value &value, AnExtent &out, const std::string &what, ExpressionContext &context)
+// A SECTION'S WIDTH OR HEIGHT (the author, 2026-10-10: "we can accept plain numbers as pixels, and percentages get
+// converted into pixels"; 2026-10-20: "the sections can be divided off by satellite's numbering system -- a percent,
+// a fraction, a pixel, so we have from 0% to 100% and from 0/1 to 1/1 in fractions, and from 0pixels to the
+// width/height of the window"). A PERCENTAGE OR A FRACTION IS A SHARE OF WHAT HOLDS IT -- the window, or the section
+// -- kept in millionths and cut down, as the layout uses it: 1/3 is 333333. A WHOLE NUMBER IS PIXELS. Each in the
+// author's range (SATELLITE_WINDOW_SECTIONS.md rule 2, SEC-1): a share above 0 and at most all of it -- 100% or 1/1,
+// where it reached 3276700% before -- and no finer than a millionth, which no window has a pixel of (the review,
+// 2026-10-10: 0.00001% was told it was not above 0%); pixels from 1, and at most what holds them, which a_piece_made
+// judges, because only it knows the holder. Nothing at or below 0: a section of no size is not one anybody meant.
+//
+// NO RUN NEEDED, so the checker says the same sentence of a size written as a literal, before anything runs
+// (program_check.cpp's section_written_wrong). `what` is whose size it is: "top's width".
+signed long long int extent_refused(const Value &value, AnExtent &out, const std::string &what, std::string &why)
 {
+    static const char *kTakes = "a share of what holds it, 50% or 1/2, or a whole number of pixels, 400";
     if (const satellite_percentage *share = value.as_percentage()) {
         if (share->negative() || share->scaled.is_zero()) {
-            context.refuse(not_a_position, what + " as a share of what holds it must be above 0% -- 50% is half of it");
-            return false;
+            why = what + " is a share of what holds it, above 0% -- 50% is half of it -- and was given " +
+                  share->written();
+            return not_a_position;
         }
         long long int millionths = 0;
-        if (!millionths_of(*share, millionths) || millionths > 32767000000LL) {
-            context.refuse(not_a_position, what + " was given a share past 3276700%, which is further than any screen "
-                                                  "reaches");
-            return false;
+        if (share->scaled > satellite_percentage::whole() || !millionths_of(*share, millionths)) {
+            why = what + " is a share of what holds it, up to 100% -- all of it -- and was given " + share->written();
+            return not_a_position;
         }
-        // FINER THAN A MILLIONTH OF THE WHOLE is a share no window has a pixel of (the review,
-        // 2026-10-10: 0.00001% was told it was not above 0%).
         if (millionths == 0) {
-            context.refuse(not_a_position, what + " was given a share finer than a millionth of what holds it -- "
-                                                  "the least is 0.0001%");
-            return false;
+            why = what + " was given " + share->written() + ", a share finer than a millionth of what holds it -- "
+                  "the least is 0.0001%";
+            return not_a_position;
         }
         out.share = true;
         out.amount = millionths;
-        return true;
+        return success;
     }
-    long long int pixels = 0;
-    if (!place_of(value, pixels, what, context, "a percentage of what holds it, 50%, or a whole number of pixels, 400"))
-        return false;
-    if (pixels <= 0 || pixels > 32767) {
-        context.refuse(not_a_position, what + " was given " + std::to_string(pixels) +
-                                           " pixels, and it is 1 to 32767 of them -- or a percentage, 50%");
-        return false;
+    // A FRACTION'S TWO NUMBERS ARE FLOATS (satellite_fraction.hpp), so both are brought to the same places and
+    // compared as whole numbers: 3/2 is past 1/1 because 3 is more than 2, and 1.5/2 is 15/20. The denominator is
+    // never 0 and never below it, so the numerator's sign is the fraction's.
+    if (const satellite_fraction *part = value.as_fraction()) {
+        const unsigned long long int places = std::max(part->numerator.places, part->denominator.places);
+        const satellite_number top = float_scaled(part->numerator, places);
+        const satellite_number under = float_scaled(part->denominator, places);
+        if (top.negative() || top.is_zero()) {
+            why = what + " is a share of what holds it, above 0/1 -- 1/2 is half of it -- and was given " +
+                  fraction_written(*part);
+            return not_a_position;
+        }
+        if (top > under) {
+            why = what + " is a share of what holds it, up to 1/1 -- all of it -- and was given " +
+                  fraction_written(*part);
+            return not_a_position;
+        }
+        satellite_number quotient, remainder;
+        if (satellite_number::divide(top * satellite_number(1000000ull), under, quotient, remainder) != success ||
+            !fast::fits_a_count(quotient)) {
+            why = what + " was given " + fraction_written(*part) + ", which is not a share this can work out";
+            return not_a_position;
+        }
+        const long long int millionths = static_cast<long long int>(fast::as_count(quotient));
+        if (millionths == 0) {
+            why = what + " was given " + fraction_written(*part) + ", a share finer than a millionth of what holds "
+                  "it -- the least is 1/1000000";
+            return not_a_position;
+        }
+        out.share = true;
+        out.amount = millionths;
+        return success;
+    }
+    const satellite_number *number = value.as_number();
+    if (number == nullptr) {
+        why = what + " takes " + kTakes + ", and was given " + value.kind_name();
+        return types_do_not_meet;
+    }
+    const unsigned long long int size = number->fits_one_limb() ? number->limb(0) : ~0ull;
+    if (number->negative() || number->is_zero() || size > 32767) {
+        why = what + " was given " + fast::to_text(*number) + " pixels, and it is 1 to 32767 of them -- or a share "
+              "of what holds it, 50% or 1/2";
+        return not_a_position;
     }
     out.share = false;
-    out.amount = pixels;
+    out.amount = static_cast<long long int>(size);
+    return success;
+}
+
+bool extent_of(const Value &value, AnExtent &out, const std::string &what, ExpressionContext &context)
+{
+    std::string why;
+    const signed long long int refused = extent_refused(value, out, what, why);
+    if (refused != success) {
+        context.refuse(refused, why);
+        return false;
+    }
     return true;
 }
 

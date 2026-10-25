@@ -53,8 +53,8 @@ int window_method_arity(token::Code method);
 // take the piece and where it goes, a row and a column take just the piece, and
 // which is right is the RECEIVER's -- which the checker cannot know, because a
 // satellite.variable.window name may hold either. `.listen` takes a capsule or
-// nothing, and `.widgets.display.file` and `.widgets.display.input` a name, or a
-// name and a size (2026-10-10).
+// nothing. (A display took a name, or a name and a size, from 2026-10-10 until
+// SEC-0: it fills its section now, and takes its name alone.)
 int window_method_also_takes(token::Code method);
 
 // HOW MANY IT TAKES, AS A REFUSAL SAYS IT: "1 argument", "4 arguments", and both
@@ -89,30 +89,45 @@ bool window_method_takes_a_capsule_name(token::Code method);
 bool window_method_takes_more_after_the_name(token::Code method);
 
 // THE AUTHOR'S WORDS OF PARTS (his final window syntax, 2026-10-10 ~21:15), each ONE word with `.satellite.`
-// once before it: main_window.files_display.satellite.widgets.display.file("list_of_files", 100%, 100%), and
-// w.satellite.scroll.vertical(1). The lexer reads each as one code after `.satellite.`; written any other way --
-// bare, `.satellite.` again inside it, the family's old name displays, begun and not finished -- it arrives as its
-// parts. True when the method after the period at `dot` is such a part (window_shapes.cpp says which are). Asked
-// by the walker and the checker of a window, before the period's own rule, so the sentence names the whole word.
+// once before it: w.satellite.scroll.vertical(1), and since SEC-0 (SATELLITE_WINDOW_SECTIONS.md)
+// main_window.satellite.window.section("top", 100%, 50%), top.satellite.window.display.file("files") and
+// .satellite.window.display.text.input("folder"). The lexer reads each as one code after `.satellite.`; written any
+// other way -- bare, `.satellite.` again inside it, begun and not finished -- it arrives as its parts. AND THE OLD
+// SPELLINGS: `.satellite.section`, `.satellite.widgets.display.file`, `.satellite.widgets.display.input` and their
+// parts (rule 8). True when the method after the period at `dot` is such a part or an old spelling
+// (window_shapes.cpp says which are). Asked by the walker and the checker OF A WINDOW ONLY -- `.section` is an
+// object's capsule's name as well -- before the period's own rule, so the sentence names the whole word.
 bool a_word_in_parts(const std::vector<std::bitset<16>> &row, std::size_t dot);
 
 // AND THE SENTENCE: `receiver` is the call as written up to the period -- main_window, main_window.files_display --
-// and the sentence says how the whole word is written: "main_window.widgets.display.file is written
-// main_window.satellite.widgets.display.file now -- a window's own words are under satellite".
+// and the sentence says how the whole word is written: "main_window.window.section is written
+// main_window.satellite.window.section now -- a window's own words are under satellite", "main_window.satellite.section
+// is written main_window.satellite.window.section now -- a window's sections and displays are under satellite.window"
+// (the plan's rule 8), or the words a part begins: "window is the start of a word: ...".
 std::string word_in_parts_written_wrong(const std::vector<std::bitset<16>> &row, std::size_t dot,
                                         const std::string &receiver);
 
-// `.satellite.widgets.display.file("a_name")` and `.satellite.widgets.display.input("a_name")`: the two that make a
-// widget and take its name. A section (2026-10-10) is not one of the displays: `.satellite.section` is written on
-// the window or the section, and program_check.cpp judges it where it knows that is what it was written on.
+// `.satellite.window.display.file("a_name")` and `.satellite.window.display.text.input("a_name")`: the two that make a
+// display and take its name (SEC-0). A section is not one of the displays: `.satellite.window.section` takes a size
+// too, and section_written_wrong judges it.
 bool makes_a_widget(token::Code method);
 
-// `.section("a_name", 100%, 50%)` WRITTEN ON A WINDOW OR A SECTION: three arguments, the first its name
-// in quotes, a name a widget can have. `open` is the bracket. success, or the code and the sentence.
+// A DISPLAY GIVEN A SIZE (SEC-0, rule 8), which a section of that size holds now: the sentence, after `spelled`, the
+// call as written. `display` is the display's word; `named` its name and `sizes` its width and height as written
+// ("100%, 50%"), each when known before the run, or empty.
+std::string a_display_takes_no_size(token::Code display, const std::string &spelled, const std::string &named,
+                                    const std::string &sizes);
+
+// WHERE A DISPLAY OR A SECTION MAY NOT GO (SEC-0, rules 6 and 7) is a_place_refused, declared in
+// satellite_window.hpp beside a_widget_name_fits, because window_widget_made says it too.
+
+// `.satellite.window.section("a_name", 100%, 50%)` WRITTEN ON A WINDOW OR A SECTION: three arguments, the first its
+// name in quotes, a name a widget can have. `open` is the bracket. success, or the code and the sentence.
 signed long long int section_written_wrong(const std::vector<std::bitset<16>> &row, std::size_t open,
                                           const std::string &spelling, std::string &why);
 
-// WHETHER `name` CAN NAME A WIDGET (window_shapes.cpp; satellite_window.hpp says the rule).
+// WHETHER `name` CAN NAME A WIDGET (window_shapes.cpp; satellite_window.hpp says the rule) -- and, since its name is
+// a name (SEC-0, rule 4), not `satellite` and not shaped like a hex or binary number.
 bool a_widget_name_fits(const std::string &name, std::string &why);
 
 // One of those words, its arguments already evaluated.
@@ -134,7 +149,8 @@ Value run_window_number(token::Code method, token::Code number, const Value &rec
                         ExpressionContext &context);
 
 // `my_window.a_name` -- THE WIDGET MADE IN IT UNDER THAT NAME (the author, 2026-10-09), with
-// `.satellite.widgets.display.file("a_name")`. `name` is the chain so far, as a refusal says it.
+// `.satellite.window.display.file("a_name")` or `.satellite.window.section("a_name", ...)` -- reached bare as well
+// since SEC-0, in the capsule whose line made it. `name` is the chain so far, as a refusal says it.
 Value a_widget_by_name(const WindowHandle &which, const std::string &member, const std::string &name,
                        ExpressionContext &context);
 

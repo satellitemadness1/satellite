@@ -42,6 +42,12 @@ WindowHandle frame_new(satellite_window::Piece which, const std::string &title, 
 void put_the_frame_up(satellite_window &which,
                       void (*fill)(satellite_window &made, GtkWidget *window, GtkWidget *column));
 
+// A WINDOW'S SIZE IS ITS INSIDE (SATELLITE_WINDOW_SECTIONS.md rule 3, SEC-1; the author, 2026-10-25: "yes", to "is
+// 800x600 the inside?"): ON THE DESK, asks GTK for a window `wide` across and `tall` under its title bar and its menu
+// bar, each measured as it is now: from the window's realize, where GTK has made its bar, and from `.resize`. A first
+// menu grows the window by its bar on its own (window_menu_bar.cpp), keeping a size a person gave it.
+void ask_for_the_inside(satellite_window &which, int wide, int tall);
+
 // WHAT A WINDOW'S COLUMN HOLDS (WIN-3): the GtkFixed that `.append` places
 // pieces in. A console fills its column with a terminal instead, on its ground
 // (console_shadow.cpp).

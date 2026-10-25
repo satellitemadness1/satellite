@@ -12,7 +12,45 @@
 #include "../satellite_object/satellite_index.hpp"
 #include "../satellite_object/satellite_list.hpp"
 
+#include <mutex>
+#include <string>
+#include <unordered_map>
+
 namespace satellite004 {
+
+namespace {
+
+// A LIST THIS LONG REMEMBERS THE SHAPE IT FITS (ERRORS4 033); a shorter one is walked again, which costs less than
+// numbering the shape does.
+constexpr std::size_t kRememberedFrom = 64;
+
+// A SHAPE'S NUMBER FOR satelliteList::fits: each word's code, a spacesuit's scope, and what is between its < and >,
+// spelled out and numbered the first time it is asked -- so two shapes share a number only when they are one shape.
+// Under a lock, since two threads may ask at once; made once and never destroyed, so a thread ending after main()
+// has returned still finds it.
+std::uint64_t number_of_shape(const TypeShape &shape)
+{
+    std::string spelled;
+    const auto spell = [&spelled](const auto &self, const TypeShape &each) -> void {
+        spelled += std::to_string(each.word);
+        if (each.is_a_suit()) spelled += "@" + std::to_string(each.suit);
+        if (each.parameters.empty()) return;
+        spelled += '<';
+        for (const TypeShape &inner : each.parameters) {
+            self(self, inner);
+            spelled += ',';
+        }
+        spelled += '>';
+    };
+    spell(spell, shape);
+    static std::mutex *const lock = new std::mutex();
+    static std::unordered_map<std::string, std::uint64_t> *const numbers =
+        new std::unordered_map<std::string, std::uint64_t>();
+    const std::lock_guard<std::mutex> hold(*lock);
+    return numbers->emplace(std::move(spelled), numbers->size() + 1).first->second;
+}
+
+} // namespace
 
 bool value_fits(const TypeShape &shape, const satelliteObject &value, std::string &why)
 {
@@ -96,6 +134,11 @@ bool value_fits(const TypeShape &shape, const satelliteObject &value, std::strin
     if (wanted == satelliteObject::list) {
         const satelliteList *held = value.as_list()->get();
         if (held == nullptr) return true;
+        // FOUND TO FIT THIS SHAPE ALREADY, AND NOT CHANGED SINCE (ERRORS4 033; satelliteList::fits): its items
+        // were checked on the way in, and a long one is not walked again at every name it is handed to.
+        const std::uint64_t remembered = held->items.size() >= kRememberedFrom ? number_of_shape(shape) : 0;
+        if (remembered != 0 && held->fits.load(std::memory_order_relaxed) == remembered)
+            return true;
         for (std::size_t at = 0; at < held->items.size(); ++at) {
             std::string inner;
             if (!value_fits(shape.parameters[0], held->items[at], inner)) {
@@ -103,6 +146,8 @@ bool value_fits(const TypeShape &shape, const satelliteObject &value, std::strin
                 return false;
             }
         }
+        if (remembered != 0)
+            held->fits.store(remembered, std::memory_order_relaxed);
         return true;
     }
 
@@ -145,6 +190,21 @@ void of_its_kind(const TypeShape &shape, const satelliteObject &value, const Typ
         if (!fits) continue;
         if (count++ == 0) first = &arm;
     }
+}
+
+// A TYPE A KEY CAN BE (ERRORS4 028): one of the five key_name_of files a key under (satellite_index.hpp), or a
+// multiple of nothing but those -- the run's own rule, asked of the declared type instead of a value.
+bool a_key_type(const TypeShape &key)
+{
+    if (key.word == word::code_of(1, 4, 6)) {
+        for (const TypeShape &arm : key.parameters)
+            if (!a_key_type(arm)) return false;
+        return !key.parameters.empty();
+    }
+    if (key.is_a_suit()) return false;
+    const satelliteObject::Kind kind = kind_of_type_word(key.word);
+    return kind == satelliteObject::number || kind == satelliteObject::string || kind == satelliteObject::boolean ||
+           kind == satelliteObject::binary || kind == satelliteObject::percentage;
 }
 
 } // namespace
@@ -223,6 +283,14 @@ bool read_type_shape(const std::vector<std::bitset<16>> &row, std::size_t &at, T
         why = std::string(word::spelling_of(out.word)) + " takes " + std::to_string(wanted) +
               (wanted == 1 ? " type between < and >, and was given " : " types between < and >, and was given ") +
               std::to_string(out.parameters.size());
+        return false;
+    }
+    // A MAP WHOSE KEY TYPE COULD NEVER BE A KEY is refused where it is declared, in the run's sentence (ERRORS4 028):
+    // map<list<number>, number> m was accepted, satellite.access offered m[key] = 1, and every fill was S301 at run.
+    if (is_an_index_word(out.word) && !a_key_type(out.parameters.front())) {
+        why = std::string(word::spelling_of(out.word)) + "'s key is " + shape_written(out.parameters.front()) +
+              ", and a key must be a number, a string, a bool, a binary or a percentage -- something that cannot "
+              "change after it is filed under";
         return false;
     }
     if (wanted < 0 && out.parameters.size() < 2) {

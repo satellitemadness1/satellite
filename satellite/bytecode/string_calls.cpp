@@ -135,6 +135,7 @@ int string_method_arity(token::Code method)
     case token::empty_token:
     case token::trim_token:
     case token::resolved_token:
+    case token::reverse_token:   // counted as the others are (ERRORS4 023): .reverse("x") ran with the "x" dropped
     case token::clear_token: return 0;
     default: return -1;
     }

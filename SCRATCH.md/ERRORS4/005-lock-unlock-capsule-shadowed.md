@@ -1,5 +1,7 @@
 # 005 -- A spacesuit capsule named lock() or unlock() never runs: the built-in object lock silently takes its place, and the declaration is not refused
 
+**FIXED before 2026-10-25** (the open-work re-check found it right on REVISION 11 BUILD 0001): a capsule lock() called as d.lock(), and unlock(number c) as d.unlock(5), runs in place of the built-in lock, exit 0.
+
 **Found:** 2026-09-26, satl 004 revision 08 build 0099 (/home/madness/code/cxx/satellite/build/satl), by running ordinary programs against it.  
 **Area:** spacesuits and library  
 **Kind:** wrong-answer  

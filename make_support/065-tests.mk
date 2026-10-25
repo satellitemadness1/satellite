@@ -13,6 +13,23 @@
 # answers, so that binary stays built -- but never with a bare `make` in 003's
 # tree, which re-installs 003 into ~/.satl.
 
+# EVERY HARNESS DEPENDS ON THE FLAGS IT IS BUILT WITH, THOUGH (open-work tools, 2026-10-25): one built
+# at -O2 was current to `make -sq OPT=-O0` and to `CXX=g++`, and check.sh ran it as if those flags had
+# made it -- CXXFLAGS is no prerequisite, and 060-compile.mk's stamp is satl's alone. THEIR OWN STAMP,
+# AND NOT 060's PATTERN: that stamp hangs on FORCE, so make always calls it out of date, and check.sh's
+# `make -sq build/<harness>` would call every harness stale. This one hangs on FORCE only while what
+# it holds differs from the flags -- asked as make reads, so it is rewritten, and every harness that
+# names it is built again, exactly when they change. check.sh asks with the HOME it was started with,
+# which is where 010-compiler.mk finds the compiler.
+HARNESS_FLAGS = $(CXX) [$(CXX_VERSION)] $(CXXFLAGS) $(LDFLAGS)
+HARNESS_STAMP = $(BUILD)/.harness-flags
+ifneq ($(file <$(HARNESS_STAMP)),$(HARNESS_FLAGS))
+$(HARNESS_STAMP): FORCE
+endif
+$(HARNESS_STAMP):
+	@mkdir -p $(BUILD)
+	@printf '%s' '$(HARNESS_FLAGS)' > $@
+
 STRING_HARNESSES = $(BUILD)/string_cases $(BUILD)/string16_cases $(BUILD)/string_table_check
 
 check: all
@@ -35,7 +52,7 @@ number-race: $(BUILD)/number_race
 # The exit status of a machine code that does not fit 8 bits (machine/exit_status.hpp):
 # no program can stop on 256 yet, so the mapping is checked here, and check.sh runs it.
 $(BUILD)/exit_status_cases: $(MACHINE)/exit_status_cases.cpp $(MACHINE)/exit_status.hpp $(MACHINE)/machine_state.cpp \
-                            $(MACHINE)/machine_state.hpp $(MACHINE)/machine_codes.hpp $(MACHINE)/shown.hpp
+                            $(MACHINE)/machine_state.hpp $(MACHINE)/machine_codes.hpp $(MACHINE)/shown.hpp $(HARNESS_STAMP)
 	@mkdir -p $(BUILD)
 	$(LINK_ENV) $(CXX) $(CXXFLAGS) $(LDFLAGS) $(MACHINE)/exit_status_cases.cpp $(MACHINE)/machine_state.cpp -o $@
 
@@ -45,7 +62,7 @@ $(BUILD)/exit_status_cases: $(MACHINE)/exit_status_cases.cpp $(MACHINE)/exit_sta
 # s_codes.hpp reads the bytecode's headers through source_position.hpp, so every header but the
 # build-numbered config is a prerequisite, as for count_cases.
 $(BUILD)/missing_cases: $(MACHINE)/missing_cases.cpp $(MACHINE)/machine_state.cpp \
-                        $(filter-out $(SATELLITE)/config/satellite_config.hpp,$(HEADERS))
+                        $(filter-out $(SATELLITE)/config/satellite_config.hpp,$(HEADERS)) $(HARNESS_STAMP)
 	@mkdir -p $(BUILD)
 	$(LINK_ENV) $(CXX) $(CXXFLAGS) $(LDFLAGS) $(MACHINE)/missing_cases.cpp $(MACHINE)/machine_state.cpp -o $@
 
@@ -73,7 +90,7 @@ COUNT_CASES_SOURCES = $(BYTECODE)/count_cases.cpp $(BYTECODE)/bytecode_registry.
 UBSAN_FLAGS = $(shell if printf 'int main(){}' | $(LINK_ENV) $(CXX) $(CXXFLAGS) -fsanitize=undefined -fno-sanitize-recover=undefined $(LDFLAGS) -x c++ - -o /dev/null >/dev/null 2>&1; \
                       then echo -fsanitize=undefined -fno-sanitize-recover=undefined; \
                       else echo "note: $(CXX) cannot link -fsanitize=undefined here (g++ needs the libubsan package, clang its sanitizer runtime), so build/count_cases is built without it" >&2; fi)
-$(BUILD)/count_cases: $(COUNT_CASES_SOURCES) $(filter-out $(SATELLITE)/config/satellite_config.hpp,$(HEADERS))
+$(BUILD)/count_cases: $(COUNT_CASES_SOURCES) $(filter-out $(SATELLITE)/config/satellite_config.hpp,$(HEADERS)) $(HARNESS_STAMP)
 	@mkdir -p $(BUILD)
 	$(LINK_ENV) $(CXX) $(CXXFLAGS) $(UBSAN_FLAGS) $(LDFLAGS) \
 	    $(COUNT_CASES_SOURCES) -o $@
@@ -94,11 +111,11 @@ PROMPT_HEADERS = $(PROMPT_SOURCES:.cpp=.hpp) $(MACHINE)/shown.hpp $(MACHINE)/con
                  $(STRING16)/character_table.hpp $(STRING16)/conversion_loops.hpp $(STRING16)/string_overwrite.hpp \
                  $(MACHINE)/machine_codes.hpp
 
-$(BUILD)/prompt_cases: $(PROMPT)/prompt_cases.cpp $(PROMPT_SOURCES) $(PROMPT_HEADERS)
+$(BUILD)/prompt_cases: $(PROMPT)/prompt_cases.cpp $(PROMPT_SOURCES) $(PROMPT_HEADERS) $(HARNESS_STAMP)
 	@mkdir -p $(BUILD)
 	$(LINK_ENV) $(CXX) $(CXXFLAGS) $(LDFLAGS) $(PROMPT)/prompt_cases.cpp $(PROMPT_SOURCES) -o $@
 
-$(BUILD)/prompt_reader: $(PROMPT)/prompt_reader.cpp $(PROMPT_SOURCES) $(PROMPT_HEADERS)
+$(BUILD)/prompt_reader: $(PROMPT)/prompt_reader.cpp $(PROMPT_SOURCES) $(PROMPT_HEADERS) $(HARNESS_STAMP)
 	@mkdir -p $(BUILD)
 	$(LINK_ENV) $(CXX) $(CXXFLAGS) $(LDFLAGS) $(PROMPT)/prompt_reader.cpp $(PROMPT_SOURCES) -o $@
 
@@ -106,7 +123,7 @@ $(BUILD)/prompt_reader: $(PROMPT)/prompt_reader.cpp $(PROMPT_SOURCES) $(PROMPT_H
 # three words are built from (PLAN M0.6; libraries until 2026-10-07). It takes the room to work in, so the
 # checks never write beside the tree.
 $(BUILD)/directory_cases: $(SATELLITE)/satl/directory_cases.cpp $(NUMBERS)/directory_words.hpp $(NUMBERS)/number_row.hpp \
-                          $(MACHINE)/machine_codes.hpp $(MACHINE)/filesystems.hpp
+                          $(MACHINE)/machine_codes.hpp $(MACHINE)/filesystems.hpp $(HARNESS_STAMP)
 	@mkdir -p $(BUILD)
 	$(LINK_ENV) $(CXX) $(CXXFLAGS) $(LDFLAGS) $(SATELLITE)/satl/directory_cases.cpp -o $@
 
@@ -119,7 +136,7 @@ FILE_CASES_SOURCES = $(SATELLITE)/satellite_variable_file/file_cases.cpp \
 FILE_CASES_HEADERS = $(SATELLITE)/satellite_variable_file/satellite_file.hpp $(STRING16)/satellite_string.hpp \
                      $(STRING16)/string_overwrite.hpp $(STRING16)/character_table.hpp \
                      $(STRING16)/conversion_loops.hpp $(MACHINE)/machine_codes.hpp
-$(BUILD)/file_cases: $(FILE_CASES_SOURCES) $(FILE_CASES_HEADERS)
+$(BUILD)/file_cases: $(FILE_CASES_SOURCES) $(FILE_CASES_HEADERS) $(HARNESS_STAMP)
 	@mkdir -p $(BUILD)
 	$(LINK_ENV) $(CXX) $(CXXFLAGS) $(LDFLAGS) $(FILE_CASES_SOURCES) -o $@
 
@@ -131,7 +148,7 @@ FILE_MOVES_CASES_SOURCES = $(SATELLITE)/satellite_variable_file/file_moves_cases
                            $(MACHINE)/as_another_account.cpp $(MACHINE)/ask_at_the_console.cpp $(MACHINE)/stack_share.cpp
 FILE_MOVES_CASES_HEADERS = $(SATELLITE)/satellite_variable_file/file_moves.hpp $(MACHINE)/as_another_account.hpp \
                            $(MACHINE)/ask_at_the_console.hpp $(MACHINE)/stack_share.hpp $(MACHINE)/stop_flag.hpp
-$(BUILD)/file_moves_cases: $(FILE_MOVES_CASES_SOURCES) $(FILE_MOVES_CASES_HEADERS)
+$(BUILD)/file_moves_cases: $(FILE_MOVES_CASES_SOURCES) $(FILE_MOVES_CASES_HEADERS) $(HARNESS_STAMP)
 	@mkdir -p $(BUILD)
 	$(LINK_ENV) $(CXX) $(CXXFLAGS) $(LDFLAGS) $(FILE_MOVES_CASES_SOURCES) -o $@
 
@@ -139,7 +156,7 @@ $(BUILD)/file_moves_cases: $(FILE_MOVES_CASES_SOURCES) $(FILE_MOVES_CASES_HEADER
 # given (FILE_AND_DRIVE_PLAN.md FD-4), and then this machine's, read without opening a device.
 DRIVE_MOUNTS_CASES_SOURCES = $(MACHINE)/drive_mounts_cases.cpp $(MACHINE)/drive_mounts.cpp
 DRIVE_MOUNTS_CASES_HEADERS = $(MACHINE)/drive_mounts.hpp $(MACHINE)/filesystems.hpp
-$(BUILD)/drive_mounts_cases: $(DRIVE_MOUNTS_CASES_SOURCES) $(DRIVE_MOUNTS_CASES_HEADERS)
+$(BUILD)/drive_mounts_cases: $(DRIVE_MOUNTS_CASES_SOURCES) $(DRIVE_MOUNTS_CASES_HEADERS) $(HARNESS_STAMP)
 	@mkdir -p $(BUILD)
 	$(LINK_ENV) $(CXX) $(CXXFLAGS) $(LDFLAGS) $(DRIVE_MOUNTS_CASES_SOURCES) -o $@
 
@@ -152,7 +169,7 @@ $(BUILD)/drive_mounts_cases: $(DRIVE_MOUNTS_CASES_SOURCES) $(DRIVE_MOUNTS_CASES_
 # missing_cases; it never includes satellite_config.hpp.
 CONSOLE_FILES_CASES_SOURCES = $(SATELLITE)/satl/console_files_cases.cpp $(SATELLITE)/satl/console_files.cpp \
                               $(PROMPT)/console_lines.cpp $(PROMPT)/earlier_consoles.cpp $(STRING16)/satellite_string.cpp
-$(BUILD)/console_files_cases: $(CONSOLE_FILES_CASES_SOURCES) $(filter-out $(SATELLITE)/config/satellite_config.hpp,$(HEADERS))
+$(BUILD)/console_files_cases: $(CONSOLE_FILES_CASES_SOURCES) $(filter-out $(SATELLITE)/config/satellite_config.hpp,$(HEADERS)) $(HARNESS_STAMP)
 	@mkdir -p $(BUILD)
 	$(LINK_ENV) $(CXX) $(CXXFLAGS) $(LDFLAGS) $(CONSOLE_FILES_CASES_SOURCES) -o $@
 
@@ -165,7 +182,7 @@ $(BUILD)/console_files_cases: $(CONSOLE_FILES_CASES_SOURCES) $(filter-out $(SATE
 # for missing_cases.
 PROMPT_RUN_CASES_SOURCES = $(SATELLITE)/satl/prompt_run_cases.cpp $(SATELLITE)/satl/prompt_run.cpp \
                            $(MACHINE)/satellite_of_its_own.cpp $(MACHINE)/stack_share.cpp
-$(BUILD)/prompt_run_cases: $(PROMPT_RUN_CASES_SOURCES) $(filter-out $(SATELLITE)/config/satellite_config.hpp,$(HEADERS))
+$(BUILD)/prompt_run_cases: $(PROMPT_RUN_CASES_SOURCES) $(filter-out $(SATELLITE)/config/satellite_config.hpp,$(HEADERS)) $(HARNESS_STAMP)
 	@mkdir -p $(BUILD)
 	$(LINK_ENV) $(CXX) $(CXXFLAGS) $(LDFLAGS) $(PROMPT_RUN_CASES_SOURCES) -o $@
 
@@ -176,7 +193,7 @@ build-inputs:
 
 # DISPLAY'S OWN WORD AND NOTHING ELSE SINCE 2026-10-10 (race.cpp says why): a string's methods are
 # numbered words that run satl's own strings, so WORD_SOURCES no longer links without the interpreter.
-$(BUILD)/race: $(SATELLITE)/race/race.cpp $(NUMBERS)/words/1.5.1.cpp $(MACHINE)/machine_state.cpp $(HEADERS)
+$(BUILD)/race: $(SATELLITE)/race/race.cpp $(NUMBERS)/words/1.5.1.cpp $(MACHINE)/machine_state.cpp $(HEADERS) $(HARNESS_STAMP)
 	@mkdir -p $(BUILD)
 	$(LINK_ENV) $(CXX) $(CXXFLAGS) $(LDFLAGS) $(SATELLITE)/race/race.cpp $(NUMBERS)/words/1.5.1.cpp \
 	    $(MACHINE)/machine_state.cpp -o $@
@@ -189,7 +206,7 @@ $(BUILD)/race: $(SATELLITE)/race/race.cpp $(NUMBERS)/words/1.5.1.cpp $(MACHINE)/
 # strings/check_string_methods.py were deleted the same day, at his word (copies in the backups).
 
 $(BUILD)/string_cases: $(STRINGS32)/string_cases.cpp $(STRINGS32)/satellite_string.cpp $(STRINGS32)/satellite_string.hpp \
-                       $(MACHINE)/machine_codes.hpp
+                       $(MACHINE)/machine_codes.hpp $(HARNESS_STAMP)
 	@mkdir -p $(BUILD)
 	$(LINK_ENV) $(CXX) $(CXXFLAGS) $(LDFLAGS) $(STRINGS32)/string_cases.cpp $(STRINGS32)/satellite_string.cpp -o $@
 
@@ -204,11 +221,11 @@ NUMBER_HEADERS = $(NUMBER)/satellite_number.hpp $(NUMBER)/satellite_number_limbs
 # name outside that list (arguments.cpp filled_in_by_satl). check.sh runs it.
 ARGUMENTS_CASES_SOURCES = $(ARGUMENTS)/arguments_cases.cpp $(ARGUMENTS)/arguments.cpp $(ARGUMENTS)/command_line.cpp \
                           $(MACHINE)/machine_state.cpp $(NUMBER_SOURCES)
-$(BUILD)/arguments_cases: $(ARGUMENTS_CASES_SOURCES) $(HEADERS)
+$(BUILD)/arguments_cases: $(ARGUMENTS_CASES_SOURCES) $(HEADERS) $(HARNESS_STAMP)
 	@mkdir -p $(BUILD)
 	$(LINK_ENV) $(CXX) $(CXXFLAGS) $(LDFLAGS) $(ARGUMENTS_CASES_SOURCES) -o $@
 
-$(BUILD)/number_cases: $(NUMBER)/number_cases.cpp $(NUMBER_SOURCES) $(NUMBER_HEADERS)
+$(BUILD)/number_cases: $(NUMBER)/number_cases.cpp $(NUMBER_SOURCES) $(NUMBER_HEADERS) $(HARNESS_STAMP)
 	@mkdir -p $(BUILD)
 	$(LINK_ENV) $(CXX) $(CXXFLAGS) $(LDFLAGS) $(NUMBER)/number_cases.cpp $(NUMBER_SOURCES) -o $@
 
@@ -216,7 +233,7 @@ $(BUILD)/number_cases: $(NUMBER)/number_cases.cpp $(NUMBER_SOURCES) $(NUMBER_HEA
 # INF-2): the display and the order, held to infinity_oracle.py by check_infinity.py,
 # which check.sh runs. It refuses one older than these prerequisites.
 INFINITY_CASES_SOURCES = $(INFINITY)/infinity_cases.cpp $(INFINITY)/satellite_infinity.cpp $(NUMBER_SOURCES)
-$(BUILD)/infinity_cases: $(INFINITY_CASES_SOURCES) $(INFINITY)/satellite_infinity.hpp $(NUMBER_HEADERS)
+$(BUILD)/infinity_cases: $(INFINITY_CASES_SOURCES) $(INFINITY)/satellite_infinity.hpp $(NUMBER_HEADERS) $(HARNESS_STAMP)
 	@mkdir -p $(BUILD)
 	$(LINK_ENV) $(CXX) $(CXXFLAGS) $(LDFLAGS) $(INFINITY_CASES_SOURCES) -o $@
 
@@ -230,27 +247,27 @@ RANDOM_CASES_SOURCES = $(RANDOM_DIR)/random_cases.cpp $(RANDOM_DIR)/random_sourc
                        $(RANDOM_DIR)/random_spin.cpp $(NUMBER_SOURCES)
 RANDOM_HEADERS = $(RANDOM_DIR)/random_source.hpp $(RANDOM_DIR)/random_draw.hpp $(RANDOM_DIR)/random_spin.hpp $(RANDOM_DIR)/pcg_512.hpp \
                  $(RANDOM_DIR)/wide_unsigned.hpp $(RANDOM_DIR)/random_constants.hpp $(PCG_HEADERS)
-$(BUILD)/random_cases: $(RANDOM_CASES_SOURCES) $(RANDOM_HEADERS) $(NUMBER_HEADERS)
+$(BUILD)/random_cases: $(RANDOM_CASES_SOURCES) $(RANDOM_HEADERS) $(NUMBER_HEADERS) $(HARNESS_STAMP)
 	@mkdir -p $(BUILD)
 	$(LINK_ENV) $(CXX) $(CXXFLAGS) $(LDFLAGS) -isystem $(PCG_INCLUDE) $(RANDOM_CASES_SOURCES) -o $@
 
-$(BUILD)/number_race: $(NUMBER)/number_race.cpp $(NUMBER_SOURCES) $(NUMBER_HEADERS)
+$(BUILD)/number_race: $(NUMBER)/number_race.cpp $(NUMBER_SOURCES) $(NUMBER_HEADERS) $(HARNESS_STAMP)
 	@mkdir -p $(BUILD)
 	$(LINK_ENV) $(CXX) $(CXXFLAGS) $(LDFLAGS) $(NUMBER)/number_race.cpp $(NUMBER_SOURCES) -o $@
 
 STRING16_SOURCES = $(STRING16)/satellite_string.cpp $(STRING16)/satellite_string.hpp $(STRING16)/string_overwrite.hpp \
                    $(STRING16)/character_table.hpp $(STRING16)/conversion_loops.hpp $(MACHINE)/machine_codes.hpp
 
-$(BUILD)/string16_cases: $(STRING16)/string16_cases.cpp $(STRING16_SOURCES)
+$(BUILD)/string16_cases: $(STRING16)/string16_cases.cpp $(STRING16_SOURCES) $(HARNESS_STAMP)
 	@mkdir -p $(BUILD)
 	$(LINK_ENV) $(CXX) $(CXXFLAGS) $(LDFLAGS) $(STRING16)/string16_cases.cpp $(STRING16)/satellite_string.cpp -o $@
 
-$(BUILD)/string_table_check: $(STRING16)/string_table_check.cpp $(STRING16_SOURCES)
+$(BUILD)/string_table_check: $(STRING16)/string_table_check.cpp $(STRING16_SOURCES) $(HARNESS_STAMP)
 	@mkdir -p $(BUILD)
 	$(LINK_ENV) $(CXX) $(CXXFLAGS) $(LDFLAGS) $(STRING16)/string_table_check.cpp $(STRING16)/satellite_string.cpp -o $@
 
 $(BUILD)/string_race: $(STRING16)/string_race.cpp $(STRING16)/plain_conversions.hpp $(STRING16)/plain_like_satellite.hpp \
-                      $(STRING16_SOURCES) $(STRINGS32)/satellite_string.cpp $(STRINGS32)/satellite_string.hpp
+                      $(STRING16_SOURCES) $(STRINGS32)/satellite_string.cpp $(STRINGS32)/satellite_string.hpp $(HARNESS_STAMP)
 	@mkdir -p $(BUILD)
 	$(LINK_ENV) $(CXX) $(CXXFLAGS) $(LDFLAGS) $(STRING16)/string_race.cpp $(STRING16)/satellite_string.cpp \
 	    $(STRINGS32)/satellite_string.cpp -o $@

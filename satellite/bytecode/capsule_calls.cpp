@@ -268,9 +268,15 @@ Value call_member(const std::vector<std::bitset<16>> &row, std::size_t &at, cons
             context.refuse(object_is_gone, object_is_gone_because(written, receiver), dot);
             return Value();
         }
-        context.refuse(satl_line_not_understood, receiver + " holds no object yet, so it has no " + name +
-                                                     " -- a field of a spacesuit's type starts empty until something "
-                                                     "gives it one", dot);
+        // A NAME OF THE BODY'S OWN is not a field, and is not told it is one -- an empty window name reaches
+        // here with a widget's name after it (ERRORS4 042, a_member_next).
+        const Seen seen = context.variables.seen(receiver);
+        context.refuse(satl_line_not_understood,
+                       receiver + " holds no object yet, so it has no " + name +
+                           (seen && !seen.field ? std::string()
+                                                : std::string(" -- a field of a spacesuit's type starts empty until "
+                                                              "something gives it one")),
+                       dot);
         return Value();
     }
     // ANY OTHER NAME IS A CAPSULE OF HIS SPACESUIT -- one of the five too, when his spacesuit declares

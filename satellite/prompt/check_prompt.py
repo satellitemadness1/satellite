@@ -153,6 +153,12 @@ class Terminal:
             os.execv(READER_ARGS[0], READER_ARGS)
             os._exit(127)
         self.pid, self.fd, self.raw = pid, fd, bytearray()
+        # THE MASTER IS NON-BLOCKING, SO type() NEVER WAITS IN A WRITE (open-work tools, 2026-10-25). A pty
+        # holds about 20 KB each way, and select calls it writable with 18,000 bytes queued: a blocking 4 KB
+        # write then waited for room, and stopped pumping, while the reader -- answering a paste's 20,000
+        # lines without reading (line_reader.cpp's read_typed) -- waited for its output to be read. Both
+        # waited for good; the two-pastes case could end that way. check_session.py's terminal is this one.
+        os.set_blocking(fd, False)
         self.screen = Screen(width, height)
         self.status = None
 
@@ -183,7 +189,10 @@ class Terminal:
         while view:
             _, writable, _ = select.select([], [self.fd], [], 0.05)
             if writable:
-                view = view[os.write(self.fd, view[:4096]):]
+                try:
+                    view = view[os.write(self.fd, view[:4096]):]   # what fits, which may be less
+                except BlockingIOError:
+                    pass   # no room after all: read what the far end wrote, and try again
                 time.sleep(gap)
             while self.pump(0):
                 pass
@@ -352,6 +361,58 @@ t.type(b'\x1b[200~' + b'z' * 1000000 + b'\x1b[201~\r')
 check(t.wait_for(lambda t: b'(1000000 bytes)' in t.raw, 60), 'a pasted line of 1,000,000 bytes arrives whole')
 t.type(b'exit\r')
 check(t.finish() == 0, 'exit ends it')
+
+# TYPING AT A FAR END THAT IS WRITING, NOT READING (open-work tools, 2026-10-25): the two-pastes case's
+# wait, made certain. The terminal is filled while the far end -- a Python, not the reader -- reads
+# nothing; told to go (SIGUSR1), it reads 4 KB, which leaves room that select calls writable but that
+# holds less than 4 KB, and then writes 100 KB before it reads again. type()'s blocking write waited
+# there for good, and only the alarm ended it. The fill never waits, whatever type() does.
+FAR_END = r'''
+import os, signal, tty
+signal.pthread_sigmask(signal.SIG_BLOCK, {signal.SIGUSR1})
+tty.setraw(0)
+os.write(1, b'raw\r\n')
+signal.sigwait({signal.SIGUSR1})
+got = b''
+while len(got) < 4096:
+    got += os.read(0, 4096 - len(got))
+os.write(1, b'o' * 100000)
+while not got.endswith(b'.'):
+    got += os.read(0, 65536)
+os.write(1, b'(read %d)\r\n' % len(got))
+'''
+READER_ARGS = [sys.executable, '-I', '-c', FAR_END]
+t = Terminal()
+READER_ARGS = [READER]
+t.wait_for('raw')
+def stuck(signum, frame):
+    raise TimeoutError
+signal.signal(signal.SIGALRM, stuck)
+signal.alarm(20)
+try:
+    blocking = os.get_blocking(t.fd)
+    os.set_blocking(t.fd, False)
+    queued, refused = 0, 0
+    while refused < 5:   # full: five refusals in a row, 10 ms apart
+        try:
+            queued += os.write(t.fd, b'x' * 1024)
+            refused = 0
+        except BlockingIOError:
+            refused += 1
+            time.sleep(0.01)
+    os.set_blocking(t.fd, blocking)
+    os.kill(t.pid, signal.SIGUSR1)
+    time.sleep(0.3)   # the far end reads its 4 KB and is writing
+    t.type(b'y' * 16383 + b'.')
+    returned = True
+except TimeoutError:
+    returned = False
+signal.alarm(0)
+signal.signal(signal.SIGALRM, signal.SIG_DFL)
+check(returned and t.wait_for('(read %d)' % (queued + 16384)),
+      'type() never waits in a write: 16 KB typed at a full terminal whose far end is writing 100 KB (%d queued)' % queued)
+os.kill(t.pid, signal.SIGKILL)
+os.waitpid(t.pid, 0)
 
 piped = subprocess.run([READER], input=b'a\nb\x00c\n\nlast', capture_output=True)
 check(piped.stdout == b'[a]\n[b\\x00c]\n[]\n[last]\n(end)\n', 'from a pipe: no prompt text, a NUL kept, and a last line with no newline')

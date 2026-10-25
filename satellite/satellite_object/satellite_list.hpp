@@ -69,6 +69,8 @@
 
 #include "satellite_object.hpp"
 
+#include <atomic>
+#include <cstdint>
 #include <memory>
 #include <utility>
 #include <vector>
@@ -78,8 +80,29 @@ namespace satellite004 {
 struct satelliteList {
     std::vector<satelliteObject> items;
 
+    // THE SHAPE EVERY ITEM WAS LAST FOUND TO FIT, by its number (bytecode/type_shape.cpp's value_fits), and 0 for
+    // none (ERRORS4 033). A long list<number> handed to a list<number> parameter was walked item by item at every
+    // call -- 20,000 calls with 5,000 items took 5.1 s against 0.08 s untyped -- though nothing in it had changed.
+    // Every change comes through about_to_change, which sets it back to 0; a copy holds the same items, and keeps it.
+    mutable std::atomic<std::uint64_t> fits{0};
+
     satelliteList() = default;
     explicit satelliteList(std::vector<satelliteObject> its_items) : items(std::move(its_items)) {}
+    satelliteList(const satelliteList &from) : items(from.items), fits(from.fits.load(std::memory_order_relaxed)) {}
+    satelliteList(satelliteList &&from) noexcept
+        : items(std::move(from.items)), fits(from.fits.load(std::memory_order_relaxed)) {}
+    satelliteList &operator=(const satelliteList &from)
+    {
+        items = from.items;
+        fits.store(from.fits.load(std::memory_order_relaxed), std::memory_order_relaxed);
+        return *this;
+    }
+    satelliteList &operator=(satelliteList &&from) noexcept
+    {
+        items = std::move(from.items);
+        fits.store(from.fits.load(std::memory_order_relaxed), std::memory_order_relaxed);
+        return *this;
+    }
 
     std::size_t size() const { return items.size(); }
     bool empty() const { return items.empty(); }
@@ -113,6 +136,7 @@ inline satelliteList &about_to_change(ListHandle &handle)
     }
     if (handle.use_count() > 1)
         handle = std::make_shared<satelliteList>(*handle);   // somebody else has it
+    handle->fits.store(0, std::memory_order_relaxed);        // about to be changed: found to fit nothing yet
     return *handle;
 }
 

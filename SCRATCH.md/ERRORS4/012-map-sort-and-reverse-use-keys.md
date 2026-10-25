@@ -1,5 +1,7 @@
 # 012 -- map.sort().by_value(), .by_name() and .reverse() silently work on the keys and answer a list (ranking a word count by value gives an alphabetical list), while .max/.min/.sum/.join on a map ask which half is meant
 
+**FIXED before 2026-10-25** (the open-work re-check found it right on REVISION 11 BUILD 0001): on a map, .sort().by_value() and .by_name() are refused before the run (S110 'an index has no by_value'), and .reverse() answering the keys back to front is in the map help.
+
 **Found:** 2026-09-26, satl 004 revision 08 build 0099 (/home/madness/code/cxx/satellite/build/satl), by running ordinary programs against it.  
 **Area:** maps and nesting, realistic programs  
 **Kind:** wrong-answer  

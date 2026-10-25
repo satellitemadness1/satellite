@@ -1,5 +1,7 @@
 # 019 -- A blank or comment line between satellite.return(satellite) and main's } is refused as S103 "the file could not be re-read", which asks for the return that is already there
 
+**FIXED 2026-10-25** (open-work checker): the checker's capsule-body loop (program_check.cpp) no longer takes a blank line or a comment line for main's last statement. check.sh rows "019: ...".
+
 **Found:** 2026-09-26, satl 004 revision 08 build 0099 (/home/madness/code/cxx/satellite/build/satl), by running ordinary programs against it.  
 **Area:** syntax and layout  
 **Kind:** valid-program-refused  

@@ -15,44 +15,65 @@ put in one, each a satellite.variable.window. A piece is on no screen until you
   canvas(width, height)  tabs()  one_of(list)
 
 satellite.window.new("a title", "the words under it", 800, 600) puts a second,
-smaller line of words under the title, in the window's bar. A width and a height are written
-800, 600 or 800x600 -- the same two numbers, the width first.
+smaller line of words under the title, in the window's bar. A width and a height
+are written 800, 600 or 800x600 -- the same two numbers, the width first. They
+are the window's INSIDE: 800 by 600 under its title bar and its menu, which make
+the window taller than that. .satellite.width and .satellite.height answer the
+inside, and .satellite.resize(1024, 768) asks for an inside that size.
 
 Since 2026-10-11 every word a window and a piece have is written with satellite.
 in front of it: my_window.satellite.open(), and at every link of a chain,
 my_window.satellite.title("x").satellite.focus(). The old my_window.open() is
 refused (S110), and the refusal names the new spelling. Your own names after a
-window -- a widget's, a section's -- keep their plain period, and a word of two
-or three parts takes satellite. once, before the whole word:
-my_window.files.satellite.widgets.display.file("list", 100%, 100%).
+window -- a section's, a display's -- keep their plain period, and a word of
+two or more parts takes satellite. once, before the whole word:
+my_window.top.satellite.window.display.file("list").
 
-A window makes widgets with .satellite.widgets.display, and a widget that holds
-widgets makes its own the same way, each under a name in quotes that reaches it
-after: my_window.satellite.widgets.display.file("files") is a file display --
-the files of a directory, folders first, starting in your home folder --
-reached as my_window.files, and
-my_window.files.satellite.widgets.display.input("folder") is a one-line text
-input across its top, starting with that directory, reached as
-my_window.files.folder. A window's widgets go top to bottom, and so do a
-widget's, above what it shows. my_window.files.satellite.directory("/tmp/")
-changes the directory shown -- one that is not there leaves it where it was --
-and .satellite.directory alone reads it.
-my_window.files.folder.satellite.listen(a_capsule) runs the capsule on every
-key typed in the input, and .satellite.listen() alone just listens;
-.satellite.text is always what is typed.
+SECTIONS lay a window out, and their words are under satellite.window.
+my_window.satellite.window.section("top", 100%, 50%) is a section as wide as
+the window and half as tall -- the window under its title bar and its menu.
+A percentage or a fraction is a share of what holds it, and a plain number is
+pixels: .satellite.window.section("side", 1/2, 200). A share is above 0 and at
+most all of it, 100% or 1/1; pixels are 1 to what holds them. A size written as
+150% or "wide" is refused before anything runs. Sections fill the window left to
+right, and one that does not fit starts a new row under the tallest before
+it: two 50%, 100% sit side by side, and two 100%, 50% are the top and bottom
+halves. A section holds sections of its own, sized the same way:
+top.satellite.window.section("inner", 50%, 100%). A share stays a share when
+the window is resized.
 
-SECTIONS lay a window out. my_window.satellite.section("top", 100%, 50%) is a
-section as wide as the window and half as tall -- the window under its title
-bar, its menu and any widgets made across its top -- reached as my_window.top.
-A percentage is a share of what holds it, and a plain number is pixels:
-.satellite.section("side", 300, 200). Sections fill the window left to right,
-and one that does not fit starts a new row under the tallest before it: two
-50%, 100% sit side by side, and two 100%, 50% are the top and bottom halves. A
-section holds widgets and sections of its own, sized the same way --
-my_window.top.satellite.widgets.display.file("files", 100%, 100%) fills it --
-and a widget given no size in a section fills it. A share stays a share when
-the window is resized. A window is laid out in sections or places pieces with
+A SECTION'S NAME IS A NAME. The line declares it in the capsule that wrote it,
+as a satellite.variable.window line would, so the lines after it write it
+bare -- top.satellite.window.section("inner", 50%, 100%) -- and my_window.top
+still reaches it, there and in any capsule given the window: its_window.top.
+It is a name a variable could have, and not satellite, a number's shape such
+as xff, or a method's own word such as text or section; a name the capsule
+has already, two sections of one name, and a satellite.variable line for it
+are refused before anything runs. It ends at the } of the block its line is
+in.
+
+A DISPLAY FILLS THE SECTION IT IS MADE IN, and takes its name in quotes and
+no size. top.satellite.window.display.file("files") shows the files of a
+folder, folders first, starting in your home folder, reached as files (or
+my_window.top.files). files.satellite.directory("/tmp/") changes the folder
+shown -- one that is not there leaves it where it was -- and
+.satellite.directory alone reads it.
+bottom.satellite.window.display.text.input("folder") is a one-line text input;
+folder.satellite.listen(a_capsule) runs the capsule on every key typed in it,
+.satellite.listen() alone just listens, and .satellite.text is always what is
+typed. A section shows one display or holds sections, not both. A window with
+no sections shows displays across its top instead, and a file display shows a
+text input or a file display across its top, the input starting with its
+folder -- files.satellite.window.display.text.input("folder") -- but a window
+shows displays across its top or has sections, not both. Each of these is
+refused before anything runs where satl can see the lines, and otherwise when
+the line runs. A window is laid out in sections or places pieces with
 .satellite.append, one or the other, for now.
+
+The spellings from before 2026-10-25 -- my_window.satellite.section(...),
+.satellite.widgets.display.file(...), .satellite.widgets.display.input(...)
+and a display given a size -- are refused before anything runs, and the
+refusal names the new one.
 
 my_window.satellite.append(piece, across, down) puts the piece's CENTRE there;
 400, 300 is the middle of an 800 by 600 window. A row and a column take
@@ -146,9 +167,9 @@ satellite.include(satellite)
 satellite.capsule satellite.main()
 {
     satellite.variable.window main_window = satellite.window.new("window title", "version", 800, 600)
-    main_window.satellite.section("section_name", 100%, 50%)
-    main_window.section_name.satellite.widgets.display.file("my_file_display", 100%, 100%)
-    main_window.satellite.section("bottom", 100%, 50%)
-    main_window.bottom.satellite.widgets.display.input("folder")
+    main_window.satellite.window.section("section_name", 100%, 50%)
+    section_name.satellite.window.display.file("my_file_display")
+    main_window.satellite.window.section("bottom", 100%, 50%)
+    bottom.satellite.window.display.text.input("folder")
     satellite.return(satellite)
 }

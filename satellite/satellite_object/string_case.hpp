@@ -15,6 +15,11 @@
 // gets 003's a-z, rather than nothing.
 //
 // A NEW STRING IS ANSWERED; the one it was asked of is unchanged, as every string method.
+//
+// A COLOUR IN IT IS NOT TEXT (ERRORS4 008): .satellite.foreground and .satellite.background put the
+// terminal's own ESC[...m into the string (console_style.cpp), and upper() made the m an M -- display no
+// longer knew it for a colour, wrote ESC[38;2;0;255;0M raw into a pipe, and at a terminal CSI M deletes
+// lines. Each ESC[ digits-and-semicolons m, the shape display takes out, is copied as it is.
 
 #include "../satellite_variable_string/satellite_string.hpp"
 #include "../machine/machine_codes.hpp"
@@ -38,6 +43,15 @@ inline signed long long int string_case(const satellite_string &from, bool upper
     changed.reserve(text.size());
     const locale_t table = unicode_case_table();
     for (std::size_t i = 0; i < text.size();) {
+        if (text[i] == '\033' && i + 1 < text.size() && text[i + 1] == '[') {
+            std::size_t end = i + 2;
+            while (end < text.size() && ((text[end] >= '0' && text[end] <= '9') || text[end] == ';')) ++end;
+            if (end < text.size() && text[end] == 'm') {
+                changed.append(text, i, end + 1 - i);
+                i = end + 1;
+                continue;
+            }
+        }
         const unsigned char first = static_cast<unsigned char>(text[i]);
         std::size_t length = first < 0x80 ? 1 : first < 0xE0 ? 2 : first < 0xF0 ? 3 : 4;
         if (i + length > text.size()) length = 1;

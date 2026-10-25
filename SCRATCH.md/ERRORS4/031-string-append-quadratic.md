@@ -1,5 +1,7 @@
 # 031 -- Building a string with s = s + ... in a loop is quadratic: every + copies the whole left side (40,000 passes take 9.8 s for 230 KB)
 
+**FIXED 2026-10-25** (open-work runtime): s = s + a + b on one of a body's own string names joins each operand onto the name's string in place, as + joins it (expression.cpp's joined_onto_the_name, called from run_assignment); a refusal part way puts the string back. 20,000 passes: 1.42 s before, 0.03 s now. A field, or a line that names s again, is left to the sum.
+
 **Found:** 2026-09-26, satl 004 revision 08 build 0099 (/home/madness/code/cxx/satellite/build/satl), by running ordinary programs against it.  
 **Area:** number string conversion  
 **Kind:** performance  

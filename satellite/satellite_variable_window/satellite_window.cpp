@@ -187,6 +187,49 @@ bool window_set_scrolling(satellite_window &which, bool vertical, bool on, std::
     return true;
 }
 
+// THE BAR GTK PUTS UP, AND THE MENU BAR, ARE OVER THE INSIDE, NOT IN IT. Before SEC-1 an 800x600 with a subtitle
+// gave its sections 800 by 553 (PROGRESS.md), because GTK 4 cuts a client-side title bar out of the size it is given
+// (_gtk_window_set_allocation, gtkwindow.c:4740-4768). So the bar is measured and added. WHICH bar is GTK's choice, kept
+// as it is: satl's own subtitle bar (a_bar_with_words_under_the_title), the default bar GTK makes at realize where
+// the compositor draws none (gtkwindow.c:4497-4500), or nothing where it does -- each a child of the window with the
+// "titlebar" class (gtkwindow.c:3201, 4500). Its natural height at the asked width is what it takes up.
+void ask_for_the_inside(satellite_window &which, int wide, int tall)
+{
+    GtkWidget *window = static_cast<GtkWidget *>(which.widget);
+    if (window == nullptr)
+        return;
+    int over = 0;
+    for (GtkWidget *child = gtk_widget_get_first_child(window); child != nullptr;
+         child = gtk_widget_get_next_sibling(child)) {
+        if (!gtk_widget_has_css_class(child, "titlebar") || !gtk_widget_get_visible(child))
+            continue;
+        int natural = 0;
+        gtk_widget_measure(child, GTK_ORIENTATION_VERTICAL, wide, nullptr, &natural, nullptr, nullptr);
+        over += natural;
+        break;
+    }
+    if (which.bar != nullptr) {
+        int natural = 0;
+        gtk_widget_measure(static_cast<GtkWidget *>(which.bar), GTK_ORIENTATION_VERTICAL, wide, nullptr, &natural,
+                           nullptr, nullptr);
+        over += natural;
+    }
+    gtk_window_set_default_size(GTK_WINDOW(window), wide, tall + over);
+}
+
+namespace {
+
+// REALIZE IS WHERE GTK HAS CHOSEN ITS DECORATION AND MADE ITS DEFAULT BAR, and the window is not on the screen yet
+// (realize is RUN_FIRST, gtkwidget.c:1804-1810, so this runs after gtk_window_realize; gtkwindow.c:4021-4024), so the
+// window is first shown at the size that leaves its inside as asked.
+void it_was_realized(GtkWidget *, gpointer data)
+{
+    satellite_window &which = *static_cast<satellite_window *>(data);
+    ask_for_the_inside(which, which.asked_wide, which.asked_tall);
+}
+
+} // namespace
+
 void put_the_frame_up(satellite_window &which,
                       void (*fill)(satellite_window &made, GtkWidget *window, GtkWidget *column))
 {
@@ -216,6 +259,7 @@ void put_the_frame_up(satellite_window &which,
     gtk_window_set_child(GTK_WINDOW(window), column);
     which.widget = window;
     fill(which, window, column);
+    g_signal_connect(window, "realize", G_CALLBACK(it_was_realized), &which);
     g_signal_connect(window, "destroy", G_CALLBACK(it_was_closed), &which);
     // WHAT THE WINDOW WEARS AND WHAT IT ANSWERS COME BACK WITH IT (`.open()`):
     // nothing, for a window made a moment ago. Its stylesheet was never taken
@@ -281,8 +325,8 @@ bool window_append(satellite_window &into, const WindowHandle &piece, bool by_pl
     // A SECTION HOLDS WHAT IS MADE IN IT (2026-10-10), widgets and sections, laid out left to right --
     // nothing is placed in one by .append.
     if (into.piece == satellite_window::a_section) {
-        why = "a section holds the widgets and sections made in it, laid out left to right, and nothing "
-              ".satellite.append'ed -- my_section.satellite.widgets.display.file(\"files\", 100%, 100%)";
+        why = "a section holds the display or the sections made in it, and nothing .satellite.append'ed -- "
+              "my_section.satellite.window.display.file(\"files\")";
         return false;
     }
     if (!a_window && !into.holds_pieces()) {
@@ -623,11 +667,10 @@ bool window_resize(satellite_window &which, long long int wide, long long int ta
     }
     if (!still_there(which, why))
         return false;
-    GtkWidget *widget = as_widget(which);
+    // THE INSIDE, as `new`'s size is (rule 3): its bars are measured and added on the desk.
+    satellite_window *raw = &which;
     const int to_wide = static_cast<int>(wide), to_tall = static_cast<int>(tall);
-    on_the_desk([widget, to_wide, to_tall] {
-        gtk_window_set_default_size(GTK_WINDOW(widget), to_wide, to_tall);
-    });
+    on_the_desk([raw, to_wide, to_tall] { ask_for_the_inside(*raw, to_wide, to_tall); });
     which.asked_wide = to_wide;
     which.asked_tall = to_tall;
     return true;
@@ -652,8 +695,17 @@ bool window_size_of(satellite_window &which, bool the_height, long long int &out
     // straight after `.open()` answered 0), so that frame is waited for -- a second at most.
     if (const WindowHandle holder = the_window_holding(which))
         the_desk_waits_until_it_is_laid_out(*holder);
-    on_the_desk([widget, the_height, &got, &natural] {
-        got = the_height ? gtk_widget_get_height(widget) : gtk_widget_get_width(widget);
+    const satellite_window *raw = &which;
+    on_the_desk([widget, raw, the_height, a_window, &got, &natural] {
+        // A WINDOW ANSWERS ITS INSIDE (SATELLITE_WINDOW_SECTIONS.md rule 3, SEC-1): its column, which is all of it
+        // under the title bar, less the menu bar at the column's top -- what its sections share.
+        GtkWidget *measured = a_window ? gtk_window_get_child(GTK_WINDOW(widget)) : widget;
+        if (measured == nullptr)
+            measured = widget;
+        got = the_height ? gtk_widget_get_height(measured) : gtk_widget_get_width(measured);
+        GtkWidget *bar = a_window ? static_cast<GtkWidget *>(raw->bar) : nullptr;   // the desk's, read on it
+        if (the_height && bar != nullptr && got > 0)
+            got -= gtk_widget_get_height(bar);
         if (got > 0)
             return;
         // NOTHING ON A SCREEN YET, so ask what it WOULD measure. This is the

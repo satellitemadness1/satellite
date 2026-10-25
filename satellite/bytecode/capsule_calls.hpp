@@ -54,6 +54,10 @@ Value call_member(const std::vector<std::bitset<16>> &row, std::size_t &at, cons
 // method codes -- so after an object, both are. After a pointer at one, too.
 // AND AFTER A WINDOW, A WIDGET'S NAME IS ONE TOO (the author, 2026-10-09): `main_window.file_display`
 // is the widget made in it with `.widgets.displays.file("file_display")`.
+// AND AFTER NOTHING, A NAME (ERRORS4 042): a field of a spacesuit's type starts empty, and `motor.get_power()`
+// on one stopped at the `.` with a sentence about math signs or undecided operators. call_member says what it
+// is -- "motor holds no object yet" -- at the run, since being empty is a fact of the run; and of any other
+// name that holds nothing, an empty window name before a widget's, only that much.
 inline bool a_member_next(const std::vector<std::bitset<16>> &row, std::size_t at, const Value &value)
 {
     if (at >= row.size() || static_cast<token::Code>(row[at].to_ulong()) != token::method_token ||
@@ -62,7 +66,7 @@ inline bool a_member_next(const std::vector<std::bitset<16>> &row, std::size_t a
     const token::Code next = static_cast<token::Code>(row[at + 1].to_ulong());
     if (value.answers_as_an_object())
         return next == token::name_token || token::is_method_code(next);
-    return next == token::name_token && value.window_handle() != nullptr;
+    return next == token::name_token && (value.window_handle() != nullptr || value.is_nothing());
 }
 
 } // namespace satellite004

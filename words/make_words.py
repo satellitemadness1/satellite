@@ -43,8 +43,8 @@
 #                        next free number under every word
 #
 # Run from anywhere:  python3 satellite-004/words/make_words.py
-# The deepest word has 6 numbers, which is why a row holds 6 inline; a next-free
-# number under a 6-deep word is 7 long.
+# The deepest word has 7 numbers since SEC-0 (1 6 18 54 2 2 1, its text input), which
+# is why a row holds 7 inline; a next-free number under a 7-deep word is 8 long.
 
 import os
 import re

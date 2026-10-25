@@ -1,5 +1,7 @@
 # 018 -- A method on a bare value word (satellite.bool.true, satellite.console.width, satellite.library.main.arguments.<fact>) is refused at run time with S110 and a false "math sign spacing" hint, while the same value in brackets or in a variable takes the method
 
+**FIXED before 2026-10-25** (the open-work re-check found it right on REVISION 11 BUILD 0001): in today's spellings satellite.bool.true.satellite.string(), console.width.satellite.string() and arguments.cores.satellite.string() all run, exit 0; the old spellings are refused naming the new.
+
 **Found:** 2026-09-26, satl 004 revision 08 build 0099 (/home/madness/code/cxx/satellite/build/satl), by running ordinary programs against it.  
 **Area:** number string conversion  
 **Kind:** valid-program-refused  

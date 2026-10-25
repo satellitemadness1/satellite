@@ -533,10 +533,14 @@ void tokenise_one_line(std::string_view text, std::vector<std::bitset<16>> &row,
         // once, straight before the word, and plain periods inside it). So the name after `satellite.` is read
         // LONGEST FIRST through its periods, the way a word of the language is read below, and shortened a part
         // at a time down to the one name it always read: widgets.display.file, widgets.display.input,
-        // scroll.vertical and scroll.horizontal are each a method's own spelling (REGISTRY.satellite), and
-        // `.find` is still `.find`. ONLY AFTER `.satellite.`: written with a plain period the parts stay parts,
-        // so an object's own capsules keep every name they had, and the old spelling is refused by name
-        // (window_calls.hpp, word_in_parts_written_wrong).
+        // scroll.vertical and scroll.horizontal are each a method's own spelling (REGISTRY.satellite), and so
+        // since SEC-0 are window.section, window.display.file and window.display.text.input
+        // (SATELLITE_WINDOW_SECTIONS.md), whose first parts window and window.display are spellings too -- so
+        // `.satellite.window.display.text(`, which is no word until SEC-3, is read as window.display and then
+        // .text, for the parts rule to answer -- and `.find` is still `.find`. The two widgets.display words are
+        // read whole so that rule 8 can name them and the words they are now. ONLY AFTER `.satellite.`: written
+        // with a plain period the parts stay parts, so an object's own capsules keep every name they had, and
+        // the old spelling is refused by name (window_calls.hpp, word_in_parts_written_wrong).
         if (c == 's' && line.last_token == token::method_token) {
             static constexpr std::string_view kUnderSatellite = "satellite.";
             if (text.substr(line.i, kUnderSatellite.size()) == kUnderSatellite) {
@@ -840,7 +844,11 @@ std::vector<NeverClosed> join_statements_across_lines(std::vector<std::string> &
         }
 
         // DOES THE STATEMENT GO ON INTO THE NEXT LINE?
+        // A < OR A > AT A LINE'S END GOES ON TOO (ERRORS4 025, A4's "accept anything valid across any number of
+        // lines"): a type split after its < -- `satellite.container.list<` -- or after its >, with the name on the
+        // next line, and a comparison waiting for its other side. No statement ends on either; `waits` above says so.
         bool goes_on = in_string || !open.empty() || last == ',' || last == '=' || last == '&' || last == '|' ||
+                       last == '<' || last == '>' ||
                        (spaced_before_last && (last == '+' || last == '-' || last == '*' || last == '/' ||
                                                last == '%' || last == '^'));
         if (!goes_on && i + 1 < lines.size()) {

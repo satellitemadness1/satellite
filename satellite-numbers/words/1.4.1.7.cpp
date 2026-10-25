@@ -42,12 +42,11 @@ Value method(const Value &, Value *home, const TypeShape *, const std::vector<Va
                            " as a key, and a key must be a number, a string, a bool, a binary or a percentage");
         return Value();
     }
-    for (std::size_t at = 0; at < body->entries.size(); ++at) {
-        std::string here;
-        if (key_name_of(body->entries[at].key, here) && here == key_name) {
-            take_entry_out(*body, at);
-            return *home;
-        }
+    // FOUND BY ITS HASH, as m[k] finds it (ERRORS4 032): the entries were read one by one before.
+    const auto found = body->where.find(key_name);
+    if (found != body->where.end()) {
+        take_entry_out(*body, found->second);
+        return *home;
     }
     context.refuse(text_not_found, name + ".satellite.remove: there is no such key in it");
     return Value();

@@ -51,12 +51,12 @@ std::string window_methods_are()
            "bare is the last line a person finished -- .satellite.clear(), .satellite.home(), .satellite.columns and "
            ".satellite.rows; a window or a console has .satellite.scroll.vertical(1) and "
            ".satellite.scroll.horizontal(1), each read bare for the answer; "
-           "a window and a widget make widgets with .satellite.widgets.display.file(\"a_name\") and "
-           ".satellite.widgets.display.input(\"a_name\"), reached after as my_window.a_name -- and in a section with "
-           "a size, .satellite.widgets.display.file(\"a_name\", 100%, 100%); a window and a section make sections "
-           "with .satellite.section(\"a_name\", 100%, 50%), each a share of what holds it or pixels, laid out left "
-           "to right; a file display has .satellite.directory(\"/home/you/\"), read bare for the one it shows; and a "
-           "text input has .satellite.listen() and .satellite.listen(a_capsule) "
+           "a window and a section make sections with .satellite.window.section(\"a_name\", 100%, 50%), each a "
+           "share of what holds it or pixels, laid out left to right; a section shows one display, which fills it -- "
+           ".satellite.window.display.file(\"a_name\") or .satellite.window.display.text.input(\"a_name\") -- and a "
+           "window with no sections, or a file display, shows them across its top; each is reached after by its name "
+           "alone, a_name, or as my_window.a_name; a file display has .satellite.directory(\"/home/you/\"), read "
+           "bare for the one it shows; and a text input has .satellite.listen() and .satellite.listen(a_capsule) "
            "(GTK_AND_NO_DEPENDENCIES.md Part 2G lists every piece and what it does)";
 }
 
@@ -111,20 +111,21 @@ int window_method_arity(Code method)
     case token::columns_token:    return 0;  // a question: how many characters fit across
     case token::rows_token:       return 0;  // a question: how many lines fit down
     // WORDS OF PARTS, EACH ONE WORD (the author's final syntax, 2026-10-10 ~21:15): .satellite.scroll.vertical(on)
-    // and .satellite.scroll.horizontal(on), written and read bare for the answer (2026-10-07); and his widgets
-    // (2026-10-09), .satellite.widgets.display.file("a_name") and .satellite.widgets.display.input("a_name"),
-    // which make one and take its name. Their parts -- scroll, widgets, displays, file, input, vertical,
-    // horizontal -- are no window's words on their own, and are refused naming the whole word.
+    // and .satellite.scroll.horizontal(on), written and read bare for the answer (2026-10-07). Their parts --
+    // scroll, vertical, horizontal -- are no window's words on their own, and are refused naming the whole word.
     case token::scroll_vertical_token:       return 1;  // written; read bare for the answer
     case token::scroll_horizontal_token:     return 1;
-    case token::widgets_display_file_token:  return 1;  // the widget's name, in quotes
-    case token::widgets_display_input_token: return 1;
     case token::directory_token:   return 1;  // written; read bare for the one it shows
     case token::listen_token:      return 1;  // the capsule's name -- or nothing, window_method_also_takes
-    // SECTIONS (the author, 2026-10-10): `.section("a_name", 100%, 50%)` -- its name, how wide and how
-    // tall, each a share of what holds it or pixels. `.file` and `.input` take a size the same way.
-    case token::section_token:     return 3;
     case token::ok_token:      return 0;
+    // A WINDOW'S SECTIONS AND DISPLAYS ARE UNDER satellite.window (SATELLITE_WINDOW_SECTIONS.md SEC-0, the author's
+    // design of 2026-10-20). `.satellite.window.section("a_name", 100%, 50%)` -- its name, how wide and how tall,
+    // each a share of what holds it or pixels (2026-10-10) -- and a display, which takes its name and no size: it
+    // fills its section (the author, 2026-10-25). The old spellings -- .satellite.section, widgets.display.file and
+    // widgets.display.input -- are no window's words now, and are refused naming these (a_word_in_parts, below).
+    case token::window_section_token:            return 3;
+    case token::window_display_file_token:       return 1;  // the display's name, in quotes
+    case token::window_display_text_input_token: return 1;
     default:                   return -1;
     }
 }
@@ -146,8 +147,8 @@ int window_method_also_takes(Code method)
     // and ... it keeps the string text up to date, so we don't have to add some syntax that is
     // unnecessary"): `.listen()` and `.listen(a_capsule)`.
     if (method == token::listen_token) return 0;
-    // `.file` AND `.input` TAKE A SIZE TOO (2026-10-10): `.file("a_name", 100%, 100%)` in a section.
-    if (method == token::widgets_display_file_token || method == token::widgets_display_input_token) return 3;
+    // A DISPLAY TOOK A SIZE TOO, from 2026-10-10 until SEC-0: `.file("a_name", 100%, 100%)` in a section. It fills
+    // its section now, and a size is a section's (a_display_takes_no_size, below).
     return method == token::append_token ? 1 : -1;
 }
 
@@ -160,21 +161,28 @@ std::string window_method_takes(Code method)
            " arguments";
 }
 
-// THE AUTHOR'S WORDS OF PARTS (his final window syntax, 2026-10-10 ~21:15): widgets.display.file,
-// widgets.display.input, scroll.vertical and scroll.horizontal are each ONE word -- `.satellite.` once, straight
-// before it, and plain periods inside it: main_window.files_display.satellite.widgets.display.file(...). The lexer
-// reads each as one code after `.satellite.` (bytecode_registry.cpp), so what reaches the checker or the walker as
-// its PARTS is the word written some other way: bare, with `.satellite.` again inside it, with the family's old
-// name displays (his D of 21:15: refused, naming the new), or begun and not finished. A part is one of the seven
-// codes below -- or `.display`, the console's own word display("words"), where .file or .input follows it, or
-// after widgets.
+// THE AUTHOR'S WORDS OF PARTS (his final window syntax, 2026-10-10 ~21:15): scroll.vertical and scroll.horizontal
+// are each ONE word -- `.satellite.` once, straight before it, and plain periods inside it -- and since SEC-0
+// (SATELLITE_WINDOW_SECTIONS.md, the author's design of 2026-10-20) so are window.section, window.display.file and
+// window.display.text.input: main_window.satellite.window.section("top", 100%, 50%). The lexer reads each as one
+// code after `.satellite.`, longest first (bytecode_registry.cpp), so what reaches the checker or the walker as its
+// PARTS is a word written some other way: bare, with `.satellite.` again inside it, or begun and not finished --
+// `window` and `window.display` are parts and run nothing, so `.satellite.window.display.text(` is the part
+// window.display and then .text until SEC-3 makes window.display.text a word.
+//
+// AND THE OLD SPELLINGS, which are refused naming the new (rule 8; the author's ruling D of 2026-10-10): the one-code
+// words .satellite.section, .satellite.widgets.display.file and .satellite.widgets.display.input, and their parts
+// written any way -- widgets, displays, file, input, and `.display` (the console's own word display("words")) where
+// .file or .input follows it or after widgets or window. `.section` is ALSO a word an object's capsule may be
+// called, which is why this is asked only of a window (a_word_in_parts' callers), and why window_number_of no longer
+// gives it a number.
 namespace {
 
 bool a_part(Code code)
 {
-    return code == token::widgets_token || code == token::displays_token || code == token::file_piece_token ||
-           code == token::input_piece_token || code == token::scroll_token || code == token::vertical_token ||
-           code == token::horizontal_token;
+    return code == token::window_token || code == token::window_display_token || code == token::widgets_token ||
+           code == token::displays_token || code == token::file_piece_token || code == token::input_piece_token ||
+           code == token::scroll_token || code == token::vertical_token || code == token::horizontal_token;
 }
 
 bool a_maker_part(Code code)
@@ -182,68 +190,132 @@ bool a_maker_part(Code code)
     return code == token::file_piece_token || code == token::input_piece_token;
 }
 
+// THE OLD SPELLINGS THAT THE LEXER READS AS ONE CODE, each a word until SEC-0 (1 6 18 52, 49 1 1 and 49 1 2).
+bool an_old_word(Code code)
+{
+    return code == token::section_token || code == token::widgets_display_file_token ||
+           code == token::widgets_display_input_token;
+}
+
+// WHERE A WORD OF PARTS ENDS: on its last part, or on an old word that is one code.
+bool a_last_part(Code code)
+{
+    return a_maker_part(code) || code == token::vertical_token || code == token::horizontal_token || an_old_word(code);
+}
+
 } // namespace
 
 bool a_word_in_parts(const std::vector<std::bitset<16>> &row, std::size_t dot)
 {
     const Code first = code_at(row, dot + 1);
-    return a_part(first) || (first == token::display_token && a_method_period(code_at(row, dot + 2)) &&
-                             a_maker_part(code_at(row, dot + 3)));
+    return a_part(first) || an_old_word(first) ||
+           (first == token::display_token && a_method_period(code_at(row, dot + 2)) &&
+            a_maker_part(code_at(row, dot + 3)));
 }
 
 std::string word_in_parts_written_wrong(const std::vector<std::bitset<16>> &row, std::size_t dot,
                                         const std::string &receiver)
 {
-    // THE PARTS AS WRITTEN, a period and a part at a time, to the part that says which word it is.
-    std::string written = receiver;
-    bool widgets = false, family = false, old_name = false, scroll = false, under = false;
-    Code last = 0;
-    std::size_t parts = 0;
-    for (std::size_t k = dot; a_method_period(code_at(row, k)) && last == 0; k += 2) {
+    // THE PARTS AS WRITTEN, a period and a part at a time, for as long as they go on spelling a word of parts --
+    // and what they spell with plain periods, `joined`: window.display.text, widgets.displays.file, section.
+    std::string written = receiver, joined;
+    bool under = false;
+    for (std::size_t k = dot; a_method_period(code_at(row, k)); k += 2) {
         const Code part = code_at(row, k + 1);
-        const bool the_family = part == token::displays_token ||
-                                (part == token::display_token &&
-                                 (widgets || (a_method_period(code_at(row, k + 2)) && a_maker_part(code_at(row, k + 3)))));
-        if (!a_part(part) && !the_family)
+        const bool first = joined.empty();
+        const bool goes_on =
+            a_part(part) || (first && an_old_word(part)) ||
+            (part == token::section_token && joined == "window") ||
+            (part == token::text_token && joined == "window.display") ||
+            (part == token::display_token &&
+             (joined == "widgets" || joined == "window" ||
+              (a_method_period(code_at(row, k + 2)) && a_maker_part(code_at(row, k + 3)))));
+        if (!goes_on)
             break;
         under = under || code_at(row, k) == token::satellite_method_token;
-        written += std::string(code_at(row, k) == token::satellite_method_token ? ".satellite." : ".") +
-                   token::method_name_of(part);
-        ++parts;
-        widgets = widgets || part == token::widgets_token;
-        family = family || the_family;
-        old_name = old_name || part == token::displays_token;
-        scroll = scroll || part == token::scroll_token;
-        if (a_maker_part(part) || part == token::vertical_token || part == token::horizontal_token)
-            last = part;
+        const std::string name = token::method_name_of(part);
+        written += std::string(code_at(row, k) == token::satellite_method_token ? ".satellite." : ".") + name;
+        joined += (first ? "" : ".") + name;
+        if (a_last_part(part))
+            break;
     }
     const std::string head = receiver + ".satellite.";
-    const char *word = last == token::file_piece_token    ? "widgets.display.file"
-                       : last == token::input_piece_token ? "widgets.display.input"
-                       : last == token::vertical_token    ? "scroll.vertical"
-                       : last == token::horizontal_token  ? "scroll.horizontal"
-                                                          : nullptr;
-    // BEGUN AND NOT FINISHED: the words it begins.
-    if (word == nullptr)
-        return written + " -- " + (widgets || family ? "widgets.display" : "scroll") + " is the start of a word: " +
-               (widgets || family ? head + "widgets.display.file(\"a_name\") or " + head + "widgets.display.input(\"a_name\")"
-                                  : head + "scroll.vertical(on) or " + head + "scroll.horizontal(on)");
-    // EVERY PART RIGHT AND IN ITS PLACE, ALL BARE: the old spelling of a numbered word, said as every one is.
-    const bool whole = last == token::vertical_token || last == token::horizontal_token
-                           ? parts == 2 && scroll
-                           : parts == 3 && widgets && family && !old_name;
-    if (whole && !under)
-        return period_written_wrong(receiver, word, satelliteObject::window, false);
-    return written + " is written " + head + word + " -- " +
-           (old_name ? "the widgets' family is display now (the author, 2026-10-10), and the word is written whole, "
-                       ".satellite. once, straight before it"
-                     : "it is one word, written with .satellite. once, straight before it, and plain periods inside it");
+    // EVERY PART RIGHT AND IN ITS PLACE: written bare, the old spelling of a numbered word, said as every one is;
+    // with `.satellite.` again inside it, the word as it is written.
+    if (joined == "window.section" || joined == "window.display.file" || joined == "window.display.text.input" ||
+        joined == "scroll.vertical" || joined == "scroll.horizontal") {
+        if (!under)
+            return period_written_wrong(receiver, joined, satelliteObject::window, false);
+        return written + " is written " + head + joined +
+               " -- it is one word, written with .satellite. once, straight before it, and plain periods inside it";
+    }
+    // THE OLD SPELLINGS (rule 8), and any mix of the old parts that ends in a maker: named as the word it is now.
+    const std::string last = joined.substr(joined.rfind('.') == std::string::npos ? 0 : joined.rfind('.') + 1);
+    const char *now = last == "file" ? "window.display.file"
+                      : last == "input" ? "window.display.text.input"
+                      : last == "section" ? "window.section"
+                                          : nullptr;
+    if (now != nullptr)
+        return written + " is written " + head + now + " now -- a window's sections and displays are under "
+                                                       "satellite.window";
+    // BEGUN AND NOT FINISHED: the words it begins -- the two of the plan's sentence for window (SEC-0), and the old
+    // family's begun pointed at the new.
+    if (joined.rfind("scroll", 0) == 0)
+        return written + " -- scroll is the start of a word: " + head + "scroll.vertical(on) or " + head +
+               "scroll.horizontal(on)";
+    if (joined.rfind("window.display", 0) == 0)
+        return written + " -- window.display is the start of a word: " + head + "window.display.file(...) or " +
+               head + "window.display.text.input(...)";
+    if (joined.rfind("window", 0) == 0)
+        return written + " -- window is the start of a word: " + head + "window.section(...) or " + head +
+               "window.display.file(...)";
+    return written + " -- a window's sections and displays are under satellite.window now: " + head +
+           "window.section(...) or " + head + "window.display.file(...)";
 }
 
-// AND WHICH OF THEM MAKES ONE, for the checker's pass over every name a program gives a widget.
+// AND WHICH OF THEM MAKES A DISPLAY, for the checker's pass over every name a program gives a widget: the two
+// SEC-0 builds (SATELLITE_WINDOW_SECTIONS.md rule 6), each a word the lexer reads whole after `.satellite.`, so
+// never an object's capsule.
 bool makes_a_widget(Code method)
 {
-    return method == token::widgets_display_file_token || method == token::widgets_display_input_token;
+    return method == token::window_display_file_token || method == token::window_display_text_input_token;
+}
+
+// A DISPLAY GIVEN A SIZE (SEC-0, rule 8): `.file("files", 100%, 100%)` until then, which a section of that size holds
+// now. `spelled` is the call as written, `named` its name and `sizes` its width and height as written when they are
+// known before the run, and empty when not -- the run has their values, not their text, and says a_width, a_height.
+std::string a_display_takes_no_size(Code display, const std::string &spelled, const std::string &named,
+                                    const std::string &sizes)
+{
+    const std::string name = named.empty() ? "a_name" : named;
+    return spelled + " takes its name and no size -- a display fills the section it is made in (the author, "
+                     "2026-10-25), so the size is a section's: .satellite.window.section(\"" + name + "_section\", " +
+           (sizes.empty() ? "a_width, a_height" : sizes) + "), and in it " + name + "_section.satellite." +
+           token::method_name_of(display) + "(\"" + name + "\")";
+}
+
+// WHERE A DISPLAY OR A SECTION MAY NOT GO (SEC-0, rules 6 and 7), one sentence each, said after the call as written:
+// by the checker where it sees the lines (program_check.cpp's where_it_goes_refused), and by window_widget_made
+// when the line runs. The author, 2026-10-25: "a display always fills the section".
+std::string a_place_refused(APlace place)
+{
+    switch (place) {
+    case APlace::a_second_display:
+        return "the section shows a display already, and a display fills its section, so each display goes in a "
+               "section of its own";
+    case APlace::a_display_among_sections:
+        return "the section holds sections, and a section shows one display or holds sections, not both: make the "
+               "display in one of its sections";
+    case APlace::a_section_beside_a_display:
+        return "the section shows a display, and a section shows one display or holds sections, not both";
+    case APlace::a_display_over_sections:
+        return "the window has sections, and a window shows displays across its top or has sections, not both: make "
+               "the display in a section";
+    case APlace::a_section_under_displays:
+        return "the window shows a display across its top, and a window shows displays across its top or has "
+               "sections, not both: make that display in a section";
+    }
+    return std::string();
 }
 
 // A NAME A PROGRAM CAN WRITE AFTER A DOT, and nothing else: `my_window.file display` is two words
@@ -262,6 +334,26 @@ bool a_widget_name_fits(const std::string &name, std::string &why)
     if (token::method_code_of(name) != 0) {
         why = "\"" + name + "\" is a method's own word, so my_window." + name + " would be the method and never "
               "the widget -- give it a name of its own: \"" + name + "_display\"";
+        return false;
+    }
+    // TWO NAMES A WIDGET NEVER HAD TO AVOID UNTIL ITS NAME WAS A NAME (SATELLITE_WINDOW_SECTIONS.md SEC-0, rule 4):
+    // `satellite`, which no name may be (satellite_legal.hpp), and one shaped like a hex or a binary number, which
+    // the lexer reads as that number (bytecode_registry.cpp) -- so neither could be written bare after its line.
+    if (name == "satellite") {
+        why = "\"satellite\" is the language's own name, and nothing else is called it -- give it a name of its own: "
+              "\"satellite_display\"";
+        return false;
+    }
+    bool a_number = name.size() > 1 && (name[0] == 'b' || name[0] == 'x');
+    for (std::size_t at = 1; at < name.size() && a_number; ++at) {
+        const char c = name[at];
+        a_number = name[0] == 'b' ? (c == '0' || c == '1')
+                                  : (c >= '0' && c <= '9') || (c >= 'a' && c <= 'f') || (c >= 'A' && c <= 'F');
+    }
+    if (a_number) {
+        why = "\"" + name + "\" is how " + (name[0] == 'b' ? "a binary" : "a hex") + " number is written, so " + name +
+              " on a line would be that number and never this name -- give it a name of its own: \"" + name +
+              "_display\"";
         return false;
     }
     return true;

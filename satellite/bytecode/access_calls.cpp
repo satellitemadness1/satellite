@@ -103,8 +103,11 @@ void reach_into(const TypeShape &declared, const std::string &path, const std::s
                 continue;
             }
             const bool holds_it = value != nullptr && &arm_holding(shape, *value) == &arm;
-            reach_into(arm, path, when.empty() ? "when " + path + " holds " + with_article(short_noun(arm, false)) : when,
-                       holds_it ? value : nullptr, top, walk);
+            // A MULTIPLE INSIDE ONE SAYS BOTH (ERRORS4 013): x[n][m] works when x holds a list of multiples AND x[n]
+            // holds a list of numbers. The outer condition alone showed it working on a multiple holding a number.
+            const std::string holds = path + " holds " + with_article(short_noun(arm, false));
+            reach_into(arm, path, when.empty() ? "when " + holds : when + " and " + holds, holds_it ? value : nullptr,
+                       top, walk);
         }
         return;
     }

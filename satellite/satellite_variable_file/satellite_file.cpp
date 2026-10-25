@@ -27,6 +27,7 @@
 #include <cstdlib>
 #include <cstring>
 #include <iterator>
+#include <mutex>
 #include <string>
 #include <utility>
 #include <vector>
@@ -45,6 +46,22 @@ using Ending = satellite_file::Ending;
 const char kByteOrderMark[] = "\xEF\xBB\xBF";
 constexpr std::size_t kByteOrderMarkSize = 3;
 constexpr std::size_t kWriteBuffer = 1024 * 1024;   // a full rewrite writes this much at a time
+
+// EVERY HANDLE HOLDING APPENDED LINES NOT YET ON THE DISK (ERRORS4 006), by its address and a
+// weak_ptr: the address to take it off again, the weak_ptr so a reader can hold it while its
+// lines are written and never keeps it alive. A handful at most -- a handle is on it from the
+// append that starts a batch to the save that ends it. MADE ONCE AND NEVER DESTROYED, so a
+// handle ending after main() has returned still finds it there.
+struct HoldingAppends {
+    std::mutex lock;
+    std::vector<std::pair<const satellite_file *, std::weak_ptr<satellite_file>>> files;
+};
+
+HoldingAppends &holding()
+{
+    static HoldingAppends *const one = new HoldingAppends();
+    return *one;
+}
 
 bool holds_a_nul(const std::string &path)
 {
@@ -257,6 +274,7 @@ void satellite_file::now_saved() noexcept
     last_line_needs_ending_on_disk_ = false;
     pending_bytes_ = 0;
     flush_after_ = kFlushBytes;
+    unlist_as_holding();
 }
 
 bool satellite_file::take_lines(const std::string &text, std::vector<std::string> &pieces) const
@@ -557,6 +575,60 @@ satellite_file::~satellite_file()
 {
     if (open_)
         (void)close();
+    unlist_as_holding();   // a save that failed left it on the list
+}
+
+// ---------------------------------------------------------------------------
+// THE LINES ANOTHER HANDLE HOLDS (the header; ERRORS4 006)
+// ---------------------------------------------------------------------------
+
+void satellite_file::list_as_holding() noexcept
+{
+    if (holding_listed_)
+        return;
+    try {
+        const std::lock_guard<std::mutex> hold(holding().lock);
+        holding().files.emplace_back(this, weak_from_this());
+        holding_listed_ = true;
+    } catch (...) {
+        // NO ROOM TO LIST IT: its lines are still held, and written at 64 KiB, save or close, as before
+    }
+}
+
+void satellite_file::unlist_as_holding() noexcept
+{
+    if (!holding_listed_)
+        return;
+    const std::lock_guard<std::mutex> hold(holding().lock);
+    auto &files = holding().files;
+    for (std::size_t at = 0; at < files.size(); ++at)
+        if (files[at].first == this) {
+            files[at] = std::move(files.back());
+            files.pop_back();
+            break;
+        }
+    holding_listed_ = false;
+}
+
+std::vector<std::shared_ptr<satellite_file>> satellite_file::holding_appends()
+{
+    std::vector<std::shared_ptr<satellite_file>> held;
+    const std::lock_guard<std::mutex> hold(holding().lock);
+    held.reserve(holding().files.size());
+    for (const auto &listed : holding().files)
+        if (std::shared_ptr<satellite_file> file = listed.second.lock())
+            held.push_back(std::move(file));
+    return held;
+}
+
+bool satellite_file::save_appended_before(const struct stat &reading) noexcept
+{
+    if (!open_ || !only_appended_ || pending_bytes_ == 0)
+        return true;
+    struct stat mine {};
+    if (::stat(where_.c_str(), &mine) != 0 || mine.st_dev != reading.st_dev || mine.st_ino != reading.st_ino)
+        return true;
+    return save_appended();
 }
 
 // ---------------------------------------------------------------------------
@@ -628,6 +700,8 @@ bool satellite_file::append(const std::string &text)
         }
         changed_ = true;
         if (only_appended_) {
+            if (pending_bytes_ == 0)
+                list_as_holding();   // the first line of a batch: another handle's open writes it out first
             pending_bytes_ += added;
             // THE STREAM. The line is held whatever the write answers, so append is
             // still true; a failed write is kept in code() and error().

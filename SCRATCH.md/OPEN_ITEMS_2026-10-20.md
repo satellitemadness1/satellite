@@ -114,7 +114,9 @@ Its "Taken without the author's word" list holds the readings the plan took on i
   PATH); there is no answer yet.
 - **Four checker gaps found 2026-10-19 on BUILD 0065**, not yet in SCRATCH.md/ERRORS4. Each is refused
   only when its line runs, instead of before the run:
-  - a capsule called on a returned object, `a.make().secret()` (S230);
+  - a capsule called on a returned object, `a.make().secret()` (S230); **FIXED 2026-10-25** (open-work checker):
+    refused before anything runs when no spacesuit has a secret that line can reach, in a sentence that holds
+    whatever object the answer is (program_check.cpp, a_capsule_this_line_reaches); check.sh rows "M3: ...";
   - `file.satellite.append(<a time>)` (S301);
   - a bad `satellite.file.open` kind such as "append";
   - `satellite.time.now` without brackets.

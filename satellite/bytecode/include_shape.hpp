@@ -78,6 +78,12 @@ std::string directory_of(const std::string &path);
 // The file stem: no directory, no .satl. What the spaceship is called.
 std::string stem_of(const std::string &path);
 
+// ONE FILE, HOWEVER ITS PATH WAS SPELLED (ERRORS4 020): the path made whole against the working directory, with its
+// . and .. and its links worked out as the disk does when the file is opened -- so `shapes`, `./shapes` and inc/'s
+// `../inc/shapes` are one file, and `lnk/../shapes` is the file the disk opens for it. On the text alone when the
+// disk cannot answer. What load_program and join_includes compare; never what is opened, never what a report shows.
+std::string one_spelling_of(const std::string &path);
+
 // WHETHER THIS FILE MAY BE RUN, and the machine code saying why not.
 //
 // (the author, 2026-09-16) "Let's refuse to run files that do not have

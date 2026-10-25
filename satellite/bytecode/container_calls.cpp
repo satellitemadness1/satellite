@@ -12,6 +12,7 @@
 #include "../satellite_variable_number/number_conversions.hpp"
 
 #include <algorithm>
+#include <cstdlib>
 #include <limits>
 #include <new>
 #include <stdexcept>
@@ -137,12 +138,19 @@ satelliteIndex *map_to_change(Value *home, const std::string &name, const char *
 // what keeps `where` and `entries` from silently disagreeing; an index whose
 // table points one past itself answers the WRONG VALUE for a key rather than
 // failing, which is the worst way for this to break.
+//
+// THE LAST ENTRY LEAVES NO HOLE (ERRORS4 032): nothing comes after it to move, so the table is not walked,
+// and remove_last is one hash and not one per key -- emptying a 20,000-key map with it took 3.3 s. An entry
+// anywhere else still moves the rest one place; holes the vector keeps and fills later would make that
+// constant too, and are not built.
 void take_entry_out(satelliteIndex &index, std::size_t at)
 {
     std::string key_name;
     if (key_name_of(index.entries[at].key, key_name))
         index.where.erase(key_name);
     index.entries.erase(index.entries.begin() + static_cast<std::ptrdiff_t>(at));
+    if (at == index.entries.size())
+        return;
     for (std::pair<const std::string, std::size_t> &row : index.where)
         if (row.second > at) --row.second;
 }
@@ -355,6 +363,104 @@ Value call_container_word(token::Code code, const std::vector<Value> &arguments,
 // ---------------------------------------------------------------------------
 // `.reverse()` ON THE TYPES THAT ARE NOT CONTAINERS.
 // ---------------------------------------------------------------------------
+namespace {
+
+// A COLOURED STRING TURNED ROUND (ERRORS4 008): its characters, each in the colour it had. The ESC[...m codes
+// .satellite.foreground and .satellite.background put in a string (console_style.cpp) are not characters --
+// turned round with the rest, "ok" in green came out m93[ESC kom0;552;0;2;83[ESC, which display no longer knew
+// for a colour and wrote raw into a pipe. A foreground and a background are followed apart, so "a" in red joined
+// to "b" in green turns round to "b" in green, then "a" in red; any other code holds until a 0 puts all back.
+struct Look {
+    std::string foreground, background, other;   // the codes that set each, "" for the terminal's own
+    bool operator==(const Look &) const = default;
+};
+
+// What one ESC[...m does to a look -- its numbers read as console_style.cpp's without_colours reads them: 38 and 48
+// with their 2;r;g;b or 5;n, 30-37 and 90-97, 40-47 and 100-107, 39 and 49 put back, 0 or nothing all of it.
+void apply_codes(const std::string &parameters, Look &look)
+{
+    std::vector<std::string> numbers;
+    for (std::size_t from = 0;;) {
+        const std::size_t semicolon = parameters.find(';', from);
+        numbers.push_back(parameters.substr(from, semicolon == std::string::npos ? std::string::npos : semicolon - from));
+        if (semicolon == std::string::npos) break;
+        from = semicolon + 1;
+    }
+    for (std::size_t at = 0; at < numbers.size(); ++at) {
+        const int n = numbers[at].empty() ? 0 : std::atoi(numbers[at].c_str());
+        if ((n == 38 || n == 48) && at + 1 < numbers.size()) {
+            const std::size_t more = numbers[at + 1] == "2" ? 4 : numbers[at + 1] == "5" ? 2 : 1;
+            std::string code = "\033[" + numbers[at];
+            for (std::size_t k = 1; k <= more && at + k < numbers.size(); ++k) code += ";" + numbers[at + k];
+            (n == 38 ? look.foreground : look.background) = code + "m";
+            at += more;
+        } else if ((n >= 30 && n <= 37) || (n >= 90 && n <= 97)) {
+            look.foreground = "\033[" + std::to_string(n) + "m";
+        } else if ((n >= 40 && n <= 47) || (n >= 100 && n <= 107)) {
+            look.background = "\033[" + std::to_string(n) + "m";
+        } else if (n == 39) {
+            look.foreground.clear();
+        } else if (n == 49) {
+            look.background.clear();
+        } else if (n == 0) {
+            look = Look{};
+        } else {
+            look.other += "\033[" + std::to_string(n) + "m";
+        }
+    }
+}
+
+// The codes that take the terminal from one look to the next.
+void move_between(const Look &was, const Look &next, std::string &out)
+{
+    if (was.other != next.other) {
+        if (!(was == Look{})) out += "\033[0m";
+        out += next.other + next.foreground + next.background;
+        return;
+    }
+    if (was.foreground != next.foreground) out += next.foreground.empty() ? "\033[39m" : next.foreground;
+    if (was.background != next.background) out += next.background.empty() ? "\033[49m" : next.background;
+}
+
+std::string reversed_keeping_colours(const std::string &text)
+{
+    struct Piece { std::size_t from, length, look; };
+    std::vector<Look> looks(1);
+    std::vector<Piece> pieces;
+    for (std::size_t i = 0; i < text.size();) {
+        if (text[i] == '\033' && i + 1 < text.size() && text[i + 1] == '[') {
+            std::size_t end = i + 2;
+            while (end < text.size() && ((text[end] >= '0' && text[end] <= '9') || text[end] == ';')) ++end;
+            if (end < text.size() && text[end] == 'm') {
+                Look now = looks.back();
+                apply_codes(text.substr(i + 2, end - i - 2), now);
+                looks.push_back(std::move(now));
+                i = end + 1;
+                continue;
+            }
+        }
+        const unsigned char first = static_cast<unsigned char>(text[i]);
+        std::size_t length = first < 0x80 ? 1 : first < 0xE0 ? 2 : first < 0xF0 ? 3 : 4;
+        if (i + length > text.size()) length = text.size() - i;
+        pieces.push_back({i, length, looks.size() - 1});
+        i += length;
+    }
+    std::string out;
+    out.reserve(text.size());
+    const Look plain;
+    const Look *was = &plain;
+    for (std::size_t at = pieces.size(); at > 0; --at) {
+        const Piece &piece = pieces[at - 1];
+        move_between(*was, looks[piece.look], out);
+        out.append(text, piece.from, piece.length);
+        was = &looks[piece.look];
+    }
+    move_between(*was, plain, out);
+    return out;
+}
+
+} // namespace
+
 Value reverse_of(const Value &receiver, bool &handled, std::string &why)
 {
     handled = true;
@@ -372,10 +478,24 @@ Value reverse_of(const Value &receiver, bool &handled, std::string &why)
         // pass over them is one pass over the string whatever it holds.
         std::vector<char32_t> codes;
         codes.reserve(text->size());
+        const char32_t escape = satellite_string::code_of(0x1B);
+        bool coloured = false;
         for (std::size_t unit = 0; unit < text->units(); ) {
             std::size_t width = 1;
             codes.push_back(text->code_at_unit(unit, width));
+            coloured = coloured || codes.back() == escape;
             unit += width;
+        }
+        // AN ESC IN IT MAY BE A COLOUR (reversed_keeping_colours, above): turned round as its UTF-8.
+        if (coloured) {
+            satellite_string out;
+            std::size_t bad_offset = 0;
+            if (satellite_string::from_utf8(reversed_keeping_colours(text->to_utf8()), out, bad_offset) != success) {
+                why = "a character in it could not be written back";
+                handled = false;
+                return Value();
+            }
+            return Value::of_string(std::move(out));
         }
         satellite_string out;
         for (std::size_t at = codes.size(); at > 0; --at) {

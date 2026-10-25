@@ -1,5 +1,7 @@
 # 047 -- Reading one character, s[1], passes the checker and is refused only at run time as S301 TYPES_DO_NOT_MEET, though the string help says it is refused with S210 before anything runs
 
+**FIXED before 2026-10-25** (the open-work re-check found it right on REVISION 11 BUILD 0001): s[1] on "abc" prints a, exit 0, and s[1] = "z" is refused by satl(check), S301.
+
 **Found:** 2026-09-26, satl 004 revision 08 build 0099 (/home/madness/code/cxx/satellite/build/satl), by running ordinary programs against it.  
 **Area:** realistic programs, strings  
 **Kind:** contradicts-help  

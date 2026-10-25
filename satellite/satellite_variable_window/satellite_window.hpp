@@ -119,13 +119,15 @@ public:
     // not is `.display`, `.typed`, `.clear`, `.home`, `.columns` and `.rows`.
     //
     // `file_display` IS THE FILES OF A DIRECTORY (the author, 2026-10-09: "the next thing I need in
-    // the source editor is a gtk file display"), made with `.widgets.displays.file("a_name")` and
-    // never with a satellite.window word: a column whose top holds the widgets made in it -- "a text
-    // input where you can type in a directory" -- and whose rest is the list. window_widgets.cpp.
+    // the source editor is a gtk file display"), made with `.satellite.window.display.file("a_name")` on
+    // a window, a section or a file display since SEC-0 (`.widgets.displays.file("a_name")` as he first
+    // wrote it), and never by a `satellite.window.` maker as a button is: a column whose top holds the
+    // widgets made in it -- "a text input where you can type in a directory" -- and whose rest is the
+    // list. window_widgets.cpp.
     //
     // `a_section` IS A SECTION OF A WINDOW (the author, 2026-10-10: "to program GUIs in satellite you
-    // must learn the section code scheme"), made with `.section("a_name", 100%, 50%)` on a window or
-    // on a section: an area that lays what is made in it out left to right, a row at a time, each as
+    // must learn the section code scheme"), made with `.satellite.window.section("a_name", 100%, 50%)` (SEC-0) on
+    // a window or on a section: an area that lays what is made in it out left to right, a row at a time, each as
     // wide and as tall as it was told. `a_section` AND NOT `section`, which is already the name of a
     // menu's GMenu below -- the language's word is "section" all the same (kPieceNames).
     enum Piece { window, button, label, text_box, text_area, checkbox, a_switch,
@@ -314,6 +316,9 @@ public:
     // routinely do not, so the real size wins wherever there is one: a window
     // that reports its wish rather than its size is the failure this project
     // keeps naming.
+    //
+    // IT IS THE INSIDE (SATELLITE_WINDOW_SECTIONS.md rule 3, SEC-1): under the title bar and the menu bar, which
+    // ask_for_the_inside adds when it asks GTK for the window's size.
     int asked_wide = 0;
     int asked_tall = 0;
 
@@ -400,7 +405,7 @@ public:
     bool listening = false;
     std::string when_listened;
 
-    // THE WIDGETS MADE IN THIS ONE WITH `.widgets.displays.<kind>("a_name")` (the author,
+    // THE WIDGETS MADE IN THIS ONE WITH `.satellite.window.display.<kind>("a_name")` and sections (the author,
     // 2026-10-09: "windows have .widgets and .widget objects have .widgets"), each under its name,
     // in the order they were made -- `my_window.a_name` is the one with that name. Held as `pieces`
     // hold what `.append` put in, and in `pieces` too, so a closing window lets go of them as it
@@ -990,19 +995,18 @@ bool window_changed(satellite_window &which, const std::string &capsule, std::st
 // input or a text box listens. window_answers.cpp.
 bool window_listen(satellite_window &which, const std::string &capsule, std::string &why);
 
-// THE AUTHOR'S WIDGETS (2026-10-09), window_widgets.cpp. `owner.widgets.displays.file("a_name")`
-// and `.input("a_name")`: a widget of that kind made in `owner` -- a window, or a widget that holds
-// widgets (a file display) -- put under the ones made in it before, and kept under `name`. A name
-// is a name a program can write after a dot: letters, digits and _, not first a digit, and not a
-// method's own word. A name used again in the same owner is refused while the first is open; once
-// it has closed with its window, a window opened again makes it again under the same name.
+// THE AUTHOR'S WIDGETS (2026-10-09), window_widgets.cpp. `owner.satellite.window.display.file("a_name")`
+// and `.satellite.window.display.text.input("a_name")` since SEC-0: a display of that kind made in `owner` -- a
+// window, a section, or a widget that holds widgets (a file display) -- and kept under `name`. A name is a name a
+// program can write after a dot: letters, digits and _, not first a digit, not a method's own word, not `satellite`
+// and not shaped like a hex or binary number. A name used again in the same owner is refused while the first is
+// open; once it has closed with its window, a window opened again makes it again under the same name.
 //
-// AND WITH A SIZE (2026-10-10): `.file("a_name", 100%, 100%)` and `.input(...)` in the same shape,
-// and `.section("a_name", 100%, 50%)`, which always has one. `size` is nullptr for none. A widget
-// with a size, and every section, goes in its owner's area, left to right: a section's own, or the
-// window's sections area. One without a size goes top to bottom across the window as before, and in
-// a section it is all of it, 100% by 100%. A file display's widgets sit across its top and take no
-// size.
+// AND `.satellite.window.section("a_name", 100%, 50%)` (2026-10-10), which always has a size. `size` is nullptr for
+// none. Every section goes in its owner's area, left to right: a section's own, or the window's sections area. A
+// display takes no size since SEC-0: in a section it is all of it, 100% by 100%, and in a window with no sections or
+// in a file display it goes across the top. A section shows one display or holds sections, and a window shows
+// displays across its top or has sections, each not both (a_place_refused).
 WindowHandle window_widget_made(satellite_window &owner, satellite_window::Piece kind, const std::string &name,
                                 const ASize *size, std::string &why);
 
@@ -1011,6 +1015,21 @@ WindowHandle window_widget_made(satellite_window &owner, satellite_window::Piece
 // says which, when it cannot. bytecode/window_shapes.cpp, compiled into every satl: the checker asks
 // it of every name in quotes before the run, and window_widget_made asks it again as it makes one.
 bool a_widget_name_fits(const std::string &name, std::string &why);
+
+// WHERE A DISPLAY OR A SECTION MAY NOT GO (SATELLITE_WINDOW_SECTIONS.md SEC-0, rules 6 and 7): a second display in a
+// section, a display in a section that holds sections, a section in a section that shows a display, a display
+// across the top of a window that has sections, and a section in a window that shows a display across its top. The
+// checker says it before the run where it sees the lines (program_check.cpp's where_it_goes_refused), and
+// window_widget_made when the line runs -- one sentence for both, after the call as written. In
+// bytecode/window_shapes.cpp, compiled into every satl, as a_widget_name_fits is.
+enum class APlace {
+    a_second_display,
+    a_display_among_sections,
+    a_section_beside_a_display,
+    a_display_over_sections,
+    a_section_under_displays,
+};
+std::string a_place_refused(APlace place);
 
 // `owner.a_name`: the widget made in `owner` under that name, or nullptr -- and `why` says which.
 WindowHandle window_widget_named(const satellite_window &owner, const std::string &name, std::string &why);

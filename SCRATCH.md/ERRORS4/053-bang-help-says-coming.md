@@ -1,5 +1,7 @@
 # 053 -- The ! operator works as bool negation, but the only help page that mentions it lists it as COMING and says "None of this reads today"
 
+**FIXED 2026-10-25** (open-work tools): satellite.help/binary_and_hexadecimal/help_text.txt moves && || ! out of COMING -- "The same ruling's conditions are built, and run today: && and || take two bools, and ! turns a bool round" -- and "None of this reads today" is now "No bit operator or method reads today"; check.sh's open-work tools row runs the three and reads the page.
+
 **Found:** 2026-09-26, satl 004 revision 08 build 0099 (/home/madness/code/cxx/satellite/build/satl), by running ordinary programs against it.  
 **Area:** binary hex color infinity bool, control flow and capsules  
 **Kind:** contradicts-help  

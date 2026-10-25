@@ -9,6 +9,8 @@
 #include "word_codes.hpp"
 
 #include <cstdlib>
+#include <filesystem>
+#include <system_error>
 #include <unordered_map>
 
 namespace satellite004 {
@@ -45,6 +47,16 @@ std::string directory_of(const std::string &path)
 {
     const std::size_t slash = path.rfind('/');
     return slash == std::string::npos ? std::string() : path.substr(0, slash);
+}
+
+std::string one_spelling_of(const std::string &path)
+{
+    std::error_code failed;
+    const std::filesystem::path same = std::filesystem::weakly_canonical(path, failed);
+    if (!failed)
+        return same.string();
+    const std::filesystem::path whole = std::filesystem::absolute(path, failed);
+    return (failed ? std::filesystem::path(path) : whole).lexically_normal().string();
 }
 
 std::string stem_of(const std::string &path)

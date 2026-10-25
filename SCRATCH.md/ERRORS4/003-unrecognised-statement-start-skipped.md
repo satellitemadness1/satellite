@@ -1,5 +1,7 @@
 # 003 -- A statement that starts with a code that cannot start one (a sign, a literal, !, /*, )) is stepped over one code at a time and accepted: a continuation line starting with - or + is silently dropped (100 / - 30 holds 100), -n = 9 runs as n = 9, and a /* ... */ block runs its contents
 
+**FIXED 2026-10-25** (open-work checker): check_statement's last fallback (program_check.cpp) refuses, S110 before anything runs, any code no statement begins with -- a value, !, a comparison, = * / % ^, a bracket, a comma, /* and */, and a .method a blank line below its value -- in a_line_does_not_begin_with's sentence ("a line does not begin with /* -- a comment is written //, ..."); only a comment and a character with no meaning (A5) are still stepped over. check.sh rows "003: ...".
+
 **Found:** 2026-09-26, satl 004 revision 08 build 0099 (/home/madness/code/cxx/satellite/build/satl), by running ordinary programs against it.  
 **Area:** integers, syntax and layout  
 **Kind:** wrong-answer  

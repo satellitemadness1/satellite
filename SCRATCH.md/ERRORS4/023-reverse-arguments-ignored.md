@@ -1,5 +1,7 @@
 # 023 -- s.reverse("x"), "abc".reverse(1, 2, 3) and n.reverse(99) are accepted silently with the argument ignored, while s.upper(1) is refused before anything runs
 
+**FIXED 2026-10-25** (open-work checker): .reverse is counted: reverse_token takes 0 in string_method_arity and number_method_arity (the literal check and the run's count), and method_judged refuses anything in its brackets, "s.satellite.reverse() takes nothing in its brackets". check.sh rows "023: ...".
+
 **Found:** 2026-09-26, satl 004 revision 08 build 0099 (/home/madness/code/cxx/satellite/build/satl), by running ordinary programs against it.  
 **Area:** strings  
 **Kind:** invalid-accepted-silently  

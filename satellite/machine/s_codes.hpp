@@ -171,14 +171,16 @@ inline SCode s_code_for(signed long long int machine_code)
 
     case name_not_declared:
         return {"S201", "NAME_NOT_DECLARED",
-                "this name was used where no satellite.variable line declares it -- never declared, "
-                "or declared where it is legal no more: inside a block that has ended, or taken by "
-                "satellite.delete. A name has to be given a type before it can hold anything."};
+                "this name was used where no satellite.variable line, or a section or display line, "
+                "declares it -- never declared, or declared where it is legal no more: inside a block "
+                "that has ended, or taken by satellite.delete. A name has to be given a type before it "
+                "can hold anything."};
     case name_declared_twice:
         return {"S202", "NAME_DECLARED_TWICE",
                 "this name is already declared where this line stands -- a variable in its "
-                "capsule, or a capsule, a satellite.namespace or an included file in its file or "
-                "space. One name, one declaration -- the second would quietly replace the first."};
+                "capsule, a section or a display its own line named there, or a capsule, a "
+                "satellite.namespace or an included file in its file or space. One name, one "
+                "declaration -- the second would quietly replace the first."};
     // THE TWO OF 2026-09-22, in the names block: a name inside a spacesuit that the
     // line cannot reach, and a capsule that had no answer to give.
     case member_is_protected:
