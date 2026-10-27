@@ -3,11 +3,12 @@
 // environment a program it starts is handed instead (the review of steps 2-5, 2026-10-01).
 //
 // satl's console sets names for the GTK it carries: XKB_CONFIG_ROOT, FONTCONFIG_FILE, FONTCONFIG_PATH
-// and GSETTINGS_SCHEMA_DIR (satellite_variable_window/window_spill.cpp), and GDK_DEBUG on a system GTK
-// older than 4.18 (window_desk.cpp). They are satl's alone: its fonts.conf names ONE directory and no
-// system paths, so a program handed it -- a font tool, a GUI program a script opens -- would see only
-// the fonts satl carries. So each is kept here as the machine gave it, before satl sets it, and a
-// program started by satellite.variable.program or .bash is handed the machine's.
+// and GSETTINGS_SCHEMA_DIR (satellite_variable_window/window_spill.cpp), GDK_DEBUG on a system GTK
+// older than 4.18, and EGL_LOG_LEVEL=fatal where the machine set none (window_desk.cpp). They are
+// satl's alone: its fonts.conf names ONE directory and no system paths, so a program handed it -- a
+// font tool, a GUI program a script opens -- would see only the fonts satl carries, and a GL program
+// would hear none of Mesa's warnings. So each is kept here as the machine gave it, before satl sets
+// it, and a program started by satellite.variable.program or .bash is handed the machine's.
 
 #include <string>
 #include <vector>
