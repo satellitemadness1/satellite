@@ -31,11 +31,14 @@ Value method(const Value &receiver, Value *home, const TypeShape *shape, const s
     if (body == nullptr)
         return Value();
     const std::size_t held = body->items.size();
-    // WHAT GOES IN MUST FIT WHAT THE NAME PROMISED -- 1.4.2.1.cpp, .append's, says why.
+    // WHAT GOES IN MUST FIT WHAT THE NAME PROMISED, AS ITS PLACE HOLDS IT -- 1.4.2.1.cpp, .append's, says why.
     std::string unfit;
+    Value item = arguments[1];
     const TypeShape *type = shape != nullptr ? &arm_holding(*shape, receiver) : nullptr;
-    if (type != nullptr && type->word == word::fixed_code<1, 4, 2> && !type->parameters.empty() &&
-        !value_fits(type->parameters[0], arguments[1], unfit)) {
+    const bool typed = type != nullptr && type->word == word::fixed_code<1, 4, 2> && !type->parameters.empty();
+    if (typed)
+        stored_as(type->parameters[0], item);
+    if (typed && !value_fits(type->parameters[0], item, unfit)) {
         context.refuse(types_do_not_meet, name + ".satellite.insert: " + unfit);
         return Value();
     }
@@ -61,7 +64,7 @@ Value method(const Value &receiver, Value *home, const TypeShape *shape, const s
                            ", so a new one goes in at 1 to " + std::to_string(most));
         return Value();
     }
-    body->items.insert(body->items.begin() + static_cast<std::ptrdiff_t>(position - 1), arguments[1]);
+    body->items.insert(body->items.begin() + static_cast<std::ptrdiff_t>(position - 1), std::move(item));
     return *home;
 }
 

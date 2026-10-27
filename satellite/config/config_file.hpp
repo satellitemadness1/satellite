@@ -34,6 +34,7 @@
 // is not dropped -- see write_flag(), which is the whole reason the parse is
 // this forgiving.
 
+#include "../arguments/argument_settings.hpp"
 #include "../machine/machine_codes.hpp"
 
 #include <cstdlib>
@@ -46,6 +47,7 @@
 #include <sys/stat.h>
 #include <sys/types.h>
 #include <unistd.h>
+#include <utility>
 #include <vector>
 
 namespace satellite004::config_file {
@@ -139,6 +141,14 @@ inline bool key_and_value(const std::string &line, std::string &key, std::string
     return true;
 }
 
+// A LINE'S KEY IS THE ONE ASKED FOR under either of a setting's spellings (argument_settings.hpp's
+// kSettingSpellings, QUANTUM_PLAN.md QUANTUM-0): `quantum.memory = 40` is quantum.ram's line, read as it and
+// replaced by it. Every other key is itself and nothing else.
+inline bool same_key(const std::string &said_key, const std::string &key)
+{
+    return said_key == key || the_setting_spelled(said_key) == the_setting_spelled(key);
+}
+
 // Whether the file is there at all. Asked at start-up so satl can SAY it is
 // missing -- the author, 2026-09-18: *"don't run the interpreter without
 // /home_dir/.satl/config.ini say 'cannot find ...' please reinstall satellite,
@@ -167,16 +177,20 @@ inline bool exists()
 // the way a person reading it top to bottom would read it, and write_flag()
 // leaves exactly one behind anyway.
 // The general reader: the text on the right of `key =`, whatever it is.
-// read_flag() is this with the two words understood.
-inline bool read_value(const std::string &key, std::string &value)
+// read_flag() is this with the two words understood. UNDER EITHER SPELLING of a setting (same_key), the
+// last line of the two wins as well, and `spelled`, when asked for, is the key that line was written with --
+// so a refusal names the line the person wrote.
+inline bool read_value(const std::string &key, std::string &value, std::string *spelled = nullptr)
 {
     std::lock_guard<std::mutex> hold(copy_lock());
     bool found = false;
     std::string said_key, said;
     for (const std::string &line : the_copy().lines) {
-        if (!key_and_value(line, said_key, said) || said_key != key)
+        if (!key_and_value(line, said_key, said) || !same_key(said_key, key))
             continue;
         value = said;
+        if (spelled != nullptr)
+            *spelled = said_key;
         found = true;   // the LAST one wins; see above
     }
     return found;
@@ -328,20 +342,38 @@ inline signed long long int rewrite(Change change, std::string &why)
 // program that rewrote it into a canonical form would throw away notes the
 // person left. That is the reason the parser above ignores what it cannot read
 // rather than refusing it.
+//
+// A SETTING IS ONE LINE UNDER ITS OWN NAME, whichever spelling was written (QUANTUM_PLAN.md QUANTUM-0): writing
+// quantum.memory or quantum.ram writes `quantum.ram = ...`. A line under the second spelling is that setting's line
+// and not another one: the first becomes the setting's own line in its place when the file has none under the own
+// name, and any other is taken out, so the file never holds the setting under two names that could disagree. (Two
+// lines under its own name stay two, each rewritten, as they always were.)
 inline signed long long int write_value(const std::string &key, const std::string &value, std::string &why)
 {
+    const std::string own = the_setting_spelled(key);
     return rewrite(
         [&](std::vector<std::string> &lines) {
             bool replaced = false;
             std::string said_key, said;
             for (std::string &line : lines) {
-                if (!key_and_value(line, said_key, said) || said_key != key)
+                if (!key_and_value(line, said_key, said) || said_key != own)
                     continue;
-                line = key + " = " + value;
+                line = own + " = " + value;
                 replaced = true;
             }
+            std::vector<std::string> kept;
+            for (std::string &line : lines) {
+                if (key_and_value(line, said_key, said) && said_key != own && same_key(said_key, own)) {
+                    if (replaced)
+                        continue;
+                    line = own + " = " + value;
+                    replaced = true;
+                }
+                kept.push_back(std::move(line));
+            }
+            lines = std::move(kept);
             if (!replaced)
-                lines.push_back(key + " = " + value);
+                lines.push_back(own + " = " + value);
         },
         why);
 }

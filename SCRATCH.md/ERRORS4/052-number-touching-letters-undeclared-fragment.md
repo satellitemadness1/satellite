@@ -1,5 +1,7 @@
 # 052 -- Digits touching letters (1_000, 1e5, 1e-10, 5abc, 00ff00) are refused as an undeclared name made of the trailing fragment (_000, e, ff00). When such a name is declared, they pass the checker and fail at run time
 
+**FIXED 2026-10-25** (open-work round 2 c1): names_in_statement (program_check.cpp) refuses a name written straight after a number, declared or not, as the one run it was written as -- S120 NUMBER_NOT_READ, exit 3, before anything runs: "1_000 is not a number satellite reads -- a number has no separators: write 1000", "00ff00 ... -- a hex is written with its x: x00ff00", "1e5 ... -- a number has no letters in it". Only when the two touch in the text (written_touching): display(2 x) and display(1 _000), with a blank between, go on as before (the walker's math-sign hint, or S201 for an undeclared name; the fresh reader). 0x10 (the optional variant) is unchanged. check.sh rows "052: ...".
+
 **Found:** 2026-09-26, satl 004 revision 08 build 0099 (/home/madness/code/cxx/satellite/build/satl), by running ordinary programs against it.  
 **Area:** binary hex color infinity bool, control flow and capsules, floats fractions percent, integers  
 **Kind:** misleading-refusal  

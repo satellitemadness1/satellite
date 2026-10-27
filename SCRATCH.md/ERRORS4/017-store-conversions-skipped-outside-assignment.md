@@ -1,5 +1,7 @@
 # 017 -- Conversions made when a whole name is assigned (binary and hex to number, whole number to float) are skipped for a capsule parameter, a container item and a for counter: a number parameter or list slot keeps b0011, a list slot refuses a hex, list<float> refuses 3, and a for counter refuses k = b0001
 
+**FIXED 2026-10-25** (open-work round 2 r1): one store-conversion step, stored_as (type_shape.cpp), makes run_assignment's conversions at every way in -- a parameter, a for's number, t[n] =, m[k] =, .append, .insert, and each item of a list<...> or value of an index<..., ...> a name is given: list<number> holds b101 as 5 and x1F as 31, a number parameter given b0011 holds 3, list<float> takes 4 as 4.0, and for(number k = b0001; ...) starts at 1. A multiple's value goes in as its one arm of its kind, as its .append already did: multiple<list<number>, string> m = {b101} holds {5}. A list value_fits found to fit while it held a binary in a number place is not remembered as fitting, so stored_as does not skip it. NOT FIXED: multiple<number, string> e = x1F is still refused -- which arm a converted value goes to is the author's.
+
 **Found:** 2026-09-26, satl 004 revision 08 build 0099 (/home/madness/code/cxx/satellite/build/satl), by running ordinary programs against it.  
 **Area:** binary hex color infinity bool, control flow and capsules, lists  
 **Kind:** valid-program-refused  

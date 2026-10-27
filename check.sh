@@ -1048,11 +1048,11 @@ expect "map is an index; {k: v} writes one whole; map() is empty; a list of maps
        '{"zoe": 30, "al": 4}|{"zoe", "al"}|{"a": 3, "b": 2}|2|{{"a": {1, 2}}, {"b": {3, 4}}}|true' \
        "$(tail -6 build/map_word.out | tr '\n' '|' | sed 's/|$//')"
 expect "a map's key of the wrong type is refused, and the name is said as declared, map" "27|1" \
-       "$(index_says '    satellite.container.map<satellite.variable.string, satellite.variable.number> m = {1: 2}' 'declared satellite.container.map, and a key of it does not fit')"
+       "$(index_says '    satellite.container.map<satellite.variable.string, satellite.variable.number> m = {1: 2}' 'declared satellite.container.map<satellite.variable.string, satellite.variable.number>, and a key of it does not fit')"
 expect "a list cannot be a key in a map written whole either" "27|1" \
        "$(index_says '    satellite.container.map m = {{1}: 2}' 'a key in this map is a list')"
 expect "a map written whole with a comma missing is refused, after a string ending in U+0700 too (its code is the comma's)" "13|1" \
-       "$(index_says "    satellite.console.display({\"a\": \"$(printf '\334\200')\" \"b\": 2})" 'this map was opened with { and never closed')"
+       "$(index_says "    satellite.console.display({\"a\": \"$(printf '\334\200')\" \"b\": 2})" 'these two entries have no comma between them')"
 expect "satellite.container.map() takes nothing" "13|1" \
        "$(index_says '    satellite.container.map m = satellite.container.map(5)' 'makes a map of nothing and takes nothing')"
 # A MAP'S OWN NUMBERED WORDS, 003'S SPELLING (the author's testing, 2026-09-26, ERRORS2 1b A/D):
@@ -5837,6 +5837,91 @@ printf 'satellite.capsule quiet()\n{\n    satellite.arguments.startup_display(sa
 expect "a capsule declared at the prompt changes a setting for good -- even one read as satl starts" 1 \
        "$(grep -cx 'startup_display = false' "$call_home/.satl/config.ini")"
 
+# QUANTUM BITS, AND THEIR CONFIG FIRST (QUANTUM_PLAN.md QUANTUM-0; the author, 2026-10-25: "we need to add to config a
+# few things before we even begin"): arguments.quantum.ram, also spelled .memory, and arguments.quantum.drive, or
+# .disk -- settings of 1 to 100, percentages of the machine's RAM, 65 unless written, read as satl starts (KEY-10's
+# rule) -- quantum.max = 128, the author's row, and quantum.possible and .possible.ram, the most qubits tied together in
+# RAM and disk and in RAM alone, worked out at every start. Every row in a home of its own; its first run writes the
+# machine's facts, so what is compared after is what the settings did.
+quantum_home=$PWD/build/quantum-home
+quantum_ini=$quantum_home/.satl/config.ini
+rm -rf -- "$quantum_home"
+mkdir -p -- "$quantum_home/.satl"
+HOME=$quantum_home "$interpreter" --rebuild > build/quantum-rebuild.out 2>&1
+printf 'satellite.include(satellite)\n\nsatellite.capsule satellite.main()\n{\n    satellite.console.display(satellite.arguments.quantum.ram)\n    satellite.console.display(satellite.arguments.quantum.memory)\n    satellite.console.display(satellite.arguments.quantum.drive)\n    satellite.console.display(satellite.arguments.quantum.disk)\n    satellite.console.display(satellite.arguments.quantum.max)\n    satellite.console.display(satellite.arguments.quantum.possible)\n    satellite.console.display(satellite.arguments.quantum.possible.ram)\n    satellite.return(satellite)\n}\n' > build/quantum_rows.satl
+HOME=$quantum_home "$interpreter" build/quantum_rows.satl > build/quantum_rows.out 2>/dev/null; code=$?
+expect "the quantum settings read the author's 65 and 65 under both spellings, and quantum.max 128 -- and nothing is written until a person sets one" \
+       "0|65|65|65|65|128|0" "$code|$(head -n 5 build/quantum_rows.out | tr '\n' '|')$(grep -c '^quantum' "$quantum_ini")"
+# THE FIGURES, WORKED OUT HERE FROM /proc/meminfo: floor(log2(MemTotal x share / 100 / 16)), a weight being 16 bytes.
+quantum_total=$(( $(awk '/^MemTotal:/ {print $2}' /proc/meminfo) * 1024 ))
+quantum_qubits() { w=$(( quantum_total * $1 / 100 / 16 )) n=0; while [ "$w" -gt 1 ]; do w=$(( w / 2 )) n=$(( n + 1 )); done; echo "$n"; }
+expect "arguments.quantum.possible is floor(log2(MemTotal x (65 + 65) / 100 / 16)) and .possible.ram floor(log2(MemTotal x 65 / 100 / 16)), worked out as satl starts" \
+       "$(quantum_qubits 130)|$(quantum_qubits 65)" "$(sed -n 6,7p build/quantum_rows.out | tr '\n' '|' | sed 's/|$//')"
+cp -- "$quantum_ini" build/quantum-config.before
+# AT THE PROMPT, FOR GOOD: the =, then the second spelling, which replaces that same line and adds none.
+printf 'satellite.arguments.quantum.ram = 50\n' | HOME=$quantum_home "$interpreter" --repl > build/quantum_prompt.out 2>&1
+quantum_line=$(grep -n '^quantum' "$quantum_ini")
+expect "satellite.arguments.quantum.ram = 50 typed at the prompt is saved as quantum.ram = 50 in config.ini" \
+       "quantum.ram = 50" "${quantum_line#*:}"
+printf 'satellite.arguments.quantum.memory = 40\n' | HOME=$quantum_home "$interpreter" --repl > build/quantum_prompt.out 2>&1
+expect "... and satellite.arguments.quantum.memory = 40 replaces that same line, under the setting's own name, and adds no second" \
+       "${quantum_line%%:*}:quantum.ram = 40" "$(grep -n -e '^quantum' "$quantum_ini" | tr '\n' ' ' | sed 's/ $//')"
+# config.ini'S SECOND SPELLING IS READ AS THE SETTING, and the figures follow both settings at the next start.
+echo 'quantum.disk = 30' >> "$quantum_ini"
+HOME=$quantum_home "$interpreter" build/quantum_rows.satl > build/quantum_rows.out 2>/dev/null; code=$?
+expect "quantum.disk = 30 in config.ini is read as quantum.drive, and quantum.possible is worked out from 40 + 30 at the next start" \
+       "0|40|40|30|30|128|$(quantum_qubits 70)|$(quantum_qubits 40)" "$code|$(tr '\n' '|' < build/quantum_rows.out | sed 's/|$//')"
+quantum_line=$(grep -n '^quantum.disk' "$quantum_ini")
+printf 'satellite.arguments.quantum.drive(25)\n' | HOME=$quantum_home "$interpreter" --repl > build/quantum_prompt.out 2>&1
+expect "... and a write of quantum.drive puts its own line in place of the quantum.disk line" \
+       "${quantum_line%%:*}:quantum.drive = 25|0" "$(grep -n '^quantum.d' "$quantum_ini" | tr '\n' ' ' | sed 's/ $//')|$(grep -c '^quantum.disk' "$quantum_ini")"
+printf 'quantum.memory = 40\nquantum.disk = 25\n' >> "$quantum_ini"
+HOME=$quantum_home "$interpreter" build/quantum_rows.satl > build/quantum_s016.out 2> build/quantum_s016.err; code=$?
+expect "no S016 for any of the four spellings in config.ini -- and satl ran, reading them, so a refusal as it starts cannot pass this" "0|40|40|25|25|128|0|4" \
+       "$code|$(head -n 5 build/quantum_s016.out | tr '\n' '|')$(cat build/quantum_s016.out build/quantum_s016.err | grep -c S016)|$(grep -c -e '^quantum.ram' -e '^quantum.memory' -e '^quantum.drive' -e '^quantum.disk' "$quantum_ini")"
+sed -i '/^quantum.memory = 40$/d; /^quantum.disk = 25$/d' "$quantum_ini"
+cp -- "$quantum_ini" build/quantum-config.saved
+# 0 AND 101 ARE REFUSED, NAMING THE RANGE: typed at the prompt, saving nothing, and in config.ini, stopping the start.
+printf 'satellite.arguments.quantum.ram(0)\n' | HOME=$quantum_home "$interpreter" --repl > build/quantum_zero.out 2>&1; code=$?
+printf 'satellite.arguments.quantum.disk = 101\n' | HOME=$quantum_home "$interpreter" --repl > build/quantum_101.out 2>&1
+expect "quantum.ram(0) and quantum.disk = 101 at the prompt are refused, naming 1 to 100, and save nothing" "37|1|1|same" \
+       "$code|$(tr '\n' ' ' < build/quantum_zero.out | sed 's/  */ /g' | grep -c "satellite.arguments.quantum.ram is a whole number from 1 to 100, a percentage of the machine's RAM, and was given 0")|$(tr '\n' ' ' < build/quantum_101.out | sed 's/  */ /g' | grep -c "satellite.arguments.quantum.disk is a whole number from 1 to 100, a percentage of the machine's RAM, taken on disk, and was given 101")|$(cmp -s build/quantum-config.saved "$quantum_ini" && echo same || echo changed)"
+echo 'quantum.memory = 101' >> "$quantum_ini"
+HOME=$quantum_home "$interpreter" build/quantum_rows.satl > build/quantum_bad_config.out 2>&1; code=$?
+expect "... and quantum.memory = 101 in config.ini stops satl as it starts, naming the line as written and the range" "20|1" \
+       "$code|$(grep -c 'quantum.memory = 101 is not what arguments.quantum.ram holds -- write a whole number from 1 to 100' build/quantum_bad_config.out)"
+cp -- build/quantum-config.saved "$quantum_ini"
+# A LINE IN A FILE IS TOO LATE: the settings are read as satl starts, before any file is.
+printf 'satellite.include(satellite)\n\nsatellite.capsule satellite.main()\n{\n    satellite.console.display("before")\n    satellite.arguments.quantum.memory = 50\n    satellite.return(satellite)\n}\n' > build/quantum_late.satl
+HOME=$quantum_home "$interpreter" build/quantum_late.satl > build/quantum_late.out 2>&1; code=$?
+expect "satellite.arguments.quantum.memory = 50 in a file is refused as too late, before anything runs, and config.ini is unchanged" "35|0|1|same" \
+       "$code|$(grep -cx before build/quantum_late.out)|$(tr '\n' ' ' < build/quantum_late.out | sed 's/  */ /g' | grep -c 'satellite.arguments.quantum.memory is read as satl starts, before it reads any file')|$(cmp -s build/quantum-config.saved "$quantum_ini" && echo same || echo changed)"
+# quantum.max AND THE FIGURES ARE READ AND NEVER WRITTEN: "no matter what machine you're on".
+printf 'satellite.arguments.quantum.max = 5\nsatellite.arguments.quantum.possible = 40\n' | HOME=$quantum_home "$interpreter" --repl > build/quantum_max.out 2>&1
+expect "quantum.max and quantum.possible cannot be written: rows satl holds, and config.ini gains nothing" "1|1|same" \
+       "$(grep -c 'satellite.arguments.quantum.max is a row satl holds' build/quantum_max.out)|$(grep -c 'satellite.arguments.quantum.possible is a row satl holds' build/quantum_max.out)|$(cmp -s build/quantum-config.saved "$quantum_ini" && echo same || echo changed)"
+# AND BY ITS CALL: max is a word of the language, so `.max(` read as a bare word after quantum, and was told to write
+# quantum.satellite.max, which is no row either (QUANTUM-0's fresh reader). It is refused as its = line is.
+printf 'satellite.arguments.quantum.max(5)\n' | HOME=$quantum_home "$interpreter" --repl > build/quantum_max_call.out 2>&1
+printf 'satellite.include(satellite)\n\nsatellite.capsule satellite.main()\n{\n    satellite.console.display("before")\n    satellite.arguments.quantum.max(5)\n    satellite.return(satellite)\n}\n' > build/quantum_max_call.satl
+HOME=$quantum_home "$interpreter" build/quantum_max_call.satl > build/quantum_max_call_file.out 2>&1; code=$?
+expect "satellite.arguments.quantum.max(5), at the prompt and in a file, is refused as quantum.max = 5 is -- a row satl holds, before anything runs -- and is not sent to quantum.satellite.max" "1|35|0|1|0|same" \
+       "$(tr '\n' ' ' < build/quantum_max_call.out | sed 's/  */ /g' | grep -c 'satellite.arguments.quantum.max is a row satl holds, and a program reads it but does not write it')|$code|$(grep -cx before build/quantum_max_call_file.out)|$(tr '\n' ' ' < build/quantum_max_call_file.out | sed 's/  */ /g' | grep -c 'satellite.arguments.quantum.max is a row satl holds, and a program reads it but does not write it')|$(cat build/quantum_max_call.out build/quantum_max_call_file.out | grep -c 'quantum.satellite.max')|$(cmp -s build/quantum-config.saved "$quantum_ini" && echo same || echo changed)"
+# THE RANGE'S TWO ENDS ARE TAKEN: 100 and 1, each saved for good under its own name.
+printf 'satellite.arguments.quantum.ram(100)\nsatellite.arguments.quantum.drive(1)\n' | HOME=$quantum_home "$interpreter" --repl > build/quantum_ends.out 2>&1
+expect "quantum.ram(100) and quantum.drive(1) at the prompt are taken -- the range's two ends -- and saved" \
+       "0|quantum.ram = 100|quantum.drive = 1" \
+       "$(grep -c machine_code build/quantum_ends.out)|$(grep '^quantum.ram' "$quantum_ini")|$(grep '^quantum.drive' "$quantum_ini")"
+# A WRITE UNDER THE OWN NAME TAKES OUT A LINE UNDER THE SECOND SPELLING (config_file.hpp's write_value): config.ini
+# holding quantum.ram = 50 and then quantum.memory = 45 is left one line, quantum.ram's.
+sed -i 's/^quantum.ram = .*/quantum.ram = 50/' "$quantum_ini"
+echo 'quantum.memory = 45' >> "$quantum_ini"
+printf 'satellite.arguments.quantum.ram = 35\n' | HOME=$quantum_home "$interpreter" --repl > build/quantum_prompt.out 2>&1
+HOME=$quantum_home "$interpreter" build/quantum_rows.satl > build/quantum_rows.out 2>/dev/null; code=$?
+expect "satellite.arguments.quantum.ram = 35 at the prompt, over quantum.ram = 50 and then quantum.memory = 45, leaves one line, quantum.ram = 35, and the next run reads 35" \
+       "quantum.ram = 35|0|35|35" \
+       "$(grep -e '^quantum.ram' -e '^quantum.memory' "$quantum_ini" | tr '\n' '|')$code|$(head -n 2 build/quantum_rows.out | tr '\n' '|' | sed 's/|$//')"
+
 # THE MACHINE, READ ONCE (the author, 2026-10-03: "have a variable at the top of it: FIRST_START=
 # FALSE or TRUE if it is the first start, and then it will run a special function to grab everything
 # from /proc/meminfo and /proc/cpuinfo and /etc/os-release"; satellite-numbers/machine_facts.hpp). In a
@@ -7848,6 +7933,7 @@ expect "\"a,b\".split(\",\").size(1) names the list split answered, not the stri
 # [ ] STRAIGHT AFTER A METHOD'S ANSWER IS NOT BUILT, and was refused as a space missing round a
 # math sign -- after the lines above it had printed. Said as what it is, with the way round it:
 # before anything runs on a string, and as the line runs on anything else.
+# REBASED 2026-10-25 (ERRORS4 045, open-work round 2 c1): on anything else too, before anything runs.
 expect "s.split(\",\")[2] is refused before anything runs: [ ] after a method's answer is not built" "13|1|0" \
        "$(body_refused m16_split_index '    satellite.variable.string s = "a,b,c"
     satellite.console.display(s.satellite.split(",")[2])' "s.satellite.split(...)\[...\]: \[ \] is not built yet straight after a call's answer, a literal or a bracket -- give the value a name first")"
@@ -7856,7 +7942,7 @@ expect "... and in a declaration too, where it was the bare one-line report" "13
     satellite.variable.string x = s.satellite.split(",")[2]' "s.satellite.split(...)\[...\]: \[ \] is not built yet")"
 expect "\"abc\"[1] is refused before anything runs, in the same words" "13|1|0" \
        "$(body_refused m16_literal_index '    satellite.console.display("abc"[1])' "that string\[...\]: \[ \] is not built yet")"
-expect "l.reverse()[1] on a list is refused in the same words as it runs" "13|1|1" \
+expect "l.reverse()[1] on a list is refused in the same words, before anything runs" "13|1|0" \
        "$(body_refused m16_list_answer_index '    satellite.container.list l = {1, 2}
     satellite.console.display(l.satellite.reverse()[1])' "l.satellite.reverse()\[...\]: \[ \] is not built yet")"
 # A LITERAL NO CHARACTER IS AT IS REFUSED BEFORE ANYTHING RUNS (string_check.cpp): its kind is
@@ -8913,7 +8999,7 @@ expect "window: a name no widget has, after an item, is refused as an undeclared
 # it is, and a word a type does not have is told so. The answers below are BUILD 0032's, the build before the move.
 expect "the other scalars' sixteen new rows are in words.tsv, each the next free number under its type" 16 \
        "$(grep -cP '^(1 6 11 11\tsatellite\.variable\.hex\.add\(x\)|1 6 11 12\tsatellite\.variable\.hex\.reverse|1 6 5 13\tsatellite\.variable\.binary\.add\(x\)|1 6 5 14\tsatellite\.variable\.binary\.reverse|1 6 19 1\tsatellite\.variable\.color\.transparency|1 6 19 2\tsatellite\.variable\.color\.string|1 6 19 3\tsatellite\.variable\.color\.number|1 6 19 4\tsatellite\.variable\.color\.binary|1 6 19 5\tsatellite\.variable\.color\.hex|1 6 20 1\tsatellite\.variable\.fraction\.numerator|1 6 20 2\tsatellite\.variable\.fraction\.denominator|1 6 20 3\tsatellite\.variable\.fraction\.string|1 6 16 1\tsatellite\.variable\.percentage\.string|1 6 16 2\tsatellite\.variable\.percentage\.add\(x\)|1 6 6 1\tsatellite\.variable\.bool\.string|1 6 3 1\tsatellite\.variable\.time\.string)\t' words/words.tsv)"
-expect "30 numbered files run the other scalars' words (a bool's .add since 2026-10-11), and the four types' _values.cpp run none of them" "30|0" \
+expect "31 numbered files run the other scalars' words (a bool's .add since 2026-10-11, a time's .satellite.time.convert since TIME-1), and the four types' _values.cpp run none of them" "31|0" \
        "$(grep -l 'row->scenarios.method_call = method;' satellite-numbers/words/1.6.{3,5,6,10,11,16,19,20}.*.cpp | wc -l)|$(cat satellite/bytecode/{float,hexadecimal,color,fraction}_values.cpp | grep -c 'Value \(float\|hexadecimal\|color\|fraction\)_method(')"
 cat > "$sweep/scalar_numbers.satl" <<'SCALAR_EOF'
 satellite.include(satellite)
@@ -9024,7 +9110,9 @@ expect "a word a binary does not have is said as that, before anything runs: b.s
 expect "... and written with its . it is refused as it always was, when it runs: b.find" "27|1|1" \
        "$(body_refused nm8_none_bare '    satellite.variable.binary b = b1010
     satellite.console.display(b.find("1"))' 'find was written on a binary and given a string')"
-expect "a binary's .satellite.width is numbered and not built: refused when it runs, as not built for a binary" "14|1|1" \
+# REBASED 2026-10-25 (ERRORS4 036, 055, open-work round 2 c1): a word numbered with nothing built behind it is refused
+# before anything runs, by the function table the run asks (program_check.cpp, scalar_word_not_built).
+expect "a binary's .satellite.width is numbered and not built: refused before anything runs, as not built for a binary" "14|1|0" \
        "$(body_refused nm8_unbuilt '    satellite.variable.binary b = b1010
     satellite.console.display(b.satellite.width)' 'b.satellite.width is not built for a binary yet')"
 expect "a colour's .satellite.transparency(n) on a copy is still refused, naming the way that works" "14|1|1" \
@@ -9040,13 +9128,13 @@ expect "a bool's .satellite.add(\"x\") joins as + does, and its three new rows a
 expect "a bool's bare t.add(\"x\") is refused before anything runs, naming t.satellite.add" "13|1|0" \
        "$(body_refused nm8_bool_add_bare '    satellite.variable.bool t = satellite.bool.true
     satellite.console.display(t.add("x"))' 't.add is written t.satellite.add now')"
-expect "a float's .satellite.reverse() is numbered and not built: refused when it runs, as not built for a float" "14|1|1" \
+expect "a float's .satellite.reverse() is numbered and not built: refused before anything runs, as not built for a float" "14|1|0" \
        "$(body_refused nm8_float_reverse '    satellite.variable.float f = 12.34
     satellite.console.display(f.satellite.reverse())' 'f.satellite.reverse is not built for a float yet')"
 expect "... and the bare f.reverse() is refused before anything runs, naming f.satellite.reverse" "13|1|0" \
        "$(body_refused nm8_float_reverse_bare '    satellite.variable.float f = 12.34
     satellite.console.display(f.reverse())' 'f.reverse is written f.satellite.reverse now')"
-expect "a fraction's .satellite.reverse() is numbered and not built, and its bare q.reverse() is refused before the run" "14|1|1|13|1|0" \
+expect "a fraction's .satellite.reverse() is numbered and not built, and it and its bare q.reverse() are refused before the run" "14|1|0|13|1|0" \
        "$(body_refused nm8_fraction_reverse '    satellite.variable.fraction q = 1/3
     satellite.console.display(q.satellite.reverse())' 'q.satellite.reverse is not built for a fraction yet')|$(body_refused nm8_fraction_reverse_bare '    satellite.variable.fraction q = 1/3
     satellite.console.display(q.reverse())' 'q.reverse is written q.satellite.reverse now')"
@@ -10519,6 +10607,932 @@ printf 'satellite.help(binary_and_hexadecimal)\n' | "$interpreter" --repl > buil
 expect "&& || ! run, and satellite.help(binary_and_hexadecimal) says they run today and lists them under COMING no more (ERRORS4 053)" \
        "0|true false true|1|0|0" \
        "$code|$(tr '\n' ' ' < build/conditions_run.out | sed 's/ $//')|$(grep -c "^The same ruling's conditions are built, and run today: && and || take two$" build/help_conditions.out)|$(grep -c '^- conditions: && || !$' build/help_conditions.out)|$(grep -c 'None of this reads today' build/help_conditions.out)"
+
+# open-work round 2 c1 (2026-10-25)
+# The checker batch of round 2 of the author's "anything that isn't done": each row is an ERRORS4 page, named, whose
+# program was refused only once its line ran -- after "before", main's first line, had printed -- or refused before
+# anything ran in a sentence that named something nobody wrote. Judged as round 1's rows are (owc, owc_file): the exit,
+# the words of the refusal, and whether "before" printed. A row marked "still" is a program that ran and still runs.
+r2c1_squares='satellite.capsule squares()
+{
+    satellite.return({1, 4, 9})
+}
+
+satellite.capsule satellite.main()
+{
+    satellite.console.display("before")'
+r2c1_after='    satellite.return(satellite)
+}'
+# ERRORS4 036: a scalar's word numbered with nothing built behind it, refused by the function table, as the run refuses it.
+expect "036: a binary's .satellite.digits is refused before anything runs" "14|1|0" \
+       "$(owc r2c1_036_digits '    satellite.variable.binary a = b0110
+    satellite.console.display(a.satellite.digits)' 'a.satellite.digits is not built for a binary yet')"
+expect "036: a binary's .satellite.width is refused before anything runs" "14|1|0" \
+       "$(owc r2c1_036_width '    satellite.variable.binary a = b0110
+    satellite.console.display(a.satellite.width)' 'a.satellite.width is not built for a binary yet')"
+expect "036: a binary's .satellite.clear() on a line of its own is refused before anything runs" "14|1|0" \
+       "$(owc r2c1_036_clear '    satellite.variable.binary a = b0110
+    a.satellite.clear()' 'a.satellite.clear is not built for a binary yet')"
+expect "036: a hex's .satellite.digits() is refused before anything runs" "14|1|0" \
+       "$(owc r2c1_036_hex '    satellite.variable.hex h = x0F
+    satellite.console.display(h.satellite.digits())' 'h.satellite.digits is not built for a hex yet')"
+expect "036: b0110.satellite.digits, on a literal, is refused before anything runs" "14|1|0" \
+       "$(owc r2c1_036_literal '    satellite.console.display(b0110.satellite.digits)' 'that binary.satellite.digits is not built for a binary yet')"
+expect "036: x0F.satellite.digits, on a literal, is refused before anything runs" "14|1|0" \
+       "$(owc r2c1_036_hex_literal '    satellite.console.display(x0F.satellite.digits)' 'that hex.satellite.digits is not built for a hex yet')"
+expect "036: still -- a hex's .satellite.width and .satellite.binary() run" "0|0|1" \
+       "$(owc r2c1_036_built '    satellite.variable.hex h = x0F
+    satellite.console.display(h.satellite.width)
+    satellite.console.display(h.satellite.binary())' 'not built')"
+# ERRORS4 041: display() takes one value, and given none -- or only satellite.end= -- is refused by name.
+expect "041: satellite.console.display() is refused before anything runs, as display(\"a\", \"b\") is" "13|1|0" \
+       "$(owc r2c1_041_none '    satellite.console.display()' 'satellite.console.display takes one argument, and was given 0')"
+expect "041: satellite.console.display( ) is refused before anything runs" "13|1|0" \
+       "$(owc r2c1_041_space '    satellite.console.display( )' 'satellite.console.display takes one argument, and was given 0')"
+expect "041: satellite.console.display(satellite.end=\"!\") -- an option and no value -- is refused before anything runs" \
+       "13|1|0" \
+       "$(owc r2c1_041_option '    satellite.console.display(satellite.end="!")' 'satellite.console.display takes one argument, and was given 0')"
+expect "041: still -- satellite.console.display(\"a\", satellite.end=\"!\") prints a!" "0|before a!" \
+       "$(owc r2c1_041_still '    satellite.console.display("a", satellite.end="!")' 'x' >/dev/null; echo "$code_run|$("$interpreter" "$owc_dir/r2c1_041_still.satl" 2>/dev/null | tr '\n' ' ' | sed 's/ $//')")"
+# ERRORS4 045: [ ] straight after an answer is not built; the walker's sentence, said before anything runs.
+expect "045: squares()[2] is refused before anything runs" "13|1|0" \
+       "$(owc_file r2c1_045_call "$r2c1_squares
+    satellite.console.display(squares()[2])
+$r2c1_after" "that answer[...]: [ ] is not built yet straight after a call's answer, a literal or a bracket")"
+expect "045: {10, 20, 30}[2] is refused before anything runs" "13|1|0" \
+       "$(owc r2c1_045_list '    satellite.console.display({10, 20, 30}[2])' 'that list[...]: [ ] is not built yet')"
+expect "045: a.satellite.reverse()[1] is refused before anything runs" "13|1|0" \
+       "$(owc r2c1_045_method '    satellite.container.list a = {3, 1, 2}
+    satellite.console.display(a.satellite.reverse()[1])' 'a.satellite.reverse()[...]: [ ] is not built yet')"
+expect "045: g.satellite.first[2] is refused before anything runs" "13|1|0" \
+       "$(owc r2c1_045_first '    satellite.container.list g = {{1, 2}, {3}}
+    satellite.console.display(g.satellite.first[2])' 'g.satellite.first[...]: [ ] is not built yet')"
+expect "045: (squares())[2] is refused before anything runs" "13|1|0" \
+       "$(owc_file r2c1_045_bracket "$r2c1_squares
+    satellite.console.display((squares())[2])
+$r2c1_after" 'that value[...]: [ ] is not built yet')"
+expect "045: x = squares()[2] is refused before anything runs" "13|1|0" \
+       "$(owc_file r2c1_045_assign "$r2c1_squares
+    satellite.variable.number x = squares()[2]
+$r2c1_after" 'that answer[...]: [ ] is not built yet')"
+expect "045: satellite.statement.if(squares()[2] == 4) is refused before anything runs" "13|1|0" \
+       "$(owc_file r2c1_045_if "$r2c1_squares
+    satellite.statement.if(squares()[2] == 4)
+    {
+        satellite.console.display(\"yes\")
+    }
+$r2c1_after" 'that answer[...]: [ ] is not built yet')"
+expect "045: still -- t = squares() and then t[2], and g[1][2] on a list of lists, read their items" "0|before 4 2" \
+       "$(owc_file r2c1_045_still "$r2c1_squares
+    satellite.container.list t = squares()
+    satellite.console.display(t[2])
+    satellite.container.list<satellite.container.list> g = {{1, 2}, {3}}
+    satellite.console.display(g[1][2])
+$r2c1_after" 'x' >/dev/null; echo "$code_run|$("$interpreter" "$owc_dir/r2c1_045_still.satl" 2>/dev/null | tr '\n' ' ' | sed 's/ $//')")"
+# ERRORS4 046: a list item's word, judged by the kind the list was declared to hold, as a name of that kind is.
+expect "046: nums[1].satellite.sqrt() on a list<number> is refused before anything runs" "14|1|0" \
+       "$(owc r2c1_046_sqrt '    satellite.container.list<satellite.variable.number> nums = {4, 9}
+    satellite.console.display(nums[1].satellite.sqrt())' 'nums[...].satellite.sqrt is numbered (1 6 4 14) and not built yet')"
+expect "046: bs[1].satellite.width on a list<binary> is refused before anything runs" "14|1|0" \
+       "$(owc r2c1_046_width '    satellite.container.list<satellite.variable.binary> bs = {b0110}
+    satellite.console.display(bs[1].satellite.width)' 'bs[...].satellite.width is not built for a binary yet')"
+expect "046: nums[1].satellite.max() is told its count before anything runs" "13|1|0" \
+       "$(owc r2c1_046_count '    satellite.container.list<satellite.variable.number> nums = {4, 9}
+    satellite.console.display(nums[1].satellite.max())' 'nums[...].satellite.max takes 1 argument, and was given 0')"
+expect "046: still -- nums[1].satellite.abs() and names[1].satellite.size run" "0|before 4 3" \
+       "$(owc r2c1_046_still '    satellite.container.list<satellite.variable.number> nums = {-4, 9}
+    satellite.console.display(nums[1].satellite.abs())
+    satellite.container.list<satellite.variable.string> names = {"zoe", "al"}
+    satellite.console.display(names[1].satellite.size)' 'x' >/dev/null; echo "$code_run|$("$interpreter" "$owc_dir/r2c1_046_still.satl" 2>/dev/null | tr '\n' ' ' | sed 's/ $//')")"
+# ERRORS4 048: .add and the four conversions counted on a declared name, in the walker's sentences.
+expect "048: s.satellite.add() is told it takes one argument before anything runs" "13|1|0" \
+       "$(owc r2c1_048_add_none '    satellite.variable.string s = "abc"
+    satellite.console.display(s.satellite.add())' 's.satellite.add takes one argument, and was given 0')"
+expect "048: n.satellite.add() on a number, the same" "13|1|0" \
+       "$(owc r2c1_048_number '    satellite.variable.number n = 4
+    satellite.console.display(n.satellite.add())' 'n.satellite.add takes one argument, and was given 0')"
+expect "048: s.satellite.add(1, 2), the same" "13|1|0" \
+       "$(owc r2c1_048_add_two '    satellite.variable.string s = "abc"
+    satellite.console.display(s.satellite.add(1, 2))' 's.satellite.add takes one argument, and was given 2')"
+expect "048: s.satellite.add with no brackets is told it needs them before anything runs" "13|1|0" \
+       "$(owc r2c1_048_add_bare '    satellite.variable.string s = "abc"
+    satellite.console.display(s.satellite.add)' 's.satellite.add takes an argument and needs a ( after it')"
+expect "048: s.satellite.number(1) is told a conversion takes nothing before anything runs" "13|1|0" \
+       "$(owc r2c1_048_conversion '    satellite.variable.string s = "12"
+    satellite.console.display(s.satellite.number(1))' 's.satellite.number is a conversion and takes no argument')"
+expect "048: b.satellite.add() on a bool, the same as on a string" "13|1|0" \
+       "$(owc r2c1_048_bool '    satellite.variable.bool b = satellite.bool.true
+    satellite.console.display(b.satellite.add())' 'b.satellite.add takes one argument, and was given 0')"
+expect "048: still -- s.satellite.add(\"d\") and n.satellite.string run" "0|before abcd 4" \
+       "$(owc r2c1_048_still '    satellite.variable.string s = "abc"
+    satellite.console.display(s.satellite.add("d"))
+    satellite.variable.number n = 4
+    satellite.console.display(n.satellite.string)' 'x' >/dev/null; echo "$code_run|$("$interpreter" "$owc_dir/r2c1_048_still.satl" 2>/dev/null | tr '\n' ' ' | sed 's/ $//')")"
+# ERRORS4 049: .lock() and .unlock() are a file's and every object's.
+expect "049: x.lock() on a string is told a file and an object have it" "14|1|0" \
+       "$(owc r2c1_049_lock '    satellite.variable.string x = "abc"
+    x.lock()' 'x.lock is not built for satellite.variable.string yet -- so far a file and an object have it')"
+expect "049: x.unlock() on a number, the same" "14|1|0" \
+       "$(owc r2c1_049_unlock '    satellite.variable.number x = 4
+    x.unlock()' 'x.unlock is not built for satellite.variable.number yet -- so far a file and an object have it')"
+# ERRORS4 050: a misspelled word between < and >, in a capsule's brackets or where a value goes gets did you mean.
+expect "050: list<satellite.variable.strng> is asked did you mean satellite.variable.string" "13|1|0" \
+       "$(owc r2c1_050_list '    satellite.container.list<satellite.variable.strng> names = {"a"}' 'satellite.variable has no word named strng -- did you mean satellite.variable.string?')"
+expect "050: a map's key type misspelled, the same" "13|1|0" \
+       "$(owc r2c1_050_map '    satellite.container.map<satellite.variable.strng, satellite.variable.number> m = {"a": 1}' 'satellite.variable has no word named strng -- did you mean satellite.variable.string?')"
+expect "050: list<satellite.varible.string> is asked did you mean satellite.variable" "13|1|0" \
+       "$(owc r2c1_050_prefix '    satellite.container.list<satellite.varible.string> names = {"a"}' 'satellite has no word named varible -- did you mean satellite.variable?')"
+expect "050: a capsule's parameter typed satellite.variable.strng, the same" "13|1|0" \
+       "$(owc_file r2c1_050_parameter 'satellite.capsule show(satellite.variable.strng s)
+{
+    satellite.console.display(s)
+}
+
+satellite.capsule satellite.main()
+{
+    satellite.console.display("before")
+    show("a")
+    satellite.return(satellite)
+}' 'satellite.capsule show -- satellite.variable has no word named strng -- did you mean satellite.variable.string?')"
+expect "050: satellite.bool.flase is asked did you mean satellite.bool.false, not told flase is undeclared" "13|1|0" \
+       "$(owc r2c1_050_value '    satellite.variable.bool done = satellite.bool.flase' 'satellite.bool has no word named flase -- did you mean satellite.bool.false?')"
+expect "050: satellite.console.widht is asked did you mean satellite.console.width" "13|1|0" \
+       "$(owc r2c1_050_word '    satellite.console.display(satellite.console.widht)' 'satellite.console has no word named widht -- did you mean satellite.console.width?')"
+# ERRORS4 051: "expected 50%" only for a number that is the whole value; a fraction or a sum is said as what it begins with.
+expect "051: percent p = 1/4 is not told to write 1%" "27|1|0" \
+       "$(owc r2c1_051_fraction '    satellite.variable.percent p = 1/4' 'ERROR: a percentage name holds only a percentage, and this value begins with the number 1')"
+expect "051: percent p = 2 * 25% is not told to write 2%" "27|1|0" \
+       "$(owc r2c1_051_product '    satellite.variable.percent p = 2 * 25%' 'ERROR: a percentage name holds only a percentage, and this value begins with the number 2')"
+expect "051: p = 1/4 on a percentage declared above, the same" "27|1|0" \
+       "$(owc r2c1_051_assign '    satellite.variable.percent p = 5%
+    p = 1/4' 'ERROR: a percentage name holds only a percentage, and this value begins with the number 1')"
+expect "051: binary a = 1 + 1 is not told to write b1" "27|1|0" \
+       "$(owc r2c1_051_binary '    satellite.variable.binary a = 1 + 1' 'ERROR: a binary name holds only a binary, and this value begins with the number 1')"
+expect "051: hex h = 200 + 1 is not told to write x200" "27|1|0" \
+       "$(owc r2c1_051_hex '    satellite.variable.hex h = 200 + 1' 'ERROR: a hex name holds only a hex, and this value begins with 200')"
+expect "051: time t = 5 + 1 is not told to write 5s" "27|1|0" \
+       "$(owc r2c1_051_time '    satellite.variable.time t = 5 + 1' 'ERROR: a time name holds only a time, and this value begins with the number 5')"
+expect "051: still -- percent p = 50 and p = (50) are told ERROR: expected 50%" "27|1|0|27|1" \
+       "$(owc r2c1_051_bare '    satellite.variable.percent p = 50' 'ERROR: expected 50%')|$(owc r2c1_051_bracket '    satellite.variable.percent p = (50)' 'ERROR: expected 50%' | cut -d'|' -f1,2)"
+expect "051: still -- binary a = 1, hex h = 200 and time t = 5 are told what to write" "1|1|1" \
+       "$(owc r2c1_051_b1 '    satellite.variable.binary a = 1' 'ERROR: expected b1' | cut -d'|' -f2)|$(owc r2c1_051_x200 '    satellite.variable.hex h = 200' 'ERROR: expected x200' | cut -d'|' -f2)|$(owc r2c1_051_5s '    satellite.variable.time t = 5' 'ERROR: expected 5s, 5ms or 5ns' | cut -d'|' -f2)"
+expect "051: binary a = 1_000 and percent p = 1e2 are not told to write b1 or 1%" "27|1|0|27|1|0" \
+       "$(owc r2c1_051_separator '    satellite.variable.binary a = 1_000' 'ERROR: a binary name holds only a binary, and this value begins with the number 1')|$(owc r2c1_051_exponent '    satellite.variable.percent p = 1e2' 'ERROR: a percentage name holds only a percentage, and this value begins with the number 1')"
+expect "051: still -- time t = 5min, a unit's letters, is told ERROR: expected 5s, 5ms or 5ns" "27|1|0" \
+       "$(owc r2c1_051_min '    satellite.variable.time t = 5min' 'ERROR: expected 5s, 5ms or 5ns')"
+# ERRORS4 052: digits with letters after them are one number written wrong, S120, and not an undeclared fragment.
+expect "052: 1_000 is told a number has no separators, not that _000 is undeclared" "3|1|0" \
+       "$(owc r2c1_052_separator '    satellite.console.display(1_000 + 1)' '1_000 is not a number satellite reads -- a number has no separators: write 1000')"
+expect "052: 1e5 is told a number has no letters" "3|1|0" \
+       "$(owc r2c1_052_exponent '    satellite.console.display(1e5)' '1e5 is not a number satellite reads -- a number has no letters in it')"
+expect "052: 00ff00 is told a hex is written with its x" "3|1|0" \
+       "$(owc r2c1_052_hex '    satellite.console.display(00ff00)' '00ff00 is not a number satellite reads -- a hex is written with its x: x00ff00')"
+expect "052: 1_000 with a name _000 declared is refused the same, before anything runs" "3|1|0" \
+       "$(owc r2c1_052_declared '    satellite.variable.number _000 = 1
+    satellite.console.display(1_000 + 1)' '1_000 is not a number satellite reads')"
+expect "052: still -- display(2 x) and display(1 _000), a blank between, are not joined into 2x or 1_000" "13|1|1|25|1|0" \
+       "$(owc r2c1_052_spaced '    satellite.variable.number x = 3
+    satellite.console.display(2 x)' 'check that every math sign has a space on both sides')|$(owc r2c1_052_spaced_undeclared '    satellite.console.display(1 _000)' '_000 has no satellite.variable line declaring it')"
+# ERRORS4 054 and 055: a float's .binary and .hex, and a float's and a fraction's .reverse(), before anything runs.
+expect "054: f.satellite.bin on a float is refused before anything runs" "14|1|0" \
+       "$(owc r2c1_054_bin '    satellite.variable.float f = 2.5
+    satellite.console.display(f.satellite.bin)' 'f.satellite.binary: base 2 text of a float is not built yet')"
+expect "054: f.satellite.hex on a float, the same" "14|1|0" \
+       "$(owc r2c1_054_hex '    satellite.variable.float f = 2.5
+    satellite.console.display(f.satellite.hex)' 'f.satellite.hex: base 16 text of a float is not built yet')"
+expect "054: 2.5.satellite.bin, on a literal, the same" "14|1|0" \
+       "$(owc r2c1_054_literal '    satellite.console.display(2.5.satellite.bin)' 'that float.satellite.binary: base 2 text of a float is not built yet')"
+expect "055: f.satellite.reverse() on a float is refused before anything runs" "14|1|0" \
+       "$(owc r2c1_055_float '    satellite.variable.float f = 2.5
+    satellite.console.display(f.satellite.reverse())' 'f.satellite.reverse is not built for a float yet')"
+expect "055: q.satellite.reverse() on a fraction, the same" "14|1|0" \
+       "$(owc r2c1_055_fraction '    satellite.variable.fraction q = 1/3
+    satellite.console.display(q.satellite.reverse())' 'q.satellite.reverse is not built for a fraction yet')"
+expect "055: 12.34.satellite.reverse() and 1/3.satellite.reverse(), on literals, the same" "14|1|0|14|1|0" \
+       "$(owc r2c1_055_float_literal '    satellite.console.display(12.34.satellite.reverse())' 'that float.satellite.reverse is not built for a float yet')|$(owc r2c1_055_fraction_literal '    satellite.console.display(1/3.satellite.reverse())' 'that fraction.satellite.reverse is not built for a fraction yet')"
+expect "054/055: still -- f.satellite.string and q.satellite.numerator run" "0|before 2.5 1" \
+       "$(owc r2c1_055_still '    satellite.variable.float f = 2.5
+    satellite.console.display(f.satellite.string)
+    satellite.variable.fraction q = 1/3
+    satellite.console.display(q.satellite.numerator)' 'x' >/dev/null; echo "$code_run|$("$interpreter" "$owc_dir/r2c1_055_still.satl" 2>/dev/null | tr '\n' ' ' | sed 's/ $//')")"
+
+# open-work round 2 c2 (2026-10-25)
+# THE CHECKER'S, round 2: ERRORS4 059 060 071 072 073 074 077 080, and the open items M4 and M5. Each line here is
+# refused by satl(check) before anything runs -- "before" never prints -- in the sentence that fits it; every row but
+# M5's and 059's a.satellite.sort()[1] was red on the satl before it (M5's checker refusals worked already, and had
+# no row; that 059 row keeps the sentence it had).
+c2_dir=$PWD/build/open_work_c2
+rm -rf -- "$c2_dir"
+mkdir -p -- "$c2_dir"
+c2_says() {   # c2_says <name> <the whole program> <sentence> -> machine code | sentence found | "before" printed
+    printf '%s\n' "$2" > "$c2_dir/$1.satl"
+    "$interpreter" "$c2_dir/$1.satl" > "$c2_dir/$1.out" 2>&1
+    printf '%s|%s|%s' "$?" "$(tr '\n' ' ' < "$c2_dir/$1.out" | grep -c -- "$3")" "$(grep -cx before "$c2_dir/$1.out")"
+}
+c2_main() {   # c2_main <main's body lines>: a program of main alone, which displays "before" first
+    printf 'satellite.include(satellite)\n\nsatellite.capsule satellite.main()\n{\n    satellite.console.display("before")\n%s\n    satellite.return(satellite)\n}' "$1"
+}
+# ERRORS4 059: += ON AN ITEM IS REFUSED AS A NAME'S IS (S210, the line to write), not "not a method call".
+expect "059: a[1] += 2 is not built yet -- write a[...] = a[...] + ... (S210), before anything runs" "14|1|0" \
+       "$(c2_says 059_list "$(c2_main '    satellite.container.list a = {1, 2, 3}
+    a[1] += 2')" 'a\[...\] += ... is not built yet -- write a\[...\] = a\[...\] + ...')"
+expect "059: ... and so is m[\"k\"] += 1 on a map" "14|1|0" \
+       "$(c2_says 059_map "$(c2_main '    satellite.container.map<satellite.variable.string, satellite.variable.number> m = {"k": 1}
+    m["k"] += 1')" 'm\[...\] += ... is not built yet -- write m\[...\] = m\[...\] + ...')"
+expect "059: ... and g[1][1] -= 1, two brackets down" "14|1|0" \
+       "$(c2_says 059_nested "$(c2_main '    satellite.container.list<satellite.container.list<satellite.variable.number>> g = {{1, 2}}
+    g[1][1] -= 1')" 'g\[...\]\[...\] -= ... is not built yet -- write g\[...\]\[...\] = g\[...\]\[...\] - ...')"
+expect "059: ... but a string's s[1] += \"x\" is told a string's character is never written, not a line that is refused" \
+       "27|1|0" \
+       "$(c2_says 059_string "$(c2_main '    satellite.variable.string s = "abc"
+    s[1] += "x"')" 's is a string, and \[ \] = ... changes an item of a list or a key of an index')"
+expect "059: ... and a.satellite.sort()[1] += 2, an item of a call's answer, is not told to write a[...]" "13|1|0|0" \
+       "$(c2_says 059_sorted "$(c2_main '    satellite.container.list<satellite.variable.number> a = {3, 1, 2}
+    a.satellite.sort()[1] += 2')" 'a is followed by something that is not a method call')|$(grep -c 'a\[...\] +=' "$c2_dir/059_sorted.out")"
+# ERRORS4 060: THE CONSTRUCTOR GIVEN A <type> -- refused naming it, not "there is no value here" after earlier lines ran.
+expect "060: satellite.container.list<number>() is told list() takes no <type>, before anything runs" "13|1|0" \
+       "$(c2_says 060_list "$(c2_main '    satellite.container.list a = satellite.container.list<satellite.variable.number>()')" \
+           'satellite.container.list() takes no <type> -- the declaration says what it holds: satellite.container.list<satellite.variable.number> a = satellite.container.list()')"
+expect "060: ... and index<string, number>() that map() does, naming the word the constructor was written with" "13|1|0" \
+       "$(c2_says 060_index "$(c2_main '    satellite.container.index<satellite.variable.string, satellite.variable.number> m = satellite.container.index<satellite.variable.string, satellite.variable.number>()')" \
+           'satellite.container.map() takes no <type> -- the declaration says what it holds: satellite.container.index<satellite.variable.string, satellite.variable.number> m = satellite.container.map()')"
+expect "060: ... and inside a display, where it was refused naming nothing" "13|1|0" \
+       "$(c2_says 060_display "$(c2_main '    satellite.console.display(satellite.container.list<satellite.variable.number>())')" \
+           'satellite.container.list() takes no <type>')"
+# ERRORS4 071: display OF AN OBJECT, refused before anything runs in the walker's sentence -- in an if not taken too.
+c2_box='satellite.include(satellite)
+
+satellite.spacesuit box()
+{
+}
+
+satellite.capsule satellite.main()
+{
+    box a
+    satellite.console.display("before")'
+expect "071: display(a) of an object is refused before anything runs: no scenario for an object (S210)" "14|1|0" \
+       "$(c2_says 071_display "$c2_box
+    satellite.console.display(a)
+    satellite.return(satellite)
+}" 'satl(check): in satellite.main, satellite.console.display has no scenario for an object')"
+expect "071: ... and so is one in an if never taken, which ran to exit 0" "14|1|0" \
+       "$(c2_says 071_untaken "$c2_box
+    satellite.statement.if(satellite.bool.false)
+    {
+        satellite.console.display(a)
+    }
+    satellite.return(satellite)
+}" 'satellite.console.display has no scenario for an object')"
+# ERRORS4 072: A SPACESUIT'S OWN NAME USED AS AN OBJECT is told so, not that no satellite.variable line declares it.
+c2_counter='satellite.include(satellite)
+
+satellite.spacesuit counter()
+{
+    satellite.public
+    {
+        satellite.capsule bump()
+        {
+            satellite.return(1)
+        }
+    }
+}
+
+satellite.capsule satellite.main()
+{
+    satellite.console.display("before")'
+expect "072: counter.bump() on the spacesuit counter is told an object of it is declared first" "13|1|0" \
+       "$(c2_says 072_statement "$c2_counter
+    counter.bump()
+    satellite.return(satellite)
+}" 'counter is a spacesuit, and an object of it is made by declaring one on a line of its own -- counter a_name(...) -- and then using a_name')"
+expect "072: ... and so is display(counter.bump())" "13|1|0" \
+       "$(c2_says 072_display "$c2_counter
+    satellite.console.display(counter.bump())
+    satellite.return(satellite)
+}" 'counter is a spacesuit, and an object of it is made by declaring one')"
+# ERRORS4 073: A FIELD WRITTEN THROUGH AN ITEM is S230, as read through it and as written on a name are.
+c2_cell='satellite.include(satellite)
+
+satellite.spacesuit cell()
+{
+    satellite.protected
+    {
+        satellite.variable.number v = 0
+    }
+}
+
+satellite.capsule satellite.main()
+{
+    cell a
+    satellite.console.display("before")'
+expect "073: things[1].v = 5 on a list<cell> is S230, a field reached from outside" "52|1|0" \
+       "$(c2_says 073_list "$c2_cell
+    satellite.container.list<cell> things = {a}
+    things[1].v = 5
+    satellite.return(satellite)
+}" 'v is a field of cell and fields are reached from inside the spacesuit only')"
+expect "073: ... and m[\"a\"].v = 5 on a map of them" "52|1|0" \
+       "$(c2_says 073_map "$c2_cell
+    satellite.container.map<satellite.variable.string, cell> m = {\"a\": a}
+    m[\"a\"].v = 5
+    satellite.return(satellite)
+}" 'v is a field of cell and fields are reached from inside the spacesuit only')"
+# ERRORS4 074: other.cents IN money'S OWN CAPSULE is refused for what refuses it -- never as host.name.
+expect "074: other.cents inside money's own capsule: a field is reached by its bare name only, never through an object" \
+       "52|1|0" \
+       "$(c2_says 074_inside 'satellite.include(satellite)
+
+satellite.spacesuit money()
+{
+    satellite.protected
+    {
+        satellite.variable.number cents = 0
+    }
+    satellite.public
+    {
+        satellite.capsule same(money other)
+        {
+            satellite.return(other.cents)
+        }
+    }
+}
+
+satellite.capsule satellite.main()
+{
+    money a
+    satellite.console.display("before")
+    satellite.console.display(a.same(a))
+    satellite.return(satellite)
+}' 'cents is a field of money, and a field is reached by its bare name only, never through an object with a dot -- write a capsule in money that answers it')"
+expect "074: ... and other.cents in money's capsule when other is a rich that extends money" "52|1|0" \
+       "$(c2_says 074_inherited 'satellite.include(satellite)
+
+satellite.spacesuit money()
+{
+    satellite.protected
+    {
+        satellite.variable.number cents = 0
+    }
+    satellite.public
+    {
+        satellite.capsule same(rich other)
+        {
+            satellite.return(other.cents)
+        }
+    }
+}
+
+satellite.spacesuit rich(money)
+{
+}
+
+satellite.capsule satellite.main()
+{
+    money a
+    rich r
+    satellite.console.display("before")
+    satellite.console.display(a.same(r))
+    satellite.return(satellite)
+}' 'cents is a field of rich, and a field is reached by its bare name only, never through an object with a dot')"
+# ERRORS4 077: A MAP'S POSITION METHODS, written bare, are refused before anything runs -- its keys suggested only to
+# .index_of and .search, which change nothing (ERRORS4 075).
+for c2_how in 'append(4)|: write age\[key\] = value|1' 'insert(1, 4)||0' 'remove_at(1)||0' 'truncate(1)||0' \
+              'index_of(30)|, so nothing counts along it. Take its keys first: age.satellite.keys.satellite.index_of(...)|1' \
+              'search("z")|, so nothing counts along it. Take its keys first: age.satellite.keys.satellite.search(...)|1'; do
+    c2_call=${c2_how%%|*}; c2_rest=${c2_how#*|}; c2_tail=${c2_rest%|*}; c2_keys=${c2_rest##*|}
+    c2_method=${c2_call%%(*}
+    c2_line="    satellite.console.display(age.$c2_call)"
+    case $c2_method in append | insert | remove_at | truncate) c2_line="    age.$c2_call" ;; esac
+    c2_got=$(c2_says "077_$c2_method" "$(c2_main "    satellite.container.map<satellite.variable.string, satellite.variable.number> age = {\"zoe\": 30}
+$c2_line")" "satl(check): in satellite.main, age.$c2_method -- an index has keys and not positions$c2_tail")
+    expect "077: age.$c2_call on a map is refused before anything runs, keys and not positions" \
+           "27|1|0|$c2_keys" "$c2_got|$(grep -c 'Take its keys first\|write age\[key\]' "$c2_dir/077_$c2_method.out")"
+done
+# ERRORS4 080: EVERY RETURN IS THE WHOLE STATEMENT, the two that hand back nothing too. (A } straight after one that
+# hands back nothing waits for the author's ruling on a block's } written on its statement's line: no row.)
+expect "080: satellite.return(satellite) x is refused at its line: something follows its ), where it dropped the x and ran" \
+       "13|1|0" \
+       "$(c2_says 080_name "$(c2_main '    satellite.console.display("then")
+    satellite.return(satellite) x')" 'satellite.return(...) is the whole statement, and something follows its )')"
+# M4: satellite.time.now AND .new WITH NO BRACKETS are refused before anything runs. now, built since TIME-1
+# (2026-10-26), is told how it is called; new, not built, is still told it has no library.
+expect "M4: display(satellite.time.now) is S110, called with brackets -- now() or now(\"s\") -- before anything runs" "13|1|0" \
+       "$(c2_says m4_now "$(c2_main '    satellite.console.display(satellite.time.now)')" \
+           'satellite.time.now is called with brackets -- satellite.time.now() or satellite.time.now("s")')"
+expect "M4: ... while t = satellite.time.new is still S210, no library built for it yet, before anything runs" "14|1|0" \
+       "$(c2_says m4_new "$(c2_main '    satellite.variable.time t = satellite.time.new')" \
+           'satellite.time.new has no library built for it yet')"
+# M5: CHECKER GAPS g2 AND g3 (2026-10-23), which had no row: a file's mode, and what its text methods are given.
+expect "M5 g3: satellite.file.open(p, \"append\") is refused before anything runs: \"text\" or \"binary\"" "27|1|0" \
+       "$(c2_says m5_open "$(c2_main "    satellite.variable.file f = satellite.file.open(\"$c2_dir/g3.txt\", \"append\")")" \
+           "satellite.file.open's second argument is \"text\" or \"binary\", and it was given \"append\"")"
+expect "M5 g3: ... and satellite.file.new(p, \"append\")" "27|1|0" \
+       "$(c2_says m5_new "$(c2_main "    satellite.variable.file f = satellite.file.new(\"$c2_dir/g3.txt\", \"append\")")" \
+           "satellite.file.new's second argument is \"text\" or \"binary\", and it was given \"append\"")"
+for c2_how in 'append(1s)|append|a time' 'append(b101)|append|a binary' 'append(xFF)|append|a hex number' \
+              'append(50%)|append|a percentage' 'insert(1, 250ms)|insert|a time' 'replace(1, x1F)|replace|a hex number' \
+              'contains(25%)|contains|a percentage'; do
+    c2_call=${c2_how%%|*}; c2_rest=${c2_how#*|}; c2_method=${c2_rest%%|*}; c2_kind=${c2_rest#*|}
+    c2_line="    f.satellite.$c2_call"
+    [ "$c2_method" = contains ] && c2_line="    satellite.console.display(f.satellite.$c2_call)"
+    expect "M5 g2: f.satellite.$c2_call on a file is refused before anything runs: it takes text" "27|1|0" \
+           "$(c2_says "m5_${c2_method}_${c2_kind// /_}" "$(c2_main "    satellite.variable.file f = satellite.file.open(\"$c2_dir/g2.txt\")
+$c2_line")" "f.satellite.$c2_method takes text, and was given $c2_kind")"
+done
+expect "M5 g2: ... and f.satellite.append(\"plain\") still runs, and no file was touched by the rows above" "0|0|1|0" \
+       "$(c2_says m5_plain "$(c2_main "    satellite.variable.file f = satellite.file.open(\"$c2_dir/g2_plain.txt\")
+    f.satellite.append(\"plain\")")" 'takes text')|$(ls "$c2_dir" | grep -c '^g[23]\.txt$')"
+
+# open-work round 2 r1 (2026-10-25)
+#
+# NINE PAGES OF SCRATCH.md/ERRORS4, a row or more each, every one red on the satl before them: 010 017 014 043 056
+# 057 058 061 063. Their programs are written under build/open_round2_r1.
+r2_dir=$PWD/build/open_round2_r1
+rm -rf -- "$r2_dir"
+mkdir -p -- "$r2_dir"
+r2_main() {   # r2_main <name> <main's body lines>: a program of its own, run -> its exit code; .out and .err
+    printf 'satellite.include(satellite)\n\nsatellite.capsule satellite.main()\n{\n%s\n    satellite.return(satellite)\n}\n' "$2" > "$r2_dir/$1.satl"
+    "$interpreter" "$r2_dir/$1.satl" > "$r2_dir/$1.out" 2> "$r2_dir/$1.err"
+}
+r2_says() {   # r2_says <name> <sentence>: 1 when the report holds it, its lines joined
+    tr '\n' ' ' < "$r2_dir/$1.err" | grep -cF -- "$2"
+}
+r2_caret_under() {   # r2_caret_under <name> <text>: 1 when the caret stands under the first <text> of the syntax row
+    awk -v want="$2" '/^syntax: /{b=index($0,want); getline; print (b>0 && index($0,"/\\")==b)?1:0; exit}' "$r2_dir/$1.err"
+}
+
+# ERRORS4 010: AN ITEM IS x WHEN == SAYS SO -- .contains, .index_of, .remove and a container's == ask it, so a
+# number meets a float, a binary or a hex of its worth there as `a[3] == 3.0` does. A binary's width still counts.
+r2_main same_item '    satellite.container.list a = {1, 2, 3}
+    satellite.console.display(a.satellite.contains(3.0))
+    satellite.console.display(a.satellite.index_of(3.0))
+    satellite.console.display(a == {1, 2, 3.0})
+    satellite.console.display(a != {1, 2, 3.0})
+    satellite.container.list bits = {b11}
+    satellite.container.list hex = {x1F}
+    satellite.container.list wide = {b0011}
+    satellite.console.display(bits.satellite.contains(3))
+    satellite.console.display(hex.satellite.contains(31))
+    satellite.console.display(wide.satellite.contains(b11))
+    satellite.container.index m = {"a": 3}
+    satellite.container.index n = {"a": 3.0}
+    satellite.console.display(m == n)
+    a.satellite.remove(3.0)
+    satellite.console.display(a)'; code=$?
+expect "ERRORS4 010: {1, 2, 3} holds 3.0, at 3, equals {1, 2, 3.0}; {b11} holds 3 and {x1F} 31, {b0011} not b11; a map's 3 equals 3.0; remove(3.0) takes the 3" \
+       "0|true 3 true false true true false true {1, 2}" "$code|$(tr '\n' ' ' < "$r2_dir/same_item.out" | sed 's/ $//')"
+
+# ERRORS4 017: WHAT A NUMBER NAME DOES WITH A BINARY OR A HEX, AND A FLOAT NAME WITH A NUMBER, EVERY WAY IN DOES:
+# .append, .insert, the declaration's items, t[n] =, m[k] =, a parameter and a for's number.
+r2_main stored_items '    satellite.container.list<satellite.variable.number> t = {1}
+    t.satellite.append(b101)
+    t.satellite.append(x1F)
+    t.satellite.insert(1, b11)
+    satellite.console.display(t)
+    satellite.console.display(t.satellite.contains(5))
+    satellite.container.list<satellite.variable.number> u = {b101, x1F}
+    satellite.console.display(u)
+    u[1] = b11
+    u[2] = x0A
+    satellite.console.display(u)
+    satellite.container.index<satellite.variable.string, satellite.variable.number> m = {"z": b1}
+    m["a"] = b101
+    m["b"] = x1F
+    satellite.console.display(m)
+    satellite.container.list<satellite.variable.float> prices = {1.5}
+    prices.satellite.append(4)
+    satellite.console.display(prices)'; code=$?
+expect "ERRORS4 017: a list<number> and an index of numbers hold b101 as 5 and x1F as 31 every way in, and a list<float> takes 4 as a float" \
+       "0|{3, 1, 5, 31}|true|{5, 31}|{3, 10}|{\"z\": 1, \"a\": 5, \"b\": 31}|{1.5, 4.0}" \
+       "$code|$(paste -sd '|' "$r2_dir/stored_items.out")"
+cat > "$r2_dir/stored_number.satl" <<'R2_EOF'
+satellite.include(satellite)
+
+satellite.capsule show(satellite.variable.number n)
+{
+    satellite.console.display(n)
+}
+
+satellite.capsule satellite.main()
+{
+    show(b0011)
+    satellite.statement.for(satellite.variable.number k = b0001; k < 3; k++)
+    {
+        satellite.console.display(k)
+    }
+    satellite.return(satellite)
+}
+R2_EOF
+"$interpreter" "$r2_dir/stored_number.satl" > "$r2_dir/stored_number.out" 2> "$r2_dir/stored_number.err"; code=$?
+expect "ERRORS4 017: a number parameter given b0011 holds 3, and a for's number = b0001 starts at 1" \
+       "0|3|1|2" "$code|$(paste -sd '|' "$r2_dir/stored_number.out")"
+r2_main stored_through_multiple '    satellite.container.list raw = {}
+    satellite.statement.for(satellite.variable.number i = 0; i < 64; i++)
+    {
+        raw.satellite.append(b1)
+    }
+    satellite.container.multiple<satellite.container.list<satellite.variable.number>, satellite.variable.string> m = raw
+    satellite.container.list<satellite.variable.number> t = raw
+    satellite.console.display(t[64])
+    satellite.container.multiple<satellite.container.list<satellite.variable.number>, satellite.variable.string> k = {b101}
+    k.satellite.append(b101)
+    satellite.console.display(k)'; code=$?
+expect "ERRORS4 017: 64 b1s a multiple's list<number> arm has seen still go into a list<number> as 1s, and that arm takes {b101} as its .append does" \
+       "0|1|{5, 5}" "$code|$(paste -sd '|' "$r2_dir/stored_through_multiple.out")"
+
+# ERRORS4 014: satellite.access WRITES A STRING AS A PROGRAM WRITES IT -- a key and a string's value, \" and \t and
+# \n and \\ and all -- where it wrote "a"b" and \x09, which no program can.
+cat > "$r2_dir/access_escapes.satl" <<'R2_EOF'
+satellite.include(satellite)
+
+satellite.capsule satellite.main()
+{
+    satellite.container.map<satellite.variable.string, satellite.variable.number> m = {"a\"b": 1, "t\tx": 2}
+    satellite.access(m)
+    satellite.variable.string s = "q\"r"
+    satellite.access(s)
+    satellite.variable.string one = "a\n"
+    satellite.variable.string two = "a\\x0a"
+    satellite.access(one)
+    satellite.access(two)
+    satellite.return(satellite)
+}
+R2_EOF
+"$interpreter" "$r2_dir/access_escapes.satl" > "$r2_dir/access_escapes.out" 2> "$r2_dir/access_escapes.err"; code=$?
+expect "ERRORS4 014: access shows the keys \"a\\\"b\" and \"t\\tx\", the value \"q\\\"r\", and \"a\\n\" apart from \"a\\\\x0a\"" \
+       "0|1|1|1|1|0" \
+       "$code|$(grep -cF 'one of "a\"b", "t\tx"' "$r2_dir/access_escapes.out")|$(grep -cF 'value  "q\"r"' "$r2_dir/access_escapes.out")|$(grep -cF 'value  "a\n"' "$r2_dir/access_escapes.out")|$(grep -cF 'value  "a\\x0a"' "$r2_dir/access_escapes.out")|$(grep -cF '\x09' "$r2_dir/access_escapes.out")"
+
+# ERRORS4 043: A LIST OF OBJECTS SHOWN OR JOINED IS NOT BUILT, AND SAYS ONLY THAT -- it said the spacesuit has no
+# to_string capsule, of one that declares it.
+r2_suit() {   # r2_suit <name> <line>: box declares to_string(); <line> runs on l, a list<box> holding one
+    printf 'satellite.include(satellite)\n\nsatellite.spacesuit box()\n{\n    satellite.public\n    {\n        satellite.capsule to_string()\n        {\n            satellite.return("a box")\n        }\n    }\n}\n\nsatellite.capsule satellite.main()\n{\n    box a\n    satellite.container.list<box> l = {a}\n%s\n    satellite.return(satellite)\n}\n' "$2" > "$r2_dir/$1.satl"
+    "$interpreter" "$r2_dir/$1.satl" > "$r2_dir/$1.out" 2> "$r2_dir/$1.err"
+}
+r2_suit object_list '    satellite.console.display(l)'; code=$?
+expect "ERRORS4 043: display of a list of objects is not built, and does not say the spacesuit has no to_string" "14|1|0" \
+       "$code|$(r2_says object_list 'showing an object as text is not built yet')|$(r2_says object_list 'no to_string capsule')"
+r2_suit object_join '    satellite.console.display(l.satellite.join(", "))'; code=$?
+expect "... and l.satellite.join says the same of item 1" "27|1|0" \
+       "$code|$(r2_says object_join 'item 1 has no text to join -- showing an object as text is not built yet')|$(r2_says object_join 'no to_string capsule')"
+
+# ERRORS4 056: A STRING AND AN INFINITY ARE TOLD WHAT A STRING AND A COLOUR ARE: .satellite.string joins.
+r2_main infinity_join '    satellite.variable.infinity big = satellite.infinity()
+    satellite.console.display("big is " + big)'; code=$?
+expect "ERRORS4 056: \"big is \" + big is told an infinity is not text, and .satellite.string on it joins" "27|1|0" \
+       "$code|$(r2_says infinity_join '+ was given a string and an infinity -- an infinity is not text; .satellite.string on it is its text, to join')|$(r2_says infinity_join 'no scenario for that pair')"
+r2_main infinity_first '    satellite.console.display(satellite.infinity() + " inf")'; code=$?
+expect "... and big + \" inf\" the same, the other way round" "27|1" \
+       "$code|$(r2_says infinity_first '+ was given an infinity and a string -- an infinity is not text')"
+
+# ERRORS4 057: A NUMBER FIRST AND TEXT THAT READS AS A NUMBER, REFUSED, SAYS SO: + was given a hex and the text
+# "2.5", not "a hex and a float".
+r2_main text_read_hex '    satellite.console.display(x1F + "2.5")'; code=$?
+expect "ERRORS4 057: x1F + \"2.5\" is refused saying the text \"2.5\" reads as a float" "14|1" \
+       "$code|$(r2_says text_read_hex 'the text "2.5" reads as a float, and + was given a hex and a float')"
+r2_main text_read_percent '    satellite.console.display(50% + "5")'; code=$?
+expect "... and 50% + \"5\" saying the text \"5\" reads as a number" "27|1" \
+       "$code|$(r2_says text_read_percent 'the text "5" reads as a number, and 50% + 5:')"
+
+# ERRORS4 058: TWO ITEMS WITH NO COMMA BETWEEN THEM ARE SAID TO BE THAT, with the caret under the second -- the
+# list was said never to be closed, on a line that closes it. A { really left open is still said to be.
+r2_main no_comma_list '    satellite.console.display("before")
+    satellite.container.list a = {"one" "two"}'; code=$?
+expect "ERRORS4 058: {\"one\" \"two\"} is two items with no comma between them, the caret under \"two\", and not a list never closed" \
+       "13|1|1|0" \
+       "$code|$(r2_says no_comma_list 'these two items have no comma between them -- items are separated by commas')|$(r2_caret_under no_comma_list '"two"')|$(r2_says no_comma_list 'never closed')"
+r2_main no_comma_map '    satellite.container.index m = {"a": 1 "b": 2}'; code=$?
+r2_main equals_in_map '    satellite.container.index m = {"a" = 1, "b" = 2}'
+expect "... and {\"a\": 1 \"b\": 2} two entries with no comma between them, but an = where the : goes is no item" "13|1|0|0" \
+       "$code|$(r2_says no_comma_map 'these two entries have no comma between them -- entries are separated by commas')|$(r2_says no_comma_map 'never closed')|$(r2_says equals_in_map 'no comma between them')"
+
+# ERRORS4 061: A TYPED CONTAINER'S REFUSAL NAMES ITS TYPE WITH ITS <...>: a bare list holds anything.
+r2_main typed_list '    satellite.container.list<satellite.variable.number> a = {1, "x"}'; code=$?
+expect "ERRORS4 061: list<number> a = {1, \"x\"} is refused naming satellite.container.list<satellite.variable.number>" "27|1" \
+       "$code|$(r2_says typed_list 'a was declared satellite.container.list<satellite.variable.number>, and item 2 of it does not fit: it holds a string')"
+r2_main typed_index '    satellite.container.index<satellite.variable.string, satellite.variable.number> m = {"a": "x"}'; code=$?
+expect "... and index<string, number> naming both its types" "27|1" \
+       "$code|$(r2_says typed_index 'm was declared satellite.container.index<satellite.variable.string, satellite.variable.number>, and a value of it does not fit')"
+r2_main typed_list_of_multiple '    satellite.container.list<satellite.container.multiple<satellite.variable.number, satellite.variable.string>> a = {x1F}'; code=$?
+r2_main typed_multiple '    satellite.container.multiple<satellite.variable.number, satellite.variable.string> e = x1F'
+expect "... and a multiple's arms are named once, after what it holds, alone or inside a list<...>" "27|1|1" \
+       "$code|$(r2_says typed_list_of_multiple 'a was declared satellite.container.list<satellite.container.multiple>, and item 1 of it does not fit: it holds a hex, and this name takes satellite.variable.number or satellite.variable.string')|$(r2_says typed_multiple 'e was declared satellite.container.multiple, and it holds a hex, and this name takes satellite.variable.number or satellite.variable.string')"
+
+# ERRORS4 063: .truncate TAKES A COUNT OF ITEMS, 0 among them, and is refused in a count's words.
+r2_main truncate_below '    satellite.container.list a = {1, 2, 3}
+    a.satellite.truncate(-1)'; code=$?
+expect "ERRORS4 063: a.satellite.truncate(-1) is told a count is 0 or more, not that items count from 1" "19|1|0" \
+       "$code|$(r2_says truncate_below 'a.satellite.truncate was given -1, and a count is 0 or more')|$(r2_says truncate_below 'items count from 1')"
+r2_main truncate_text '    satellite.container.list a = {1, 2, 3}
+    a.satellite.truncate("x")'; code=$?
+expect "... and truncate(\"x\") that it takes a count of items" "27|1" \
+       "$code|$(r2_says truncate_text 'a.satellite.truncate takes a count of items, and was given a string')"
+
+# open-work round 2 r2 (2026-10-25)
+#
+# NINE PAGES OF SCRATCH.md/ERRORS4, a row or more each, every one red on the satl before them: 066 067 068 069 075 078
+# 079 081 084. Their programs are written under build/open_round2_r2. M8, check_session.py's spacesuit typed with no
+# wait between its lines, is that harness's own: "satl --repl at a real terminal" above.
+r2_dir=$PWD/build/open_round2_r2
+rm -rf -- "$r2_dir"
+mkdir -p -- "$r2_dir"
+r2_run() {   # r2_run <name> [words after the program]: $r2_dir/<name>.satl into <name>.out, and its exit
+    r2_name=$1; shift
+    timeout 60 "$interpreter" "$r2_dir/$r2_name.satl" "$@" > "$r2_dir/$r2_name.out" 2>&1
+    echo $?
+}
+r2_has() { tr '\n' ' ' < "$r2_dir/$1.out" | grep -cF -- "$2"; }   # r2_has <name> <words>: 1 when its output says them
+
+# ERRORS4 066: A FILE GIVEN TO display IS REFUSED AS A LIST HOLDING ONE IS -- S301 and the file's two strings. It was
+# S210 NOT_BUILT_YET, "has no scenario for a file", which says display is not built; centred, a list holding one too.
+ow_main "$r2_dir/066_plain.satl" '    satellite.variable.file f = satellite.file.new("r2_066_plain.txt")
+    satellite.console.display(f)'
+ow_main "$r2_dir/066_centred.satl" '    satellite.variable.file f = satellite.file.new("r2_066_centred.txt")
+    satellite.container.list<satellite.variable.file> l = {f}
+    satellite.console.display(l).satellite.center()'
+expect "ERRORS4 066: display(f) of a file is S301 with a file's two strings, as a list holding it is, and not S210" "27|1|0" \
+       "$(r2_run 066_plain)|$(r2_has 066_plain 'satellite.console.display was given a file, and a file has two strings')|$(r2_has 066_plain 'S210')"
+expect "ERRORS4 066: ... and a centred display of a list holding one is S301 too" "27|1|0" \
+       "$(r2_run 066_centred)|$(r2_has 066_centred 'satellite.console.display was given a list, and a file has two strings')|$(r2_has 066_centred 'S210')"
+ow_main "$r2_dir/066_feedback.satl" '    satellite.variable.file f = satellite.file.new("r2_066_feedback.txt")
+    satellite.feedback(f)'
+expect "ERRORS4 066: ... and satellite.feedback(f) is S301 too, through call_word and not display" "27|1|0" \
+       "$(r2_run 066_feedback)|$(r2_has 066_feedback 'satellite.feedback was given a file, and a file has two strings')|$(r2_has 066_feedback 'S210')"
+
+# ERRORS4 067: A .satellite.number REFUSAL ON AN ARGUMENT ROW NAMES THE ROW AS WRITTEN -- "that argument" named nothing
+# the program says, and two rows on one line could not be told apart.
+printf 'satellite.include(satellite)\n\nsatellite.capsule satellite.main(satellite.variable.arguments args)\n{\n    satellite.variable.number count = args.argument3.satellite.number + args.argument4.satellite.number\n    satellite.console.display(count)\n    satellite.return(satellite)\n}\n' > "$r2_dir/067_args.satl"
+ow_main "$r2_dir/067_run.satl" '    satellite.variable.number count = satellite.arguments.argument3.satellite.number
+    satellite.console.display(count)'
+expect "ERRORS4 067: args.argument4.satellite.number on \"ten\" is named args.argument4, not \"that argument\"" "3|1|0" \
+       "$(r2_run 067_args 5 ten)|$(r2_has 067_args 'args.argument4.satellite.number: that text is not a whole number')|$(r2_has 067_args 'that argument')"
+expect "ERRORS4 067: ... and satellite.arguments.argument3 is named as written too" "3|1|0" \
+       "$(r2_run 067_run ten)|$(r2_has 067_run 'satellite.arguments.argument3.satellite.number: that text is not a whole number')|$(r2_has 067_run 'that argument')"
+
+# ERRORS4 068: A SIGN WITH NOTHING AFTER IT IS TOLD THAT. display(n +) has its space before the +, and "this + has
+# none" was false; the value it lacks is the mistake. A sign touching both sides is still told it has none.
+ow_main "$r2_dir/068_after.satl" '    satellite.variable.number n = 5
+    satellite.console.display("before")
+    satellite.console.display(n +)'
+ow_main "$r2_dir/068_touching.satl" '    satellite.variable.number n = 5
+    satellite.console.display(n+1)'
+expect "ERRORS4 068: display(n +) is told this + has nothing after it, before anything runs, and not that it has none" "13|1|0|0" \
+       "$(r2_run 068_after)|$(r2_has 068_after 'and this + has nothing after it')|$(r2_has 068_after 'has none')|$(grep -c '^before$' "$r2_dir/068_after.out")"
+expect "ERRORS4 068: ... while display(n+1) is still told this + has none" "13|1" \
+       "$(r2_run 068_touching)|$(r2_has 068_touching 'and this + has none')"
+
+# ERRORS4 069: A REFUSAL ON ** NAMES **, the sign the line holds -- it said ^, which the line does not.
+ow_main "$r2_dir/069_zero.satl" '    satellite.console.display(0 ** -1)'
+ow_main "$r2_dir/069_string.satl" '    satellite.console.display("a" ** 2)'
+ow_main "$r2_dir/069_caret.satl" '    satellite.console.display(0 ^ -1)'
+expect "ERRORS4 069: 0 ** -1 is \"the ** of 0 and -1\", and \"a\" ** 2 is \"** was given a string and a number\"" "22|1|27|1" \
+       "$(r2_run 069_zero)|$(r2_has 069_zero 'the ** of 0 and -1 is a division by zero')|$(r2_run 069_string)|$(r2_has 069_string '** was given a string and a number')"
+expect "ERRORS4 069: ... and 0 ^ -1 is still \"the ^ of 0 and -1\"" "22|1" \
+       "$(r2_run 069_caret)|$(r2_has 069_caret 'the ^ of 0 and -1 is a division by zero')"
+
+# ERRORS4 075: A MAP'S .insert, .remove_at AND .truncate ARE NOT SENT TO age.satellite.keys -- the suggested line was
+# itself refused, "this one has no name to change". .index_of and .search, which change nothing, still are.
+ow_main "$r2_dir/075_insert.satl" '    satellite.container.map<satellite.variable.string, satellite.variable.number> age = {"zoe": 30}
+    age.insert(1, "al")'
+ow_main "$r2_dir/075_index_of.satl" '    satellite.container.map<satellite.variable.string, satellite.variable.number> age = {"zoe": 30}
+    satellite.console.display(age.index_of("zoe"))'
+expect "ERRORS4 075: age.insert on a map is told an index has keys and not positions, and sent to no line that is refused" "27|1|0" \
+       "$(r2_run 075_insert)|$(r2_has 075_insert 'age.insert -- an index has keys and not positions')|$(r2_has 075_insert 'Take its keys first')"
+expect "ERRORS4 075: ... and age.index_of is still sent to age.satellite.keys.satellite.index_of(...)" "27|1" \
+       "$(r2_run 075_index_of)|$(r2_has 075_index_of 'Take its keys first: age.satellite.keys.satellite.index_of(...)')"
+
+# ERRORS4 078: A MULTIPLE REFUSING A CONTAINER OF ONE OF ITS KINDS SAYS WHY -- the one arm of that kind's reason. It
+# said "it holds a map, and this name takes ... or satellite.container.map", which gives none.
+ow_main "$r2_dir/078_map.satl" '    satellite.container.multiple<satellite.variable.number, satellite.container.map<satellite.variable.string, satellite.variable.number>> m = {"a": "b"}'
+ow_main "$r2_dir/078_list.satl" '    satellite.container.multiple<satellite.variable.number, satellite.container.list<satellite.variable.number>> m = 1
+    m = {"b"}'
+ow_main "$r2_dir/078_none.satl" '    satellite.container.multiple<satellite.variable.number, satellite.variable.string> m = 1
+    m = {"a": "b"}'
+expect "ERRORS4 078: a multiple given a map whose value does not fit says a value of it does not fit: it holds a string" "27|1" \
+       "$(r2_run 078_map)|$(r2_has 078_map 'it holds an index, and a value of it does not fit: it holds a string')"
+expect "ERRORS4 078: ... and given a list whose item does not fit, item 1 of it does not fit" "27|1" \
+       "$(r2_run 078_list)|$(r2_has 078_list 'it holds a list, and item 1 of it does not fit: it holds a string')"
+expect "ERRORS4 078: ... while a value of no kind it takes still names the kinds it takes" "27|1" \
+       "$(r2_run 078_none)|$(r2_has 078_none 'it holds an index, and this name takes satellite.variable.number or satellite.variable.string')"
+# The arms are counted through a multiple inside the multiple, as arm_holding counts them: a second list arm there is
+# a list it takes, so no one arm's reason is given; a lone one there gives its reason.
+ow_main "$r2_dir/078_nested_two.satl" '    satellite.container.multiple<satellite.container.list<satellite.variable.number>, satellite.container.multiple<satellite.variable.bool, satellite.container.list<satellite.variable.string>>> m = {1, "x"}'
+ow_main "$r2_dir/078_nested_one.satl" '    satellite.container.multiple<satellite.variable.number, satellite.container.multiple<satellite.variable.bool, satellite.container.list<satellite.variable.number>>> m = 1
+    m = {"b"}'
+expect "ERRORS4 078: ... and an arm inside a multiple inside it is counted: a second list there keeps the list, a lone one gives its reason" "27|1|0|27|1" \
+       "$(r2_run 078_nested_two)|$(r2_has 078_nested_two 'it holds a list, and this name takes satellite.container.list or satellite.container.multiple')|$(r2_has 078_nested_two 'does not fit')|$(r2_run 078_nested_one)|$(r2_has 078_nested_one 'it holds a list, and item 1 of it does not fit: it holds a string')"
+
+# ERRORS4 079: satellite.access PASSES OVER A POSITION LETTER THAT IS THE NAME SHOWN: a list of lists named m was
+# m[n][m], which read as code indexes m by itself.
+ow_main "$r2_dir/079.satl" '    satellite.container.list<satellite.container.list<satellite.variable.number>> m = {{1, 2}, {3}}
+    satellite.access(m)
+    satellite.container.list<satellite.container.list<satellite.container.list<satellite.variable.number>>> n = {{{1}}}
+    satellite.access(n)'
+expect "ERRORS4 079: satellite.access shows m[n][p] for a list named m, and n[m][p][q] for one named n" "0|1|1|1|0|0" \
+       "$(r2_run 079)|$(grep -c '^  m\[n\]\[p\]  *a number, p counting from 1$' "$r2_dir/079.out")|$(grep -c '^  n\[m\]\[p\]\[q\]  *a number, q counting from 1$' "$r2_dir/079.out")|$(grep -c '^  n\[m\]\.satellite\.append({1})  ' "$r2_dir/079.out")|$(grep -c 'm\[n\]\[m\]' "$r2_dir/079.out")|$(grep -c '^  n\[n\]' "$r2_dir/079.out")"
+
+# ERRORS4 081: THE RUN-TIME S240 NAMES THE CALL WHOSE ANSWER WAS USED, as the checker's does -- it named the capsule's
+# header, which cannot say which of two calls went without one. A capsule calling itself last is named at its first call.
+printf 'satellite.include(satellite)\n\nsatellite.capsule positive_only(satellite.variable.number n)\n{\n    satellite.statement.if(n > 0)\n    {\n        satellite.return(n)\n    }\n}\n\nsatellite.capsule satellite.main()\n{\n    satellite.variable.number a = positive_only(4)\n    satellite.variable.number b = positive_only(-4)\n    satellite.console.display(a + b)\n    satellite.return(satellite)\n}\n' > "$r2_dir/081_header.satl"
+printf 'satellite.include(satellite)\n\nsatellite.capsule count_down(satellite.variable.number n)\n{\n    satellite.statement.if(n == 0)\n    {\n        satellite.return(0)\n    }\n    count_down(n - 1)\n}\n\nsatellite.capsule satellite.main()\n{\n    satellite.variable.number b = count_down(3)\n    satellite.console.display(b)\n    satellite.return(satellite)\n}\n' > "$r2_dir/081_itself.satl"
+expect "ERRORS4 081: positive_only(-4)'s missing answer is S240 at line 14, the call, and not at the capsule's header" "53|1|1|0" \
+       "$(r2_run 081_header)|$(grep -c '^directory: .*081_header\.satl:14$' "$r2_dir/081_header.out")|$(grep -c '^syntax: satellite\.variable\.number b = positive_only(-4)$' "$r2_dir/081_header.out")|$(grep -c '^syntax: satellite\.capsule' "$r2_dir/081_header.out")"
+expect "ERRORS4 081: ... and a capsule whose last line calls itself is named at the call in main, line 14" "53|1|1" \
+       "$(r2_run 081_itself)|$(grep -c '^directory: .*081_itself\.satl:14$' "$r2_dir/081_itself.out")|$(r2_has 081_itself 'its last line calls itself and drops that answer')"
+
+# ERRORS4 084: A THREAD JOINING ITSELF IS S728 WAIT_NEVER_ENDS, the one-thread circle -- S110 LINE_NOT_UNDERSTOOD said
+# a well-formed join has no meaning.
+printf 'satellite.include(satellite)\n\nsatellite.spacesuit crew()\n{\n    satellite.protected\n    {\n        satellite.variable.thread worker = satellite.thread.new(idle())\n    }\n    satellite.public\n    {\n        satellite.capsule call_wait_for_me()\n        {\n            worker.satellite.join()\n        }\n        satellite.capsule call_begin()\n        {\n            worker = satellite.thread.new(call_wait_for_me())\n            worker.satellite.start()\n        }\n        satellite.capsule call_finish()\n        {\n            worker.satellite.join()\n        }\n    }\n}\n\nsatellite.capsule idle()\n{\n    satellite.variable.number i = 0\n}\n\nsatellite.capsule satellite.main()\n{\n    crew c()\n    c.call_begin()\n    c.call_finish()\n    satellite.console.display("after")\n    satellite.return(satellite)\n}\n' > "$r2_dir/084.satl"
+expect "ERRORS4 084: a thread joining itself is S728 WAIT_NEVER_ENDS, exit 63, and not S110" "63|1|1|0" \
+       "$(r2_run 084)|$(r2_has 084 'S728: WAIT_NEVER_ENDS')|$(r2_has 084 'is this thread waiting for itself, and that would never end')|$(r2_has 084 'S110')"
+
+# TIME-1 (2026-10-26)
+#
+# satellite.time.now(unit) AND A TIME'S .satellite.time.convert(unit) (TIME_PLAN.md Sections 2 and 3; the author,
+# 2026-10-26: "satellite.variable.time second = satellite.time.now("seconds") and you can type "nanoseconds" or
+# "milliseconds" or "s" or "ns" or "ms" but if nothing is given just default to nanoseconds"). now is the computer's
+# clock, the time since 1970; a unit only says how a time is shown, and every nanosecond is kept. Each program is main
+# alone, which displays "before" first, so a refusal before anything runs is one that never printed it.
+t1_dir=$PWD/build/time_1
+rm -rf -- "$t1_dir"
+mkdir -p -- "$t1_dir"
+t1_main() {   # t1_main <name> <main's body lines>: $t1_dir/<name>.satl
+    printf 'satellite.include(satellite)\n\nsatellite.capsule satellite.main()\n{\n    satellite.console.display("before")\n%s\n    satellite.return(satellite)\n}\n' "$2" > "$t1_dir/$1.satl"
+}
+t1_run() {   # t1_run <name>: its exit; what it printed is in <name>.out
+    timeout 60 "$interpreter" "$t1_dir/$1.satl" > "$t1_dir/$1.out" 2>&1
+    echo $?
+}
+t1_after() { sed -n '/^before$/,$p' "$t1_dir/$1.out" | sed 1d; }   # t1_after <name>: the lines after "before"
+t1_says() {   # t1_says <name> <words>: its exit | 1 when its output says the words | how often "before" printed
+    t1_code=$(t1_run "$1")
+    printf '%s|%s|%s' "$t1_code" "$(tr '\n' ' ' < "$t1_dir/$1.out" | sed 's/  */ /g' | grep -cF -- "$2")" \
+        "$(grep -cx before "$t1_dir/$1.out")"
+}
+t1_unit='takes a unit -- "seconds" or "s", "milliseconds" or "ms", "nanoseconds" or "ns" -- and was given'
+
+t1_main now_clock '    satellite.console.display(satellite.time.now())'
+t1_started=$(date +%s%N); t1_code=$(t1_run now_clock); t1_ended=$(date +%s%N)
+t1_read=$(t1_after now_clock | grep -xE '[0-9]+ns' | head -1); t1_read=${t1_read%ns}
+expect "TIME-1: satellite.time.now() is the clock's nanoseconds since 1970, within 5 seconds of date +%s%N" "0|yes" \
+       "$t1_code|$([ -n "$t1_read" ] && [ "$t1_read" -ge $((t1_started - 5000000000)) ] && [ "$t1_read" -le $((t1_ended + 5000000000)) ] && echo yes)"
+t1_main now_units '    satellite.console.display(satellite.time.now("seconds"))
+    satellite.console.display(satellite.time.now("s"))
+    satellite.console.display(satellite.time.now("milliseconds"))
+    satellite.console.display(satellite.time.now("ms"))
+    satellite.console.display(satellite.time.now("nanoseconds"))
+    satellite.console.display(satellite.time.now("ns"))
+    satellite.console.display(satellite.time.now())'
+t1_code=$(t1_run now_units)
+expect "TIME-1: now's six spellings show the second, the millisecond and the nanosecond, and nothing given the nanosecond" \
+       "0|s s ms ms ns ns ns|2|2|3" \
+       "$t1_code|$(t1_after now_units | sed -E 's/^[0-9]+(\.[0-9]+)?//' | tr '\n' ' ' | sed 's/ $//')|$(t1_after now_units | grep -cxE '[0-9]{10}(\.[0-9]{1,9})?s')|$(t1_after now_units | grep -cxE '[0-9]{13}(\.[0-9]{1,6})?ms')|$(t1_after now_units | grep -cxE '[0-9]{19}ns')"
+t1_main now_order '    satellite.variable.time first = satellite.time.now()
+    satellite.variable.time then = satellite.time.now("s")
+    satellite.console.display(first <= then)
+    satellite.console.display(first)
+    satellite.console.display(then.satellite.time.convert())'
+t1_code=$(t1_run now_order)
+t1_first=$(t1_after now_order | sed -n 2p); t1_then=$(t1_after now_order | sed -n 3p)
+expect "TIME-1: two nows in a row are in order, as satl compares them and as their nanoseconds do" "0|true|yes" \
+       "$t1_code|$(t1_after now_order | sed -n 1p)|$([ "${t1_first%ns}" -le "${t1_then%ns}" ] 2>/dev/null && echo yes)"
+t1_main now_fresh '    satellite.variable.time first = satellite.time.now()
+    satellite.time.sleep(2ms)
+    satellite.variable.time then = satellite.time.now("s")
+    satellite.console.display(first < then)
+    satellite.console.display(then > first.satellite.time.convert("ms"))'
+expect "TIME-1: now() is read fresh at every call: a now 2ms of sleep after another is later than it" "0|true true" \
+       "$(t1_run now_fresh)|$(t1_after now_fresh | tr '\n' ' ' | sed 's/ $//')"
+t1_main author '    satellite.variable.time second = satellite.time.now("seconds")
+    satellite.console.display(second)'
+expect "TIME-1: the author's own line, satellite.variable.time second = satellite.time.now(\"seconds\"), holds the clock in seconds" \
+       "0|1" "$(t1_run author)|$(t1_after author | grep -cxE '[0-9]{10}(\.[0-9]{1,9})?s')"
+
+# EVERY REFUSAL, BEFORE ANYTHING RUNS but a unit in a string name, which is judged when its line runs.
+t1_main now_two '    satellite.console.display(satellite.time.now("s", "ms"))'
+expect "TIME-1: now(\"s\", \"ms\") is S110, one unit or none, before anything runs" "13|1|0" \
+       "$(t1_says now_two 'satellite.time.now takes one unit or none -- satellite.time.now() or satellite.time.now("s") -- and was given 2 arguments')"
+t1_main now_alone '    satellite.time.now'
+expect "TIME-1: satellite.time.now on a line of its own with no brackets is S110 as M4's is, called with brackets" "13|1|0" \
+       "$(t1_says now_alone 'satellite.time.now is called with brackets -- satellite.time.now() or satellite.time.now("s")')"
+t1_main now_minutes '    satellite.console.display(satellite.time.now("minutes"))'
+t1_main now_capital '    satellite.console.display(satellite.time.now("S"))'
+t1_main now_number '    satellite.console.display(satellite.time.now(5))'
+t1_main now_time '    satellite.console.display(satellite.time.now(1s))'
+expect "TIME-1: now(\"minutes\"), now(\"S\"), now(5) and now(1s) are S301 before anything runs, naming the six" \
+       "27|1|0 27|1|0 27|1|0 27|1|0" \
+       "$(t1_says now_minutes "satellite.time.now $t1_unit \"minutes\"") $(t1_says now_capital "satellite.time.now $t1_unit \"S\"") $(t1_says now_number "satellite.time.now $t1_unit a number") $(t1_says now_time "satellite.time.now $t1_unit a time")"
+t1_main now_held '    satellite.variable.string unit = "hours"
+    satellite.console.display(satellite.time.now(unit))'
+expect "TIME-1: a unit held in a string name is judged when its line runs, in the same sentence" "27|1|1" \
+       "$(t1_says now_held "satellite.time.now $t1_unit \"hours\"")"
+t1_main convert_minutes '    satellite.variable.time waited = 1500ms
+    satellite.console.display(waited.satellite.time.convert("minutes"))'
+t1_main convert_number '    satellite.variable.time waited = 1500ms
+    satellite.console.display(waited.satellite.time.convert(5))'
+t1_main convert_literal '    satellite.console.display(1500ms.satellite.time.convert("hours"))'
+t1_main convert_now '    satellite.console.display(satellite.time.now().satellite.time.convert("x"))'
+expect "TIME-1: convert(\"minutes\"), convert(5), and convert on a literal and on now() are S301 before anything runs" \
+       "27|1|0 27|1|0 27|1|0 27|1|0" \
+       "$(t1_says convert_minutes "waited.satellite.time.convert $t1_unit \"minutes\"") $(t1_says convert_number "waited.satellite.time.convert $t1_unit a number") $(t1_says convert_literal "that time.satellite.time.convert $t1_unit \"hours\"") $(t1_says convert_now "satellite.time.now().satellite.time.convert $t1_unit \"x\"")"
+t1_main convert_two '    satellite.variable.time waited = 1500ms
+    satellite.console.display(waited.satellite.time.convert("s", "ms"))'
+t1_main convert_bare '    satellite.variable.time waited = 1500ms
+    satellite.console.display(waited.satellite.time.convert)'
+expect "TIME-1: convert(\"s\", \"ms\") and convert with no brackets are S110 before anything runs" "13|1|0 13|1|0" \
+       "$(t1_says convert_two 'waited.satellite.time.convert takes one unit or none -- waited.satellite.time.convert() or waited.satellite.time.convert("s") -- and was given 2 arguments') $(t1_says convert_bare 'waited.satellite.time.convert is called with brackets')"
+t1_main convert_held '    satellite.variable.time waited = 1500ms
+    satellite.variable.string unit = "weeks"
+    satellite.console.display(waited.satellite.time.convert(unit))'
+expect "TIME-1: ... and convert's unit held in a string name is judged when its line runs" "27|1|1" \
+       "$(t1_says convert_held "waited.satellite.time.convert $t1_unit \"weeks\"")"
+t1_main part_alone '    satellite.variable.time waited = 1500ms
+    satellite.console.display(waited.satellite.time)'
+t1_main part_chained '    satellite.variable.time waited = 1500ms
+    satellite.console.display(waited.satellite.time.convert("s").satellite.time)'
+expect "TIME-1: .satellite.time written alone on a time is a part, S110 before anything runs, and told the word it begins" \
+       "13|1|0 13|1|0" \
+       "$(t1_says part_alone 'waited.satellite.time -- time is the start of a word: waited.satellite.time.convert(...)') $(t1_says part_chained 'waited.satellite.time.convert(...).satellite.time -- time is the start of a word')"
+t1_main not_a_time '    satellite.variable.number n = 5
+    satellite.console.display(n.satellite.time.convert("s"))'
+expect "TIME-1: convert on a number is refused before anything runs as any word a number does not have" "13|1|0" \
+       "$(t1_says not_a_time 'n.satellite.time.convert -- a number has no time.convert; its own words are written under satellite, and time.convert is not one of them')"
+
+# CONVERT IN EACH UNIT: the same length, a new time, and the name left as it was until it is given back.
+t1_main convert_units '    satellite.variable.time waited = 1500ms
+    satellite.console.display(waited.satellite.time.convert("s"))
+    satellite.console.display(waited.satellite.time.convert("seconds"))
+    satellite.console.display(waited.satellite.time.convert("ms"))
+    satellite.console.display(waited.satellite.time.convert("milliseconds"))
+    satellite.console.display(waited.satellite.time.convert("ns"))
+    satellite.console.display(waited.satellite.time.convert("nanoseconds"))
+    satellite.console.display(waited.satellite.time.convert())
+    satellite.console.display(waited)
+    waited = waited.satellite.time.convert("ns")
+    satellite.console.display(waited)
+    satellite.console.display(satellite.time.ns(1500000001).satellite.time.convert("s"))'
+expect "TIME-1: convert shows 1500ms in each unit, keeps every nanosecond, and changes the name only when given back" \
+       "0|1.5s 1.5s 1500ms 1500ms 1500000000ns 1500000000ns 1500000000ns 1500ms 1500000000ns 1.500000001s" \
+       "$(t1_run convert_units)|$(t1_after convert_units | tr '\n' ' ' | sed 's/ $//')"
+t1_main convert_equal '    satellite.console.display(1s == 1s.satellite.time.convert("ms"))
+    satellite.console.display(1s.satellite.time.convert("ms"))
+    satellite.console.display(250ms.satellite.time.convert("s") < 1s)'
+expect "TIME-1: 1s == 1s.satellite.time.convert(\"ms\") is true, and a converted time compares by its length" \
+       "0|true 1000ms true" "$(t1_run convert_equal)|$(t1_after convert_equal | tr '\n' ' ' | sed 's/ $//')"
+
+# THE FRESH READ OF TIME-1 (2026-10-26). `time` IS THE PART ONLY AFTER `.satellite.` -- after a plain period it is a
+# name, as it was through BUILD 0017 -- so a widget and a row of the arguments may be called time, and a plain .time
+# is told what it was told then. Each widget program ends on a name nothing declares, so a check that passes the
+# widget's lines stops there: 25, with nothing printed.
+t1_main widget_section '    satellite.variable.window main_window = satellite.window.new("clock", "version", 800, 600)
+    main_window.satellite.window.section("time", 100%, 50%)
+    main_window.time.satellite.window.display.file("files")
+    satellite.console.display(time.satellite.width)
+    satellite.console.display(a_name_nothing_declares)'
+t1_main widget_file '    satellite.variable.window main_window = satellite.window.new("clock", "version", 800, 600)
+    main_window.satellite.window.display.file("time")
+    satellite.console.display(a_name_nothing_declares)'
+t1_main widget_input '    satellite.variable.window main_window = satellite.window.new("clock", "version", 800, 600)
+    main_window.satellite.window.display.text.input("time")
+    satellite.console.display(a_name_nothing_declares)'
+t1_undeclared='a_name_nothing_declares has no satellite.variable line declaring it'
+expect "TIME-1: a section, a file display and a text input may be named \"time\", reached as main_window.time and bare" \
+       "25|1|0 25|1|0 25|1|0" \
+       "$(t1_says widget_section "$t1_undeclared") $(t1_says widget_file "$t1_undeclared") $(t1_says widget_input "$t1_undeclared")"
+t1_main plain_number '    satellite.variable.number n = 5
+    satellite.console.display(n.time)'
+t1_main plain_time '    satellite.variable.time t = 1s
+    satellite.console.display(t.time)'
+expect "TIME-1: n.time and t.time, a plain period, are told time is not one of their methods, as through 0017" \
+       "13|1|0 13|1|0" \
+       "$(t1_says plain_number 'n is satellite.variable.number, and time is not one of its methods') $(t1_says plain_time 't is satellite.variable.time, and time is not one of its methods')"
+t1_main plain_literal_call '    satellite.console.display("abc".time())'
+t1_main plain_literal_read '    satellite.console.display(5.time)'
+expect "TIME-1: ... and \"abc\".time() and 5.time are refused before anything runs, as through 0017" "13|1|0 25|1|0" \
+       "$(t1_says plain_literal_call 'no capsule named time') $(t1_says plain_literal_read 'time has no satellite.variable line declaring it')"
+t1_main arguments_time '    satellite.console.display(satellite.arguments.time)'
+expect "TIME-1: satellite.arguments.time is S201, not one of the arguments, as through 0017" "25|1|1" \
+       "$(t1_says arguments_time 'satellite.arguments.time is not one of the arguments')"
+printf 'satellite.include(satellite)\n\nsatellite.capsule satellite.main(satellite.variable.arguments args)\n{\n    args.time(5)\n    satellite.console.display(args.time)\n    satellite.return(satellite)\n}\n' > "$t1_dir/arguments_write.satl"
+expect "TIME-1: ... and args.time(5) writes a row named time, which args.time reads back, as through 0017" "0|1" \
+       "$(t1_run arguments_write)|$(grep -cx 5 "$t1_dir/arguments_write.out")"
+# A MINUS ON A LITERAL THAT IS NO UNIT is refused before anything runs, as the literal is without it.
+t1_main now_below '    satellite.console.display(satellite.time.now(-1s))'
+t1_main convert_below '    satellite.variable.time waited = 1500ms
+    satellite.console.display(waited.satellite.time.convert(-50%))'
+expect "TIME-1: now(-1s) and convert(-50%) are S301 before anything runs, as now(1s) and convert(50%) are" \
+       "27|1|0 27|1|0" \
+       "$(t1_says now_below "satellite.time.now $t1_unit a time") $(t1_says convert_below "waited.satellite.time.convert $t1_unit a percentage")"
+# A WORD'S ANSWER IS NAMED WITH ITS BRACKETS when the line runs, as before anything runs: a unit held in a name is
+# refused in the sentence a literal one is.
+t1_main held_now '    satellite.variable.string unit = "x"
+    satellite.console.display(satellite.time.now().satellite.time.convert(unit))'
+t1_main held_second '    satellite.variable.string unit = "x"
+    satellite.console.display(satellite.time.second(1).satellite.time.convert(unit))'
+t1_main literal_second '    satellite.console.display(satellite.time.second(1).satellite.time.convert("x"))'
+expect "TIME-1: a held unit on a word's answer is told when its line runs what a literal one is told before" \
+       "27|1|1 27|1|1 27|1|0" \
+       "$(t1_says held_now "satellite.time.now().satellite.time.convert $t1_unit \"x\"") $(t1_says held_second "satellite.time.second(...).satellite.time.convert $t1_unit \"x\"") $(t1_says literal_second "satellite.time.second(...).satellite.time.convert $t1_unit \"x\"")"
 
 echo "$passed passed, $failed failed"
 [ "$failed" = 0 ]

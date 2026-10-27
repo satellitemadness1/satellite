@@ -80,10 +80,19 @@ signed long long int float_is_written_right(const std::vector<std::bitset<16>> &
 // never copied, since 2026-10-11). This answer is final for a float name
 // (program_check.cpp's method_right_for), so a method with no number on a float is
 // refused before a line runs, and the walker refuses one it reaches in the same
-// sentence. .satellite.binary and .satellite.hex pass the checker as every type's
-// conversions do, and are refused where they are reached -- they wait for the finale.
+// sentence. .satellite.binary AND .satellite.hex ARE REFUSED HERE TOO: their files
+// (1.6.10.4.cpp, 1.6.10.5.cpp) refuse every float there is -- they wait for the
+// finale (object_float.cpp) -- and passed here, so the lines above one printed
+// before it stopped (ERRORS4 054). Said in the run's sentence, without the value.
 signed long long int float_method_check(token::Code method, const std::string &spelling, std::string &why)
 {
+    if (method == token::to_binary_token || method == token::to_hexadecimal_token) {
+        const bool binary = method == token::to_binary_token;
+        why = spelling + std::string(binary ? ": base 2" : ": base 16") +
+              " text of a float is not built yet -- a float meeting a " + (binary ? "binary" : "hex") +
+              " is one of the new types mixed together later";
+        return not_built_yet;
+    }
     if (float_number_of(method) != 0)
         return success;
     why = spelling + " is not built for satellite.variable.float yet -- a float has .satellite.string and "

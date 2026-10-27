@@ -1,5 +1,7 @@
 # 048 -- find/add/to_string/to_number/to_binary/to_hexadecimal on a declared name pass the checker whatever the receiver type and argument count (p.find on a percentage, a.add on a list, s.add() on a string), and are refused only after earlier lines ran
 
+**FIXED 2026-10-25** (open-work round 2 c1): add_or_conversion_counted (program_check.cpp) counts .add and the four conversions on a declared string, number, infinity or other scalar before anything runs, in the walker's sentences: "s.satellite.add takes one argument, and was given 0", "... takes an argument and needs a ( after it", "s.satellite.number is a conversion and takes no argument" (S110, exit 13). The receiver half was fixed before; a literal argument's kind (b.satellite.add(1) on a bool) is still judged at run. check.sh rows "048: ...".
+
 **Found:** 2026-09-26, satl 004 revision 08 build 0099 (/home/madness/code/cxx/satellite/build/satl), by running ordinary programs against it.  
 **Area:** floats fractions percent, lists, strings  
 **Kind:** inconsistency  

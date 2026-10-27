@@ -1,5 +1,7 @@
 # 067 -- A .number refusal on an argument row names "that argument.number" instead of what was written (args.argument_1.number)
 
+**FIXED 2026-10-25** (open-work round 2 r2): after_an_argument (expression.cpp) hands the row as written -- args.argument4, satellite.arguments.argument3, args.l[...] -- to maybe_a_method in place of "that argument". check.sh rows "ERRORS4 067: ...".
+
 **Found:** 2026-09-26, satl 004 revision 08 build 0099 (/home/madness/code/cxx/satellite/build/satl), by running ordinary programs against it.  
 **Area:** files and io  
 **Kind:** misleading-refusal  

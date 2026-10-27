@@ -1,5 +1,7 @@
 # 073 -- Writing a field through a container item (things[1].v = 5, m["a"].v = 5) gets an unrelated S110 "not a method call" sentence, while reading it, or writing a.v, gets S230
 
+**FIXED 2026-10-25** (open-work round 2 c2): check_statement (program_check.cpp) judges an item's member first when the item is an object (a list<suit>, or a shape whose item is one), as it judged a named object's: things[1].v = 5 and m["a"].v = 5 are S230. check.sh rows "073: ...".
+
 **Found:** 2026-09-26, satl 004 revision 08 build 0099 (/home/madness/code/cxx/satellite/build/satl), by running ordinary programs against it.  
 **Area:** spacesuits and library  
 **Kind:** misleading-refusal  

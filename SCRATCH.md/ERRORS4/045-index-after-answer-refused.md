@@ -1,5 +1,7 @@
 # 045 -- [n] after a call's answer, a method's answer, a list literal or a bracketed expression is refused at run time with a false math-sign / "& | << >> !!" hint, though the same value in a variable can be indexed
 
+**FIXED 2026-10-25** (open-work round 2 c1): [ ] straight after an answer is refused before anything runs in the walker's own index_after_an_answer sentence (S110, exit 13): at the end of a chain (chain_periods: a.satellite.reverse()[1], g.satellite.first[2]), and after a capsule's answer, a bracket and a {} literal (words_after_an_answer: squares()[2], (squares())[2], {10, 20, 30}[2]). [n] after an answer is still not built. check.sh rows "045: ...".
+
 **Found:** 2026-09-26, satl 004 revision 08 build 0099 (/home/madness/code/cxx/satellite/build/satl), by running ordinary programs against it.  
 **Area:** lists  
 **Kind:** misleading-refusal  

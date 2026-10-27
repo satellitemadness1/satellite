@@ -90,7 +90,8 @@ WORD_SOURCES = $(NUMBERS)/word_table.cpp \
                $(NUMBERS)/words/1.6.18.48.2.cpp $(NUMBERS)/words/1.6.18.50.cpp $(NUMBERS)/words/1.6.18.51.cpp \
                $(NUMBERS)/words/1.6.18.53.cpp $(NUMBERS)/words/1.6.18.54.1.cpp $(NUMBERS)/words/1.6.18.54.2.1.cpp \
                $(NUMBERS)/words/1.6.18.54.2.2.1.cpp \
-               $(NUMBERS)/words/1.6.3.1.cpp $(NUMBERS)/words/1.6.5.1.cpp $(NUMBERS)/words/1.6.5.2.cpp \
+               $(NUMBERS)/words/1.6.3.1.cpp $(NUMBERS)/words/1.6.3.2.1.cpp \
+               $(NUMBERS)/words/1.6.5.1.cpp $(NUMBERS)/words/1.6.5.2.cpp \
                $(NUMBERS)/words/1.6.5.3.cpp $(NUMBERS)/words/1.6.5.4.cpp $(NUMBERS)/words/1.6.5.5.cpp \
                $(NUMBERS)/words/1.6.5.6.cpp $(NUMBERS)/words/1.6.5.8.cpp $(NUMBERS)/words/1.6.5.9.cpp \
                $(NUMBERS)/words/1.6.5.10.cpp $(NUMBERS)/words/1.6.5.11.cpp $(NUMBERS)/words/1.6.5.12.cpp \

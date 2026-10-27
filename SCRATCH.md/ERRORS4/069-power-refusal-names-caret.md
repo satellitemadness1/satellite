@@ -1,5 +1,7 @@
 # 069 -- A refusal on ** names ^, a sign the line does not contain (0 ** -1 is "the ^ of 0 and -1")
 
+**FIXED 2026-10-25** (open-work round 2 r2): power_as_written (expression.cpp) reads the sign back from the loaded text once a power has refused, and a ** written there makes each spaced ^ of the sentence **: "the ** of 0 and -1", "** was given a string and a number". A line typed at the prompt has no loaded text and keeps ^. check.sh rows "ERRORS4 069: ...". NOT DONE: the checker's fraction sentence (fraction_check.cpp) still says ^ -- `satellite.variable.fraction q = 1/2 ** 2` is told "the ^ of a fraction is not built yet" before anything runs.
+
 **Found:** 2026-09-26, satl 004 revision 08 build 0099 (/home/madness/code/cxx/satellite/build/satl), by running ordinary programs against it.  
 **Area:** integers  
 **Kind:** misleading-refusal  

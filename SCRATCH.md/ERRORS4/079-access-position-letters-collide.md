@@ -1,5 +1,7 @@
 # 079 -- satellite.access position letters collide with the name shown: a list named m is shown as m[n][m], and a list named n as n[n]
 
+**FIXED 2026-10-25** (open-work round 2 r2): reach_into (access_calls.cpp) passes over a position letter that is the name shown: m[n][p] for m, n[m][p][q] for n. A spacesuit capsule's parameter named n is not looked at. check.sh row "ERRORS4 079: ...".
+
 **Found:** 2026-09-26, satl 004 revision 08 build 0099 (/home/madness/code/cxx/satellite/build/satl), by running ordinary programs against it.  
 **Area:** maps and nesting  
 **Kind:** misleading-refusal  

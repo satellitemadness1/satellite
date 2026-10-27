@@ -1,5 +1,7 @@
 # 063 -- a.truncate(-1) is refused with "items count from 1", though truncate takes a count and truncate(0) is valid
 
+**FIXED 2026-10-25** (open-work round 2 r1): .truncate reads its argument as a count of items (1.4.2.14.cpp), as .reserve does: truncate(-1) says "a count is 0 or more", truncate("x") "takes a count of items". container_calls.cpp's comment on position_argument says so too.
+
 **Found:** 2026-09-26, satl 004 revision 08 build 0099 (/home/madness/code/cxx/satellite/build/satl), by running ordinary programs against it.  
 **Area:** lists  
 **Kind:** misleading-refusal  

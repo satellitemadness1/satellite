@@ -1,5 +1,7 @@
 # 061 -- A typed-container refusal names the declared type without its <type> ("was declared satellite.container.list"), though a bare list holds anything
 
+**FIXED 2026-10-25** (open-work round 2 r1): shape_written (type_shape.hpp) writes what is between a type's < and >: a was declared satellite.container.list<satellite.variable.number>, and item 2 of it does not fit. A multiple is still written bare, since its refusal names its arms already. check.sh's map row and full_text_26's pinned text (manifest.tsv, test_programs.cpp regenerated) name the full type.
+
 **Found:** 2026-09-26, satl 004 revision 08 build 0099 (/home/madness/code/cxx/satellite/build/satl), by running ordinary programs against it.  
 **Area:** lists  
 **Kind:** misleading-refusal  

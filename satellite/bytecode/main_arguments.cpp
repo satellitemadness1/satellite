@@ -332,8 +332,10 @@ Value read_an_argument(const std::vector<std::bitset<16>> &row, std::size_t &at,
     }
     // A METHOD MAY FOLLOW THE NAME ITSELF -- `arguments.size()` -- so a single
     // segment that names no row is left to the methods; a longer run names a row
-    // or nothing, and nothing is said as that.
-    if (runs.size() == 1 && token::method_code_of(runs.front().first) != 0)
+    // or nothing, and nothing is said as that. THE SEGMENT IS JUDGED AS THE LEXER
+    // READ IT AFTER ITS PLAIN PERIOD (bytecode_registry.hpp): `time`, TIME-1's part,
+    // is a name there, so satellite.arguments.time names no row, as through 0017.
+    if (runs.size() == 1 && method_code_after_a_plain_period(runs.front().first) != 0)
         return Value();
     context.refuse(name_not_declared, name + "." + runs.back().first + " is not one of the arguments -- " +
                                           "satellite.console.display(" + name + ") shows every one");
@@ -578,10 +580,12 @@ void write_an_argument(const std::string &key, Value value, const std::string &n
     if (where.the_runs)
         return;
     // THE VARIABLE'S OWN COPY, and only the handle it holds: about_to_change copies the
-    // rows first when another name shares them, as every index write does.
+    // rows first when another name shares them, as every index write does. A SETTING'S SECOND
+    // SPELLING IS FILED UNDER ITS OWN ROW (argument_settings.hpp): quantum.memory changes quantum.ram.
+    const std::string row = the_setting_spelled(key);
     IndexHandle *index = rows_of(name, key, arguments, context);
     if (index != nullptr)
-        file_under(about_to_change(*index), filed(key), text_value(key), std::move(value));
+        file_under(about_to_change(*index), filed(row), text_value(row), std::move(value));
 }
 
 Value *an_argument_to_change(const std::string &key, const std::string &name, Value &arguments,

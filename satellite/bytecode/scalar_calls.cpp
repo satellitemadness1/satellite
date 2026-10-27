@@ -38,6 +38,7 @@ static_assert(every_scalar_word_numbered<20, 1, 2, 3, 4>, "a fraction method's n
 static_assert(every_scalar_word_numbered<16, 1, 2>, "a percentage method's number is missing from words/words.tsv");
 static_assert(every_scalar_word_numbered<6, 1, 2>, "a bool method's number is missing from words/words.tsv");
 static_assert(every_scalar_word_numbered<3, 1>, "a time method's number is missing from words/words.tsv");
+static_assert(word::fixed_code<1, 6, 3, 2, 1> != 0, "a time's convert, 1 6 3 2 1, is missing from words/words.tsv");
 
 // ONE METHOD, ONE NUMBER, read off words/words.tsv. `to_string`, `str` and `string` are one code by the time
 // anything here sees them (the lexer folds a second spelling into the first), so where 003 has a row for
@@ -57,7 +58,8 @@ token::Code float_number_of(token::Code method)
 
 // 1 6 11 1 to_number, 3 to_string and 5 to_binary are the second names of 8, 7 and 9; 1 6 11 4, .digits, is
 // 003's row with nothing built behind it -- reached since a number's words gave `digits` a method code, and told
-// so when it runs, as a binary's .width is -- and 1 6 11 6, hex(x), makes a hex and is no method. .add and
+// so before anything runs (program_check.cpp's scalar_word_not_built), as a binary's .width is, and by the run of a
+// value only it can type -- and 1 6 11 6, hex(x), makes a hex and is no method. .add and
 // .reverse() took the next free numbers, 11 and 12, the day a hex was numbered.
 token::Code hexadecimal_number_of(token::Code method)
 {
@@ -137,10 +139,14 @@ token::Code bool_number_of(token::Code method)
     }
 }
 
+// .satellite.time.convert(unit) IS ONE WORD OF TWO PARTS (TIME-1, 2026-10-26), as a window's window.section is: its
+// part, `time` -- satellite.variable.time.time, 1 6 3 2 -- runs no number, and is refused written alone before the
+// period's rule is asked (time_calls.hpp's a_time_part).
 token::Code time_number_of(token::Code method)
 {
     switch (method) {
     case token::to_string_token: return word::fixed_code<1, 6, 3, 1>;
+    case token::time_convert_token: return word::fixed_code<1, 6, 3, 2, 1>;
     default: return 0;
     }
 }

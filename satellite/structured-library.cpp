@@ -407,6 +407,8 @@ signed long long int run_satl(int argc, char **argv)
             if (row.is_text && row.name.size() > 10) known.push_back(row.name.substr(10));
         // EVERY SETTING, which start-up reads back and a prompt line saves (argument_settings.hpp, 2026-10-06).
         for (const Setting &setting : kSettings) known.push_back(setting.key);
+        // AND A SETTING'S SECOND SPELLING, which start-up reads as the setting (QUANTUM_PLAN.md QUANTUM-0): quantum.memory.
+        for (const SettingSpelling &spelling : kSettingSpellings) known.push_back(spelling.written);
         std::string unknown;
         for (const config_file::Row &row : config_file::rows()) {
             bool is_known = false;

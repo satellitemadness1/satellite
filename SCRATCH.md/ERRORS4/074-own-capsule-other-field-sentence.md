@@ -1,5 +1,7 @@
 # 074 -- other.field inside the spacesuit's own capsule is refused because "fields are reached from inside the spacesuit only", though the line is already inside it
 
+**FIXED 2026-10-25** (open-work round 2 c2): CapsuleTable::member's field arm (suit_reach.cpp) gives a caller inside the spacesuit -- or inside any spacesuit of its lineage that has the field, such as money's capsule given a rich that extends money -- its own sentence: "cents is a field of money, and a field is reached by its bare name only, never through an object with a dot -- write a capsule in money ..."; S230 stays, and a caller outside keeps the old sentence. check.sh row "074: ...".
+
 **Found:** 2026-09-26, satl 004 revision 08 build 0099 (/home/madness/code/cxx/satellite/build/satl), by running ordinary programs against it.  
 **Area:** spacesuits and library  
 **Kind:** misleading-refusal  

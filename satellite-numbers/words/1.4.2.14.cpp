@@ -30,7 +30,9 @@ Value method(const Value &, Value *home, const TypeShape *, const std::vector<Va
     const std::size_t held = body->items.size();
     unsigned long long int position = 0;
     std::string written;
-    if (!position_argument(arguments.front(), false, name, "truncate", position, written, context))
+    // A COUNT OF ITEMS TO KEEP, as .reserve's is -- 0 is one -- so -1 is told "a count is 0 or more", never
+    // "items count from 1" (ERRORS4 063).
+    if (!position_argument(arguments.front(), true, name, "truncate", position, written, context))
         return Value();
     // KEEPING MORE THAN THERE ARE CHANGES NOTHING and is not an
     // error, which is what a file's truncate does. `truncate(0)`

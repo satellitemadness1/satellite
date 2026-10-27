@@ -1,5 +1,7 @@
 # 075 -- A map's .insert/.remove_at/.truncate refusal suggests age.keys.insert(...), a line that is itself refused (S110 "has no name to change")
 
+**FIXED 2026-10-25** (open-work round 2 r2): call_container_method (container_calls.cpp) sends only .index_of and .search, which change nothing, to name.satellite.keys; .insert, .remove_at and .truncate end at "an index has keys and not positions". check.sh rows "ERRORS4 075: ...".
+
 **Found:** 2026-09-26, satl 004 revision 08 build 0099 (/home/madness/code/cxx/satellite/build/satl), by running ordinary programs against it.  
 **Area:** maps and nesting  
 **Kind:** misleading-refusal  

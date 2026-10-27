@@ -1,5 +1,7 @@
 # 072 -- counter.bump() on a spacesuit's own name says counter has no satellite.variable line declaring it
 
+**FIXED 2026-10-25** (open-work round 2 c2): counter.bump() and counter = ... on a spacesuit's own name, as a statement and inside a line, get the sentence counter(...) gets (S110, "counter is a spacesuit, and an object of it is made by declaring one on a line of its own ..."), one function for the three (a_spacesuit_is_no_object, program_check.cpp). check.sh rows "072: ...".
+
 **Found:** 2026-09-26, satl 004 revision 08 build 0099 (/home/madness/code/cxx/satellite/build/satl), by running ordinary programs against it.  
 **Area:** spacesuits and library  
 **Kind:** misleading-refusal  

@@ -332,3 +332,5 @@
 1 6 18 54 2 1	satellite.variable.window.window.display.file(name)
 1 6 18 54 2 2	satellite.variable.window.window.display.text
 1 6 18 54 2 2 1	satellite.variable.window.window.display.text.input(name)
+1 6 3 2	satellite.variable.time.time
+1 6 3 2 1	satellite.variable.time.time.convert(unit)

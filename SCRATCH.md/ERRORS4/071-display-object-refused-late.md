@@ -1,5 +1,7 @@
 # 071 -- display of a spacesuit object is refused as S210 only when its line runs, after earlier lines have printed
 
+**FIXED 2026-10-25** (open-work round 2 c2): names_in_statement (program_check.cpp) refuses display(a), a name that holds an object alone in the brackets, before anything runs, in the walker's own S210 sentence -- in an if never taken too. check.sh rows "071: ...".
+
 **Found:** 2026-09-26, satl 004 revision 08 build 0099 (/home/madness/code/cxx/satellite/build/satl), by running ordinary programs against it.  
 **Area:** spacesuits and library  
 **Kind:** inconsistency  

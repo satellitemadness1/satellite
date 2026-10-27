@@ -8,13 +8,21 @@
 #include "type_shape.hpp"
 
 #include "capsule_scopes.hpp"
+#include "color_values.hpp"
+#include "float_values.hpp"
+#include "fraction_values.hpp"
+#include "hexadecimal_values.hpp"
+#include "program_calls.hpp"
 #include "suit_layout.hpp"
 #include "../satellite_object/satellite_index.hpp"
 #include "../satellite_object/satellite_list.hpp"
 
+#include <algorithm>
 #include <mutex>
 #include <string>
+#include <string_view>
 #include <unordered_map>
+#include <vector>
 
 namespace satellite004 {
 
@@ -23,6 +31,10 @@ namespace {
 // A LIST THIS LONG REMEMBERS THE SHAPE IT FITS (ERRORS4 033); a shorter one is walked again, which costs less than
 // numbering the shape does.
 constexpr std::size_t kRememberedFrom = 64;
+
+// BINARIES value_fits HAS LET A NUMBER PLACE TAKE AS THEY ARE, on this thread. A list that held one, at any depth, is
+// not remembered as fitting: stored_as trusts that memory to mean there is nothing in it to convert (ERRORS4 017).
+thread_local std::size_t binaries_taken_as_numbers = 0;
 
 // A SHAPE'S NUMBER FOR satelliteList::fits: each word's code, a spacesuit's scope, and what is between its < and >,
 // spelled out and numbered the first time it is asked -- so two shapes share a number only when they are one shape.
@@ -84,7 +96,7 @@ bool value_fits(const TypeShape &shape, const satelliteObject &value, std::strin
     if (shape.word == word::code_of(1, 4, 6)) {
         if (shape.parameters.empty())
             return true;                         // `multiple` with no types is every type
-        return any_of_fits(shape.parameters, value, why);
+        return any_of_fits(shape, value, why);
     }
 
     const satelliteObject::Kind wanted = kind_of_type_word(shape.word);
@@ -95,8 +107,10 @@ bool value_fits(const TypeShape &shape, const satelliteObject &value, std::strin
     // was a number before binary was a type of its own, and run_assignment converts
     // it. The shape has to agree with that or the conversion is refused before it
     // happens.
-    if (wanted == satelliteObject::number && value.is_binary())
+    if (wanted == satelliteObject::number && value.is_binary()) {
+        ++binaries_taken_as_numbers;
         return true;
+    }
 
     // AN INFINITY NAME HOLDS AN INFINITY, AND NOTHING LESS (the author's H of 2026-10-11, reversing
     // SATELLITE_INFINITY.md Q24, which let it take a plain number): "= 5 is an error, the correct syntax
@@ -139,6 +153,7 @@ bool value_fits(const TypeShape &shape, const satelliteObject &value, std::strin
         const std::uint64_t remembered = held->items.size() >= kRememberedFrom ? number_of_shape(shape) : 0;
         if (remembered != 0 && held->fits.load(std::memory_order_relaxed) == remembered)
             return true;
+        const std::size_t binaries_before = binaries_taken_as_numbers;
         for (std::size_t at = 0; at < held->items.size(); ++at) {
             std::string inner;
             if (!value_fits(shape.parameters[0], held->items[at], inner)) {
@@ -146,7 +161,7 @@ bool value_fits(const TypeShape &shape, const satelliteObject &value, std::strin
                 return false;
             }
         }
-        if (remembered != 0)
+        if (remembered != 0 && binaries_taken_as_numbers == binaries_before)
             held->fits.store(remembered, std::memory_order_relaxed);
         return true;
     }
@@ -171,6 +186,82 @@ bool value_fits(const TypeShape &shape, const satelliteObject &value, std::strin
     }
 
     return true;
+}
+
+bool stored_as(const TypeShape &shape, satelliteObject &value)
+{
+    // A MULTIPLE'S VALUE GOES IN AS THE ONE ARM OF ITS KIND, which is how its .append and .insert already take it:
+    // a list given to multiple<list<number>, string> is a list<number>'s. With no arm of its kind, or two, it is
+    // left as it is (arm_holding).
+    if (shape.word == word::code_of(1, 4, 6)) {
+        const TypeShape &arm = arm_holding(shape, value);
+        return &arm != &shape && stored_as(arm, value);
+    }
+    if (shape.is_a_suit())
+        return false;
+    const satelliteObject::Kind was = value.kind();
+    // ONE ALREADY OF ITS PLACE'S KIND, WITH NOTHING BETWEEN < AND >, IS WHAT IT WAS: every rule below converts another
+    // kind. t[1] = 5 and .append(5) into a list<number> are asked nothing more.
+    if (shape.parameters.empty() && was == kind_of_type_word(shape.word))
+        return false;
+    // A NUMBER'S BINARY, AND THEN THE FIVE on_store RULES, in run_assignment's order (program_walk.cpp). A rule that
+    // refuses changes nothing, and value_fits refuses the value as it always did.
+    if (shape.word == word::code_of(1, 6, 4) && value.is_binary())
+        value = satelliteObject::of_number(value.as_binary()->bits);
+    for (auto *on_store : {float_on_store, hexadecimal_on_store, color_on_store, fraction_on_store, program_on_store}) {
+        std::string refused;
+        if (on_store(shape.word, value, refused) != success)
+            return value.kind() != was;
+    }
+    if (shape.parameters.empty())
+        return value.kind() != was;
+
+    // AN ITEM IS COPIED ONLY WHEN IT MAY CHANGE: a container, or a kind its place converts from. One already of the
+    // place's kind is what it was (every rule above converts another kind), so a list<string> is read, not copied.
+    const auto may_change = [](const TypeShape &place, const satelliteObject &item) {
+        const TypeShape &arm = arm_holding(place, item);   // `place` itself, unless it is a multiple
+        if (arm.is_a_suit() || arm.word == word::code_of(1, 4, 6))
+            return false;
+        return !arm.parameters.empty() || item.kind() != kind_of_type_word(arm.word);
+    };
+    bool changed = value.kind() != was;
+    if (ListHandle *handle = value.as_list(); handle != nullptr && kind_of_type_word(shape.word) == satelliteObject::list) {
+        const satelliteList *held = handle->get();
+        // FOUND TO FIT THIS SHAPE ALREADY (ERRORS4 033): value_fits remembers no list that held a binary it let a
+        // number place take, and every other kind a rule above converts is one value_fits refuses -- so a list it
+        // remembers has nothing in it to convert.
+        const std::uint64_t remembered = held != nullptr ? held->fits.load(std::memory_order_relaxed) : 0;
+        if (held == nullptr ||
+            (remembered != 0 && held->items.size() >= kRememberedFrom && remembered == number_of_shape(shape)))
+            return changed;
+        for (std::size_t at = 0; at < held->items.size(); ++at) {
+            if (!may_change(shape.parameters[0], held->items[at]))
+                continue;
+            satelliteObject item = held->items[at];
+            if (!stored_as(shape.parameters[0], item))
+                continue;
+            satelliteList &body = about_to_change(*handle);   // the value's own handle: a list shared is copied
+            body.items[at] = std::move(item);
+            held = &body;
+            changed = true;
+        }
+    }
+    if (IndexHandle *handle = value.as_index();
+        handle != nullptr && is_an_index_word(shape.word) && shape.parameters.size() > 1) {
+        const satelliteIndex *held = handle->get();
+        for (std::size_t at = 0; held != nullptr && at < held->entries.size(); ++at) {
+            if (!may_change(shape.parameters[1], held->entries[at].value))
+                continue;
+            satelliteObject item = held->entries[at].value;
+            if (!stored_as(shape.parameters[1], item))
+                continue;
+            satelliteIndex &body = about_to_change(*handle);
+            put_value(body.entries[at], std::move(item));      // and its width with it
+            held = &body;
+            changed = true;
+        }
+    }
+    return changed;
 }
 
 namespace {
@@ -219,6 +310,49 @@ const TypeShape &arm_holding(const TypeShape &shape, const satelliteObject &valu
     return count == 1 ? *first : shape;          // none, or two of its kind: not chosen (the header)
 }
 
+namespace {
+
+// HOW MANY ONE-CHARACTER CHANGES TURN a INTO b (Levenshtein), for a misspelled word.
+std::size_t changes_between(const std::string &a, const std::string &b)
+{
+    std::vector<std::size_t> above(b.size() + 1), here(b.size() + 1);
+    for (std::size_t j = 0; j <= b.size(); ++j) above[j] = j;
+    for (std::size_t i = 1; i <= a.size(); ++i) {
+        here[0] = i;
+        for (std::size_t j = 1; j <= b.size(); ++j)
+            here[j] = std::min({above[j] + 1, here[j - 1] + 1, above[j - 1] + (a[i - 1] == b[j - 1] ? 0 : 1)});
+        std::swap(above, here);
+    }
+    return above[b.size()];
+}
+
+} // namespace
+
+// THE WORD A MISSPELLING MOST LIKELY MEANT, "" when none is close: the words under
+// `known` (satellite.console) whose next part is at most two changes from `typed`
+// (dispaly), the nearest first -- so satellite.console.dispaly is asked "did you mean
+// satellite.console.display?" rather than told satellite.console is not a call, which
+// named the part that was right (the error sweep, 2026-09-25). Here, and not in
+// program_check.cpp, since a type is read below too (ERRORS4 050).
+std::string word_it_most_likely_meant(const std::string &known, const std::string &typed)
+{
+    const std::string under = known + ".";
+    std::string best;
+    std::size_t nearest = 3;
+    for (std::size_t n = 0; n < word::kSpelledWordCount; ++n) {
+        const std::string_view path = word::kSpelledWords[n].path;
+        if (path.size() <= under.size() || path.compare(0, under.size(), under) != 0)
+            continue;
+        const std::string next(path.substr(under.size(), path.find_first_of(".(", under.size()) - under.size()));
+        const std::size_t changes = changes_between(next, typed);
+        if (changes > 0 && changes < nearest) {
+            nearest = changes;
+            best = under + next;
+        }
+    }
+    return best;
+}
+
 // ---------------------------------------------------------------------------
 // READING `<a, b>` OFF THE TOKENS.
 // ---------------------------------------------------------------------------
@@ -245,6 +379,18 @@ bool read_type_shape(const std::vector<std::bitset<16>> &row, std::size_t &at, T
     }
     if (!is_a_type_word(word)) {
         why = std::string(word::spelling_of(word)) + " is not a type a name can be declared as";
+        // A WORD, A DOT AND A NAME IS A TYPE MISSPELLED -- satellite.variable.strng lexes as satellite.variable and
+        // then .strng -- and is said as a line that begins with one says it (program_check.cpp), not as a prefix
+        // nobody wrote as a type (ERRORS4 050).
+        const token::Code dot = static_cast<token::Code>(at + 1 < row.size() ? row[at + 1].to_ulong() : 0);
+        const token::Code after = static_cast<token::Code>(at + 2 < row.size() ? row[at + 2].to_ulong() : 0);
+        if (dot == token::method_token && after == token::name_token) {
+            std::size_t named = at + 2;
+            const std::string typed = text_at(row, named);
+            const std::string meant = word_it_most_likely_meant(word::spelling_of(word), typed);
+            why = std::string(word::spelling_of(word)) + " has no word named " + typed +
+                  (meant.empty() ? std::string() : " -- did you mean " + meant + "?");
+        }
         return false;
     }
     out.word = word;

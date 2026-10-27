@@ -173,7 +173,9 @@ namespace {
 std::string as_text(const Value &value, bool inside)
 {
     std::string text, why;
-    if (display_text(value, text, why)) return value.is_string() && inside ? "\"" + text + "\"" : text;
+    // A STRING AS A PROGRAM WRITES IT, \" \\ \n \t and \r and all, as display writes one inside a list (ERRORS4
+    // 014): bare quotes showed a"b as "a"b", which is no string at all, and a tab as \x09, which satl refuses.
+    if (display_text(value, text, why)) return value.is_string() && inside ? as_a_literal(text) : text;
     if (const UserDefinedHandle *object = value.as_user_defined())
         return "<" + (*object != nullptr && (*object)->layout != nullptr ? (*object)->layout->shown : std::string("spacesuit")) +
                " object>";

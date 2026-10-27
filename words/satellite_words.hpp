@@ -713,6 +713,8 @@ inline constexpr WordRow kWords[] = {
     {"satellite.variable.window.window.display.file(name)", {1, 6, 18, 54, 2, 1, 0}, 6},
     {"satellite.variable.window.window.display.text", {1, 6, 18, 54, 2, 2, 0}, 6},
     {"satellite.variable.window.window.display.text.input(name)", {1, 6, 18, 54, 2, 2, 1}, 7},
+    {"satellite.variable.time.time", {1, 6, 3, 2, 0, 0, 0}, 4},
+    {"satellite.variable.time.time.convert(unit)", {1, 6, 3, 2, 1, 0, 0}, 5},
 };
 
 // Removed words, with the numbers they had in 003 06.
@@ -794,7 +796,7 @@ inline constexpr NextFree kNextFree[] = {
     {"satellite.variable.file.ok", {1, 6, 2, 8, 1, 0, 0, 0}, 5},
     {"satellite.variable.file.path", {1, 6, 2, 9, 1, 0, 0, 0}, 5},
     {"satellite.variable.file.error", {1, 6, 2, 10, 1, 0, 0, 0}, 5},
-    {"satellite.variable.time", {1, 6, 3, 2, 0, 0, 0, 0}, 4},
+    {"satellite.variable.time", {1, 6, 3, 3, 0, 0, 0, 0}, 4},
     {"satellite.variable.number", {1, 6, 4, 24, 0, 0, 0, 0}, 4},
     {"satellite.variable.number.to_string", {1, 6, 4, 6, 1, 0, 0, 0}, 5},
     {"satellite.variable.number.floor", {1, 6, 4, 7, 1, 0, 0, 0}, 5},
@@ -1088,6 +1090,7 @@ inline constexpr NextFree kNextFree[] = {
     {"satellite.variable.window.window", {1, 6, 18, 54, 3, 0, 0, 0}, 5},
     {"satellite.variable.window.window.display", {1, 6, 18, 54, 2, 3, 0, 0}, 6},
     {"satellite.variable.window.window.display.text", {1, 6, 18, 54, 2, 2, 2, 0}, 7},
+    {"satellite.variable.time.time", {1, 6, 3, 2, 2, 0, 0, 0}, 5},
 };
 
 } // namespace satellite004

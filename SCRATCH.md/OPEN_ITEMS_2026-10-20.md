@@ -119,9 +119,11 @@ Its "Taken without the author's word" list holds the readings the plan took on i
     whatever object the answer is (program_check.cpp, a_capsule_this_line_reaches); check.sh rows "M3: ...";
   - `file.satellite.append(<a time>)` (S301);
   - a bad `satellite.file.open` kind such as "append";
-  - `satellite.time.now` without brackets.
+  - `satellite.time.now` without brackets. **FIXED 2026-10-26** (TIME-1): S110 before anything runs, told it is
+    called with brackets -- satellite.time.now() or satellite.time.now("s") (program_check.cpp); check.sh's M4 row.
 
-  `satellite.time.now()` is not built either.
+  `satellite.time.now()` is not built either. **FIXED 2026-10-26** (TIME-1): built, the time since 1970 in the unit
+  asked for (TIME_PLAN.md); check.sh's "TIME-1: ..." rows.
 
 ## 2. What was done today
 

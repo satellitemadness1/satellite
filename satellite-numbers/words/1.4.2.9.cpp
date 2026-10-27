@@ -29,7 +29,7 @@ Value method(const Value &receiver, Value *, const TypeShape *, const std::vecto
     std::vector<satelliteObject> borrowed;
     const std::vector<satelliteObject> *items = items_of(receiver, borrowed);
     for (std::size_t at = 0; at < items->size(); ++at)
-        if ((*items)[at] == arguments.front())
+        if (same_item((*items)[at], arguments.front()))   // as == asks it (ERRORS4 010)
             return a_count(at + 1);
     return a_count(0);
 }

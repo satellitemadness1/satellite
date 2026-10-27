@@ -1,5 +1,7 @@
 # 057 -- When a number comes first and the text spells a number, a refused pair is described by the converted value: 50% + "5" is quoted as "50% + 5", and x1F + "2.5" is called "a hex and a float"
 
+**FIXED 2026-10-25** (open-work round 2 r1): add()'s number-first branch (satellite_object.cpp) puts what the text was read as before the converted pair's sentence: x1F + "2.5" says the text "2.5" reads as a float, and + was given a hex and a float ...; 50% + "5" says the text "5" reads as a number, and 50% + 5: .... The codes are unchanged.
+
 **Found:** 2026-09-26, satl 004 revision 08 build 0099 (/home/madness/code/cxx/satellite/build/satl), by running ordinary programs against it.  
 **Area:** number string conversion  
 **Kind:** misleading-refusal  

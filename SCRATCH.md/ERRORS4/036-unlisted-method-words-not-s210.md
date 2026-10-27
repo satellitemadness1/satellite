@@ -1,5 +1,7 @@
 # 036 -- Numbered but unbuilt method words that have no method code (.abs .sqrt .floor .digits, .to_binary on a hex, .at .substring .split .trim .starts_with .ends_with .resolved) are refused as "not one of its methods -- only a spacesuit has capsules", "no capsule named X" or S201, not S210 NOT_BUILT_YET
 
+**FIXED 2026-10-25** (open-work round 2 c1): scalar_word_not_built (program_check.cpp) asks the function table, as run_scalar_number does, whether a scalar's numbered word has a method_call, and refuses one with none -- a binary's .satellite.width, .digits and .clear, a hex's .digits -- before anything runs (S210, exit 14) in the run's sentence, on a declared name (method_on_a_name) and on a literal (b0110.satellite.digits). check.sh rows "036: ...".
+
 **Found:** 2026-09-26, satl 004 revision 08 build 0099 (/home/madness/code/cxx/satellite/build/satl), by running ordinary programs against it.  
 **Area:** binary hex color infinity bool, integers, realistic programs, strings  
 **Kind:** contradicts-help  

@@ -214,10 +214,24 @@ const CapsuleSite *CapsuleTable::member(std::size_t suit, const std::string &nam
     // reachable from inside the spacesuit and nowhere else, which is what makes
     // satellite.protected a statement about the language rather than a comment"
     // (003 DESIGN §12). Inside, a field is its bare name.
+    // FROM INSIDE IT -- `other.cents` in money's own capsule, which reaches a protected capsule of other's
+    // (reaches(), above) -- that sentence is true of the line, and the help's other half is what refuses it:
+    // "never as host.name" (ERRORS4 074). Inside any spacesuit of its lineage that has the field: `other.cents`
+    // in money's capsule, when other is a rich that extends money, is inside money, which declares cents.
     if (of.layout != nullptr && of.layout->slot_of(name) != kNoSlot) {
+        const std::size_t caller = suit_around(from);
+        bool inside = false;
+        for (const std::size_t each : lineage)
+            if (scopes[each].layout != nullptr && scopes[each].layout->slot_of(name) != kNoSlot &&
+                (within(*this, from, each) || (caller != kNoScope && scopes[caller].layout != nullptr &&
+                                               scopes[caller].layout->is_a(each))))
+                inside = true;
         code = member_is_protected;
-        why = name + " is a field of " + shown + " and fields are reached from inside the spacesuit only -- write a "
-              "capsule in " + shown + " that answers it and call that instead";
+        why = inside ? name + " is a field of " + shown + ", and a field is reached by its bare name only, never "
+                       "through an object with a dot -- write a capsule in " + shown + " that answers it and call "
+                       "that instead"
+                     : name + " is a field of " + shown + " and fields are reached from inside the spacesuit only -- "
+                       "write a capsule in " + shown + " that answers it and call that instead";
         return nullptr;
     }
     code = satl_line_not_understood;

@@ -1,5 +1,7 @@
 # 078 -- A multiple refusing a container whose items are the wrong kind says only "it holds a map/list, and this name takes ...", dropping the real reason
 
+**FIXED 2026-10-25** (open-work round 2 r2): any_of_fits (type_shape.hpp) keeps the reason of the one arm of the value's own kind: "it holds an index, and a value of it does not fit: it holds a string". Two arms of that kind, counted through a multiple inside the multiple as arm_holding counts them, or none, keep the list of kinds. The word index waits on 076. check.sh rows "ERRORS4 078: ...".
+
 **Found:** 2026-09-26, satl 004 revision 08 build 0099 (/home/madness/code/cxx/satellite/build/satl), by running ordinary programs against it.  
 **Area:** maps and nesting  
 **Kind:** misleading-refusal  

@@ -223,11 +223,14 @@ bool compared_by_its_own_file(const satelliteObject &left, const satelliteObject
     return true;
 }
 
+} // namespace
+
 // A STRING INSIDE A LIST OR AN INDEX IS WRITTEN AS ITS LITERAL, escapes and all
 // (2026-09-24). The list's promise below is that it reads back as what was typed, and
 // a literal can hold \" \\ \n \t and \r -- so the quotes round one must say them the
 // same way, or {"a\"b"} would read back as {"a"b"}, which is not satellite. The
 // inverse of string_at (bytecode_registry.cpp); an apostrophe needs no escape.
+// satellite.access writes a string the same way since ERRORS4 014 (access_words.cpp).
 std::string as_a_literal(const std::string &text)
 {
     std::string out = "\"";
@@ -245,8 +248,6 @@ std::string as_a_literal(const std::string &text)
     out += '"';
     return out;
 }
-
-} // namespace
 
 // A LITERAL ARRIVES AS UTF-8 BYTES and becomes a satellite_string here -- the
 // one door between the lexer's counted payload and the language's own string.
@@ -319,7 +320,7 @@ bool operator==(const satelliteObject &l, const satelliteObject &r)
         const std::size_t how_many = left == nullptr ? 0 : left->items.size();
         if (how_many != (right == nullptr ? 0 : right->items.size())) return false;
         for (std::size_t at = 0; at < how_many; ++at)
-            if (!(left->items[at] == right->items[at])) return false;
+            if (!same_item(left->items[at], right->items[at])) return false;   // ERRORS4 010
         return true;
     }
     // AN INDEX IS EQUAL WHEN IT HOLDS THE SAME KEYS AND THE SAME VALUES, AND
@@ -338,7 +339,7 @@ bool operator==(const satelliteObject &l, const satelliteObject &r)
             std::string key_name;
             if (!key_name_of(left->entries[at].key, key_name)) return false;
             const satelliteObject *theirs = value_at(*right, key_name);
-            if (theirs == nullptr || !(*theirs == left->entries[at].value)) return false;
+            if (theirs == nullptr || !same_item(*theirs, left->entries[at].value)) return false;
         }
         return true;
     }
@@ -371,6 +372,22 @@ bool operator==(const satelliteObject &l, const satelliteObject &r)
     case satelliteObject::how_many_kinds: break;
     }
     return false;
+}
+
+// TWO KINDS OF NUMBER ARE ASKED compare(), WHICH IS WHAT `==` ASKS (expression.cpp), so `{1, 2, 3}.contains(3.0)`
+// and `a[3] == 3.0` give one answer (ERRORS4 010). A pair compare() refuses -- a hex and a float -- is not one item.
+// One kind against itself is operator=='s, which already answers as compare() does: a binary's width counts.
+bool same_item(const satelliteObject &l, const satelliteObject &r)
+{
+    const auto by_worth = [](const satelliteObject &value) {
+        return value.is_number() || value.is_float() || value.is_binary() || value.is_hexadecimal() ||
+               value.is_fraction();
+    };
+    if (l.kind() == r.kind() || !by_worth(l) || !by_worth(r))
+        return l == r;
+    int order = 0;
+    std::string why;
+    return l.compare(r, order, why) == success && order == 0;
 }
 
 const char *satelliteObject::kind_name() const
@@ -481,9 +498,15 @@ signed long long int satelliteObject::add(const satelliteObject &other, satellit
     // number's own .string: 4 + "abc" is "4abc", as 003 answered (bca7302).
     if (other.is_string() && (is_number() || is_float() || is_fraction() || is_percentage() || is_hexadecimal() ||
                               is_binary())) {
+        // A REFUSED PAIR SAYS THE TEXT WAS READ AS A NUMBER FIRST: the sentence below it names what the text became,
+        // and x1F + "2.5" called "a hex and a float" had no float in it (ERRORS4 057). The code is the pair's own.
         satelliteObject read;
-        if (number_in_text(*other.as_string(), read))
-            return add(read, out, why);
+        if (number_in_text(*other.as_string(), read)) {
+            const signed long long int code = add(read, out, why);
+            if (code != success)
+                why = "the text \"" + other.as_string()->to_utf8() + "\" reads as " + read.kind_name() + ", and " + why;
+            return code;
+        }
         satellite_string mine, answer;
         signed long long int code = to_string(mine, why);
         if (code == success)
@@ -541,6 +564,14 @@ signed long long int satelliteObject::add(const satelliteObject &other, satellit
         out = satelliteObject::of_bytecode(std::move(answer));
         return success;
     }
+
+    // A STRING AND AN INFINITY ARE TOLD WHAT A COLOUR IS TOLD (object_color.cpp): the scenario is
+    // .satellite.string, written out loud, so "no scenario for that pair" was untrue (ERRORS4 056).
+    case pair_of(string, infinity):
+    case pair_of(infinity, string):
+        why = std::string("+ was given ") + kind_name() + " and " + other.kind_name() +
+              " -- an infinity is not text; .satellite.string on it is its text, to join";
+        return types_do_not_meet;
 
     default:
         return refuse_pair(*this, other, "+", why);
@@ -816,13 +847,16 @@ signed long long int satelliteObject::to_string(satellite_string &out, std::stri
         return not_built_yet;
     // AN OBJECT PRINTS ITSELF THROUGH A CAPSULE ITS SPACESUIT DECLARES, and that
     // capsule is the user's to write. Inventing a spelling here would give every
-    // spacesuit one the author never chose.
+    // spacesuit one the author never chose. CALLING IT FROM HERE IS NOT BUILT, and the
+    // sentence says only that: "has no to_string capsule" was said of a spacesuit that
+    // declares one, whose a.to_string() answered (ERRORS4 043).
     case user_defined:
-        why = "an object has no to_string capsule, and satellite does not invent one";
+        why = "showing an object as text is not built yet; display what one of its own capsules answers";
         return not_built_yet;
     // A POINTER READS AS ITS OBJECT WOULD, which is not at all, for the same reason.
     case pointer:
-        why = "a pointer's object has no to_string capsule, and satellite does not invent one";
+        why = "showing a pointer's object as text is not built yet; display what one of its object's capsules "
+              "answers";
         return not_built_yet;
     // A FILE'S TEXT IS read_all, and its name is path -- two different strings, so
     // `.string` choosing one of them would be a guess. Each is written .satellite. since a

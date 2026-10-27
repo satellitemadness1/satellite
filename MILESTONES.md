@@ -722,6 +722,7 @@ into satl (2026-10-07). A numbered word with nothing behind it is refused, mostl
 `not_built_yet` (S210, exit 14), sometimes S110. Not built on 0058, each one run:
 - `satellite.time()` (`1 9 0`), `satellite.time.now` (`1 9 1`) and `satellite.time.new`
   (`1 9 2`) -- the time itself, its words and the sleep were built on 2026-10-10 (M32);
+  `satellite.time.now` was built in TIME-1 (2026-10-26), a length since 1970 -- see TIME_PLAN.md;
 - `satellite.network` (`1 20`) and `satellite.variable.network` (`1 6 12`);
 - the variant's asking half (M14) and the number methods (M17);
 - `satellite.console.input(prompt, target)` (`1 5 4`) and `satellite.console.typed()`
@@ -864,7 +865,8 @@ is refused (write `5s`, `5ms` or `5ns`), a time below zero is S440, and 003's
 `sleep(n, unit)` is told to write `90ms` (`bytecode/time_calls.hpp`). **His to rule:** `ms` is
 built as the MILLIsecond -- he wrote "microsecond" beside it, and every earlier time he meant a
 thousandth (003's `sleep(90, "ms")` was QUAD's 90 milliseconds). Not built: `satellite.time.now`
-and `.new` (an instant, 003's meaning of the arm), and `+ - * /` on times.
+and `.new` (an instant, 003's meaning of the arm), and `+ - * /` on times. `satellite.time.now`
+was built in TIME-1 (2026-10-26), a length since 1970 -- see TIME_PLAN.md.
 
 ## ~~M33 — the step as a JUMP, not only a front~~ — **DROPPED 2026-10-09, and `arguments.magic` is to go with it**
 

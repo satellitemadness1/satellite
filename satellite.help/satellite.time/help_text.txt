@@ -3,9 +3,9 @@
 SATELLITE 004: satellite.time
 --------------------------------------------------------------------------------
 
-Lengths of time, and the wait. A time is written with its unit touching the
-number -- s for seconds, ms for milliseconds, ns for nanoseconds -- or made by
-a word, and every way makes the same satellite.variable.time:
+Lengths of time, the clock, and the wait. A time is written with its unit
+touching the number -- s for seconds, ms for milliseconds, ns for nanoseconds
+-- or made by a word, and every way makes the same satellite.variable.time:
 
     1s          250ms          30ns          1.5s
     satellite.time.second(1)            satellite.time.s(1)
@@ -14,6 +14,38 @@ a word, and every way makes the same satellite.variable.time:
 
 s, ms and ns are the second spellings of second, millisecond and nanosecond.
 Each word takes a whole number or a float: satellite.time.second(1.5) is 1.5s.
+
+satellite.time.now(unit) reads the computer's clock: the time since 1970-01-01
+00:00:00 UTC, read fresh at every call. It is a time like any other, and every
+nanosecond is kept whatever the unit -- the unit is only how it is shown. It
+takes one of six spellings, written exactly, and nothing between the brackets
+is the nanosecond:
+
+    satellite.time.now("seconds")          or "s"     1793036700.123456789s
+    satellite.time.now("milliseconds")     or "ms"    1793036700123.456789ms
+    satellite.time.now("nanoseconds")      or "ns"    1793036700123456789ns
+    satellite.time.now()                              1793036700123456789ns
+
+example:
+
+    satellite.include(satellite)
+
+    satellite.capsule satellite.main()
+    {
+        satellite.variable.time second = satellite.time.now("seconds")
+        satellite.variable.time milli = satellite.time.now("ms")
+        satellite.console.display(second)      // 1793036700.123456789s
+        satellite.console.display(milli)       // 1793036700123.456789ms
+        satellite.console.display(satellite.time.now())
+        satellite.return(satellite)
+    }
+
+A literal unit that is not one of the six -- "minutes", 5, 1s, -1s -- is
+refused before anything runs, with S301 TYPES_DO_NOT_MEET, and a unit worked
+out, such as one held in a string name, is judged when its line runs. now is
+called with brackets: satellite.time.now() or satellite.time.now("s"). A time
+is shown in another unit by its own .satellite.time.convert(unit) -- see
+satellite.help(satellite.variable.time).
 
 satellite.time.sleep(t) waits on the thread that calls it for at least t, and
 then goes on: satellite.time.sleep(1s), satellite.time.sleep(250ms), or a
@@ -58,5 +90,5 @@ this is refused:
 
 A time below zero is a time (-1s), and a sleep refuses it: S440 TIME_BELOW_ZERO.
 003's satellite.time.sleep(90, "ms") is refused before anything runs, and told
-to write 90ms. satellite.time.now and satellite.time.new are not built yet.
+to write 90ms. satellite.time.new is not built yet.
 See satellite.help(satellite.variable.time) for the time itself.

@@ -235,10 +235,12 @@ Value join(const ThreadHandle &which, const std::string &name, const std::string
         return Value();
     }
     // A THREAD WAITING FOR ITSELF waits forever (003's S1407, its smallest case). A wider
-    // circle -- through joins and locks -- is caught by start_waiting_for below, S728.
+    // circle -- through joins and locks -- is caught by start_waiting_for below, S728. This one is
+    // caught here and is S728 too: it was S110 LINE_NOT_UNDERSTOOD, which says a well-formed join has
+    // no meaning (ERRORS4 084).
     if (stop_of_this_thread == &thread.stop_asked) {
-        context.refuse(satl_line_not_understood, name + ".satellite." + spelling + "() is this thread waiting for "
-                                                 "itself, and that would never end");
+        context.refuse(wait_never_ends, name + ".satellite." + spelling + "() is this thread waiting for "
+                                        "itself, and that would never end");
         return Value();
     }
     // A JOIN THAT WOULD NEVER RETURN is S728 (satellite_object/object_lock.hpp): the thread

@@ -30,6 +30,14 @@ signed long long int hexadecimal_is_written_right(const std::vector<std::bitset<
                                             const LegalNames &declared,
                                             std::string &why);
 
+// WHETHER A VALUE'S FIRST LITERAL IS THE WHOLE VALUE: `k` is the code after it, and `opened`
+// how many brackets were opened before it -- `= (50)` -- which `)`s close here. Then the
+// line's end, a comment or a comma; or a name straight after it, its own letters (`5min`).
+// Asked by every check that tells a name what to write --
+// a hex's above, and program_check.cpp's binary, percentage and time -- since `p = 1/4` was
+// told "expected 1%", built of the first number of a fraction or a sum (ERRORS4 051).
+bool the_literal_is_the_value(const std::vector<std::bitset<16>> &row, std::size_t k, std::size_t opened);
+
 // THE CHECKER: the first method written on a name declared satellite.variable.hex -- and
 // THE WALKER, for a method a hex has no number for (expression.cpp refuses it in this
 // sentence). `spelling` is `name.method`, for the sentence.

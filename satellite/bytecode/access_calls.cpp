@@ -41,6 +41,7 @@ struct Walk {
     std::vector<Line> reach, fill, count;
     std::size_t positions = 0, keys = 0;
     const CapsuleTable *capsules = nullptr;
+    std::string shown;   // the name being shown, which no position letter may be (ERRORS4 079)
 };
 
 // A SPACESUIT'S PUBLIC CAPSULES, its supertypes' first and a replaced one once, in the
@@ -113,7 +114,11 @@ void reach_into(const TypeShape &declared, const std::string &path, const std::s
     }
     if (a_list(shape)) {
         const TypeShape &item = shape.parameters.empty() ? kAnything : shape.parameters[0];
-        const std::string letter = position_letter(walk.positions++);
+        // A LETTER THAT IS THE NAME SHOWN IS PASSED OVER (ERRORS4 079): a list of lists named m was m[n][m], which
+        // read as code indexes m by itself. m shows m[n][p] now, and n shows n[m][p].
+        std::string letter = position_letter(walk.positions++);
+        if (letter == walk.shown)
+            letter = position_letter(walk.positions++);
         const std::string reached = path + "[" + letter + "]";
         std::string about = with_article(noun(item, false)) + ", " + letter + " counting from 1";
         const ListHandle *held = value != nullptr ? value->as_list() : nullptr;
@@ -215,6 +220,7 @@ std::string access_text(const std::string &name, const TypeShape &shape, const V
 
     Walk walk;
     walk.capsules = capsules;
+    walk.shown = name;
     std::vector<Line> held;
     // AN OBJECT'S FIELDS, which it holds and only its own capsules reach -- and a pointer's
     // object's, held while they are read (pointer_calls.hpp).

@@ -69,8 +69,13 @@ the record.
   `arguments.threads_max` 1000000, `arguments.object_bytes_max` 34359738368 (32 GB)
   and `arguments.file_size_max_bytes` 549755813888 (512 GB). Other rows are ceilings
   too: `arguments.display.buffer` 131072 (§8), and a float's digits,
-  `arguments.float.whole` 4096 and `arguments.float.decimal` 128 (§4). No row holds the
-  27-nines default, and no row is a maximum for a whole number's digits, for nesting or
+  `arguments.float.whole` 4096 and `arguments.float.decimal` 128 (§4). Quantum bits have limits
+  of their own and not `object_bytes_max` (QUANTUM_PLAN.md QUANTUM-0, 2026-10-25):
+  `arguments.quantum.max` 128 qubits, "no matter what machine you're on", and the settings
+  `arguments.quantum.ram` and `arguments.quantum.drive`, 65 each, the percentages of the RAM a
+  quantum value may take in memory and then on disk, from which satl works out
+  `arguments.quantum.possible` at every start (32 qubits tied together on the author's
+  machine). No row holds the 27-nines default, and no row is a maximum for a whole number's digits, for nesting or
   for the length of a command. A row's number is written as a plain integer, and in quotes only when it
   is longer than a C++ integer can hold; either way it is read into a
   `satellite_number` at start-up (the author, 2026-09-16: *"just make everything a

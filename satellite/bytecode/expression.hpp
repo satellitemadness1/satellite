@@ -198,4 +198,9 @@ std::string index_after_an_answer(const std::string &spelled);
 // wants a declaration, not satellite.bool.true.
 std::string name_not_declared_why(const std::string &name);
 
+// A TOUCHING + * ^ OR %, `at` on the sign: "every math operation is written with a space on both sides of the
+// sign, and this + has none" -- or "has nothing after it", when a ) ] } , or the line's end follows it (ERRORS4 068).
+// Said by the walker (refuse_if_reserved) and the checker (names_in_statement, ERRORS4 022), so the two cannot drift.
+std::string touching_sign_why(const std::vector<std::bitset<16>> &row, std::size_t at);
+
 } // namespace satellite004

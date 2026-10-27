@@ -1,5 +1,7 @@
 # 041 -- satellite.console.display() with no value gets past the check and stops at run time as S210 NOT_BUILT_YET, while two values are refused before anything runs
 
+**FIXED 2026-10-25** (open-work round 2 c1): takes_one (program_check.cpp) is true for satellite.console.display too, whose words.tsv row has no brackets, so display(), display( ) and display(satellite.end="!") are refused before anything runs: "satellite.console.display takes one argument, and was given 0" (S110, exit 13). check.sh rows "041: ...".
+
 **Found:** 2026-09-26, satl 004 revision 08 build 0099 (/home/madness/code/cxx/satellite/build/satl), by running ordinary programs against it.  
 **Area:** files and io  
 **Kind:** inconsistency  

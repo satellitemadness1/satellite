@@ -320,7 +320,9 @@ std::string a_place_refused(APlace place)
 
 // A NAME A PROGRAM CAN WRITE AFTER A DOT, and nothing else: `my_window.file display` is two words
 // and `my_window.2nd` is not a name. A METHOD'S OWN WORD IS REFUSED TOO -- the lexer makes
-// `my_window.text` the method, so a widget called "text" could never be reached by its name.
+// `my_window.text` the method, so a widget called "text" could never be reached by its name. Asked
+// as the lexer asks it after a plain period (bytecode_registry.hpp), so "time", TIME-1's part, is a
+// name a widget may have.
 bool a_widget_name_fits(const std::string &name, std::string &why)
 {
     bool fits = !name.empty() && !(name[0] >= '0' && name[0] <= '9');
@@ -331,7 +333,7 @@ bool a_widget_name_fits(const std::string &name, std::string &why)
               "so it is letters, digits and _, and not first a digit: \"file_display\"";
         return false;
     }
-    if (token::method_code_of(name) != 0) {
+    if (method_code_after_a_plain_period(name) != 0) {
         why = "\"" + name + "\" is a method's own word, so my_window." + name + " would be the method and never "
               "the widget -- give it a name of its own: \"" + name + "_display\"";
         return false;

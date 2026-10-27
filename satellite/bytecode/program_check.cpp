@@ -162,43 +162,8 @@ std::string a_line_does_not_begin_with(Code code)
            " -- a line begins with a name or a word of the language";
 }
 
-// HOW MANY ONE-CHARACTER CHANGES TURN a INTO b (Levenshtein), for a misspelled word.
-std::size_t changes_between(const std::string &a, const std::string &b)
-{
-    std::vector<std::size_t> above(b.size() + 1), here(b.size() + 1);
-    for (std::size_t j = 0; j <= b.size(); ++j) above[j] = j;
-    for (std::size_t i = 1; i <= a.size(); ++i) {
-        here[0] = i;
-        for (std::size_t j = 1; j <= b.size(); ++j)
-            here[j] = std::min({above[j] + 1, here[j - 1] + 1, above[j - 1] + (a[i - 1] == b[j - 1] ? 0 : 1)});
-        std::swap(above, here);
-    }
-    return above[b.size()];
-}
-
-// THE WORD A MISSPELLING MOST LIKELY MEANT, "" when none is close: the words under
-// `known` (satellite.console) whose next part is at most two changes from `typed`
-// (dispaly), the nearest first -- so satellite.console.dispaly is asked "did you mean
-// satellite.console.display?" rather than told satellite.console is not a call, which
-// named the part that was right (the error sweep, 2026-09-25).
-std::string word_it_most_likely_meant(const std::string &known, const std::string &typed)
-{
-    const std::string under = known + ".";
-    std::string best;
-    std::size_t nearest = 3;
-    for (std::size_t n = 0; n < word::kSpelledWordCount; ++n) {
-        const std::string_view path = word::kSpelledWords[n].path;
-        if (path.size() <= under.size() || path.compare(0, under.size(), under) != 0)
-            continue;
-        const std::string next(path.substr(under.size(), path.find_first_of(".(", under.size()) - under.size()));
-        const std::size_t changes = changes_between(next, typed);
-        if (changes > 0 && changes < nearest) {
-            nearest = changes;
-            best = under + next;
-        }
-    }
-    return best;
-}
+// THE WORD A MISSPELLING MOST LIKELY MEANT is type_shape.cpp's word_it_most_likely_meant since ERRORS4 050: a type
+// read between < and > or in a capsule's brackets is misspelled as often as one that begins a line.
 
 // WHERE A STATEMENT STANDS: the scope table and the scope, the capsule whose body it is,
 // and what that body has declared that holds an object. One of these a body, handed to
@@ -420,6 +385,14 @@ std::size_t line_a_person_wrote(const Where &where, const std::vector<std::bitse
     std::string text;
     written_place(file, row, at, line, column, text);
     return line;
+}
+
+// A SPACESUIT'S OWN NAME WRITTEN WHERE AN OBJECT GOES -- `counter(...)` inside a line, and `counter.bump()` (ERRORS4
+// 072), which was told no satellite.variable line declares counter, when a line does: as a spacesuit.
+std::string a_spacesuit_is_no_object(const std::string &name)
+{
+    return name + " is a spacesuit, and an object of it is made by declaring one on a line of its own -- " + name +
+           " a_name(...) -- and then using a_name";
 }
 
 // A SECTION'S OR A DISPLAY'S NAME WRITTEN BARE WHERE NO LINE DECLARED IT (SEC-0, rule 4): most often in another
@@ -653,11 +626,14 @@ signed long long int binary_is_written_with_b(const std::vector<std::bitset<16>>
     // minus was refused outright -- "a binary has no minus sign" -- which is what
     // that ruling answered.)
     bool below_zero = false;
+    std::size_t opened = 0;
     for (;; ++at) {
         const Code ahead = code_at(row, at);
         if (ahead == token::tight_minus_token || ahead == token::minus_token)
             below_zero = !below_zero;
-        else if (ahead != token::left_parenthesis_token)
+        else if (ahead == token::left_parenthesis_token)
+            ++opened;
+        else
             break;
     }
     const std::string sign = below_zero ? "-" : "";
@@ -685,6 +661,12 @@ signed long long int binary_is_written_with_b(const std::vector<std::bitset<16>>
     for (const char c : entered) only_bits = only_bits && (c == '0' || c == '1');
 
     if (code == token::number_token) {
+        // ONLY WHEN THE NUMBER IS THE WHOLE VALUE (hexadecimal_values.hpp's the_literal_is_the_value): `a = 1 + 1` is
+        // a sum, which answers a number, and "expected b1" named another value (ERRORS4 051).
+        if (!the_literal_is_the_value(row, k, opened)) {
+            why = "ERROR: a binary name holds only a binary, and this value begins with the number " + sign + entered;
+            return types_do_not_meet;
+        }
         why = only_bits ? "ERROR: expected " + sign + "b" + entered
                         : "ERROR: " + sign + entered + " is not binary -- binary is b and then 0s and 1s, like b1010";
         return types_do_not_meet;
@@ -714,17 +696,25 @@ signed long long int percentage_is_written_with_percent(const std::vector<std::b
                                                         std::string &why)
 {
     bool below_zero = false;
+    std::size_t opened = 0;
     for (;; ++at) {
         const Code code = code_at(row, at);
         if (code == token::tight_minus_token || code == token::minus_token)
             below_zero = !below_zero;
-        else if (code != token::left_parenthesis_token)
+        else if (code == token::left_parenthesis_token)
+            ++opened;
+        else
             break;
     }
     if (code_at(row, at) != token::number_token)
         return success;
     std::size_t k = at;
-    why = "ERROR: expected " + std::string(below_zero ? "-" : "") + text_at(row, k) + "%";
+    const std::string shown = std::string(below_zero ? "-" : "") + text_at(row, k);
+    // ONLY WHEN THE NUMBER IS THE WHOLE VALUE: `p = 1/4` is a fraction and `p = 2 * 25%` a sum, and each was told
+    // "expected 1%" or "expected 2%", another value (ERRORS4 051).
+    why = the_literal_is_the_value(row, k, opened)
+              ? "ERROR: expected " + shown + "%"
+              : "ERROR: a percentage name holds only a percentage, and this value begins with the number " + shown;
     return types_do_not_meet;
 }
 
@@ -736,18 +726,24 @@ signed long long int time_is_written_with_its_unit(const std::vector<std::bitset
                                                    std::string &why)
 {
     bool below_zero = false;
+    std::size_t opened = 0;
     for (;; ++at) {
         const Code code = code_at(row, at);
         if (code == token::tight_minus_token || code == token::minus_token)
             below_zero = !below_zero;
-        else if (code != token::left_parenthesis_token)
+        else if (code == token::left_parenthesis_token)
+            ++opened;
+        else
             break;
     }
     if (code_at(row, at) != token::number_token)
         return success;
     std::size_t k = at;
     const std::string shown = std::string(below_zero ? "-" : "") + text_at(row, k);
-    why = "ERROR: expected " + shown + "s, " + shown + "ms or " + shown + "ns";
+    // ONLY WHEN THE NUMBER IS THE WHOLE VALUE, as the percentage's (ERRORS4 051): `t = 5 + 1` is a sum.
+    why = the_literal_is_the_value(row, k, opened)
+              ? "ERROR: expected " + shown + "s, " + shown + "ms or " + shown + "ns"
+              : "ERROR: a time name holds only a time, and this value begins with the number " + shown;
     return types_do_not_meet;
 }
 
@@ -1566,8 +1562,31 @@ signed long long int chain_periods(const std::vector<std::bitset<16>> &row, std:
                 return success;
             next = close + 1;
         }
+        // A TIME'S .satellite.time.convert(unit) BY WHAT IT WAS GIVEN (TIME-1): its brackets, one unit or none, and a
+        // literal unit one of the six -- in the run's own sentences (time_calls.hpp), here where every link known to
+        // be on a time passes: a name's first, a literal's, a word's answer's, an item's and each one after them.
+        // Judged with no receiver named, and named only when it is refused, by this function's own rule above.
+        if (kind == satelliteObject::time && method == token::time_convert_token) {
+            const bool bracketed = code_at(row, k + 2) == token::left_parenthesis_token;
+            const auto judged = [&](const std::string &receiver) {
+                signed long long int refused =
+                    unit_call_refused(bracketed, given, receiver, ".satellite.time.convert", why);
+                if (refused == success && given == 1)
+                    refused = unit_literal_refused(row, k + 3, receiver, ".satellite.time.convert", why);
+                return refused;
+            };
+            if (judged(std::string()) != success)
+                return judged(spelled_to(k));
+        }
         if (kind != satelliteObject::how_many_kinds)
             kind = kind_a_method_answers(kind, method, given);
+        // [ ] STRAIGHT AFTER A LINK'S ANSWER -- `a.satellite.reverse()[1]`, `g.satellite.first[2]` -- is not built,
+        // and the walker says so in index_after_an_answer's sentence (expression.cpp, call_method) only as the line
+        // runs, after the lines above it had printed (ERRORS4 045). Said here, naming the chain as the walker does.
+        if (code_at(row, next) == token::left_square_bracket_token) {
+            why = index_after_an_answer(spelled_to(next));
+            return satl_line_not_understood;
+        }
         if (!a_method_period(code_at(row, next)))
             return success;
         if (kind == satelliteObject::how_many_kinds) {
@@ -1597,6 +1616,11 @@ signed long long int chain_periods(const std::vector<std::bitset<16>> &row, std:
         // A WINDOW'S WORD OF PARTS WRITTEN AS ITS PARTS is told the whole word (window_calls.hpp).
         if (kind == satelliteObject::window && a_word_in_parts(row, next)) {
             why = word_in_parts_written_wrong(row, next, spelled_to(next));
+            return satl_line_not_understood;
+        }
+        // ...and a time's part written alone, the word it begins (time_calls.hpp).
+        if (kind == satelliteObject::time && a_time_part(row, next)) {
+            why = time_part_written_alone(spelled_to(next));
             return satl_line_not_understood;
         }
         const bool under = code_at(row, next) == token::satellite_method_token;
@@ -1638,6 +1662,68 @@ std::size_t suit_an_item_is(const std::vector<std::bitset<16>> &row, std::size_t
 signed long long int words_after_an_answer(const std::vector<std::bitset<16>> &row, std::size_t k,
                                            satelliteObject::Kind kind, const std::string &receiver, const Where &where,
                                            std::string &why);
+
+// A SCALAR'S WORD NUMBERED WITH NOTHING BUILT BEHIND IT -- a binary's .width, .digits and .clear, a hex's .digits, a
+// float's and a fraction's .reverse() -- refused before anything runs, in the run's own sentence (scalar_calls.cpp,
+// run_scalar_number), and asked as the run asks it: of the function table, whose row for the word holds no
+// method_call. Nothing is listed here, so the day one is built it is let through. Each was let past the checker as a
+// numbered word, and printed the lines above it before it stopped (ERRORS4 036, 046, 055). A FLOAT'S .binary AND .hex
+// have a file each, which refuses every float there is (object_float.cpp), and float_method_check says that one
+// (ERRORS4 054). `receiver` is what the run names: a name, `nums[...]`, `that binary`.
+signed long long int scalar_word_not_built(const FunctionTable &functions, satelliteObject::Kind kind, Code method,
+                                           const std::string &receiver, std::string &why)
+{
+    const Code number = an_other_scalar(kind) ? number_a_method_runs(kind, method) : 0;
+    if (number == 0)
+        return success;
+    // THE SENTENCE IS SPELLED ONLY WHEN ONE IS SAID, as chain_periods spells its own (the fresh reader, 2026-10-25).
+    const auto spelled = [&receiver, method] { return receiver + ".satellite." + token::method_name_of(method); };
+    if (kind == satelliteObject::floating) {
+        const signed long long int judged = float_method_check(method, spelled(), why);
+        if (judged != success)
+            return judged;
+    }
+    const NumberRow *row = functions.method(number);
+    if (row != nullptr && row->scenarios.method_call != nullptr)
+        return success;
+    why = spelled() + " is not built for " + satelliteObject::kind_name_of(kind) + " yet";
+    return not_built_yet;
+}
+
+// .add AND THE FOUR CONVERSIONS, COUNTED BEFORE ANYTHING RUNS (ERRORS4 048): each type's file for them refuses a count
+// it was not written for (satellite-numbers/words/, 1.6.1.19.cpp and its kind), and said so only as its line ran --
+// `s.satellite.add()` as "+ was given a string and nothing", after the lines above it had printed. Said here in the
+// walker's own sentences (expression.cpp, the tail every kind shared): a conversion takes nothing, and .add one value
+// in its brackets. Only on a kind that numbers the word -- one that does not was told so by its period -- and only a
+// scalar's, a string's, a number's and an infinity's. `k` is the period; `spelling` the call as the refusal names it.
+signed long long int add_or_conversion_counted(const std::vector<std::bitset<16>> &row, std::size_t k,
+                                               satelliteObject::Kind kind, const std::string &spelling,
+                                               std::string &why)
+{
+    const Code method = code_at(row, k + 1);
+    const bool a_conversion = method == token::to_string_token || method == token::to_number_token ||
+                              method == token::to_binary_token || method == token::to_hexadecimal_token;
+    if ((!a_conversion && method != token::add_token) || number_a_method_runs(kind, method) == 0 ||
+        !(an_other_scalar(kind) || kind == satelliteObject::string || kind == satelliteObject::number ||
+          kind == satelliteObject::infinity))
+        return success;
+    std::size_t close = k + 2, given = 0;
+    const bool bracketed = code_at(row, k + 2) == token::left_parenthesis_token;
+    if (bracketed && !brackets_at(row, k + 2, close, given))
+        return success;              // a ( never closed is the line's to refuse
+    if (a_conversion) {
+        if (given == 0)
+            return success;
+        why = spelling + " is a conversion and takes no argument";
+    } else if (!bracketed) {
+        why = spelling + " takes an argument and needs a ( after it";
+    } else if (given != 1) {
+        why = spelling + " takes one argument, and was given " + std::to_string(given);
+    } else {
+        return success;
+    }
+    return satl_line_not_understood;
+}
 
 // AN ITEM'S METHOD, judged by what the name was declared to hold (the review of 2026-10-10): `names[1].size` on a
 // list<string> is a string's word, so it takes `.satellite.` -- said before anything runs, as a name's own is. Only
@@ -1688,11 +1774,34 @@ signed long long int item_periods(const std::vector<std::bitset<16>> &row, std::
         why = word_in_parts_written_wrong(row, k, spelled);
         return satl_line_not_understood;
     }
+    if (kind == satelliteObject::time && a_time_part(row, k)) {   // times[1].satellite.time (TIME-1)
+        why = time_part_written_alone(spelled);
+        return satl_line_not_understood;
+    }
     const bool under = code_at(row, k) == token::satellite_method_token;
     if ((number_a_method_runs(kind, code_at(row, k + 1)) != 0) != under) {
         why = period_written_wrong(spelled, method_as_written(row, k + 1, file, method_spelling(code_at(row, k + 1))),
                                    kind, under);
         return satl_line_not_understood;
+    }
+    // AND THE WORD ITSELF, BY THE ITEM'S KIND, as on a name declared that type (ERRORS4 046): `nums[1].satellite.sqrt()`
+    // on a list<number> and `bs[1].satellite.width` on a list<binary> printed the lines above them and then stopped. A
+    // number's count and its .sqrt by number_method_check, in the walker's sentence; a scalar's word with nothing built
+    // behind it by scalar_word_not_built.
+    const Code method = code_at(row, k + 1);
+    if (kind == satelliteObject::number && number_number_of(method) != 0) {
+        std::size_t close = k + 2, given = 0;
+        const bool bracketed = code_at(row, k + 2) == token::left_parenthesis_token;
+        if (bracketed && !brackets_at(row, k + 2, close, given))
+            return success;
+        const signed long long int judged = number_method_check(
+            bracketed, given, method, spelled + ".satellite." + token::method_name_of(method), why);
+        if (judged != success)
+            return judged;
+    } else if (where != nullptr) {
+        const signed long long int built = scalar_word_not_built(where->functions, kind, method, spelled, why);
+        if (built != success)
+            return built;
     }
     return chain_periods(row, k, kind, spelled, file, why, where);
 }
@@ -1799,12 +1908,31 @@ signed long long int method_on_a_name(const std::vector<std::bitset<16>> &row, s
         why = word_in_parts_written_wrong(row, k, name);
         return satl_line_not_understood;
     }
+    // AND A TIME'S PART WRITTEN ALONE -- `waited.satellite.time` -- the word it begins (TIME-1, time_calls.hpp).
+    if (kind == satelliteObject::time && a_time_part(row, k)) {
+        why = time_part_written_alone(name);
+        return satl_line_not_understood;
+    }
     if (kind != satelliteObject::how_many_kinds &&
         (number_a_method_runs(kind, code_at(row, k + 1)) != 0) != under) {
         why = period_written_wrong(name, method_as_written(row, k + 1, file, registry_name), kind, under);
         return satl_line_not_understood;
     }
     const std::string period = under ? ".satellite." : ".";
+    // A SCALAR'S WORD WITH NOTHING BUILT BEHIND IT, AND .add AND THE CONVERSIONS COUNTED (ERRORS4 036, 048, 054, 055),
+    // before method_judged lets each through as a word the type numbers -- a float's, a hex's, a colour's and a
+    // fraction's too, whose own checks (method_right_for) pass every word they number. The not-built sentence is the
+    // run's, which names the registry's word; a count is said as written, as method_judged's are.
+    if (where != nullptr) {
+        const signed long long int built = scalar_word_not_built(where->functions, kind, code_at(row, k + 1), name, why);
+        if (built != success)
+            return built;
+    }
+    if (add_or_conversion_counted(row, k, kind, name + period + registry_name, why) != success) {
+        const std::string written = method_as_written(row, k + 1, file, registry_name);
+        why.clear();
+        return add_or_conversion_counted(row, k, kind, name + period + written, why);
+    }
     const signed long long int judged = method_judged(row, k, name, declared_as, why, name + period + registry_name);
     if (judged == success)
         return kind == satelliteObject::how_many_kinds && where == nullptr
@@ -1854,6 +1982,13 @@ signed long long int words_after_an_answer(const std::vector<std::bitset<16>> &r
                                            satelliteObject::Kind kind, const std::string &receiver, const Where &where,
                                            std::string &why)
 {
+    // [ ] STRAIGHT AFTER THE ANSWER -- `squares()[2]`, `{10, 20, 30}[2]`, `(squares())[2]` -- is not built, and the
+    // walker says so only as the line runs (expression.cpp, maybe_a_method), after the lines above it had printed
+    // (ERRORS4 045). Said here, naming the answer as the walker does.
+    if (code_at(row, k) == token::left_square_bracket_token) {
+        why = index_after_an_answer(receiver);
+        return satl_line_not_understood;
+    }
     if (!a_method_period(code_at(row, k)))
         return success;
     const Code word = code_at(row, k + 1);
@@ -1868,6 +2003,10 @@ signed long long int words_after_an_answer(const std::vector<std::bitset<16>> &r
         return success;
     if (kind == satelliteObject::window)
         return window_link_periods(row, k, receiver, file_of(where), why, &where);
+    if (kind == satelliteObject::time && a_time_part(row, k)) {   // satellite.time.now().satellite.time (TIME-1)
+        why = time_part_written_alone(receiver);
+        return satl_line_not_understood;
+    }
     const bool under = code_at(row, k) == token::satellite_method_token;
     if (kind == satelliteObject::how_many_kinds) {
         std::string written, hidden;
@@ -1903,6 +2042,23 @@ signed long long int words_after_the_rows(const std::vector<std::bitset<16>> &ro
     if (!a_method_period(code_at(row, rows_end)) && code_at(row, rows_end) != token::left_square_bracket_token)
         return success;
     past_the_argument_names(row, from, key);
+    // A ROW SATL HOLDS WHOSE LAST NAME IS A WORD OF THE LANGUAGE, WRITTEN BY ITS CALL -- `satellite.arguments.
+    // quantum.max(5)`: the `(` ends the row's names before max, so the line read as a bare word after quantum, and
+    // was told to write quantum.satellite.max, which is no row either (QUANTUM-0's fresh reader). It is refused in
+    // the sentence its `= 5` is.
+    if (!key.empty() && code_at(row, rows_end) == token::method_token &&
+        token::is_method_code(code_at(row, rows_end + 1)) &&
+        code_at(row, rows_end + 2) == token::left_parenthesis_token) {
+        const std::string held = key + "." + token::method_name_of(code_at(row, rows_end + 1));
+        if (kind_of_a_row_satl_holds(held, where.arguments, where.functions) != satelliteObject::how_many_kinds) {
+            ArgumentWrite write;
+            write.at_the_prompt = where.at_the_prompt;
+            write.the_runs = name == kTheRunsArguments;
+            why = why_an_argument_is_not_written(held, name, nullptr, where.arguments, where.functions, write);
+            if (!why.empty())
+                return word_takes_no_assignment;
+        }
+    }
     kind = key.empty() ? satelliteObject::how_many_kinds
                        : kind_of_a_row_satl_holds(key, where.arguments, where.functions);
     std::string spelled = key.empty() ? name : name + "." + key;
@@ -1957,7 +2113,9 @@ satelliteObject::Kind kind_a_word_answers(Code code)
             return O::number;
     if (code == word::code_of(1, 7, 17))
         return O::number;
-    if (code == word::code_of(1, 9, 5) || code == word::code_of(1, 9, 6) || code == word::code_of(1, 9, 7))
+    // second(n), millisecond(n) and nanosecond(n) -- and now(unit), the clock's (TIME-1).
+    if (code == word::code_of(1, 9, 5) || code == word::code_of(1, 9, 6) || code == word::code_of(1, 9, 7) ||
+        code == word::code_of(1, 9, 1))
         return O::time;
     // THE CONSOLE'S DOINGS answer the number 0, as a display does: its clear() and home(). (Its foreground() and
     // background() lex as their bare words, which their colour-taking calls share, so they are left to the run.)
@@ -1980,6 +2138,8 @@ signed long long int a_call_to_its_end(const std::vector<std::bitset<16>> &row, 
     // answer, which is meaningless -- and the difference is only that one ended
     // on `]` and the other on a method.
     bool ended_on_an_index = false;
+    std::string item = name;             // `a[...]`, `g[...][...]`: the item as a sentence names it
+    bool after_a_method = false;         // `a.satellite.sort()[1]`: an item `item` does not name
     for (;;) {
         std::size_t close = k, count = 0;
         // A METHOD, OR A NAME AFTER A DOT: an object's capsule (2026-09-22), judged by
@@ -1997,12 +2157,14 @@ signed long long int a_call_to_its_end(const std::vector<std::bitset<16>> &row, 
                 k = close + 1;
             }
             ended_on_an_index = false;
+            after_a_method = true;
             continue;
         }
         if (code_at(row, k) == token::left_square_bracket_token) {
             if (!brackets_at(row, k, close, count)) break;
             k = close + 1;
             ended_on_an_index = true;
+            item += "[...]";
             continue;
         }
         break;
@@ -2014,6 +2176,11 @@ signed long long int a_call_to_its_end(const std::vector<std::bitset<16>> &row, 
     // run_indexed_assignment does the work; here it is only a shape to allow.
     if (code == token::assign_token && ended_on_an_index)
         return success;
+    // `a[1] += 2` IS A NAME'S += ON AN ITEM, refused as after_the_name refuses `n += 2` -- by name, with the
+    // line to write (ERRORS4 059). It was told the sentence below, and no part of that is true of it. An item of
+    // a call's answer, `a.satellite.sort()[1] += 2`, is no item of a, and keeps that sentence.
+    if (ended_on_an_index && !after_a_method && after_the_name(row, k, item, false, why) == not_built_yet)
+        return not_built_yet;
     why = name + " is followed by something that is not a method call -- a call's answer cannot be given a "
                  "value, a bracket must close on its line, and one statement is one line";
     return satl_line_not_understood;
@@ -2346,6 +2513,24 @@ satelliteObject::Kind kind_a_value_word_answers(Code code, const FunctionTable &
     return satelliteObject::how_many_kinds;
 }
 
+// WHETHER THE NAME AT `at` WAS WRITTEN TOUCHING THE CODE BEFORE IT -- `1_000`, and not `2 x` (the fresh reader of
+// ERRORS4 052, 2026-10-25: `display(2 x)` was told "2x is not a number", which nobody wrote, in place of the
+// walker's "check that every math sign has a space"). The lexer makes the same codes of both, so it is read back
+// from the text as the_size_written reads a size (source_position.hpp), and only where a refusal is due. True when
+// the text cannot be had.
+bool written_touching(const std::vector<std::bitset<16>> &row, std::size_t at, const std::string &file)
+{
+    std::size_t line = line_of(row, at), column = 0;
+    std::string text;
+    if (!written_place(file, row, at, line, column, text)) {
+        text = source_line(file, line);
+        column = column_of(row, at, text);
+    }
+    if (text.empty() || column > text.size())
+        return true;
+    return column > 0 && text[column - 1] != ' ' && text[column - 1] != '\t';
+}
+
 // Every name a statement USES as a value -- so a name with no declaration is
 // caught before anything runs. A name followed by `(` is a capsule and is
 // checked against the capsule table instead.
@@ -2368,14 +2553,17 @@ signed long long int names_in_statement(const std::vector<std::bitset<16>> &row,
     // made the next body a second satellite.main. This loop already SKIPS every
     // payload, so the codes it visited are the only ones that are really tokens.
     Code one_back = 0, two_back = 0;
+    std::size_t one_back_at = 0;         // where the code one back stands: a number's digits, for ERRORS4 052
     std::vector<std::size_t> judged;     // members judged through a list of objects
     std::vector<std::size_t> option_names;   // `foreground` in foreground=..., judged by its word
     std::vector<std::pair<std::size_t, std::size_t>> options_under;   // satellite.end=: where it starts, its value
     for (std::size_t at = from; at < stop && at < row.size(); ) {
         const Code code = code_at(row, at);
         const Code before_this = one_back, and_before_that = two_back;
+        const std::size_t before_this_at = one_back_at;
         two_back = one_back;
         one_back = code;
+        one_back_at = at;
 
         // THE ARGUMENTS' OLD PLACE IS REFUSED BEFORE ANYTHING RUNS (the author's K of 2026-10-11):
         // satellite.library.main.arguments.<row>, where they lived until 2026-10-03, is satellite.arguments.<row>.
@@ -2404,12 +2592,8 @@ signed long long int names_in_statement(const std::vector<std::bitset<16>> &row,
                 why = "power is written with a space on both sides -- 2 ** 3 or 2 ^ 3, never 2**3";
                 return satl_line_not_understood;
             }
-            why = std::string("every math operation is written with a space on both sides of the sign, and this ") +
-                  (code == token::tight_plus_token    ? "+"
-                   : code == token::tight_times_token ? "*"
-                   : code == token::tight_power_token ? "^"
-                                                      : "%") +
-                  " has none";
+            // THE WALKER'S OWN FUNCTION (expression.hpp), so "has nothing after it" is said here too (ERRORS4 068).
+            why = touching_sign_why(row, at);
             return satl_line_not_understood;
         }
 
@@ -2570,10 +2754,13 @@ signed long long int names_in_statement(const std::vector<std::bitset<16>> &row,
         // `(5).floor()` and `{1, 2}.size` were refused only as their line ran. A `(` with no name, word or method
         // straight before it is no call's: it holds "that value", as the walker names it, which only the run can
         // type (words_after_an_answer). A `{` where a value goes is a list, or a map when a `:` follows its first item.
+        // AND A [ ] STRAIGHT AFTER EITHER, which words_after_an_answer refuses as the walker does (ERRORS4 045).
         if (code == token::left_parenthesis_token && before_this != token::name_token &&
             !token::is_method_code(before_this) && !word::is_word_code(before_this)) {
             std::size_t close = at, count = 0;
-            if (brackets_at(row, at, close, count) && a_method_period(code_at(row, close + 1))) {
+            if (brackets_at(row, at, close, count) &&
+                (a_method_period(code_at(row, close + 1)) ||
+                 code_at(row, close + 1) == token::left_square_bracket_token)) {
                 const signed long long int after = words_after_an_answer(
                     row, close + 1, satelliteObject::how_many_kinds, "that value", where, why);
                 if (after != success) return after;
@@ -2582,7 +2769,9 @@ signed long long int names_in_statement(const std::vector<std::bitset<16>> &row,
         if (code == token::left_brace_token) {
             std::size_t close = at;
             bool a_map = false;
-            if (braces_at(row, at, close, a_map) && a_method_period(code_at(row, close + 1))) {
+            if (braces_at(row, at, close, a_map) &&
+                (a_method_period(code_at(row, close + 1)) ||
+                 code_at(row, close + 1) == token::left_square_bracket_token)) {
                 const signed long long int after =
                     words_after_an_answer(row, close + 1, a_map ? satelliteObject::index : satelliteObject::list,
                                           a_map ? "that map" : "that list", where, why);
@@ -2593,6 +2782,31 @@ signed long long int names_in_statement(const std::vector<std::bitset<16>> &row,
         if (code == token::name_token) {
             std::size_t k = at;
             const std::string name = text_at(row, k);
+
+            // DIGITS WITH LETTERS AFTER THEM -- 1_000, 1e5, 00ff00 (ERRORS4 052). The lexer ends a number at its first
+            // letter and starts a name there, so the name was told it had no satellite.variable line -- `_000`, which
+            // nobody wrote -- and, declared, its line ran to "could not read to the end". A number straight after which
+            // a name is written is never a sum (hexadecimal_values.cpp), so the two are said as the one run they were
+            // written as, S120 NUMBER_NOT_READ, declared or not: with what to write when that is plain -- 1000 for a
+            // separator, x00ff00 for hex digits, as a colour's line says it (color_check.cpp). ONLY WHEN THE TWO
+            // TOUCH: `2 x`, a blank between them, goes on as it always went (written_touching).
+            if (before_this == token::number_token && written_touching(row, at, file_of(where))) {
+                std::size_t digits_at = before_this_at;
+                const std::string written = text_at(row, digits_at) + name;
+                std::string digits;
+                bool only_digits = true, hex_only = true, a_hex_letter = false;
+                for (const char c : written) {
+                    if (c != '_') digits += c;
+                    only_digits = only_digits && (c == '_' || (c >= '0' && c <= '9'));
+                    hex_only = hex_only && ((c >= '0' && c <= '9') || (c >= 'a' && c <= 'f') || (c >= 'A' && c <= 'F'));
+                    a_hex_letter = a_hex_letter || (c >= 'a' && c <= 'd') || c == 'f' || (c >= 'A' && c <= 'D') || c == 'F';
+                }
+                why = written + " is not a number satellite reads -- " +
+                      (only_digits ? "a number has no separators: write " + digits
+                       : hex_only && a_hex_letter ? "a hex is written with its x: x" + written
+                                                  : std::string("a number has no letters in it"));
+                return int_error;
+            }
 
             // A NAMED OPTION'S NAME (console_calls.hpp) is the option and not a variable:
             // judged by name with its word, below, and stepped over here with its `=`, so
@@ -2841,8 +3055,7 @@ signed long long int names_in_statement(const std::vector<std::bitset<16>> &row,
                     // line, which neither 003 nor 004 has -- one is made by declaring it.
                     std::string unused;
                     if (!after_a_dot && capsules.suit_named(scope, {name}, unused) != kNoScope) {
-                        why = name + " is a spacesuit, and an object of it is made by declaring one on a line of its "
-                                     "own -- " + name + " a_name(...) -- and then using a_name";
+                        why = a_spacesuit_is_no_object(name);
                         return satl_line_not_understood;
                     }
                     why = after_a_dot ? "no capsule named " + name : reached.why;
@@ -2891,6 +3104,24 @@ signed long long int names_in_statement(const std::vector<std::bitset<16>> &row,
                                              (and_before_that == word::kFirst || and_before_that == word::code_of(1, 22));
                 const std::string a_row =
                     after_satellite ? arguments_row_written_as_a_word(row, at, and_before_that != word::kFirst) : "";
+                // A WORD, A DOT AND A NAME IS A SPELLING THE TABLE DOES NOT HAVE -- satellite.bool.flase,
+                // satellite.console.widht -- said as a line that begins with one says it (check_statement), with the
+                // nearest word, and not as a variable nobody declared (ERRORS4 050). Not after satellite alone, which
+                // is also the period of `n.satellite.strng`, where the word misspelled is n's.
+                if (!a_field && a_row.empty() && before_this == token::method_token &&
+                    word::is_word_code(and_before_that) && and_before_that != word::kFirst) {
+                    const std::string spelled(word::spelling_of(and_before_that));
+                    const std::string known = spelled.substr(0, spelled.find('('));
+                    const std::string meant = word_it_most_likely_meant(known, name);
+                    why = known + " has no word named " + name +
+                          (meant.empty() ? std::string() : " -- did you mean " + meant + "?");
+                    return satl_line_not_understood;
+                }
+                std::string unused;
+                if (!a_field && a_row.empty() && !after_a_dot && capsules.suit_named(scope, {name}, unused) != kNoScope) {
+                    why = a_spacesuit_is_no_object(name);
+                    return satl_line_not_understood;
+                }
                 why = a_field ? name + " is a field of " + capsules.scopes[scope].layout->shown +
                                     ", and a field's value is worked out before there is an object -- it cannot name "
                                     "another field; give it its value in the satellite.constructor instead"
@@ -3085,6 +3316,34 @@ signed long long int names_in_statement(const std::vector<std::bitset<16>> &row,
             return satl_line_not_understood;
         }
 
+        // satellite.container.list<type>() -- THE CONSTRUCTOR GIVEN A <type> (ERRORS4 060): list() and map() take
+        // nothing, and what a list holds is its declaration's to say (the help). It passed here and was refused
+        // when its line ran, after the lines above it, as "there is no value here to work with" (expression.cpp).
+        // A type word is followed by < only in a declaration, and check_statement reads that before this loop.
+        if ((is_container_word(code) || is_an_index_word(code)) && code_at(row, at + 1) == token::less_than_token) {
+            const std::string spelled(word::spelling_of(code));
+            const bool a_map = is_an_index_word(code);
+            const std::string made = a_map ? "satellite.container.map()" : "satellite.container.list()";
+            why = made + " takes no <type> -- the declaration says what it holds: " +
+                  spelled.substr(0, spelled.find('(')) +
+                  (a_map ? "<satellite.variable.string, satellite.variable.number> m = "
+                         : "<satellite.variable.number> a = ") +
+                  made;
+            return satl_line_not_understood;
+        }
+
+        // satellite.time.now AND .new WRITTEN WITH NO BRACKETS, where a value is read (M4). The run refused them after
+        // the lines above had printed, as "there is no value here to work with". now is built since TIME-1, and told
+        // how it is called -- now() or now("s") -- in time_calls.hpp's sentence; new, which the help says is not
+        // built, is told what its call is told just below.
+        if (code == word::code_of(1, 9, 1) && code_at(row, at + 1) != token::left_parenthesis_token)
+            return unit_call_refused(false, 0, std::string(), word::spelling_of(code), why);
+        if (code == word::code_of(1, 9, 2) && code_at(row, at + 1) != token::left_parenthesis_token &&
+            functions[code] == nullptr) {
+            why = std::string(word::spelling_of(code)) + " has no library built for it yet";
+            return not_built_yet;
+        }
+
         // A WORD USED AS A CALL MUST HAVE A LIBRARY. A word with none is
         // not_built_yet (14) with its own name, which is what 003 did and what a
         // person can act on (function_table.hpp).
@@ -3180,7 +3439,8 @@ signed long long int names_in_statement(const std::vector<std::bitset<16>> &row,
                 }
                 // satellite.time's take one each, and sleep(n, unit) -- 003's spelling -- is told to
                 // write the unit on the number (time_calls.hpp); sleep(5), a literal with no unit,
-                // is told the same now, before the lines above it print.
+                // is told the same now, before the lines above it print. now takes one unit or none,
+                // and a literal one must be one of the six (TIME-1).
                 if (is_time_word(code)) {
                     signed long long int refused = time_word_refused(code, given, why);
                     if (refused == success)
@@ -3197,6 +3457,18 @@ signed long long int names_in_statement(const std::vector<std::bitset<16>> &row,
                 if (is_file_word(code) && given != file_word_arity(code)) {
                     why = file_word_takes(code) + ", and was given " + std::to_string(given) + " arguments";
                     return satl_line_not_understood;
+                }
+                // display(a), A NAME THAT HOLDS AN OBJECT ALONE IN ITS BRACKETS (ERRORS4 071): refused here in the
+                // walker's own sentence (expression.cpp's display_plainly), where it was refused only when its line
+                // ran -- after the lines above it, and never in an if not taken. A value only the run knows waits for it.
+                if (is_display_word(code) && given == 1 && code_at(row, at + 2) == token::name_token) {
+                    std::size_t k = at + 2;
+                    const std::string name = text_at(row, k);
+                    if (code_at(row, k) == token::right_parenthesis_token && where.objects.count(name) != 0 &&
+                        declared.find(name) != declared.end()) {
+                        why = spelled_word.substr(0, spelled_word.find('(')) + " has no scenario for an object";
+                        return not_built_yet;
+                    }
                 }
                 // satellite.console.bash GIVEN A LITERAL THAT IS NOT TEXT -- bash(5), bash(1s) -- refused in the run's
                 // sentence (console_calls.cpp) before anything runs (the review, 2026-10-23).
@@ -3261,9 +3533,13 @@ signed long long int names_in_statement(const std::vector<std::bitset<16>> &row,
                     // lexes as display(text) with 0 arguments; it is refused
                     // here by name rather than at run time by a value that is
                     // not there. A word whose row IS `path()` takes none and is
-                    // not this.
-                    const bool takes_one = spelled.find('(') != std::string::npos &&
-                                           spelled.find("()") == std::string::npos;
+                    // not this. AND satellite.console.display, whose row is spelled
+                    // with no brackets at all (words.tsv 1 5 1), so `display()` and
+                    // `display(satellite.end="!")` -- the option is no argument, it
+                    // was taken off `given` above -- printed the lines above them
+                    // and then stopped as S210 (ERRORS4 041).
+                    const bool takes_one = is_display_word(code) || (spelled.find('(') != std::string::npos &&
+                                                                     spelled.find("()") == std::string::npos);
                     if (given > 1 || (given == 0 && takes_one)) {
                         why = spelled.substr(0, spelled.find('(')) + " takes one argument, and was given " +
                               std::to_string(given);
@@ -3331,6 +3607,11 @@ signed long long int names_in_statement(const std::vector<std::bitset<16>> &row,
                                                      : code == token::percentage_token  ? satelliteObject::percentage
                                                                                         : satelliteObject::time;
             const std::string that = std::string("that ") + (satelliteObject::kind_name_of(literal_kind) + 2);
+            // A TIME'S PART WRITTEN ALONE, `1500ms.satellite.time`, before the period's rule (time_calls.hpp).
+            if (literal_kind == satelliteObject::time && a_time_part(row, past)) {
+                why = time_part_written_alone(that);
+                return satl_line_not_understood;
+            }
             // WHICH PERIOD IT TAKES (method_periods.hpp): a literal's own words are under satellite as a
             // name's of its type are -- said here in the walker's words.
             const bool under = code_at(row, past) == token::satellite_method_token;
@@ -3338,6 +3619,13 @@ signed long long int names_in_statement(const std::vector<std::bitset<16>> &row,
                 (number_a_method_runs(literal_kind, method) != 0) != under) {
                 why = period_written_wrong(that, method_spelling(method), literal_kind, under);
                 return satl_line_not_understood;
+            }
+            // A LITERAL'S WORD WITH NOTHING BUILT BEHIND IT -- `b0110.satellite.digits`, `12.34.satellite.reverse()`,
+            // `2.5.satellite.bin` -- as a name's is (scalar_word_not_built; ERRORS4 036, 054, 055).
+            if (a_method_period(code_at(row, past)) && token::is_method_code(method)) {
+                const signed long long int built = scalar_word_not_built(functions, literal_kind, method, that, why);
+                if (built != success)
+                    return built;
             }
             const std::string period = under ? ".satellite." : ".";
             if (a_method_period(code_at(row, past)) &&
@@ -3659,22 +3947,30 @@ signed long long int judge_a_statement(const std::vector<std::bitset<16>> &row,
     if (code == word::code_of(1, 15)) {
         const std::size_t stop = past_the_statement(row, at);
         const std::size_t value_at = return_value_at(row, at);
-        if (value_at != 0) {
-            if (where.site != nullptr && where.site->constructor) {
-                why = where.site->shown + " hands nothing back -- what a constructor produces is the object, so its "
-                                          "satellite.return is written satellite.return()";
-                at = stop;
-                return satl_line_not_understood;
-            }
-            std::size_t close = at + 1, given = 0;
+        // EVERY RETURN IS THE WHOLE STATEMENT, the two that hand back nothing too (ERRORS4 080): asked only of
+        // one with a value, `satellite.return(satellite) x` dropped the x without a word, where
+        // `satellite.return(2) x` is refused here. A } STRAIGHT AFTER ONE THAT HANDS BACK NOTHING is left as it
+        // was -- main's last line `satellite.return(satellite)}` runs -- until the author rules on a block's }
+        // written on its statement's line (ERRORS2.md section 5).
+        std::size_t close = at + 1, given = 0;
+        if (code_at(row, at + 1) == token::left_parenthesis_token) {
             if (!brackets_at(row, at + 1, close, given)) {
                 why = "satellite.return( is never closed on its line";
                 at = stop;
                 return satl_line_not_understood;
             }
             const Code after = code_at(row, close + 1);
-            if (after != token::line_end_token && after != token::comment_token && after != token::end_of_file_token) {
+            if (after != token::line_end_token && after != token::comment_token && after != token::end_of_file_token &&
+                !(value_at == 0 && after == token::right_brace_token)) {
                 why = "satellite.return(...) is the whole statement, and something follows its )";
+                at = stop;
+                return satl_line_not_understood;
+            }
+        }
+        if (value_at != 0) {
+            if (where.site != nullptr && where.site->constructor) {
+                why = where.site->shown + " hands nothing back -- what a constructor produces is the object, so its "
+                                          "satellite.return is written satellite.return()";
                 at = stop;
                 return satl_line_not_understood;
             }
@@ -4108,6 +4404,12 @@ signed long long int judge_a_statement(const std::vector<std::bitset<16>> &row,
                 at = past_the_statement(row, at);
                 return satl_line_not_understood;
             }
+            // satellite.time.now, BUILT SINCE TIME-1, IS CALLED WITH BRACKETS: told so on a line of its own as where
+            // a value is read (names_in_statement, M4), and not that it has no scenario yet.
+            if (code == word::code_of(1, 9, 1)) {
+                at = past_the_statement(row, at);
+                return unit_call_refused(false, 0, std::string(), word::spelling_of(code), why);
+            }
             // A TYPE WITH NO NAME AFTER IT is a declaration whose name did not lex as one
             // -- `satellite.variable.number !@#$ = 5`, or `9lives` -- and "is not a call"
             // told a person nothing about the name, which is what is wrong (M5).
@@ -4340,6 +4642,12 @@ signed long long int judge_a_statement(const std::vector<std::bitset<16>> &row,
             return held;
         }
         if (code_at(row, k) != token::left_parenthesis_token && found == declared.end()) {
+            std::string unused;
+            if (!the_runs_word && capsules.suit_named(scope, {name}, unused) != kNoScope) {
+                why = a_spacesuit_is_no_object(name);
+                at = stop;
+                return satl_line_not_understood;
+            }
             why = where.deleted_on_line.count(name) != 0 || where.ended_at.count(name) != 0 ||
                           where.ended_earlier.count(name) != 0
                       ? not_declared_why(where, row, name)
@@ -4398,19 +4706,31 @@ signed long long int judge_a_statement(const std::vector<std::bitset<16>> &row,
         }
         // AN OBJECT'S MEMBER IS JUDGED FIRST (2026-09-22), so `log.path = x` is told that a
         // field is reached from inside its spacesuit only, and not that a call's answer
-        // cannot be given a value -- true, and about the wrong thing.
-        if (a_method_call && found != declared.end() && where.objects.count(name) != 0) {
+        // cannot be given a value -- true, and about the wrong thing. AND AN ITEM'S, WHEN
+        // THE ITEM IS AN OBJECT (ERRORS4 073): `things[1].v = 5` on a list<cell>, or
+        // `m["a"].v = 5` on a map of them, was told that sentence too.
+        bool an_item_is_an_object = false;
+        if (a_method_call && found != declared.end() && code_at(row, k) == token::left_square_bracket_token) {
+            const std::unordered_map<std::string, TypeShape>::const_iterator shape = where.shapes.find(name);
+            std::size_t close = k;
+            std::string spelled = name;
+            an_item_is_an_object = where.lists.count(name) != 0 ||
+                                   (shape != where.shapes.end() && shape->second.word == found->second &&
+                                    suit_an_item_is(row, k, shape->second, close, spelled) != kNoSuit);
+        }
+        if (a_method_call && found != declared.end() && (where.objects.count(name) != 0 || an_item_is_an_object)) {
             const signed long long int held = names_in_statement(row, at, stop, declared, where, why);
             if (held != success) { at = stop; return held; }
         }
         // `s[1] = "j"` -- A STRING'S CHARACTER IS READ, NEVER WRITTEN (M16): refused in the
-        // walker's own sentence (write_through_index), before anything runs.
+        // walker's own sentence (write_through_index), before anything runs. `s[1] += "x"` too, which
+        // a_call_to_its_end below would tell to write `s[...] = s[...] + ...` (ERRORS4 059).
         if (a_method_call && found != declared.end() && found->second == word::code_of(1, 6, 1) &&
             code_at(row, k) == token::left_square_bracket_token) {
             std::size_t end = k, close = 0, count = 0;
             while (code_at(row, end) == token::left_square_bracket_token && brackets_at(row, end, close, count))
                 end = close + 1;
-            if (code_at(row, end) == token::assign_token) {
+            if (code_at(row, end) >= token::assign_token && code_at(row, end) <= token::modulus_assign_token) {
                 why = name + " is a string, and [ ] = ... changes an item of a list or a key of an index";
                 at = stop;
                 return types_do_not_meet;

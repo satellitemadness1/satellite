@@ -192,6 +192,7 @@ const BuiltInWord kBuiltInWords[] = {
     {"1 6 18 54 2 1", "satellite.variable.window.window.display.file(name)", describe_1_6_18_54_2_1},
     {"1 6 18 54 2 2 1", "satellite.variable.window.window.display.text.input(name)", describe_1_6_18_54_2_2_1},
     {"1 6 3 1", "satellite.variable.time.string", describe_1_6_3_1},
+    {"1 6 3 2 1", "satellite.variable.time.time.convert(unit)", describe_1_6_3_2_1},
     {"1 6 5 1", "satellite.variable.binary.to_number", describe_1_6_5_1},
     {"1 6 5 2", "satellite.variable.binary.width", describe_1_6_5_2},
     {"1 6 5 3", "satellite.variable.binary.to_string", describe_1_6_5_3},

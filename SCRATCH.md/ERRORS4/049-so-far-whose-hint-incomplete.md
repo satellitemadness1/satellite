@@ -1,5 +1,7 @@
 # 049 -- The S210 hint from so_far_whose knows only file and container methods: .width on a binary and .transparency on a non-colour say "so far no type has it" (hex and colour do have them), and x.lock() says "so far it is a file's" (objects have it too)
 
+**FIXED 2026-10-25** (open-work round 2 c1): so_far_whose (file_calls.cpp) says .lock and .unlock are "so far a file and an object have it", where it said a file's alone. The .width and .transparency halves were fixed before. check.sh rows "049: ...".
+
 **Found:** 2026-09-26, satl 004 revision 08 build 0099 (/home/madness/code/cxx/satellite/build/satl), by running ordinary programs against it.  
 **Area:** binary hex color infinity bool, threads  
 **Kind:** misleading-refusal  

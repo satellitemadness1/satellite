@@ -487,6 +487,14 @@ public:
     friend bool operator!=(const satelliteObject &l, const satelliteObject &r) { return !(l == r); }
 };
 
+// AN ITEM IS x WHEN `==` SAYS SO (ERRORS4 010): a number and a float, binary, hex or fraction of the
+// same worth are one item to .contains, .index_of, .remove and a container's ==, as `a[3] == 3.0` is
+// true. operator== above stays kind against kind; this asks compare() where the two kinds differ.
+bool same_item(const satelliteObject &l, const satelliteObject &r);
+
+// A STRING'S TEXT AS A PROGRAM WRITES IT: in quotes, with \" \\ \n \t and \r (satellite_object.cpp).
+std::string as_a_literal(const std::string &text);
+
 // THE PAIR OF TAGS AS ONE INTEGER, which is what every binary method switches
 // on. Dense, fits a switch, and the case labels read like the filenames:
 // `case pair_of(number, string):` sits above the call to number_and_string_add.

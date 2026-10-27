@@ -1,5 +1,7 @@
 # 080 -- satellite.return(satellite)} as main's last line is refused S103 at a line past the end of the file, which asks for the return that is already there
 
+**PARTLY FIXED 2026-10-25** (open-work round 2 c2): the S103 past the end of the file was already gone on BUILD 0009 -- since round 1's 019 fix, main's satellite.return(satellite)} runs (hi, exit 0), the first of the two answers below. check_statement's satellite.return arm (program_check.cpp) now asks satellite.return(satellite) and satellite.return() too that nothing follows its ), so satellite.return(satellite) x, which dropped the x and ran, gets the S110 satellite.return(2) x gets, at its line. A } straight after a return that hands back nothing is left as 0009 has it -- main's, and the last capsule's in the file, run; another capsule's satellite.return()} is still told "satellite.capsule goes at the top of a file" at the next capsule's line -- until the author rules on a block's } written on its statement's line (ERRORS2.md section 5). check.sh row "080: satellite.return(satellite) x ...".
+
 **Found:** 2026-09-26, satl 004 revision 08 build 0099 (/home/madness/code/cxx/satellite/build/satl), by running ordinary programs against it.  
 **Area:** syntax and layout  
 **Kind:** misleading-refusal  

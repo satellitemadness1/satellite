@@ -4753,7 +4753,7 @@ satellite.capsule satellite.main()
 }
 )satl",
      nullptr,
-     27, "a was declared satellite.container.list, and item 2 of it does not", nullptr},
+     27, "a was declared satellite.container.list<satellite.variable.number>, and item 2 of it does not", nullptr},
     {"full_text_27.satl", TestKind::refused, "list <type> checks a[n] = x",
      R"satl(satellite.include(satellite)
 

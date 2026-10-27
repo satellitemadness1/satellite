@@ -70,7 +70,7 @@ TOPICS:
 
 32) satellite.random (whole numbers: fast, normal and ultra)
 
-33) satellite.time (1s, 250ms, 30ns, and satellite.time.sleep)
+33) satellite.time (1s, 250ms, 30ns, satellite.time.now and satellite.time.sleep)
 
 34) satellite.variable.time (a length of time, exact to the nanosecond)
 

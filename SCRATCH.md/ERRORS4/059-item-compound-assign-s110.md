@@ -1,5 +1,7 @@
 # 059 -- a[1] += 2 (a compound assignment to an indexed item) gets an unrelated S110 "not a method call" sentence instead of S210 "not built yet -- write a[1] = a[1] + ..."
 
+**FIXED 2026-10-25** (open-work round 2 c2): a_call_to_its_end (program_check.cpp) refuses += -= *= /= %= after an item as after_the_name refuses them after a name: S210, "a[...] += ... is not built yet -- write a[...] = a[...] + ...", before anything runs. a[1]++, and an item of a call's answer such as a.satellite.sort()[1] += 2, keep the old S110 sentence; a string's s[1] += "x" gets the S301 s[1] = "x" gets (a string's character is never written). check.sh rows "059: ...".
+
 **Found:** 2026-09-26, satl 004 revision 08 build 0099 (/home/madness/code/cxx/satellite/build/satl), by running ordinary programs against it.  
 **Area:** lists  
 **Kind:** misleading-refusal  

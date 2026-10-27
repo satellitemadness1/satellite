@@ -57,6 +57,11 @@ struct Setting {
     SettingKind kind;
     unsigned long long int least;   // a number's smallest value
     SettingRead read;
+    // A NUMBER'S LARGEST VALUE, AND 0 FOR NONE (QUANTUM_PLAN.md QUANTUM-0, 2026-10-25): a percentage of the
+    // machine's RAM is never past 100. Judged wherever least is -- a line's value (setting_writes.cpp), a file's top
+    // (argument_switches.cpp) and config.ini as satl starts (arguments.cpp) -- and said by the_range_of below.
+    unsigned long long int most = 0;
+    const char *holds = nullptr;    // what a number with a most is, said with its range: "a percentage of ..."
 };
 
 // access IS ON UNLESS A PERSON SAID OTHERWISE (the author, 2026-09-18: "arguments.access will always
@@ -98,15 +103,58 @@ inline constexpr Setting kSettings[] = {
     // width that wrap nothing. Read when a console is made, and satl's own console follows a change.
     {"scroll.vertical", SettingKind::flag, 0, SettingRead::while_it_runs},
     {"scroll.horizontal", SettingKind::flag, 0, SettingRead::while_it_runs},
+    // HOW MUCH OF THE MACHINE A QUANTUM VALUE MAY TAKE (QUANTUM_PLAN.md QUANTUM-0; the author, 2026-10-25), each a
+    // percentage of its RAM, 65 unless written: up to quantum.ram in memory, then up to quantum.drive more on disk.
+    // Read as satl starts, where arguments.quantum.possible is worked out of them (arguments.cpp), so a file's line
+    // is too late for them and the prompt saves them for good -- KEY-10's rule (KEY_PLAN.md).
+    {"quantum.ram", SettingKind::number, 1, SettingRead::as_satl_starts, 100, "a percentage of the machine's RAM"},
+    {"quantum.drive", SettingKind::number, 1, SettingRead::as_satl_starts, 100,
+     "a percentage of the machine's RAM, taken on disk"},
 };
 
-// The setting `key` names -- "float.decimal" -- or nullptr when it names none.
+// A SETTING'S SECOND SPELLING (QUANTUM_PLAN.md QUANTUM-0; the author, 2026-10-25): arguments.quantum.ram is also
+// spelled arguments.quantum.memory, and arguments.quantum.drive arguments.quantum.disk. ONE SETTING, NEVER TWO
+// ROWS: a name is turned into its setting's own before anything looks for it -- a line's write (a_setting_named), a
+// read (the_argument_row_spelled, arguments.cpp), config.ini read and written (config_file.hpp's same_key) and
+// S016's known keys (structured-library.cpp) -- so the two spellings cannot answer differently. first_start and
+// FIRST_START (machine_facts.hpp), and arg3 and argument3, are the same idea for their own rows.
+struct SettingSpelling {
+    const char *written;   // the second spelling
+    const char *key;       // the setting it names
+};
+
+inline constexpr SettingSpelling kSettingSpellings[] = {
+    {"quantum.memory", "quantum.ram"},
+    {"quantum.disk", "quantum.drive"},
+};
+
+// The setting's own key for `key` -- "quantum.ram" for "quantum.memory" -- and `key` itself for any other.
+inline std::string the_setting_spelled(const std::string &key)
+{
+    for (const SettingSpelling &spelling : kSettingSpellings)
+        if (key == spelling.written)
+            return spelling.key;
+    return key;
+}
+
+// The setting `key` names -- "float.decimal", or "quantum.ram" for "quantum.memory" -- or nullptr when it names none.
 inline const Setting *a_setting_named(const std::string &key)
 {
+    const std::string own = the_setting_spelled(key);
     for (const Setting &setting : kSettings)
-        if (key == setting.key)
+        if (own == setting.key)
             return &setting;
     return nullptr;
+}
+
+// WHAT A NUMBER SETTING HOLDS, for a sentence that refuses a value: "of at least 1", or for one with a most "from 1
+// to 100, a percentage of the machine's RAM".
+inline std::string the_range_of(const Setting &setting)
+{
+    if (setting.most == 0)
+        return "of at least " + std::to_string(setting.least);
+    return "from " + std::to_string(setting.least) + " to " + std::to_string(setting.most) +
+           (setting.holds != nullptr ? std::string(", ") + setting.holds : std::string());
 }
 
 // EVERY SETTING'S NAME, for a sentence that lists them: "access, missing, startup_display ...".

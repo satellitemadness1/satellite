@@ -208,6 +208,7 @@ signed long long int describe_1_6_18_54_1(LibraryRow *row);   // satellite.varia
 signed long long int describe_1_6_18_54_2_1(LibraryRow *row);   // satellite.variable.window.window.display.file(name)
 signed long long int describe_1_6_18_54_2_2_1(LibraryRow *row);   // satellite.variable.window.window.display.text.input(name)
 signed long long int describe_1_6_3_1(LibraryRow *row);   // satellite.variable.time.string
+signed long long int describe_1_6_3_2_1(LibraryRow *row);   // satellite.variable.time.time.convert(unit)
 signed long long int describe_1_6_5_1(LibraryRow *row);   // satellite.variable.binary.to_number
 signed long long int describe_1_6_5_2(LibraryRow *row);   // satellite.variable.binary.width
 signed long long int describe_1_6_5_3(LibraryRow *row);   // satellite.variable.binary.to_string

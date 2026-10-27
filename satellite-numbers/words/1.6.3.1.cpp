@@ -2,7 +2,8 @@
 //
 // satellite.variable.time.string   1 6 3 1
 // A time as text, in the unit it was written in: 250ms, 1.5s. .to_string and .str are the lexer's second
-// spellings of it. A time's only word so far: the arithmetic of times is not built.
+// spellings of it. This and .satellite.time.convert(unit) (1 6 3 2 1, since TIME-1 on 2026-10-26) are a time's
+// words so far: the arithmetic of times is not built.
 //
 // RUN BY ITS NUMBER SINCE 2026-10-11 (the author: "we still need to get the word satellite onto everything ...
 // everything builtin needs the word satellite still"): `d.satellite.string` reaches the function below through

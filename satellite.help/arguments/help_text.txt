@@ -19,7 +19,9 @@ satellite.arguments, and satellite.main may be handed it by a name of its own
    access, missing, startup_display, magic, directory.default, log_path,
    object_bytes_max, file_size_max_bytes, infinity, infinity_display,
    infinity.counter, float.whole, float.decimal, display.buffer,
-   scroll.vertical and scroll.horizontal. A number
+   scroll.vertical, scroll.horizontal, quantum.ram and quantum.drive -- also
+   spelled quantum.memory and quantum.disk, one setting under either name and
+   saved under its own. A number
    that is not one stops satl as it starts, by name; a true/false row reads
    anything but false as true. The warm threads (threads_startup_per_core,
    threads_max) stay the author's rows: saved, one line could make every start
@@ -42,7 +44,11 @@ satellite.arguments, and satellite.main may be handed it by a name of its own
    satl --rebuild. satl --config [most] measures once how many threads this
    machine can hold and keeps the count in ~/.satl/machine.conf; until then
    satellite.arguments.threads answers the lowest of the thread limits the
-   system states.
+   system states. satellite.arguments.quantum.possible is worked out at every
+   start: the most qubits that can be tied together in quantum.ram plus
+   quantum.drive percent of the RAM, 16 bytes a pattern (32 on a machine of
+   64 GB at 65 and 65), and quantum.possible.ram the same in RAM alone. The
+   author's quantum.max, 128, is read and never written.
 
 satellite.main hands a program all of it as ONE variable, when main asks for it
 by declaring it -- satellite.main() with nothing between its brackets asks for
@@ -95,10 +101,11 @@ satellite.arguments.infinity = 256 is the same line as
 satellite.arguments.infinity(256), with the same rule. A switch takes true or
 false (bare, or satellite.bool.false), a count a whole number (infinity,
 infinity_display, infinity.counter, float.whole, float.decimal and
-display.buffer at least 1), and directory.default and log_path a folder or a
+display.buffer at least 1; quantum.ram and quantum.drive 1 to 100, percentages
+of the machine's RAM), and directory.default and log_path a folder or a
 path in quotes. A setting satl reads as it starts -- startup_display,
-directory.default, display.buffer -- is read before any file is, so a line in
-a file is refused for it: it is
+directory.default, display.buffer, quantum.ram, quantum.drive -- is read
+before any file is, so a line in a file is refused for it: it is
 changed at the prompt, for every run after. A file run from
 the prompt (interpret file.satl) is a satl of its own, so what that file
 changes for its run never reaches the prompt.

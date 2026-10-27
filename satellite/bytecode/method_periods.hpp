@@ -231,7 +231,10 @@ inline satelliteObject::Kind kind_a_method_answers(satelliteObject::Kind receive
                                                   : O::how_many_kinds;
 
     case O::time:
-        return method == token::to_string_token ? O::string : O::how_many_kinds;   // its text, as shown
+        // Its text, as shown; and .satellite.time.convert(unit), the same length as a new time (TIME-1).
+        return method == token::to_string_token      ? O::string
+               : method == token::time_convert_token ? O::time
+                                                     : O::how_many_kinds;
 
     case O::boolean:
         // .add IS + on a bool, and + joins a bool only with text -- so it answers text (his A, 2026-10-11).

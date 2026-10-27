@@ -28,6 +28,7 @@
 #include "../satellite_object/object_lock.hpp"
 #include "../machine/console_lock.hpp"
 #include "../machine/s_codes.hpp"
+#include "../machine/source_position.hpp"
 #include "../machine/thread_stop.hpp"
 #include "main_arguments.hpp"
 #include "setting_writes.hpp"
@@ -283,6 +284,32 @@ Value apply(Code op, std::size_t op_at, const Value &left, const Value &right, E
     return answer;
 }
 
+// A REFUSAL ON ** NAMES ** (ERRORS4 069): `0 ** -1` was "the ^ of 0 and -1", a sign the line does not hold. The
+// lexer makes a spaced ** and ^ one power_token (bytecode_registry.cpp), so every sentence the object model builds
+// says ^; the sign is read back from the loaded text under `op_at`, as method_as_written reads a method
+// (source_position.hpp), and each spaced ^ of the sentence -- "the ^ of", "^ was given", "an infinity's ^ is" --
+// becomes **. Asked only once the power has refused. A line typed at the prompt has no loaded text, and keeps ^.
+// NOT FOR AN ERROR AN ERROR BLOCK WILL CATCH, as raise_at builds nothing for one (s_codes.hpp): its sentence is never
+// shown, and a loop catching 0 ** n ran a third slower reading the line back each time.
+void power_as_written(const std::vector<std::bitset<16>> &row, std::size_t op_at, ExpressionContext &context)
+{
+    if (held_for_an_error_block(context.code))
+        return;
+    const MachineState &state = context.state;
+    if (state.program == nullptr || state.program_files == nullptr)
+        return;
+    const std::size_t which = row_index_of(state.program, row);
+    if (which >= state.program_files->size())
+        return;
+    const SourcePlace place = place_of(*state.program, *state.program_files, which, op_at);
+    if (place.column >= place.text.size() || place.text.compare(place.column, 2, "**") != 0)
+        return;
+    std::string &why = context.why;
+    for (std::size_t at = why.find('^'); at != std::string::npos; at = why.find('^', at + 2))
+        if ((at == 0 || why[at - 1] == ' ') && at + 1 < why.size() && why[at + 1] == ' ')
+            why.replace(at, 1, "**");
+}
+
 // THE RESERVED HALF OF EACH OPERATOR, refused in its own words. The author's
 // rule is that every math operation is written space-sign-space, so a TOUCHING
 // sign is not that operation -- and a language that quietly answered 5 for `2+3`
@@ -326,9 +353,9 @@ bool refuse_if_reserved(const std::vector<std::bitset<16>> &row, Code code, std:
         ++at;
         return true;
     }
-    context.refuse(satl_line_not_understood,
-                   std::string("every math operation is written with a space on both sides of the sign, and this ") +
-                       sign + " has none");
+    // ON THE SIGN (ERRORS4 068), as the ** branch above puts it: without `at` a caret inside a call fell back to
+    // column 0.
+    context.refuse(satl_line_not_understood, touching_sign_why(row, at), at);
     ++at;
     return true;
 }
@@ -488,6 +515,12 @@ Value call_method(const std::vector<std::bitset<16>> &row, std::size_t &at, cons
         // name only the first part.
         if ((*live).is_window() && a_word_in_parts(row, at)) {
             context.refuse(satl_line_not_understood, word_in_parts_written_wrong(row, at, name));
+            return Value();
+        }
+        // AND A TIME'S PART WRITTEN ALONE (TIME-1, time_calls.hpp): `.satellite.time` is the start of
+        // .satellite.time.convert(unit), which the lexer reads as one word, and runs nothing of its own.
+        if ((*live).is_time() && a_time_part(row, at)) {
+            context.refuse(satl_line_not_understood, time_part_written_alone(name));
             return Value();
         }
         const Code method = code_at(row, at + 1);
@@ -1269,7 +1302,39 @@ Value after_an_argument(const std::vector<std::bitset<16>> &row, std::size_t &at
             return Value();
         return call_method(row, at, *slot, what, context, slot, inner);
     }
-    return maybe_a_method(row, at, std::move(current), "that argument", context);
+    // THE ROW AS WRITTEN, args.argument3 or args.l[...], names what a method refuses (ERRORS4 067): "that argument"
+    // named nothing the program says, and two rows on one line could not be told apart.
+    return maybe_a_method(row, at, std::move(current), what.c_str(), context);
+}
+
+// WHAT STANDS AFTER AN ITEM, WHERE A , OR A } BELONGS, `at` on it. When a } closes this { further along the
+// statement, it is the next item, written with no comma before it -- {"one" "two"} closes its {, and was refused
+// as never closing it (ERRORS4 058). With no } before the statement ends -- a ) or a ] next, or a line the
+// prompt joined on -- the { is left open, and that is still what is said. A code no value begins with -- a ), a ],
+// a :, an =, a ; -- is no item either way.
+bool the_next_item_is_here(const std::vector<std::bitset<16>> &row, std::size_t at)
+{
+    const Code next = code_at(row, at);
+    const bool a_value_begins =
+        next == token::string_token || next == token::number_token || next == token::hexadecimal_token ||
+        next == token::binary_token || next == token::percentage_token || next == token::time_token ||
+        next == token::name_token || word::is_word_code(next) || next == token::left_brace_token ||
+        next == token::left_parenthesis_token || next == token::tight_minus_token || next == token::not_token;
+    if (!a_value_begins)
+        return false;
+    std::size_t depth = 0;
+    while (at < row.size()) {
+        const Code code = code_at(row, at);
+        if (code == token::line_end_token || code == token::end_of_file_token)
+            return false;
+        if (token::carries_a_count(code)) { skip_payload(row, at); continue; }
+        if (code == token::left_brace_token)
+            ++depth;
+        else if (code == token::right_brace_token && depth-- == 0)
+            return true;
+        ++at;
+    }
+    return false;
 }
 
 // `{"zoe": 30, "al": 4}` -- A MAP WRITTEN WHOLE (2026-09-26), `at` on the first `:`,
@@ -1315,6 +1380,12 @@ Value map_literal(const std::vector<std::bitset<16>> &row, std::size_t &at, std:
                 return Value();
             if (code_at(row, at) == token::colon_token)
                 continue;
+        } else if (the_next_item_is_here(row, at)) {
+            context.refuse(satl_line_not_understood,
+                           "these two entries have no comma between them -- entries are separated by commas, as in "
+                           "{\"zoe\": 30, \"al\": 4}",
+                           at);
+            return Value();
         }
         context.refuse(satl_line_not_understood,
                        "this map was opened with { and never closed with } -- each entry is a key, a : and "
@@ -1517,6 +1588,14 @@ Value one_operand(const std::vector<std::bitset<16>> &row, std::size_t &at, Expr
                 ++at;
                 break;
             }
+            // TWO ITEMS WITH NO COMMA BETWEEN THEM, the caret under the second (ERRORS4 058).
+            if (the_next_item_is_here(row, at)) {
+                context.refuse(satl_line_not_understood,
+                               "these two items have no comma between them -- items are separated by commas, as in "
+                               "{\"one\", \"two\"}",
+                               at);
+                return Value();
+            }
             // THE UNCLOSED LIST, named at the brace that opened it rather than
             // at the end of the line -- the `{` is what the person has to look
             // at, and the caret should be under it.
@@ -1647,11 +1726,17 @@ Value one_operand(const std::vector<std::bitset<16>> &row, std::size_t &at, Expr
     // a word said, because nothing here looked for the `.` after the `)`.
     if (word::is_word_code(code) && code_at(row, at + 1) == token::left_parenthesis_token) {
         const std::string spelled(word::spelling_of(code));
+        // NAMED WITH ITS BRACKETS, as the checker names it (program_check.cpp, the words after a word's answer),
+        // so a sentence said when the line runs is the one said before anything runs (the fresh read of TIME-1,
+        // 2026-10-26): satellite.time.now().satellite.time.convert, satellite.time.second(...).satellite.time.convert.
+        // Read before call_word moves `at` past the brackets, where they can no longer be seen.
+        const bool given_nothing = code_at(row, at + 2) == token::right_parenthesis_token;
         Value answer = call_word(row, at, context);
         if (context.code != success)
             return Value();
         if (a_method_period(code_at(row, at)) && token::is_method_code(code_at(row, at + 1)))
-            return call_method(row, at, answer, spelled.substr(0, spelled.find('(')), context);
+            return call_method(row, at, answer, spelled.substr(0, spelled.find('(')) + (given_nothing ? "()" : "(...)"),
+                               context);
         return answer;
     }
 
@@ -2061,6 +2146,8 @@ Value evaluate_at(const std::vector<std::bitset<16>> &row, std::size_t &at, int 
             }
         }
         left = apply(op, op_at, left, right, context);
+        if (op == token::power_token && context.code != success)
+            power_as_written(row, op_at, context);
     }
     return left;
 }
@@ -2070,7 +2157,8 @@ Value evaluate_at(const std::vector<std::bitset<16>> &row, std::size_t &at, int 
 // display's library made it here before. What can be REFUSED is decided here, on this line:
 // every kind below takes its text without refusing, and a container's text is made here, so a
 // list holding a file is refused where it is written, and a window's text reads its window on
-// the thread that owns it.
+// the thread that owns it. A FILE IS ASKED THE SAME WAY (ERRORS4 066): it has two strings and refuses
+// to choose, S301 with its sentence, as a list holding it was -- and not S210, which says display is not built.
 Value display_plainly(Code code, Value &&argument, ExpressionContext &context)
 {
     signed long long int answer = success;
@@ -2079,7 +2167,7 @@ Value display_plainly(Code code, Value &&argument, ExpressionContext &context)
         argument.is_float() || argument.is_fraction() || argument.is_time()) {
         answer = display_value(std::move(argument));
     } else if (argument.is_list() || argument.is_index() || argument.is_window() || argument.is_thread() ||
-               argument.is_program()) {
+               argument.is_program() || argument.is_file()) {
         satellite_string written;
         std::string why;
         const signed long long int made = argument.to_string(written, why);
@@ -2286,8 +2374,8 @@ Value call_word(const std::vector<std::bitset<16>> &row, std::size_t &at, Expres
         // is the interpreter's own, one a thread (random_calls.hpp).
         if (is_random_word(code))
             return call_random_word(code, arguments, context);
-        // ...and satellite.time's: second(n), millisecond(n) and nanosecond(n) answer a TIME, and sleep
-        // waits on this thread (time_calls.hpp) -- HERE, before the console lock below is taken, so a
+        // ...and satellite.time's: second(n), millisecond(n), nanosecond(n) and now(unit) answer a TIME, and
+        // sleep waits on this thread (time_calls.hpp) -- HERE, before the console lock below is taken, so a
         // thread that sleeps never holds up another thread's lines.
         if (is_time_word(code))
             return call_time_word(code, arguments, context);
@@ -2478,9 +2566,9 @@ Value call_word(const std::vector<std::bitset<16>> &row, std::size_t &at, Expres
     // same reason a container reads back as what was typed: the one thing a person
     // displays a window for is to see which one they have hold of. Same branch as
     // the containers, because satellite_object.cpp's to_string is the one spelling
-    // for all of them.
+    // for all of them. A FILE IS ASKED HERE TOO, and refuses as it does in a list (ERRORS4 066).
     else if ((argument.is_list() || argument.is_index() || argument.is_window() || argument.is_thread() ||
-              argument.is_program()) &&
+              argument.is_program() || argument.is_file()) &&
              scenarios->text != nullptr) {
         satellite_string written;
         std::string why;
@@ -2604,6 +2692,7 @@ signed long long int write_through_index(Value &root, const std::vector<Value> &
             satelliteIndex &body = about_to_change(*keys);
             satelliteMapEntry &entry = entry_for_writing(body, key_name, indices[step]);
             if (step + 1 == indices.size()) {
+                stored_as(*inside, value);   // m["b"] = x1F into a number is 31, as a name's is (ERRORS4 017)
                 if (inside->word != 0 && !value_fits(*inside, value, unfit)) {
                     context.refuse(types_do_not_meet,
                                    "the value does not fit: " + unfit, where);
@@ -2660,6 +2749,7 @@ signed long long int write_through_index(Value &root, const std::vector<Value> &
                                            ? &here->parameters[0] : &kAnything;
         if (step + 1 == indices.size()) {
             std::string unfit;
+            stored_as(*inside_list, value);   // t[1] = b101 into a number is 5, as a name's is (ERRORS4 017)
             if (inside_list->word != 0 && !value_fits(*inside_list, value, unfit)) {
                 context.refuse(types_do_not_meet,
                                what + "[" + std::to_string(position) + "] does not fit: " + unfit, where);
@@ -2806,6 +2896,23 @@ std::string name_not_declared_why(const std::string &name)
     if (name == kTheOldBareArguments)
         why += " -- the run's own arguments are satellite.arguments now: satellite.arguments.username";
     return why;
+}
+
+std::string touching_sign_why(const std::vector<std::bitset<16>> &row, std::size_t at)
+{
+    const Code code = code_at(row, at);
+    const char *sign = code == token::tight_plus_token    ? "+"
+                       : code == token::tight_times_token ? "*"
+                       : code == token::tight_power_token ? "^"
+                                                          : "%";
+    // NOTHING AFTER IT (ERRORS4 068): `display(n +)` has its space before the + and the ) after it, so "has none"
+    // was false, and the value it lacks is the mistake. 0 is past the row's end.
+    const Code next = code_at(row, at + 1);
+    const bool nothing_after = next == token::right_parenthesis_token || next == token::right_square_bracket_token ||
+                               next == token::right_brace_token || next == token::comma_token ||
+                               next == token::line_end_token || next == 0;
+    return std::string("every math operation is written with a space on both sides of the sign, and this ") + sign +
+           (nothing_after ? " has nothing after it" : " has none");
 }
 
 } // namespace satellite004

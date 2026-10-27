@@ -37,7 +37,7 @@ Value method(const Value &, Value *home, const TypeShape *, const std::vector<Va
     // program that removes the wrong thing tells you, and a program that
     // removes nothing does not. `.contains(x)` is how you ask first.
     for (std::size_t at = 0; at < body->items.size(); ++at) {
-        if (body->items[at] == arguments.front()) {
+        if (same_item(body->items[at], arguments.front())) {   // as == asks it (ERRORS4 010)
             body->items.erase(body->items.begin() + static_cast<std::ptrdiff_t>(at));
             return *home;
         }

@@ -1,5 +1,7 @@
 # 010 -- List item matching (.contains, .index_of, .remove, list == list, index == index) never matches values of different kinds that == calls equal: a[3] == 3.0 is true, but a.contains(3.0) is false
 
+**FIXED 2026-10-25** (open-work round 2 r1): same_item (satellite_object.cpp) asks compare(), as `==` does, when two kinds of number meet: .contains, .index_of, .remove and the list and index arms of container == use it, so {1, 2, 3}.contains(3.0) is true, index_of(3.0) is 3, {1, 2, 3} == {1, 2, 3.0} and remove(3.0) takes the 3. operator== itself is unchanged, and a binary's width still counts.
+
 **Found:** 2026-09-26, satl 004 revision 08 build 0099 (/home/madness/code/cxx/satellite/build/satl), by running ordinary programs against it.  
 **Area:** lists  
 **Kind:** wrong-answer  

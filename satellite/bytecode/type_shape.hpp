@@ -80,10 +80,19 @@ inline std::string suit_written(const TypeShape &shape)
 }
 
 // WHAT A SHAPE WAS WRITTEN AS, for a sentence: the word, or the spacesuit's name --
-// never "satellite.spacesuit", which is the word standing in for every one of them.
+// never "satellite.spacesuit", which is the word standing in for every one of them --
+// AND WHAT IS BETWEEN ITS < AND >, since a bare satellite.container.list holds anything:
+// "a was declared satellite.container.list, and item 2 of it does not fit" named a list
+// that would have taken it (ERRORS4 061). A multiple is written bare: its refusal names
+// its arms already (any_of_fits), and naming them twice says nothing new.
 inline std::string shape_written(const TypeShape &shape)
 {
-    return shape.is_a_suit() ? suit_written(shape) : std::string(word::spelling_of(shape.word));
+    std::string written = shape.is_a_suit() ? suit_written(shape) : std::string(word::spelling_of(shape.word));
+    if (shape.parameters.empty() || shape.word == word::code_of(1, 4, 6))
+        return written;
+    for (std::size_t at = 0; at < shape.parameters.size(); ++at)
+        written += (at == 0 ? "<" : ", ") + shape_written(shape.parameters[at]);
+    return written + ">";
 }
 
 // satellite.container.map (1 4 1) IS satellite.container.index (1 4 5), since
@@ -154,17 +163,39 @@ inline int parameters_wanted(token::Code word)
 // have made every list declaration longer to say nothing new.
 bool value_fits(const TypeShape &shape, const satelliteObject &value, std::string &why);
 
+// WHAT A VALUE BECOMES IN A PLACE OF THIS SHAPE, ASKED BEFORE value_fits AT EVERY WAY IN (ERRORS4 017): a binary
+// or a hex given to a number is its worth, a number given to a float is the float -- run_assignment's conversions,
+// made for a parameter, a for's number, `a[n] =`, `m[k] =`, .append and .insert too, and for every item of a
+// list<...> and every value of an index<..., ...>. A value the place refuses is left as it is, for value_fits to
+// name; an object is left alone, and so is a multiple's value unless one arm is of its kind (arm_holding), which
+// it then goes in as. True when it changed anything.
+bool stored_as(const TypeShape &shape, satelliteObject &value);
+
 // WHAT AN INFINITY NAME TAKES, said after "x was declared satellite.variable.infinity, and it holds ..." by the checker
 // (program_check.cpp's literal_fits_the_name) and the walker (value_fits) alike -- the author's H of 2026-10-11:
 // "= 5 is an error, the correct syntax should be a minimum of infinity".
 inline constexpr const char *kAMinimumOfInfinity = " -- an infinity name holds a minimum of infinity, satellite.infinity()";
 
-inline bool any_of_fits(const std::vector<TypeShape> &shapes, const satelliteObject &value, std::string &why)
+// THE REASON OF THE ONE ARM OF THE VALUE'S OWN KIND IS KEPT (ERRORS4 078): multiple<number, map<string, number>>
+// given {"a": "b"} said "it holds an index, and this name takes ... or satellite.container.map" -- a map it does
+// take, so no reason at all. It says "it holds an index, and a value of it does not fit: it holds a string" now.
+// TWO ARMS OF ONE KIND are not chosen between and keep the list: the arm is arm_holding's (below), which counts them
+// through multiples of multiples, so multiple<list<number>, multiple<bool, list<string>>> given {1, "x"} is not told
+// its item 2 does not fit -- a list of strings is one it takes.
+const TypeShape &arm_holding(const TypeShape &shape, const satelliteObject &value);
+inline bool any_of_fits(const TypeShape &multiple, const satelliteObject &value, std::string &why)
 {
+    const std::vector<TypeShape> &shapes = multiple.parameters;
     for (const TypeShape &one : shapes) {
         std::string ignored;
         if (value_fits(one, value, ignored))
             return true;
+    }
+    const TypeShape &held = arm_holding(multiple, value);
+    std::string its_reason;
+    if (&held != &multiple && !held.is_a_suit() && !value_fits(held, value, its_reason) && !its_reason.empty()) {
+        why = "it holds " + std::string(value.kind_name()) + ", and " + its_reason;
+        return false;
     }
     std::string names;
     for (std::size_t at = 0; at < shapes.size(); ++at) {
@@ -201,5 +232,10 @@ const TypeShape &arm_holding(const TypeShape &shape, const satelliteObject &valu
 // to close. Both defined in type_shape.cpp.
 bool read_type_shape(const std::vector<std::bitset<16>> &row, std::size_t &at, TypeShape &out,
                      unsigned int &pending_closes, std::string &why);
+
+// THE WORD A MISSPELLING MOST LIKELY MEANT -- `known` satellite.variable and `typed` strng answer
+// satellite.variable.string -- or "" when none is close. Asked by read_type_shape and by
+// program_check.cpp, wherever a word is followed by a name the table does not have.
+std::string word_it_most_likely_meant(const std::string &known, const std::string &typed);
 
 } // namespace satellite004

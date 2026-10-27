@@ -15,6 +15,7 @@
 //     p.satellite.string   p.satellite.add(x)                                                  percentage 1 6 16 1-2
 //     t.satellite.string                                                                       bool       1 6 6 1
 //     d.satellite.string                                                                       time       1 6 3 1
+//     d.satellite.time.convert(unit), one word of two parts (TIME-1, 2026-10-26)               time       1 6 3 2 1
 //
 // WHAT EACH ANSWERED THE DAY IT WAS NUMBERED, AND EVERY ROW 003 ALREADY HAD -- nothing more. Where 003 has two
 // rows for one code, the row the code runs is the one strings run (1 6 1 19-22: `.string`, `.number`,

@@ -1,5 +1,7 @@
 # 056 -- A string + an infinity is refused with the generic "no scenario for that pair" and no .string hint, although infinity.string() joins and a colour gets the hint
 
+**FIXED 2026-10-25** (open-work round 2 r1): add() (satellite_object.cpp) answers a string and an infinity, either order, with the colour's sentence: "+ was given a string and an infinity -- an infinity is not text; .satellite.string on it is its text, to join". Still S301, exit 27.
+
 **Found:** 2026-09-26, satl 004 revision 08 build 0099 (/home/madness/code/cxx/satellite/build/satl), by running ordinary programs against it.  
 **Area:** number string conversion  
 **Kind:** inconsistency  

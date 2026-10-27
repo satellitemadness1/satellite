@@ -89,7 +89,7 @@ inline std::vector<satellite_argument_row> return_arguments_vector()
     arguments_vector.push_back({"arguments.missing", 0, true, true});
     arguments_vector.push_back({"arguments.version", 4, false, false});
     arguments_vector.push_back({"arguments.revision", 11, false, false});
-    arguments_vector.push_back({"arguments.build", 9, false, false});
+    arguments_vector.push_back({"arguments.build", 21, false, false});
     arguments_vector.push_back({"arguments.object_bytes_max", 34359738368, false, false});
     arguments_vector.push_back({"arguments.threads_max", 1000000, false, false});
     // HOW MANY WARM THREADS START: THE MACHINE'S CORES TIMES THIS (the author, 2026-10-03): "set
@@ -151,6 +151,19 @@ inline std::vector<satellite_argument_row> return_arguments_vector()
     // newest console files in ~/.satl/console. Read when a console starts (satl/console_files.hpp); KEY-10
     // makes it a setting a person changes.
     arguments_vector.push_back({"arguments.input.cache", 32, false, false});   // mb: 32 x 1024 x 1024 bytes
+
+    // QUANTUM BITS, AND THEIR CONFIG FIRST (QUANTUM_PLAN.md QUANTUM-0; the author, 2026-10-25: "we need to add to
+    // config a few things before we even begin"). A quantum value holds every pattern of its qubits at once, 16
+    // bytes a weight. arguments.quantum.ram -- also spelled .memory -- is how much of the machine's RAM it may take,
+    // in percent, and arguments.quantum.drive -- or .disk -- how much more on disk, a percentage of the RAM again:
+    // settings a person changes at the prompt (satellite/arguments/argument_settings.hpp), 1 to 100. From them satl
+    // works out arguments.quantum.possible at every start (arguments.cpp). arguments.quantum.max = 128, "no matter
+    // what machine you're on", is the author's row, read and never written, and QUANTUM-1's to enforce; that it is
+    // the most qubits ONE satellite.quantum.new(n) takes is the plan's reading, not yet his (QUANTUM_PLAN.md
+    // Section 6). (His 64, answered the same day, is the most quantum VALUES a program holds at once, and no row yet.)
+    arguments_vector.push_back({"arguments.quantum.ram", 65, false, false});     // percent of the RAM, in memory
+    arguments_vector.push_back({"arguments.quantum.drive", 65, false, false});   // percent of the RAM, on disk
+    arguments_vector.push_back({"arguments.quantum.max", 128, false, false});    // qubits
 
     return(arguments_vector);
 }

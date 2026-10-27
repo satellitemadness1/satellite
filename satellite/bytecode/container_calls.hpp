@@ -332,7 +332,8 @@ Value call_container_word(token::Code code, const std::vector<Value> &arguments,
 // WHAT AN INDEX SAYS TO .sum .max .min .join AND .reserve, or "" for any other
 // method: which half to ask (`scores.satellite.values.satellite.sum`), or that room is a list's -- and
 // to .by_name() and .by_value(), that a map is put in order by .satellite.sort("key") and
-// .satellite.sort("value"). ONE
+// .satellite.sort("value"); and to .append .insert .remove_at .truncate .index_of and .search, that
+// it has keys and not positions (ERRORS4 077). ONE
 // SENTENCE FOR THE CHECKER AND THE WALKER, so a name declared an index is refused
 // before anything runs and a value that turns out to be one is refused in the same
 // words.

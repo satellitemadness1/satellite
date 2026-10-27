@@ -1,5 +1,7 @@
 # 084 -- A thread joining itself is refused as S110 LINE_NOT_UNDERSTOOD, not S728 WAIT_NEVER_ENDS
 
+**FIXED 2026-10-25** (open-work round 2 r2): join (thread_calls.cpp) refuses a thread waiting for itself as wait_never_ends, S728, exit 63. check.sh row "ERRORS4 084: ...".
+
 **Found:** 2026-09-26, satl 004 revision 08 build 0099 (/home/madness/code/cxx/satellite/build/satl), by running ordinary programs against it.  
 **Area:** threads  
 **Kind:** misleading-refusal  

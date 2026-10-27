@@ -205,4 +205,16 @@ class satellite_string;   // satellite_variable_string/satellite_string.hpp
 signed long long int string_literal_at(const std::vector<std::bitset<16>> &row, std::size_t &at,
                                        satellite_string &out, std::size_t &bad_character);
 
+// A METHOD'S CODE AFTER A PLAIN PERIOD: every [METHOD] spelling's but the part `time` (TIME_PLAN.md TIME-1, the
+// fresh read of 2026-10-26). That part is read only after `.satellite.`, where .satellite.time.convert(unit) begins
+// with it; after a plain period it stays a name, as it was through BUILD 0017, so a widget, a row of the arguments
+// and an object's field or capsule may still be called time. The lexer asks this, and so do the two readers that
+// judge a name as the lexer will read it after a dot -- a widget's name (window_shapes.cpp's a_widget_name_fits)
+// and a row of the arguments (main_arguments.cpp) -- so the three cannot come to disagree.
+inline token::Code method_code_after_a_plain_period(std::string_view spelling)
+{
+    const token::Code method = token::method_code_of(spelling);
+    return method == token::time_piece_token ? 0 : method;
+}
+
 } // namespace satellite004

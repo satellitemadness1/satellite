@@ -1,5 +1,7 @@
 # 046 -- A not-built method on a list item or on a method's answer (names[1].size, a.join(", ").size) is refused only at run time, and the refusal names the list (names.size), which is a built word
 
+**FIXED 2026-10-25** (open-work round 2 c1): item_periods (program_check.cpp) judges an item's word by the kind its list was declared to hold, as a name of that kind is: a number's count and .sqrt by number_method_check (nums[1].satellite.sqrt(), nums[1].satellite.max()), and a scalar's word with nothing built behind it by scalar_word_not_built (bs[1].satellite.width) -- before anything runs. The head-name half of this page was fixed before (the run says nums[...]). check.sh rows "046: ...".
+
 **Found:** 2026-09-26, satl 004 revision 08 build 0099 (/home/madness/code/cxx/satellite/build/satl), by running ordinary programs against it.  
 **Area:** lists  
 **Kind:** misleading-refusal  

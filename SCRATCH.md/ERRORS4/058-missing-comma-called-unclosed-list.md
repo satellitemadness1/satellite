@@ -1,5 +1,7 @@
 # 058 -- A list or map literal with a comma missing between two items is refused as "opened with { and never closed with }", though the line closes it
 
+**FIXED 2026-10-25** (open-work round 2 r1): expression.cpp's list loop and map_literal say "these two items (entries) have no comma between them", the caret under the second, when a } closes the { further along the statement; a { really left open (a line's end, a ), a ], or a line the prompt joined on) is still told it was never closed, and so is a next code no value begins with ({"a" = 1, "b" = 2}, {1; 2}). check.sh's U+0700 row now pins the new sentence.
+
 **Found:** 2026-09-26, satl 004 revision 08 build 0099 (/home/madness/code/cxx/satellite/build/satl), by running ordinary programs against it.  
 **Area:** lists  
 **Kind:** misleading-refusal  

@@ -251,9 +251,9 @@ satelliteList *list_to_change(Value *home, const std::string &name, const char *
     return &about_to_change(*handle);
 }
 
-// A POSITION OR A COUNT GOING IN: .insert's, .remove_at's and .truncate's item number, and
-// .reserve's count of items (`a_count_of_items`) -- a whole number no less than 0, read the same
-// way for all four. `written` is the number as the program wrote it, for the refusals.
+// A POSITION OR A COUNT GOING IN: .insert's and .remove_at's item number, and .truncate's and
+// .reserve's count of items (`a_count_of_items`; ERRORS4 063) -- a whole number no less than 0, read
+// the same way for all four. `written` is the number as the program wrote it, for the refusals.
 bool position_argument(const Value &given, bool a_count_of_items, const std::string &name, const char *method,
                        unsigned long long int &position, std::string &written, ExpressionContext &context)
 {
@@ -299,6 +299,22 @@ std::string index_refuses(token::Code method, const std::string &name)
     }
     if (method == token::reserve_token)
         return "an index makes its room as keys arrive; .satellite.reserve(n) is a list's";
+    // AND THE ONES THAT COUNT ALONG POSITIONS (a_position_method), so a name declared one is refused before anything
+    // runs, where `age.append(4)` printed the lines above it first (ERRORS4 077). Its keys are suggested only to the
+    // two that change nothing: `age.satellite.keys.satellite.insert(...)` would change a list nothing holds, and is
+    // refused itself (ERRORS4 075).
+    // A DICT HAS NO POSITIONS, so the methods that count along one are refused
+    // rather than given an order to count along. ITS KEYS ARE SUGGESTED ONLY FOR .index_of AND .search
+    // (ERRORS4 075), which change nothing: .satellite.keys answers a list no name holds, and
+    // age.satellite.keys.satellite.insert(...) was itself refused, "this one has no name to change".
+    if (a_position_method(method)) {
+        if (method == token::append_token)
+            return "an index has keys and not positions: write " + name + "[key] = value";
+        if (method == token::index_of_token || method == token::search_token)
+            return "an index has keys and not positions, so nothing counts along it. Take its keys first: " + name +
+                   ".satellite.keys.satellite." + name_of(method) + "(...)";
+        return "an index has keys and not positions";
+    }
     // THEY ORDERED THE KEYS AND ANSWERED A LIST OF THEM (ERRORS4 page 012), so a
     // word count ranked "by value" came out a to z. A map has its own words for
     // that now, which order its entries and answer the map. NO NAME IN THE SENTENCE:
@@ -757,17 +773,6 @@ Value call_container_method(token::Code method, Value &receiver, Value *home, co
     if (arity < 0) {
         context.refuse(types_do_not_meet,
                        what + " -- a container has no " + name_of(method) + " (" + what_containers_have() + ")");
-        return Value();
-    }
-    // A DICT HAS NO POSITIONS, so the methods that count along one are refused
-    // rather than given an order to count along.
-    if (is_index && a_position_method(method)) {
-        context.refuse(types_do_not_meet,
-                       what + " -- an index has keys and not positions" +
-                           (method == token::append_token
-                                ? std::string(": write ") + name + "[key] = value"
-                                : std::string(", so nothing counts along it. Take its keys first: ") + name +
-                                      ".satellite.keys.satellite." + name_of(method) + "(...)"));
         return Value();
     }
     {

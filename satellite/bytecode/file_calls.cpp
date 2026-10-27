@@ -309,6 +309,10 @@ const char *so_far_whose(token::Code method)
     // .ok() IS A FILE'S, A PROGRAM'S AND EVERY OBJECT'S (pointer_calls.hpp) -- it said a file's alone.
     if (method == token::ok_token)
         return "so far a file, a program and an object have it";
+    // .lock() AND .unlock() ARE A FILE'S AND EVERY OBJECT'S (pointer_calls.hpp, 1 10 4 and 1 10 5) -- they said a
+    // file's alone (ERRORS4 049), where the spacesuit help gives every object its satellite.lock().
+    if (method == token::lock_token || method == token::unlock_token)
+        return "so far a file and an object have it";
     // A HEX'S .width (a window's too), A COLOUR'S .transparency AND A FRACTION'S TWO NUMBERS (scalar_calls.hpp)
     // -- each said "no type has it" since the four types of 2026-09-22 gave them one (2026-10-11).
     if (method == token::width_token)

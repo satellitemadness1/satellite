@@ -26,7 +26,7 @@ Value method(const Value &receiver, Value *, const TypeShape *, const std::vecto
     std::vector<satelliteObject> borrowed;
     const std::vector<satelliteObject> *items = items_of(receiver, borrowed);
     for (const satelliteObject &item : *items)
-        if (item == arguments.front())
+        if (same_item(item, arguments.front()))   // as == asks it (ERRORS4 010)
             return Value::of_bool(true);
     return Value::of_bool(false);
 }

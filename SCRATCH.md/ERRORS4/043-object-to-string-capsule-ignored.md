@@ -1,5 +1,7 @@
 # 043 -- Displaying or joining a list of objects whose spacesuit declares to_string() is refused because "an object has no to_string capsule"
 
+**FIXED 2026-10-25** (open-work round 2 r1): the object and pointer arms of to_string (satellite_object.cpp) say "showing an object as text is not built yet; display what one of its own capsules answers", for display and .join alike, instead of claiming the spacesuit has no to_string capsule. Calling the capsule from there is still not built.
+
 **Found:** 2026-09-26, satl 004 revision 08 build 0099 (/home/madness/code/cxx/satellite/build/satl), by running ordinary programs against it.  
 **Area:** spacesuits and library  
 **Kind:** misleading-refusal  

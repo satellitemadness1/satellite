@@ -1,5 +1,7 @@
 # 050 -- A misspelled satellite word gets "did you mean" only at the start of a statement: as a type inside <...> or as a parameter type it is "<prefix> is not a type", and in value position (satellite.bool.flase) it is an undeclared variable
 
+**FIXED 2026-10-25** (open-work round 2 c1): word_it_most_likely_meant moved to type_shape.cpp; read_type_shape says a word, a dot and a name between < and > or in a capsule's brackets as the statement-start arm does -- "satellite.variable has no word named strng -- did you mean satellite.variable.string?" -- and names_in_statement says the same of one where a value goes (satellite.bool.flase, satellite.console.widht), S110, not S201 "flase has no satellite.variable line". check.sh rows "050: ...".
+
 **Found:** 2026-09-26, satl 004 revision 08 build 0099 (/home/madness/code/cxx/satellite/build/satl), by running ordinary programs against it.  
 **Area:** binary hex color infinity bool, lists  
 **Kind:** misleading-refusal  

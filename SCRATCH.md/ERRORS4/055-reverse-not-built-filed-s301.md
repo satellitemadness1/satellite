@@ -1,5 +1,7 @@
 # 055 -- .reverse() on a float or a fraction is refused as "not built yet" but filed as S301 TYPES_DO_NOT_MEET (exit 27) rather than S210 (exit 14), and only when its line runs
 
+**FIXED 2026-10-25** (open-work round 2 c1): scalar_word_not_built (program_check.cpp) refuses a float's and a fraction's .satellite.reverse(), which have no method_call, before anything runs (S210, exit 14) in the run's sentence -- on a name, a literal (12.34.satellite.reverse(), 1/3.satellite.reverse()) and a typed list's item. The S-code half was fixed before. check.sh rows "055: ...".
+
 **Found:** 2026-09-26, satl 004 revision 08 build 0099 (/home/madness/code/cxx/satellite/build/satl), by running ordinary programs against it.  
 **Area:** number string conversion  
 **Kind:** misleading-refusal  

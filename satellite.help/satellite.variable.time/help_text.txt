@@ -42,4 +42,29 @@ example:
         satellite.return(satellite)
     }
 
+.satellite.time.convert(unit) is the same length, shown in another unit:
+"seconds" or "s", "milliseconds" or "ms", "nanoseconds" or "ns" -- the six that
+satellite.time.now takes -- and nothing between the brackets is the nanosecond.
+Every nanosecond is kept, so 1s == 1s.satellite.time.convert("ms") is true. It
+answers a new time and leaves the name as it was, as a list's
+.satellite.reverse() answers a reversed list and leaves the list alone; to
+change the name, give it back:
+
+    satellite.include(satellite)
+
+    satellite.capsule satellite.main()
+    {
+        satellite.variable.time waited = 1500ms
+        satellite.console.display(waited.satellite.time.convert("s"))  // 1.5s
+        waited = waited.satellite.time.convert("ns")
+        satellite.console.display(waited)                    // 1500000000ns
+        satellite.return(satellite)
+    }
+
+.satellite.time.convert is one word: .satellite.time written alone is only its
+start, and is refused. A unit that is not one of the six is refused with S301
+TYPES_DO_NOT_MEET, in satellite.time.now's sentence -- before anything runs
+when the unit is a literal and the time is a name, an item, a literal or a
+word's answer such as satellite.time.now(), and otherwise when its line runs.
+
 See satellite.help(satellite.time) for the words and the wait.

@@ -1,5 +1,7 @@
 # 014 -- satellite.access shows a string (a key, or a plain string name's value) without escaping " or \, and shows a tab or newline as \x09 / \x0a, a form satl refuses, so different strings look identical
 
+**FIXED 2026-10-25** (open-work round 2 r1): satellite.access writes a string as a program writes it, through as_a_literal (now declared in satellite_object.hpp): the key list says one of "a\"b", "t\tx", s's value is "q\"r", and "a\n" and "a\\x0a" are told apart. Only a control character with no escape is still shown \xNN.
+
 **Found:** 2026-09-26, satl 004 revision 08 build 0099 (/home/madness/code/cxx/satellite/build/satl), by running ordinary programs against it.  
 **Area:** maps and nesting, strings  
 **Kind:** wrong-answer  

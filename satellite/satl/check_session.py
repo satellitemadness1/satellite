@@ -169,24 +169,33 @@ t.type(b'\x03')
 # for it and the next line starts one level in; a spacesuit gets its constructor, and then its
 # protected and public sections as each } closes the one before; a } typed on a line that is
 # only indentation steps back first; what the block declares is kept, what it does runs.
+#
+# EACH LINE OF THE BLOCK WAITS FOR THE READER TO BE BACK -- an empty "..." -- as at_prompt() waits for an empty
+# prompt: the session writes the { for a line before the reader is reading again, and keys that arrive in
+# between were typed while a line ran, so D0.6.5 drops them. Typed without waiting, this check raced the reader
+# and lost a line now and then (2026-10-06: 1 run in 6 on build 0029, 3 in 4 on 0031). AND THE SPACESUIT'S AND
+# twice's LINES WAIT TOO (open-work round 2 r2, 2026-10-25): typed straight on, a } was dropped (11 runs in 150 of
+# this section alone, six at once beside a check.sh, build 0009; about 1 in 50 of the whole suite), every later
+# line sat in the open block, and d.call_speak() was never run.
+in_the_block = lambda: t.wait_for(lambda t: t.screen.text()[t.screen.row].strip() == '...')
 t.at_prompt()
-t.type(b'satellite.spacesuit dog()\r')
+t.type(b'satellite.spacesuit dog()\r'); in_the_block()
 check(t.wait_for('...     satellite.constructor()') and screen_order(t, '... {', '...     satellite.constructor()', '...     {'),
       'satellite.spacesuit dog() + Enter writes { and satellite.constructor() with its {')
-t.type(b'satellite.console.display("made")\r')
-t.type(b'}\r')
+t.type(b'satellite.console.display("made")\r'); in_the_block()
+t.type(b'}\r'); in_the_block()
 check(t.wait_for('...     satellite.protected') and screen_order(t, '...     }', '...     satellite.protected', '...     {'),
       '... the constructor\'s } steps back one level, and satellite.protected is written with its {')
-t.type(b'satellite.variable.string name = "Rex"\r')
-t.type(b'}\r')
+t.type(b'satellite.variable.string name = "Rex"\r'); in_the_block()
+t.type(b'}\r'); in_the_block()
 check(t.wait_for('...     satellite.public') and screen_order(t, '...     satellite.protected', '...     satellite.public'),
       '... and after protected\'s }, satellite.public with its {')
-t.type(b'satellite.capsule call_speak()\r')
+t.type(b'satellite.capsule call_speak()\r'); in_the_block()
 check(t.wait_for(lambda t: t.screen.text().count('...         {') >= 1),
       '... a capsule inside it has its { written too')
-t.type(b'satellite.console.display(name + " says woof")\r')
-t.type(b'}\r')
-t.type(b'}\r')
+t.type(b'satellite.console.display(name + " says woof")\r'); in_the_block()
+t.type(b'}\r'); in_the_block()
+t.type(b'}\r'); in_the_block()
 t.type(b'}\r')
 t.at_prompt()
 t.type(b'dog d()\r')
@@ -199,16 +208,11 @@ t.type(b'satellite.capsule twice(satellite.variable.number n)\r')
 check(t.wait_for(lambda t: t.screen.text()[t.screen.row].startswith('...') and t.screen.col == 8 and
                  t.screen.text()[t.screen.row - 1] == '... {'),
       'satellite.capsule + Enter writes { and starts the next line one level in')
-t.type(b'satellite.return(n * 2)\r')
+t.type(b'satellite.return(n * 2)\r'); in_the_block()
 t.type(b'}\r')
 t.at_prompt()
 t.type(b'satellite.variable.number big = twice(21)\r')
 t.at_prompt()
-# EACH LINE OF THE BLOCK WAITS FOR THE READER TO BE BACK -- an empty "..." -- as at_prompt() waits for an empty
-# prompt: the session writes the { for a line before the reader is reading again, and keys that arrive in
-# between were typed while a line ran, so D0.6.5 drops them. Typed without waiting, this check raced the reader
-# and lost a line now and then (2026-10-06: 1 run in 6 on build 0029, 3 in 4 on 0031).
-in_the_block = lambda: t.wait_for(lambda t: t.screen.text()[t.screen.row].strip() == '...')
 t.type(b'satellite.statement.if(big == 42)\r'); in_the_block()
 t.type(b'satellite.console.display("forty two")\r'); in_the_block()
 t.type(b'}\r'); in_the_block()

@@ -1,5 +1,7 @@
 # 051 -- A percentage, binary or hex name given an expression is told "ERROR: expected <first number><suffix>", built from its first literal alone: p = 1/4 is "expected 1%", p = 2 * 25% is "expected 2%", and a binary given a sum is "expected b1"
 
+**FIXED 2026-10-25** (open-work round 2 c1): the_literal_is_the_value (hexadecimal_values.cpp) says whether the first number is the whole value (the line's end, a comment, a comma or its brackets' ends after it); only then is a binary, percentage, hex or time name told "ERROR: expected 50%" / b1 / x200 / 5s. A fraction or a sum is still refused (S301, exit 27), as "ERROR: a percentage name holds only a percentage, and this value begins with the number 1". A name straight after the number is its own letters (5min keeps "expected 5s, 5ms or 5ns"), but a separator or an exponent is not: binary a = 1_000 and percent p = 1e2 get the "holds only" sentence, not "expected b1" / "expected 1%" (the fresh reader). check.sh rows "051: ...".
+
 **Found:** 2026-09-26, satl 004 revision 08 build 0099 (/home/madness/code/cxx/satellite/build/satl), by running ordinary programs against it.  
 **Area:** binary hex color infinity bool, floats fractions percent  
 **Kind:** misleading-refusal  

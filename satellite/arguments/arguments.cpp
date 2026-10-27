@@ -330,8 +330,10 @@ signed long long int Arguments::gather_config()
             // lines stay one line and a bar runs along the bottom. Until then it was the one flag off, so
             // wide lines wrapped (his Q9 of 2026-10-09).
             add_flag(name, key == "access" ? kAccessOnByDefault : true);
-        std::string said;
-        if (!config_file::read_value(key, said) || said.empty())
+        // UNDER EITHER SPELLING (argument_settings.hpp, QUANTUM_PLAN.md QUANTUM-0): `quantum.disk = 30` is read as
+        // quantum.drive, the last line of the two winning, and a refusal names the key the line was written with.
+        std::string said, spelled = key;
+        if (!config_file::read_value(key, said, &spelled) || said.empty())
             continue;
         if (setting.kind == SettingKind::flag) {
             add_flag(name, said != "false");
@@ -344,16 +346,55 @@ signed long long int Arguments::gather_config()
         satellite_number value;
         std::size_t bad_offset = 0;
         if (satellite_number::from_text(said, value, bad_offset) != success || value.negative() ||
-            satellite_number::compare(value, satellite_number(setting.least)) < 0)
-            return report_error(config_file::path() + ": " + key + " = " + said + " is not what arguments." + key +
+            satellite_number::compare(value, satellite_number(setting.least)) < 0 ||
+            (setting.most != 0 && satellite_number::compare(value, satellite_number(setting.most)) > 0))
+            return report_error(config_file::path() + ": " + spelled + " = " + said + " is not what arguments." + key +
                                     " holds -- write a whole number" +
-                                    (setting.least > 0 ? " of at least " + std::to_string(setting.least) : "") +
+                                    (setting.least > 0 || setting.most != 0 ? " " + the_range_of(setting) : "") +
                                     ", such as " + key + " = " + row->number.to_text(),
                                 config_value_not_understood);
         add_number(name, std::move(value));
     }
+
+    // THE QUANTUM ROWS ARE THE AUTHOR'S (QUANTUM_PLAN.md QUANTUM-0): gather() works arguments.quantum.possible out of
+    // the two shares, so each must be there and a percentage, 1 to 100 -- a row that is not is refused here, by name,
+    // as version's is -- and quantum.max is a count of at least 1 qubit.
+    for (const char *name : {"arguments.quantum.ram", "arguments.quantum.drive", "arguments.quantum.max"}) {
+        const Argument *entry = find(name);
+        const bool share = std::strcmp(name, "arguments.quantum.max") != 0;
+        if (entry == nullptr || entry->kind != ArgumentKind::number || entry->number.negative() ||
+            entry->number.is_zero() || (share && satellite_number::compare(entry->number, satellite_number(100)) > 0))
+            return refuse(std::string(name) + (share ? " needs a number row from 1 to 100, a percentage of the "
+                                                       "machine's RAM"
+                                                     : " needs a number row of at least 1 qubit"));
+    }
     return success;
 }
+
+namespace {
+
+// THE MOST QUBITS THAT CAN BE TIED TOGETHER IN `percent` OF `total` BYTES (QUANTUM_PLAN.md QUANTUM-0):
+// floor(log2(total x percent / 100 / 16)), every pattern of n tied qubits being a weight of 16 bytes (the author,
+// 2026-10-25), so n of them take 2^n x 16. In 128 bits, so no machine's bytes times 200 can overflow; 0 when not
+// even one weight fits.
+unsigned long long int qubits_in(unsigned long long int total, unsigned long long int percent)
+{
+    unsigned __int128 weights = static_cast<unsigned __int128>(total) * percent / 100 / 16;
+    unsigned long long int qubits = 0;
+    while (weights > 1) {
+        weights >>= 1;
+        ++qubits;
+    }
+    return qubits;
+}
+
+// A SHARE'S ROW AS A COUNT -- 1 to 100 once gather_config has judged it, and 0 on a run that never read it.
+unsigned long long int share_of(const satellite_number &row)
+{
+    return row.negative() || !row.fits_one_limb() ? 0 : row.limb(0);
+}
+
+} // namespace
 
 signed long long int Arguments::gather(const CommandLine &command_line)
 {
@@ -421,9 +462,20 @@ signed long long int Arguments::gather(const CommandLine &command_line)
     const long pages = sysconf(_SC_PHYS_PAGES);
     if (page > 0)
         add_bytes("arguments.machine.page_size", static_cast<unsigned long long int>(page));
-    if (page > 0 && pages > 0)
-        add_bytes("arguments.memory.total",
-                  static_cast<unsigned long long int>(pages) * static_cast<unsigned long long int>(page));
+    if (page > 0 && pages > 0) {
+        const unsigned long long int total =
+            static_cast<unsigned long long int>(pages) * static_cast<unsigned long long int>(page);
+        add_bytes("arguments.memory.total", total);
+        // HOW MANY QUBITS CAN BE TIED TOGETHER HERE (QUANTUM_PLAN.md QUANTUM-0; the author, 2026-10-25: a worked-out
+        // "max_number_of_quantum_bits"): in RAM and disk together, and in RAM alone, where the disk's warning will
+        // begin. WORKED OUT AT EVERY START AND NEVER KEPT, as a measured figure kept in config.ini goes stale
+        // (machine_facts.hpp, 2026-10-03) -- and from this same total, so they cannot disagree with memory.total.
+        // The shares are the ones this start read; one typed at the prompt is saved, and counts from the next start.
+        const unsigned long long int ram = share_of(number("arguments.quantum.ram"));
+        const unsigned long long int drive = share_of(number("arguments.quantum.drive"));
+        add_count("arguments.quantum.possible", qubits_in(total, ram + drive));
+        add_count("arguments.quantum.possible.ram", qubits_in(total, ram));
+    }
 
     struct statvfs disk;
     if (statvfs("/", &disk) == 0) {
@@ -495,7 +547,8 @@ std::string plus_two(std::string digits)
 std::string the_argument_row_spelled(const std::string &key)
 {
     const std::string number = number_after_a_spelling(key);
-    return number.empty() || number == "0" ? key : "argument" + number;
+    // AND A SETTING'S SECOND SPELLING IS ITS OWN ROW: quantum.memory reads quantum.ram (argument_settings.hpp).
+    return number.empty() || number == "0" ? the_setting_spelled(key) : "argument" + number;
 }
 
 bool names_argument_zero(const std::string &key)
@@ -523,7 +576,8 @@ bool filled_in_by_satl(const std::string &name)
         "arguments.session.directory", "arguments.machine.threads", "arguments.machine.cores",
         "arguments.threads_startup", "arguments.cpu.architecture", "arguments.cpu.features",
         "arguments.machine.page_size", "arguments.memory.total", "arguments.disk.total", "arguments.disk.free",
-        "arguments.username", "arguments.system.hostname", "arguments.system.kernel", "arguments.system.kernel_version"};
+        "arguments.username", "arguments.system.hostname", "arguments.system.kernel", "arguments.system.kernel_version",
+        "arguments.quantum.possible", "arguments.quantum.possible.ram"};
     for (const char *filled : names)
         if (name == filled)
             return true;

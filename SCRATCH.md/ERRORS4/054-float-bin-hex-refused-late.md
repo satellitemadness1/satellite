@@ -1,5 +1,7 @@
 # 054 -- .bin/.hex on a declared float name pass the checker and are refused with S210 only after earlier lines ran, while f.add and a fraction's .bin/.hex are refused before anything runs
 
+**FIXED 2026-10-25** (open-work round 2 c1): float_method_check (float_values.cpp) refuses .satellite.binary and .satellite.hex before anything runs, in the run's sentence without the value (S210, exit 14) -- on a name, and through scalar_word_not_built on a literal (2.5.satellite.bin) and a list<float>'s item. check.sh rows "054: ...".
+
 **Found:** 2026-09-26, satl 004 revision 08 build 0099 (/home/madness/code/cxx/satellite/build/satl), by running ordinary programs against it.  
 **Area:** number string conversion  
 **Kind:** inconsistency  

@@ -1,5 +1,7 @@
 # 060 -- The typed constructor satellite.container.list<type>() (and index<k, v>()) is refused only at run time, after earlier lines ran, as "there is no value here to work with"
 
+**FIXED 2026-10-25** (open-work round 2 c2): names_in_statement (program_check.cpp) refuses satellite.container.list<...>(), map<...>() and index<...>() before anything runs, S110: "satellite.container.list() takes no <type> -- the declaration says what it holds: satellite.container.list<satellite.variable.number> a = satellite.container.list()" (map's wording for map and index). check.sh rows "060: ...".
+
 **Found:** 2026-09-26, satl 004 revision 08 build 0099 (/home/madness/code/cxx/satellite/build/satl), by running ordinary programs against it.  
 **Area:** lists  
 **Kind:** misleading-refusal  

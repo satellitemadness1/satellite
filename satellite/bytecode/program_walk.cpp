@@ -1255,6 +1255,8 @@ signed long long int run_for(const BytecodeRegistry &registry,
         return report_error(std::string("satl(run): satellite.statement.for's first part ") +
                                 not_read_to_the_end(row, k),
                             satl_line_not_understood);
+    // ITS NUMBER TAKES A BINARY OR A HEX BY WORTH, as a number name does: k = b0001 starts at 1 (ERRORS4 017).
+    stored_as(plain_shape(word::code_of(1, 6, 4)), start);
     if (!start.is_number())
         return report_error("satl(run): satellite.statement.for declares " +
                                 std::string(word::spelling_of(word::code_of(1, 6, 4))) + " " + name +
@@ -1455,6 +1457,10 @@ signed long long int run_assignment(const std::vector<std::bitset<16>> &row,
     // answers both, and answers them the same way for the checker.
     const TypeShape &against = declared != 0 ? shape : *found.shape;
     std::string why;
+    // AND WHAT EACH ITEM BECOMES IN ITS PLACE, as the name itself did above: list<number> t = {b101, x1F} holds
+    // {5, 31} (type_shape.hpp's stored_as, ERRORS4 017). A type with nothing between < and > was converted above.
+    if (against.word != 0 && !against.parameters.empty())
+        stored_as(against, value);
     if (against.word != 0 && !value_fits(against, value, why)) {
         at = past_the_statement(row, at);
         return raise_at(types_do_not_meet, name + " was declared " + shape_written(against) + ", and " + why,
@@ -2491,11 +2497,18 @@ signed long long int run_turn(const BytecodeRegistry &registry,
         // 3.0. It was refused -- "half's x was declared satellite.variable.float, and it
         // holds a number" -- the one place the four on_store rules were never asked (the
         // website writers, 2026-09-24; fixed in the error sweep, 2026-09-25).
+        // A NUMBER PARAMETER'S BINARY IS ITS WORTH TOO, as run_assignment makes a name's: it kept b0011 where
+        // `satellite.variable.number n = b0011` holds 3 (ERRORS4 017).
+        if (wants[at].declared() == word::code_of(1, 6, 4) && arguments[at].is_binary())
+            arguments[at] = Value::of_number(arguments[at].as_binary()->bits);
         for (auto *on_store : {float_on_store, hexadecimal_on_store, color_on_store, fraction_on_store, program_on_store}) {
             const signed long long int stored = on_store(wants[at].declared(), arguments[at], why);
             if (stored != success)
                 return refuse_argument(stored, at, why);
         }
+        // AND A list<number>'s ITEMS ARE THEIRS (type_shape.hpp's stored_as).
+        if (!wants[at].shape.parameters.empty())
+            stored_as(wants[at].shape, arguments[at]);
         if (!value_fits(wants[at].shape, arguments[at], why))
             return refuse_argument(types_do_not_meet, at, why);
         Variable &bound = theirs[wants[at].name];
@@ -2539,6 +2552,11 @@ signed long long int run_site_here(const BytecodeRegistry &registry,
     // walked, which is still the calling one until the body's first statement runs.
     const std::vector<std::bitset<16>> *called_row = call_row != nullptr ? call_row : state.statement_row;
     std::size_t called_at = call_row != nullptr ? call_at : state.statement_at;
+    // AND THE ANSWER IS USED WHERE THE FIRST CALL WAS WRITTEN, so S240 is shown there (ERRORS4 081), as the
+    // checker's S240 is: at the capsule's header it could not say which of two calls went without one. A turn
+    // that called itself last does not move it -- that call's own answer was dropped, not used.
+    const std::vector<std::bitset<16>> *const used_row = called_row;
+    const std::size_t used_at = called_at;
     for (;;) {
         Frame frame;
         frame.site = &site;
@@ -2575,7 +2593,8 @@ signed long long int run_site_here(const BytecodeRegistry &registry,
                                          ? std::string("its last line calls itself and drops that answer")
                                          : std::string("the way it went reached no satellite.return(...) with a "
                                                        "value")),
-                                std::string(), state, row, site.declared_at);
+                                std::string(), state, used_row != nullptr ? *used_row : row,
+                                used_row != nullptr ? used_at : site.declared_at);
             *answer = std::move(frame.answer);
         }
         return code;

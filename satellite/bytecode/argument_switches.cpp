@@ -201,10 +201,10 @@ std::string the_value_written(const std::vector<std::bitset<16>> &row, std::size
             return written + " is a whole number, written as its digits -- " + example + ", with nothing after it " +
                    (line.call ? "in its brackets" : "on its line");
         }
-        if (satellite_number::compare(number, satellite_number(setting.least)) < 0) {
+        if (satellite_number::compare(number, satellite_number(setting.least)) < 0 ||
+            (setting.most != 0 && satellite_number::compare(number, satellite_number(setting.most)) > 0)) {
             code = setting_out_of_range;
-            return written + " is a whole number of at least " + std::to_string(setting.least) + ", and was given " +
-                   digits;
+            return written + " is a whole number " + the_range_of(setting) + ", and was given " + digits;
         }
         kept = number.to_text();
         return std::string();

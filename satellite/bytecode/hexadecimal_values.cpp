@@ -63,6 +63,27 @@ signed long long int hexadecimal_literal(const std::string &digits, Value &out, 
     return success;
 }
 
+// THE FIRST LITERAL IS THE WHOLE VALUE only when nothing but its brackets' ends comes before the value's own end
+// (hexadecimal_values.hpp says who asks, and why). A NAME STRAIGHT AFTER IT is its own letters -- `5min`, `50pct` --
+// and keeps the sentence it always had: the literal is still the whole of what was meant. BUT NOT A SEPARATOR OR AN
+// EXPONENT, `_000` or `e2`: `1_000` and `1e2` are not 1, and were told "expected b1" (the fresh reader, 2026-10-25).
+bool the_literal_is_the_value(const std::vector<std::bitset<16>> &row, std::size_t k, std::size_t opened)
+{
+    for (; opened > 0 && code_at(row, k) == token::right_parenthesis_token; --opened)
+        ++k;
+    const token::Code next = code_at(row, k);
+    if (next == token::name_token) {
+        std::size_t at = k;
+        const std::string letters = text_at(row, at);
+        bool an_exponent = !letters.empty() && (letters[0] == 'e' || letters[0] == 'E');
+        for (std::size_t i = 1; an_exponent && i < letters.size(); ++i)
+            an_exponent = letters[i] >= '0' && letters[i] <= '9';
+        return !an_exponent && (letters.empty() || letters[0] != '_');
+    }
+    return opened == 0 && (next == token::line_end_token || next == token::comment_token ||
+                           next == token::end_of_file_token || next == token::comma_token);
+}
+
 // A HEX IS WRITTEN WITH ITS x, BEFORE ANYTHING RUNS, in binary_is_written_with_b's
 // words (program_check.cpp says why each clause there is): `= 1F` is ERROR:
 // expected x1F. Only the first value, inside any brackets, its minus signs turning
@@ -78,11 +99,14 @@ signed long long int hexadecimal_is_written_right(const std::vector<std::bitset<
                                                   std::string &why)
 {
     bool below_zero = false;
+    std::size_t opened = 0;
     for (;; ++at) {
         const token::Code ahead = code_at(row, at);
         if (ahead == token::tight_minus_token || ahead == token::minus_token)
             below_zero = !below_zero;
-        else if (ahead != token::left_parenthesis_token)
+        else if (ahead == token::left_parenthesis_token)
+            ++opened;
+        else
             break;
     }
     const std::string sign = below_zero ? "-" : "";
@@ -109,6 +133,12 @@ signed long long int hexadecimal_is_written_right(const std::vector<std::bitset<
         if (code_at(row, k) == token::name_token) {
             std::size_t rest = k;
             entered += text_at(row, rest);
+            k = rest;
+        }
+        // A SUM, NOT A HEX WRITTEN WITHOUT ITS x: `h = 200 + 1` was told "expected x200" (ERRORS4 051).
+        if (!the_literal_is_the_value(row, k, opened)) {
+            why = "ERROR: a hex name holds only a hex, and this value begins with " + sign + entered;
+            return types_do_not_meet;
         }
         why = all_hex_digits(entered) ? "ERROR: expected " + sign + "x" + entered
                                       : "ERROR: " + sign + entered + " is not hex -- a hex digit is 0 to 9 or A to F";
@@ -146,7 +176,9 @@ signed long long int hexadecimal_is_written_right(const std::vector<std::bitset<
 // hexadecimal_number_of, asked and never copied, since 2026-10-11) -- the four
 // conversions, `.width`, `.add`, which is `+` and reaches object_hexadecimal.cpp, and
 // `.reverse()`, which is also let through before this is asked, as on every type with
-// an order. The walker refuses a word it reaches that is not one of them in this sentence.
+// an order -- and `.digits`, numbered with nothing built behind it, which
+// program_check.cpp's scalar_word_not_built refuses before this is asked (ERRORS4 036).
+// The walker refuses a word it reaches that is not one of them in this sentence.
 signed long long int hexadecimal_method_check(token::Code method, const std::string &spelling, std::string &why)
 {
     if (hexadecimal_number_of(method) != 0)

@@ -41,14 +41,18 @@ Value method(const Value &receiver, Value *home, const TypeShape *shape, const s
     // while m[1] = 3 went in (the review, 2026-09-23).
     // A MULTIPLE IS ASKED WHICH ARM THE LIST IS HELD AS (type_shape.hpp), so
     // `multiple<list<number>, number> m = {1}` then m.append("x") is refused.
+    // AND IT GOES IN AS ITS PLACE HOLDS IT: b101 into a list<number> is 5, as a number name's is (ERRORS4 017).
     std::string unfit;
+    Value item = arguments.front();
     const TypeShape *held = shape != nullptr ? &arm_holding(*shape, receiver) : nullptr;
-    if (held != nullptr && held->word == word::fixed_code<1, 4, 2> && !held->parameters.empty() &&
-        !value_fits(held->parameters[0], arguments.front(), unfit)) {
+    const bool typed = held != nullptr && held->word == word::fixed_code<1, 4, 2> && !held->parameters.empty();
+    if (typed)
+        stored_as(held->parameters[0], item);
+    if (typed && !value_fits(held->parameters[0], item, unfit)) {
         context.refuse(types_do_not_meet, name + ".satellite.append: " + unfit);
         return Value();
     }
-    body->items.push_back(arguments.front());
+    body->items.push_back(std::move(item));
     return *home;
 }
 

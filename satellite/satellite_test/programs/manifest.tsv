@@ -109,7 +109,7 @@ full/full_text_22.satl	refused	string satellite.variable.string(x) as a call is 
 full/full_text_23.satl	refused	container satellite.container on its own is not a type (S110)	13	satellite.container c is a declaration	
 full/full_text_24.satl	refused	container satellite.container.arguments is numbered and not built (S110)	13	satellite.container.arguments c is a	
 full/full_text_25.satl	refused	container < between two containers is refused: there is no order between them	27	< was given two lists, and only == and != compare those	
-full/full_text_26.satl	refused	list <type> checks the declaration's items	27	a was declared satellite.container.list, and item 2 of it does not	
+full/full_text_26.satl	refused	list <type> checks the declaration's items	27	a was declared satellite.container.list<satellite.variable.number>, and item 2 of it does not	
 full/full_text_27.satl	refused	list <type> checks a[n] = x	27	a[1] does not fit: it holds a string	
 full/full_text_28.satl	refused	list <type> checks .append	27	in a, a.satellite.append: it holds a string	
 full/full_text_29.satl	refused	list <type> checks .insert	27	in a, a.satellite.insert: it holds a string	

@@ -643,6 +643,16 @@ Value display_with_options(Code code, const Scenarios &scenarios, const Value &a
     if (!style_of(spelled, options, style, ended, ending, context))
         return Value();
     if (!display_text(argument, text, why)) {
+        // A VALUE WHOSE to_string ANSWERS types_do_not_meet -- A FILE, OR A LIST HOLDING ONE -- IS S301 (ERRORS4 066),
+        // with the file's two strings, as a plain display says it (expression.cpp, display_plainly) -- S210 said
+        // display is not built. Any other code stays S210. display_text keeps only the sentence, so the code is
+        // asked again, on this failing path alone.
+        satellite_string unused;
+        std::string again;
+        if (!argument.is_nothing() && argument.to_string(unused, again) == types_do_not_meet) {
+            context.refuse(types_do_not_meet, spelled + " was given " + argument.kind_name() + ", and " + why);
+            return Value();
+        }
         context.refuse(not_built_yet, spelled + " has no scenario for " + argument.kind_name() +
                                           (why.empty() ? std::string() : " -- " + why));
         return Value();

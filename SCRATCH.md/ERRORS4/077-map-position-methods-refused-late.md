@@ -1,5 +1,7 @@
 # 077 -- On a declared map, .append/.insert/.remove_at/.truncate/.index_of/.search pass the checker and are refused only after earlier lines ran, while .sum/.max/.min/.join/.reserve are refused before anything runs
 
+**FIXED 2026-10-25** (open-work round 2 c2): index_refuses (container_calls.cpp) answers the six position methods too, so a name declared a map is refused at satl(check) before anything runs (S301), with ERRORS4 075's suggestion: keys only for .index_of and .search. The walker's own sentence for them (call_container_method) is 075's. check.sh rows "077: ...".
+
 **Found:** 2026-09-26, satl 004 revision 08 build 0099 (/home/madness/code/cxx/satellite/build/satl), by running ordinary programs against it.  
 **Area:** maps and nesting  
 **Kind:** inconsistency  

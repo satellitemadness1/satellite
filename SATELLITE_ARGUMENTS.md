@@ -884,6 +884,20 @@ runs a satl of its own (satl/prompt_run.cpp), so a file's change never reaches t
 | display.buffer | whole number | 1 | as satl starts (*"it has to be changed outside of program execution"*, 2026-09-26) |
 | scroll.vertical | true or false | — | while it runs: a console's bar and endless scrollback, on unless written (the author, 2026-10-07: *"so if I ship this program sometime, I can have it turned off by default"*); satl's own console follows a write at once |
 | scroll.horizontal | true or false | — | while it runs: a console 2048 characters wide that wraps nothing, with a bar along the bottom; off, long lines wrap (2026-10-07, *"as well"*) |
+| quantum.ram, also spelled quantum.memory | whole number, a percentage of the machine's RAM | 1, and at most 100 | as satl starts: how much RAM a quantum value may take, 65 unless written (QUANTUM_PLAN.md QUANTUM-0, 2026-10-25) |
+| quantum.drive, also spelled quantum.disk | whole number, a percentage of the machine's RAM, taken on disk | 1, and at most 100 | as satl starts: how much more it may take on disk past the RAM, 65 unless written |
+
+**THE QUANTUM ROWS (QUANTUM_PLAN.md QUANTUM-0, 2026-10-25)** come before any quantum value does, as the author
+asked: *"we need to add to config a few things before we even begin"*. A setting may have a **second spelling**
+now (argument_settings.hpp's `kSettingSpellings`): `quantum.memory` is `quantum.ram` and `quantum.disk` is
+`quantum.drive`, read, written, saved and known to S016 as the setting itself, so config.ini holds it once, under
+its own name -- a write under either spelling replaces a line under the other. A setting may have a **most** too,
+and these two are 1 to 100: 0 and 101 are refused (37 at the prompt, 20 in config.ini). `quantum.max = 128` is the
+author's row, *"no matter what machine you're on"*, and is read and never written. Two figures are **worked out at
+every start** from the same bytes as `memory.total`, and never kept: `quantum.possible`, the most qubits tied
+together in RAM and disk, floor(log2(total x (ram + drive) / 100 / 16)) -- 32 at 65 and 65 on the author's
+machine, MemTotal 65,741,076 kB -- and `quantum.possible.ram`, the same in RAM alone (31), where the disk's
+warning will begin. A share typed at the prompt is saved, and the figures follow it from the next start.
 
 A **fact** is not a setting and is refused as before, before anything runs: the machine's rows, the
 command line's, and satl's own numbers (`version`, `revision`, `build`). **Nor are the warm threads**
@@ -946,7 +960,11 @@ and .cpp (`change_a_setting`, the too-late rule, the value checks), main_argumen
 as they are now), `run_argument_call` and the bare name in program_walk.cpp, expression.cpp and
 program_check.cpp, argument_switches.cpp (every setting at a file's top), arguments.cpp (every setting
 read back, `access` a row, the lock), `MachineState::at_the_prompt` set by run_session. check.sh rows
-after "a bare true or false is taken by every write"; tests/arguments_call.satl.
+after "a bare true or false is taken by every write"; tests/arguments_call.satl. The quantum rows: `most`,
+`kSettingSpellings` and `the_range_of` in argument_settings.hpp, `same_key` in config/config_file.hpp,
+`qubits_in` beside arguments.cpp's `gather()`, which calls it, and program_check.cpp's `words_after_the_rows`
+(`quantum.max(5)` is refused as `quantum.max = 5` is); check.sh rows after "a capsule declared at the prompt
+changes a setting for good".
 
 **MY CHOICES, THE AUTHOR'S TO OVERRULE:**
 - **A name of the program's own is never saved**, and is written on main's arguments only -- the bare

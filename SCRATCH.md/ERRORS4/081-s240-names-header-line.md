@@ -1,5 +1,7 @@
 # 081 -- The run-time S240 (an answer was used, but none was handed back) names the capsule's header line, not the call whose answer was used
 
+**FIXED 2026-10-25** (open-work round 2 r2): run_site_here (program_walk.cpp) raises S240 at the first call's row and place, where its answer is used, and at the header only when there is no call row; a capsule calling itself last is named at that first call. check.sh rows "ERRORS4 081: ...".
+
 **Found:** 2026-09-26, satl 004 revision 08 build 0099 (/home/madness/code/cxx/satellite/build/satl), by running ordinary programs against it.  
 **Area:** control flow and capsules  
 **Kind:** misleading-refusal  

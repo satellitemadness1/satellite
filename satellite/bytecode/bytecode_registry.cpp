@@ -631,8 +631,10 @@ void tokenise_one_line(std::string_view text, std::vector<std::bitset<16>> &row,
             // the ordinary position, `s.find("x")` is the method. The lexer does
             // not know the receiver's TYPE -- that is the object model's job --
             // and it does not have to: it only has to know this is a member name.
+            // AND NOT `time`, TIME-1's part, which is read only after `.satellite.`
+            // (bytecode_registry.hpp): after a plain period it stays a name.
             if (line.last_token == token::method_token) {
-                const Code method = token::method_code_of(text.substr(line.i, length));
+                const Code method = method_code_after_a_plain_period(text.substr(line.i, length));
                 if (method != 0) { line.put(method); line.i = k; continue; }
             }
 

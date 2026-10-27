@@ -1,5 +1,7 @@
 # 068 -- A trailing operator before ) (display(n +)) is told "this + has none" [space], and a touching-sign refusal inside display puts its caret at column 0
 
+**FIXED 2026-10-25** (open-work round 2 r2): touching_sign_why (expression.cpp), the one sentence of the walker's refuse_if_reserved and the checker's names_in_statement, says "this + has nothing after it" when a ) ] } , or the line's end follows the sign; the walker's refusal is placed on the sign. check.sh rows "ERRORS4 068: ...". NOT DONE: the caret -- a file's `display(n +)` is refused by the checker, and every check-time statement refusal puts its caret under the statement's start (program_check.cpp); moving it waits on the author's ruling (the check-time caret question).
+
 **Found:** 2026-09-26, satl 004 revision 08 build 0099 (/home/madness/code/cxx/satellite/build/satl), by running ordinary programs against it.  
 **Area:** integers  
 **Kind:** misleading-refusal  

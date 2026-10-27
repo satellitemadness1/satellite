@@ -84,10 +84,11 @@ std::string why_a_setting_does_not_take(const Setting &setting, const Value &val
             code = types_do_not_meet;
             return written + " is a whole number, and was given " + value.kind_name();
         }
-        if (number->negative() || satellite_number::compare(*number, satellite_number(setting.least)) < 0) {
+        // AND NEVER PAST ITS MOST, when it has one (argument_settings.hpp: quantum.ram is 1 to 100).
+        if (number->negative() || satellite_number::compare(*number, satellite_number(setting.least)) < 0 ||
+            (setting.most != 0 && satellite_number::compare(*number, satellite_number(setting.most)) > 0)) {
             code = setting_out_of_range;
-            return written + " is a whole number of at least " + std::to_string(setting.least) + ", and was given " +
-                   number->to_text();
+            return written + " is a whole number " + the_range_of(setting) + ", and was given " + number->to_text();
         }
         return std::string();
     }

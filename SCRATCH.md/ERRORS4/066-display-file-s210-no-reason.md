@@ -1,5 +1,7 @@
 # 066 -- display of a file is S210 NOT_BUILT_YET with no reason, while a list holding the file gets S301 with "a file has two strings ... write the one you mean"
 
+**FIXED 2026-10-25** (open-work round 2 r2): display_plainly and call_word (expression.cpp) ask a file its to_string, as a list holding one, and display_with_options (console_calls.cpp) refuses with the code to_string answers: S301 "was given a file, and a file has two strings", where it was S210; a centred list holding one too. check.sh rows "ERRORS4 066: ...".
+
 **Found:** 2026-09-26, satl 004 revision 08 build 0099 (/home/madness/code/cxx/satellite/build/satl), by running ordinary programs against it.  
 **Area:** files and io  
 **Kind:** inconsistency  
