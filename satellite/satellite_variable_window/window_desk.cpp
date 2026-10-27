@@ -133,18 +133,25 @@ void be_the_desk()
     }
 #endif
 
-    // MESA'S EGL WARNINGS ARE NOT A PROGRAM'S OUTPUT (the author, 2026-10-27, from
-    // the toolkit's run). GTK's libepoxy dlopens the machine's own libEGL, and where
-    // it can open no graphics card -- a server with none, or a session without the
+    // MESA'S WARNINGS ARE NOT A PROGRAM'S OUTPUT (the author, 2026-10-27, from the
+    // toolkit's run). GTK's libepoxy dlopens the machine's own libEGL, and where it
+    // can open no graphics card -- a server with none, or a session without the
     // seat's rights to /dev/dri -- Mesa says so on stderr and draws in software:
     // "libEGL warning: failed to get driver name for fd -1", or "wayland-egl: could
-    // not open /dev/dri/renderD128". The window works; the line is noise.
-    // EGL_LOG_LEVEL=fatal keeps Mesa's EGL logger to what stops it (measured with
-    // /dev/dri hidden: the lines go, the window still opens, exit 0). Mesa reads it
-    // once, at its first line, so it is set BEFORE the display is opened.
-    // NOT OVERWRITTEN: a person's own EGL_LOG_LEVEL is what they get.
+    // not open /dev/dri/renderD128". The window works; the lines are noise.
+    // MESA HAS TWO LOGGERS, AND BOTH ARE QUIETED. EGL_LOG_LEVEL=fatal keeps its EGL
+    // logger to what stops it. MESA_LOG=null quiets the other, which still said
+    // "MESA: error: ZINK: failed to choose pdev" when Mesa tried zink before
+    // llvmpipe -- BUILD 0023, the first half of this fix, still printed that line.
+    // Measured on that server (KVM, QEMU's bochs VGA, Mesa 25.2.7): with both, no
+    // line from any satl process and the window opens, exit 0; MESA_LOG_FILE=
+    // /dev/null does not take the zink line. Mesa reads each once, at its first
+    // line, so both are set BEFORE the display is opened.
+    // NOT OVERWRITTEN: a person's own EGL_LOG_LEVEL or MESA_LOG is what they get.
     keep_the_machines("EGL_LOG_LEVEL");   // a program satl starts gets the machine's (own_environment.hpp)
     g_setenv("EGL_LOG_LEVEL", "fatal", FALSE);
+    keep_the_machines("MESA_LOG");
+    g_setenv("MESA_LOG", "null", FALSE);
 
     const bool started = spilled && gtk_init_check() != FALSE;
     GMainLoop *loop = started ? g_main_loop_new(nullptr, FALSE) : nullptr;
